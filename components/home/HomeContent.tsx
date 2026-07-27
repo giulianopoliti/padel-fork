@@ -216,7 +216,7 @@ function PadelEliteHomeContent({
                   size="lg"
                   className="rounded-full bg-[var(--tpe-night)] px-8 py-6 text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-paper)] hover:bg-[var(--tpe-night-soft)]"
                 >
-                  <Link href="/tournaments/upcoming">Ver torneos</Link>
+                  <Link href="/tournaments">Ver torneos</Link>
                 </Button>
                 <Button
                   asChild
@@ -245,7 +245,7 @@ function PadelEliteHomeContent({
               variant="ghost"
               className="rounded-full px-0 text-sm font-black uppercase tracking-[0.14em] text-[var(--tpe-night)] hover:bg-transparent hover:text-[var(--tpe-night-soft)]"
             >
-              <Link href="/tournaments/upcoming">
+              <Link href="/tournaments">
                 Ver todos
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Link>

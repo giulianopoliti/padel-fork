@@ -51,7 +51,7 @@ export default function PlayerFvInscribedTournamentsSection({
           Cuando te anotes en un torneo, aca vas a ver rapido la fecha, la sede y con quien jugas.
         </p>
         <Button asChild className="mt-6 h-11 rounded-full bg-court-500 px-6 text-base font-semibold text-brand-900 hover:bg-court-400">
-          <Link href="/tournaments/upcoming">Buscar torneos</Link>
+          <Link href="/tournaments">Buscar torneos</Link>
         </Button>
       </section>
     )

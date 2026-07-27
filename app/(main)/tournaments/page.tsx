@@ -1,5 +1,4 @@
 import React from "react"
-import { redirect } from "next/navigation"
 import { getTournamentsOptimized, getCategories, getClubsForFilter } from "@/app/api/tournaments"
 import TournamentsLayout from "./components/tournaments-layout"
 import PaginationWrapper from "./components/pagination-wrapper"
@@ -30,21 +29,12 @@ export default async function TournamentsPage({ searchParams }: PageProps) {
   const branding = getTenantBranding()
   const defaultType = getDefaultPublicTournamentType()
   const type = params.type === "AMERICAN" || params.type === "LONG" ? params.type : defaultType
-
-  if (branding.key === "padel-elite") {
-    const queryString = new URLSearchParams(
-      Object.entries({
-        ...params,
-        type,
-      }).filter((entry): entry is [string, string] => Boolean(entry[1]))
-    ).toString()
-
-    redirect(`/tournaments/upcoming${queryString ? `?${queryString}` : ""}`)
-  }
+  const isElite = branding.key === "padel-elite"
+  const status = isElite ? "upcoming" : "active"
 
   const [tournamentsData, categories, clubs] = await Promise.all([
     getTournamentsOptimized({
-      status: "active",
+      status,
       page,
       limit: 10,
       filters: {
@@ -63,8 +53,12 @@ export default async function TournamentsPage({ searchParams }: PageProps) {
 
   return (
     <TournamentsLayout
-      title="Torneos activos"
-      description={`Torneos en curso y proximas fechas de ${branding.siteName}, con inscripciones abiertas o cerradas en un mismo lugar.`}
+      title={isElite ? "Proximos torneos" : "Torneos activos"}
+      description={
+        isElite
+          ? `Las proximas fechas de ${branding.siteName}, ordenadas para que veas rapido categoria, horario, club e inscripcion.`
+          : `Torneos en curso y proximas fechas de ${branding.siteName}, con inscripciones abiertas o cerradas en un mismo lugar.`
+      }
       currentType={type}
       categories={categories}
       clubs={clubs}
@@ -72,11 +66,23 @@ export default async function TournamentsPage({ searchParams }: PageProps) {
       <div className="space-y-8">
         <PublicTournamentCards
           tournaments={tournaments}
-          emptyTitle={type === "LONG" ? "No hay ligas activas" : "No hay americanos activos"}
+          emptyTitle={
+            isElite
+              ? type === "LONG"
+                ? "No hay ligas publicadas"
+                : "No hay americanos publicados"
+              : type === "LONG"
+                ? "No hay ligas activas"
+                : "No hay americanos activos"
+          }
           emptyDescription={
             categoryFilter || clubFilter || searchTerm || genderFilter
-              ? "No encontramos torneos activos con esos filtros. Proba cambiando la categoria, el club o la busqueda."
-              : `No hay torneos activos para este formato en ${branding.siteName} en este momento.`
+              ? isElite
+                ? "No encontramos torneos con esos filtros. Proba cambiando la categoria, el club o la busqueda."
+                : "No encontramos torneos activos con esos filtros. Proba cambiando la categoria, el club o la busqueda."
+              : isElite
+                ? `No hay torneos cargados para este formato en ${branding.siteName} en este momento.`
+                : `No hay torneos activos para este formato en ${branding.siteName} en este momento.`
           }
         />
 

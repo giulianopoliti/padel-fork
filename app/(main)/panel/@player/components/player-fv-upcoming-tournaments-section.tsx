@@ -59,7 +59,7 @@ export default function PlayerFvUpcomingTournamentsSection({
     }
 
     const queryString = params.toString()
-    return queryString ? `/tournaments/upcoming?${queryString}` : "/tournaments/upcoming"
+    return queryString ? `/tournaments?${queryString}` : "/tournaments"
   })()
 
   useEffect(() => {

@@ -36,6 +36,15 @@ export default function TournamentsLayout({
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
   const branding = getTenantBranding()
   const isElite = branding.key === "padel-elite"
+  const defaultType = branding.tournaments.defaultPublicType
+
+  const buildQueryString = (params: URLSearchParams) => {
+    if (params.get("type") === defaultType) {
+      params.delete("type")
+    }
+
+    return params.toString()
+  }
 
   useEffect(() => {
     setSearchTerm(searchParams.get("search") || "")
@@ -52,14 +61,20 @@ export default function TournamentsLayout({
     }
 
     params.delete("page")
-    router.push(`${pathname}?${params.toString()}`)
+    const queryString = buildQueryString(params)
+    router.push(queryString ? `${pathname}?${queryString}` : pathname)
   }
 
   const buildTypeHref = (type: "LONG" | "AMERICAN") => {
     const params = new URLSearchParams(searchParams.toString())
-    params.set("type", type)
+    if (type === defaultType) {
+      params.delete("type")
+    } else {
+      params.set("type", type)
+    }
     params.delete("page")
-    return `${pathname}?${params.toString()}`
+    const queryString = params.toString()
+    return queryString ? `${pathname}?${queryString}` : pathname
   }
 
   useEffect(() => {
@@ -79,8 +94,8 @@ export default function TournamentsLayout({
   const buildStatusHref = (statusPath: "active" | "upcoming" | "in-progress" | "past") => {
     const params = new URLSearchParams(searchParams.toString())
     params.delete("page")
-    const queryString = params.toString()
-    const basePath = statusPath === "active" ? "/tournaments" : `/tournaments/${statusPath}`
+    const queryString = buildQueryString(params)
+    const basePath = statusPath === "active" || (isElite && statusPath === "upcoming") ? "/tournaments" : `/tournaments/${statusPath}`
     return `${basePath}${queryString ? `?${queryString}` : ""}`
   }
 
@@ -91,6 +106,10 @@ export default function TournamentsLayout({
         pathname.includes("/tournaments/upcoming") ||
         pathname.includes("/tournaments/in-progress")
       )
+    }
+
+    if (isElite && statusPath === "upcoming" && pathname === "/tournaments") {
+      return true
     }
 
     return pathname.includes(`/tournaments/${statusPath}`)
