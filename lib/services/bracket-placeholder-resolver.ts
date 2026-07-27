@@ -297,7 +297,7 @@ export async function updateBracketMatches(
     // Buscar matches que usan este seed
     const { data: matches, error: matchesError } = await supabase
       .from('matches')
-      .select('id, couple1_id, couple2_id, tournament_couple_seed1_id, tournament_couple_seed2_id, round, order_in_round')
+      .select('id, couple1_id, couple2_id, tournament_couple_seed1_id, tournament_couple_seed2_id, round, order_in_round, status')
       .eq('tournament_id', tournamentId)
       .eq('type', 'ELIMINATION')
       .or(`tournament_couple_seed1_id.eq.${seed.seedId},tournament_couple_seed2_id.eq.${seed.seedId}`)
@@ -349,7 +349,7 @@ export async function updateBracketMatches(
 
       // Si ambas parejas están presentes, cambiar status a PENDING
       if (bothCouplesPresent) {
-        updateData.status = 'PENDING'
+        updateData.status = match.status === 'DRAFT' ? 'DRAFT' : 'PENDING'
         updateData.winner_id = null
       }
       // 🆕 NUEVO: Si es BYE (solo una pareja), marcar winner_id para poder desprocesar después

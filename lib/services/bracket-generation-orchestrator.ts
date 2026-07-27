@@ -118,6 +118,8 @@ export async function generatePlaceholderBracket(
       totalCouples: validation.totalCouples,
     })
     const bracketKeys = getOperationalBracketKeysForFormat(resolvedFormat)
+    const draftPlayableMatches =
+      validation.tournament.type === 'LONG' && Boolean(validation.tournament.enable_draft_matches)
     const generator = new PlaceholderBracketGenerator()
     const allSeeds: any[] = []
     const allMatches: any[] = []
@@ -126,7 +128,9 @@ export async function generatePlaceholderBracket(
     for (let index = 0; index < bracketKeys.length; index++) {
       const bracketKey = bracketKeys[index]
       const seeds = await generator.generatePlaceholderSeeding(tournamentId, { bracketKey })
-      const matches = await generator.generateBracketMatches(seeds, tournamentId, bracketKey)
+      const matches = await generator.generateBracketMatches(seeds, tournamentId, bracketKey, {
+        draftPlayableMatches,
+      })
       const hierarchy = await generator.createMatchHierarchy(matches, tournamentId, bracketKey)
 
       console.log(
@@ -139,7 +143,9 @@ export async function generatePlaceholderBracket(
 
       console.log(`[BRACKET-GENERATION][bye-processing][${bracketKey}] Processing BYEs for ${savedMatches.length} saved matches`)
 
-      await generator.processBracketByes(savedMatches as any, hierarchy)
+      await generator.processBracketByes(savedMatches as any, hierarchy, {
+        draftPlayableMatches,
+      })
       await updateProcessedPlaceholderMatches(savedMatches)
 
       allSeeds.push(...seeds)

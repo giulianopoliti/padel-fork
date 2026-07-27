@@ -423,7 +423,8 @@ export class PlaceholderBracketGenerator {
   async generateBracketMatches(
     seeds: PlaceholderSeed[],
     tournamentId: string,
-    bracketKey: BracketKey = DEFAULT_BRACKET_KEY
+    bracketKey: BracketKey = DEFAULT_BRACKET_KEY,
+    options: { draftPlayableMatches?: boolean } = {}
   ): Promise<BracketMatch[]> {
     console.log(`🎯 [BRACKET-GEN-V2] Generating bracket matches for ${seeds.length} seeds`)
 
@@ -465,7 +466,7 @@ export class PlaceholderBracketGenerator {
             placeholder_couple2_label: seedData2?.is_placeholder ? seedData2.placeholder_label : null,
             round: round.name,
             order_in_round: i + 1,
-            status: this.determineMatchStatusWithByes(seedData1, seedData2, seed1, seed2),
+            status: this.determineMatchStatusWithByes(seedData1, seedData2, seed1, seed2, options),
             type: 'ELIMINATION',
             // ✅ NEW: Store seed numbers for FK mapping
             seed1: seed1 === 'BYE' ? null : (typeof seed1 === 'number' ? seed1 : null),
@@ -628,7 +629,11 @@ export class PlaceholderBracketGenerator {
    * Processes BYE matches and propagates winners ONE ROUND only
    * Uses tournament_couple_seed FK references for detection and propagation
    */
-  async processBracketByes(matches: BracketMatch[], hierarchy: MatchHierarchy[]): Promise<void> {
+  async processBracketByes(
+    matches: BracketMatch[],
+    hierarchy: MatchHierarchy[],
+    options: { draftPlayableMatches?: boolean } = {}
+  ): Promise<void> {
     console.log(`🔄 [BRACKET-GEN-V2] Processing BYEs by tournament_couple_seed FK references - ONE ROUND only`)
     
     // Create hierarchy lookup map
@@ -703,8 +708,8 @@ export class PlaceholderBracketGenerator {
 
           // ✅ CRITICAL FIX: Update parent match status to PENDING if both couples are now present
           if (parentMatch.couple1_id && parentMatch.couple2_id) {
-            parentMatch.status = 'PENDING'
-            console.log(`✅ [BRACKET-GEN-V2] Parent match ${parentMatch.id} now complete - status updated: WAITING_OPONENT → PENDING`)
+            parentMatch.status = options.draftPlayableMatches ? 'DRAFT' : 'PENDING'
+            console.log(`✅ [BRACKET-GEN-V2] Parent match ${parentMatch.id} now complete - status updated: WAITING_OPONENT → ${parentMatch.status}`)
           }
         }
       }
@@ -818,7 +823,8 @@ export class PlaceholderBracketGenerator {
     seedData1: PlaceholderSeed | null, 
     seedData2: PlaceholderSeed | null,
     seed1: number | 'BYE',
-    seed2: number | 'BYE'
+    seed2: number | 'BYE',
+    options: { draftPlayableMatches?: boolean } = {}
   ): string {
     // Handle BYE cases
     if (seed1 === 'BYE' || seed2 === 'BYE') {
@@ -827,7 +833,7 @@ export class PlaceholderBracketGenerator {
     
     // Both couples are definitive
     if (seedData1?.couple_id && seedData2?.couple_id) {
-      return 'PENDING'
+      return options.draftPlayableMatches ? 'DRAFT' : 'PENDING'
     }
     
     // At least one is placeholder or missing

@@ -393,6 +393,8 @@ export function transformMatchStatus(statusStr: string): MatchStatus {
   const normalizedStatus = statusStr.toUpperCase().trim()
   
   const statusMapping: Record<string, MatchStatus> = {
+    'DRAFT': 'DRAFT',
+    'BORRADOR': 'DRAFT',
     'PENDING': 'PENDING',
     'PROGRAMADO': 'PENDING',
     'EN_ESPERA': 'PENDING',

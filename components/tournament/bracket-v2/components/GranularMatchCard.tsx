@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Trophy, MapPin, Edit3, Zap, Play, ClipboardList, Trash2, Loader2, Ban, MoreHorizontal } from 'lucide-react'
+import { Trophy, MapPin, Edit3, Zap, Play, ClipboardList, Trash2, Loader2, Ban, MoreHorizontal, Eye, EyeOff } from 'lucide-react'
 import { DraggableCoupleSlot } from './DraggableCoupleSlot'
 import { useBracketDragOperations } from '../hooks/useBracketDragOperations'
 import { useBracketDragDrop } from '../context/bracket-drag-context'
@@ -88,6 +88,7 @@ export function GranularMatchCard({
   const [setScores, setSetScores] = useState<MatchSetScore[]>([])
   const [pendingDisqualification, setPendingDisqualification] = useState<PendingDisqualification | null>(null)
   const [isDisqualifyingCoupleId, setIsDisqualifyingCoupleId] = useState<string | null>(null)
+  const [isUpdatingDraftStatus, setIsUpdatingDraftStatus] = useState(false)
   const isLongTournament = tournamentType === 'LONG'
   const [matchState, matchActions] = useMatchManagement(tournamentId, onMatchUpdate)
 
@@ -144,6 +145,14 @@ export function GranularMatchCard({
     !!couple1 &&
     !!couple2 &&
     ['PENDING', 'IN_PROGRESS', 'WAITING_OPONENT', 'WAITING_OPPONENT'].includes(match.status)
+  const canToggleDraftStatus =
+    isOwner &&
+    !isEditMode &&
+    (
+      match.status === 'PENDING' ||
+      match.status === 'DRAFT' ||
+      match.status === 'WAITING_OPPONENT'
+    )
 
   useEffect(() => {
     if (preloadedSetScores) {
@@ -266,6 +275,37 @@ export function GranularMatchCard({
     )
   }
 
+  const handleToggleDraftStatus = async () => {
+    const mode = match.status === 'DRAFT' ? 'publish' : 'draft'
+    setIsUpdatingDraftStatus(true)
+
+    try {
+      const response = await fetch(`/api/tournaments/${tournamentId}/bracket-matches/draft`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          mode,
+          scope: 'match',
+          matchId: match.id,
+        }),
+      })
+
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'No se pudo actualizar el partido')
+      }
+
+      toast.success(result.message || (mode === 'draft' ? 'Partido ocultado' : 'Partido publicado'))
+      mutate((key) => typeof key === 'string' && key.includes(tournamentId), undefined, { revalidate: true })
+      onMatchUpdate?.(match.id, { status: mode === 'draft' ? 'DRAFT' : 'PENDING' })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el partido')
+    } finally {
+      setIsUpdatingDraftStatus(false)
+    }
+  }
+
   const handleConfirmDisqualification = async () => {
     if (!pendingDisqualification) return
 
@@ -346,6 +386,8 @@ export function GranularMatchCard({
     switch (status) {
       case 'PENDING':
         return 'Pendiente'
+      case 'DRAFT':
+        return 'Borrador'
       case 'IN_PROGRESS':
         return 'En curso'
       case 'FINISHED':
@@ -362,6 +404,8 @@ export function GranularMatchCard({
 
   const getMatchStatusInfo = () => {
     switch (match.status) {
+      case 'DRAFT':
+        return { badge: <Badge variant="secondary" className="bg-slate-100 text-[10px] text-slate-700">Borrador</Badge>, borderColor: 'border-slate-300' }
       case 'PENDING':
         return { badge: <Badge variant="secondary" className="text-[10px]">Pendiente</Badge>, borderColor: 'border-gray-300' }
       case 'IN_PROGRESS':
@@ -473,6 +517,34 @@ export function GranularMatchCard({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Borrar partido</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {canToggleDraftStatus && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={handleToggleDraftStatus}
+                      disabled={isUpdatingDraftStatus}
+                      aria-label={match.status === 'DRAFT' ? 'Publicar partido' : 'Marcar partido como borrador'}
+                    >
+                      {isUpdatingDraftStatus ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : match.status === 'DRAFT' ? (
+                        <Eye className="h-3.5 w-3.5" />
+                      ) : (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {match.status === 'DRAFT' ? 'Publicar partido' : 'Marcar borrador'}
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}

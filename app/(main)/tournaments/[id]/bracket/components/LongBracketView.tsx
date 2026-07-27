@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { createClient } from '@/utils/supabase/client'
 import { ImprovedBracketRenderer } from '@/components/tournament/bracket-v2/components/ImprovedBracketRenderer'
 import { BracketDragDropProvider } from '@/components/tournament/bracket-v2/context/bracket-drag-context'
@@ -9,7 +10,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, Repeat2 } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Loader2, MoreHorizontal, Repeat2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
 import type { BracketKey } from '@/types/tournament-format-v2'
 import BracketReplacementDialog from './BracketReplacementDialog'
@@ -41,6 +48,7 @@ export default function LongBracketView({ tournamentId, onMatchUpdate }: LongBra
   const [tournamentError, setTournamentError] = useState<string | null>(null)
   const [activeBracketKey, setActiveBracketKey] = useState<BracketKey>('MAIN')
   const [replacementDialogOpen, setReplacementDialogOpen] = useState(false)
+  const [updatingDraftScope, setUpdatingDraftScope] = useState<string | null>(null)
 
   useEffect(() => {
     if (!tournamentId) return
@@ -130,6 +138,21 @@ export default function LongBracketView({ tournamentId, onMatchUpdate }: LongBra
     enabled: !tournamentLoading && !!tournament && !!permissions
   })
 
+  const bracketDraftStats = useMemo(() => {
+    const matches = bracketData?.matches || []
+    return {
+      draft: matches.filter(match => match.status === 'DRAFT').length,
+      published: matches.filter(match => match.status === 'PENDING').length,
+      total: matches.length,
+    }
+  }, [bracketData?.matches])
+
+  const activeBracketLabel = activeBracketKey === 'GOLD'
+    ? 'Oro'
+    : activeBracketKey === 'SILVER'
+      ? 'Plata'
+      : 'llave'
+
   const handleDataRefresh = () => {
     console.log('Long Bracket - Data refreshed')
     refetch()
@@ -144,6 +167,40 @@ export default function LongBracketView({ tournamentId, onMatchUpdate }: LongBra
   const handleReplacementComplete = () => {
     refetch()
     onMatchUpdate?.()
+  }
+
+  const handleUpdateBracketDraft = async (
+    mode: 'draft' | 'publish',
+    scope: 'bracket' | 'all'
+  ) => {
+    const updateKey = `${mode}-${scope}`
+    setUpdatingDraftScope(updateKey)
+
+    try {
+      const response = await fetch(`/api/tournaments/${tournamentId}/bracket-matches/draft`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          mode,
+          scope,
+          bracketKey: scope === 'bracket' ? activeBracketKey : undefined,
+        }),
+      })
+
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'No se pudieron actualizar los partidos')
+      }
+
+      toast.success(result.message || 'Partidos actualizados')
+      await refetch()
+      onMatchUpdate?.()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudieron actualizar los partidos')
+    } finally {
+      setUpdatingDraftScope(null)
+    }
   }
 
   const bracketHeader = tournament && isGoldSilverFormat ? (
@@ -242,15 +299,78 @@ export default function LongBracketView({ tournamentId, onMatchUpdate }: LongBra
             {bracketHeader}
           </div>
           {hasManagementPermissions && (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 gap-2"
-              onClick={() => setReplacementDialogOpen(true)}
-            >
-              <Repeat2 className="h-4 w-4" />
-              Reemplazar pareja
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {bracketDraftStats.total > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                    {bracketDraftStats.draft} borrador / {bracketDraftStats.published} publicados
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 gap-2"
+                    disabled={updatingDraftScope !== null || bracketDraftStats.published === 0}
+                    onClick={() => handleUpdateBracketDraft('draft', 'bracket')}
+                  >
+                    {updatingDraftScope === 'draft-bracket' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <EyeOff className="h-4 w-4" />
+                    )}
+                    Ocultar {activeBracketLabel}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 gap-2"
+                    disabled={updatingDraftScope !== null || bracketDraftStats.draft === 0}
+                    onClick={() => handleUpdateBracketDraft('publish', 'bracket')}
+                  >
+                    {updatingDraftScope === 'publish-bracket' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                    Publicar {activeBracketLabel}
+                  </Button>
+                  {isGoldSilverFormat && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-11 w-11"
+                          disabled={updatingDraftScope !== null}
+                          aria-label="Acciones de ambas llaves"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleUpdateBracketDraft('draft', 'all')}>
+                          <EyeOff className="mr-2 h-4 w-4" />
+                          Ocultar Oro y Plata
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleUpdateBracketDraft('publish', 'all')}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Publicar Oro y Plata
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 gap-2"
+                onClick={() => setReplacementDialogOpen(true)}
+              >
+                <Repeat2 className="h-4 w-4" />
+                Reemplazar pareja
+              </Button>
+            </div>
           )}
         </div>
       )}

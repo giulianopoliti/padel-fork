@@ -1,4 +1,5 @@
 export const MATCH_STATUS = {
+  DRAFT: 'DRAFT',
   PENDING: 'PENDING',
   IN_PROGRESS: 'IN_PROGRESS', 
   FINISHED: 'FINISHED',
@@ -75,6 +76,8 @@ export const getMatchStatusLabel = (status: MatchStatus): string => {
   switch (status) {
     case MATCH_STATUS.PENDING:
       return 'Pendiente';
+    case MATCH_STATUS.DRAFT:
+      return 'Borrador';
     case MATCH_STATUS.IN_PROGRESS:
       return 'En Progreso';
     case MATCH_STATUS.FINISHED:
@@ -94,6 +97,8 @@ export const getMatchStatusVariant = (status: MatchStatus): 'default' | 'seconda
   switch (status) {
     case MATCH_STATUS.PENDING:
       return 'outline';
+    case MATCH_STATUS.DRAFT:
+      return 'secondary';
     case MATCH_STATUS.IN_PROGRESS:
       return 'default';
     case MATCH_STATUS.FINISHED:

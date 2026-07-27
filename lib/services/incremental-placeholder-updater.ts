@@ -267,7 +267,7 @@ export class IncrementalPlaceholderUpdater {
         
         // Si couple2_id también está presente, cambiar status a PENDING
         if (match.couple2_id) {
-          updateData.status = 'PENDING'
+          updateData.status = match.status === 'DRAFT' ? 'DRAFT' : 'PENDING'
         }
         
         const { data: updatedMatch, error: updateError } = await supabase
@@ -316,7 +316,7 @@ export class IncrementalPlaceholderUpdater {
         
         // Si couple1_id también está presente, cambiar status a PENDING
         if (match.couple1_id) {
-          updateData.status = 'PENDING'
+          updateData.status = match.status === 'DRAFT' ? 'DRAFT' : 'PENDING'
         }
         
         const { data: updatedMatch, error: updateError } = await supabase

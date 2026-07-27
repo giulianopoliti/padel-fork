@@ -464,7 +464,7 @@ export class IncrementalBracketUpdater {
         const newCouple1 = hierarchy.parent_slot === 1 ? byeMatch.winnerId : parentMatch.couple1_id
         const newCouple2 = hierarchy.parent_slot === 2 ? byeMatch.winnerId : parentMatch.couple2_id
 
-        if (newCouple1 && newCouple2 && parentMatch.status !== 'PENDING') {
+        if (newCouple1 && newCouple2 && parentMatch.status !== 'PENDING' && parentMatch.status !== 'DRAFT') {
           const { error: statusError } = await supabase
             .from('matches')
             .update({ status: 'PENDING' })

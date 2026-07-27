@@ -12,6 +12,7 @@ describe('isBracketMoveAllowedStatus', () => {
     expect(isBracketMoveAllowedStatus('IN_PROGRESS')).toBe(false)
     expect(isBracketMoveAllowedStatus('CANCELED')).toBe(false)
     expect(isBracketMoveAllowedStatus('BYE')).toBe(false)
+    expect(isBracketMoveAllowedStatus('DRAFT')).toBe(false)
   })
 
   it('blocks missing or unknown statuses', () => {
@@ -20,4 +21,3 @@ describe('isBracketMoveAllowedStatus', () => {
     expect(isBracketMoveAllowedStatus('COMPLETED')).toBe(false)
   })
 })
-

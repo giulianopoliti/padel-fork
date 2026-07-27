@@ -21,6 +21,7 @@
  * Estados posibles de un match en el sistema
  */
 export type MatchStatus = 
+  | 'DRAFT'          // Match oculto para jugadores hasta publicacion
   | 'PENDING'        // Match programado pero no iniciado
   | 'IN_PROGRESS'    // Match en curso
   | 'FINISHED'       // Match completado con resultado

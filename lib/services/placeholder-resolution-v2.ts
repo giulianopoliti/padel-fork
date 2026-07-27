@@ -364,8 +364,14 @@ export class PlaceholderResolutionServiceV2 {
 
       if (error) throw error
 
-      // If both slots are filled and match is waiting, mark as PENDING
-      if (match.couple1_id && match.couple2_id && match.status === 'WAITING_OPONENT') {
+      // If both slots are filled and match is waiting, mark as PENDING.
+      // DRAFT is preserved so organizers can keep a hidden bracket hidden.
+      if (
+        match.couple1_id &&
+        match.couple2_id &&
+        match.status !== 'DRAFT' &&
+        match.status !== 'PENDING'
+      ) {
         const { error: updateError } = await supabase
           .from('matches')
           .update({ status: 'PENDING' })

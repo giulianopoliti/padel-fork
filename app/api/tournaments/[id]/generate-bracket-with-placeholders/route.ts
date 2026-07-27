@@ -32,7 +32,7 @@ export async function POST(
     // 1. Validate tournament exists and is in correct state
     const { data: tournament, error: tournamentError } = await supabase
       .from('tournaments')
-      .select('id, name, status, allows_placeholder_brackets')
+      .select('id, name, status, type, allows_placeholder_brackets, enable_draft_matches')
       .eq('id', tournamentId)
       .single()
 
@@ -122,7 +122,9 @@ export async function POST(
 
     // Generate matches
     console.log(`[GENERATE-BRACKET-PLACEHOLDERS] ⚡ Creating bracket matches...`)
-    const matches = await generator.generateBracketMatches(seeds, tournamentId)
+    const matches = await generator.generateBracketMatches(seeds, tournamentId, 'MAIN', {
+      draftPlayableMatches: tournament.type === 'LONG' && Boolean(tournament.enable_draft_matches),
+    })
 
     // Generate hierarchy
     console.log(`[GENERATE-BRACKET-PLACEHOLDERS] 🔗 Creating match hierarchy...`)
@@ -134,7 +136,9 @@ export async function POST(
     console.log(`[GENERATE-BRACKET-PLACEHOLDERS] 📊 Before BYE processing - matches count: ${matches.length}`)
     
     try {
-      await generator.processBracketByes(matches, hierarchy)
+      await generator.processBracketByes(matches, hierarchy, {
+        draftPlayableMatches: tournament.type === 'LONG' && Boolean(tournament.enable_draft_matches),
+      })
       console.log(`[GENERATE-BRACKET-PLACEHOLDERS] ✅ BYE processing completed successfully`)
     } catch (error) {
       console.error(`[GENERATE-BRACKET-PLACEHOLDERS] ❌ Error processing BYEs:`, error)

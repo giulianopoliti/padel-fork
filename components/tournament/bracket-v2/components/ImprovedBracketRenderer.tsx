@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Clock3, Edit3, Maximize2, Save, Trophy, Users, X, Zap } from 'lucide-react'
+import { Clock3, Edit3, EyeOff, Maximize2, Save, Trophy, Users, X, Zap } from 'lucide-react'
 import {
   BracketMoveCoupleSheet,
   type BracketMoveSelection,
@@ -68,6 +68,8 @@ const ROUND_DISPLAY_NAMES: Record<string, string> = {
 
 const getBracketMatchStatusLabel = (status: string) => {
   switch (status) {
+    case 'DRAFT':
+      return 'Borrador'
     case 'PENDING':
       return 'Pendiente'
     case 'IN_PROGRESS':
@@ -166,6 +168,7 @@ export function ImprovedBracketRenderer({
     const total = previewData.matches.length
     const completed = previewData.matches.filter(match => match.status === 'FINISHED').length
     const inProgress = previewData.matches.filter(match => match.status === 'IN_PROGRESS').length
+    const draft = previewData.matches.filter(match => match.status === 'DRAFT').length
     const canPlay = previewData.matches.filter(
       match =>
         match.status === 'PENDING' &&
@@ -173,7 +176,7 @@ export function ImprovedBracketRenderer({
         match.participants?.slot2?.couple
     ).length
 
-    return { total, completed, inProgress, canPlay }
+    return { total, completed, inProgress, draft, canPlay }
   }, [previewData.matches])
 
   const { layout } = useBracketTreeLayout({
@@ -556,6 +559,10 @@ export function ImprovedBracketRenderer({
             <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-blue-700">
               <Clock3 className="h-3.5 w-3.5" />
               {stats.inProgress} en curso
+            </div>
+            <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+              <EyeOff className="h-3.5 w-3.5" />
+              {stats.draft} borrador
             </div>
             <div className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-amber-700">
               <Zap className="h-3.5 w-3.5" />

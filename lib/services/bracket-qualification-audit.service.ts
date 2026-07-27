@@ -607,7 +607,7 @@ export class BracketQualificationAuditService {
       const newCouple1 = match.tournament_couple_seed1_id === seedId ? coupleId : match.couple1_id
       const newCouple2 = match.tournament_couple_seed2_id === seedId ? coupleId : match.couple2_id
       if (newCouple1 && newCouple2) {
-        updateData.status = 'PENDING'
+        updateData.status = match.status === 'DRAFT' ? 'DRAFT' : 'PENDING'
         updateData.winner_id = null
       }
 

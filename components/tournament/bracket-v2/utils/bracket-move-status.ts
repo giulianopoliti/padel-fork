@@ -15,4 +15,3 @@ const BRACKET_MOVE_ALLOWED_STATUSES = new Set<string>([
 export const isBracketMoveAllowedStatus = (status: BracketMoveStatus): boolean => {
   return !!status && BRACKET_MOVE_ALLOWED_STATUSES.has(status)
 }
-

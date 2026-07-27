@@ -32,6 +32,7 @@ export interface PlaceholderBracketValidationSuccess {
     type?: string | null
     format_type?: string | null
     format_config?: unknown
+    enable_draft_matches?: boolean | null
   }
   totalCouples: number
   totalZones: number
@@ -62,6 +63,7 @@ export interface PlaceholderBracketValidationFailure {
     type?: string | null
     format_type?: string | null
     format_config?: unknown
+    enable_draft_matches?: boolean | null
   }
   incompleteZones?: Array<{
     zoneId: string
@@ -300,7 +302,7 @@ export async function validatePlaceholderBracketGeneration(
 
   const { data: tournament, error: tournamentError } = await supabase
     .from('tournaments')
-    .select('id, status, bracket_status, bracket_generated_at, type, format_type, format_config')
+    .select('id, status, bracket_status, bracket_generated_at, type, format_type, format_config, enable_draft_matches')
     .eq('id', tournamentId)
     .single()
 

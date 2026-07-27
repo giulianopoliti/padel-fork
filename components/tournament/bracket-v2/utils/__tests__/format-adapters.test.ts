@@ -93,6 +93,12 @@ describe('format-adapters match status normalization', () => {
     expect(finished.status).toBe('FINISHED')
   })
 
+  it('preserves DRAFT when both real couples are present', () => {
+    const match = transformCurrentApiMatchToBracketV2(makeMatch({ status: 'DRAFT' }), [])
+
+    expect(match.status).toBe('DRAFT')
+  })
+
   it('normalizes the legacy WAITING_OPONENT typo', () => {
     expect(transformMatchStatus('WAITING_OPONENT')).toBe('WAITING_OPPONENT')
   })
