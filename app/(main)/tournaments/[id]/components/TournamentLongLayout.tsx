@@ -7,12 +7,23 @@ import { createClient } from '@/utils/supabase/client'
 import { useUser } from '@/contexts/user-context'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
-import TournamentLongSidebar from './TournamentLongSidebar'
-import TournamentAmericanSidebar from './TournamentAmericanSidebar'
-import TournamentMobileHeader from './TournamentMobileHeader'
-import TournamentMobileBottomNav from './TournamentMobileBottomNav'
+import TournamentLongSidebar, { getLongNavigationItems } from './TournamentLongSidebar'
+import TournamentAmericanSidebar, { getAmericanNavigationItems } from './TournamentAmericanSidebar'
+import TournamentMobileBottomNav, { type TournamentMobileNavItem } from './TournamentMobileBottomNav'
+import TournamentMobileMoreMenu from './TournamentMobileMoreMenu'
 import { TENANT_CONFIG } from '@/config/tenant'
 import { cn } from '@/lib/utils'
+import {
+  BarChart3,
+  CalendarCheck2,
+  Clock3,
+  GitFork,
+  Home,
+  ListChecks,
+  Settings,
+  Trophy,
+  Users,
+} from 'lucide-react'
 
 interface TournamentLongLayoutProps {
   children: React.ReactNode
@@ -21,6 +32,68 @@ interface TournamentLongLayoutProps {
 const EXCLUDED_PAGES = [
   '/tournaments/[id]/recategorize-players'
 ]
+
+const MAX_MOBILE_PRIMARY_ITEMS = 4
+
+const getMobileNavIcon = (href: string) => {
+  if (href === '') return Home
+  if (href === '/inscriptions') return Users
+  if (href === '/zones') return ListChecks
+  if (href === '/matches') return Trophy
+  if (href === '/bracket') return GitFork
+  if (href === '/settings') return Settings
+  if (href === '/schedules') return CalendarCheck2
+  if (href === '/match-scheduling' || href === '/zone-matches') return Clock3
+  if (href === '/qually') return BarChart3
+  return Trophy
+}
+
+const getMobileNavLabel = (title: string) => {
+  switch (title) {
+    case 'Tablas de posiciones':
+      return 'Tablas'
+    case 'Fechas y Horarios':
+      return 'Horarios'
+    case 'Encuentros de qually':
+    case 'Partidos de zona':
+      return 'Partidos'
+    case 'Configuración':
+      return 'Ajustes'
+    default:
+      return title
+  }
+}
+
+const buildMobileNavItems = (
+  tournamentId: string,
+  navigationItems: Array<{ title: string; href: string }>
+): TournamentMobileNavItem[] => {
+  const itemsWithHome = navigationItems.some((item) => item.href === '')
+    ? navigationItems
+    : [{ title: 'Inicio', href: '' }, ...navigationItems]
+
+  return itemsWithHome.map((item) => ({
+    label: getMobileNavLabel(item.title),
+    href: `/tournaments/${tournamentId}${item.href}`,
+    icon: getMobileNavIcon(item.href),
+  }))
+}
+
+const splitMobileNavItems = (items: TournamentMobileNavItem[]) => {
+  if (items.length <= MAX_MOBILE_PRIMARY_ITEMS) {
+    return { primaryItems: items, overflowItems: [] }
+  }
+
+  const settingsItem = items.find((item) => item.href.endsWith('/settings'))
+  const nonSettingsItems = items.filter((item) => item !== settingsItem)
+  const primaryItems = nonSettingsItems.slice(0, MAX_MOBILE_PRIMARY_ITEMS)
+  const overflowItems = [
+    ...nonSettingsItems.slice(MAX_MOBILE_PRIMARY_ITEMS),
+    ...(settingsItem ? [settingsItem] : []),
+  ]
+
+  return { primaryItems, overflowItems }
+}
 
 const fetcher = async (tournamentId: string) => {
   console.log('[FETCHER] Starting fetch for tournamentId:', tournamentId)
@@ -36,6 +109,7 @@ const fetcher = async (tournamentId: string) => {
       status,
       is_draft,
       enable_public_inscriptions,
+      registration_locked,
       organization_id,
       organizaciones:organization_id(name, logo_url, slug),
       clubes:club_id(name, logo_url)
@@ -174,18 +248,6 @@ function TournamentLongLayout({ children }: TournamentLongLayoutProps) {
 
   console.log('[TournamentLongLayout] RENDERING SIDEBAR! ðŸŽ‰', 'Type:', tournament.type)
 
-  const SidebarComponent = tournament.type === 'LONG'
-    ? TournamentLongSidebar
-    : TournamentAmericanSidebar
-
-  const organization = Array.isArray(tournament.organizaciones)
-    ? tournament.organizaciones[0]
-    : tournament.organizaciones
-
-  const club = Array.isArray(tournament.clubes)
-    ? tournament.clubes[0]
-    : tournament.clubes
-
   const hasManagePermission =
     (userDetails?.role as string | undefined) === 'ADMIN' ||
     (userDetails?.role === 'CLUB' &&
@@ -193,20 +255,53 @@ function TournamentLongLayout({ children }: TournamentLongLayoutProps) {
     (userDetails?.role === 'ORGANIZADOR' && hasOrganizerManagementPermission)
 
   const isLongTournament = tournament.type === 'LONG'
-  const isPlayer = userDetails?.role === 'PLAYER'
-  const isOrganizer = hasManagePermission
-  const hasPlayerTournamentInscription = Boolean(playerInscription)
   const hasActivePlayerInscription = Boolean(
     playerInscription && !playerInscription.is_eliminated && !playerInscription.is_pending
   )
-  const mobileNavigationRole = isOrganizer
-    ? 'ORGANIZER'
-    : isPlayer && hasPlayerTournamentInscription
-      ? 'PLAYER'
-      : 'PUBLIC'
+  const isEliminated = playerInscription?.is_eliminated || false
+  const isPending = playerInscription?.is_pending || false
+  const shouldUsePublicNavigation =
+    !hasManagePermission &&
+    !hasActivePlayerInscription &&
+    !isEliminated &&
+    !isPending
+  const canViewParticipantPages =
+    Boolean(tournament.enable_public_inscriptions) ||
+    hasManagePermission ||
+    hasActivePlayerInscription
+  const canAccessInscriptions =
+    hasManagePermission ||
+    hasActivePlayerInscription ||
+    (Boolean(tournament.enable_public_inscriptions) && !tournament.registration_locked)
+  const sidebarNavigationItems = isLongTournament
+    ? getLongNavigationItems(
+        shouldUsePublicNavigation ? 'PUBLIC' : userDetails?.role,
+        isEliminated,
+        canViewParticipantPages,
+        isPending,
+        tournament.status,
+        canAccessInscriptions
+      )
+    : getAmericanNavigationItems(
+        userDetails?.role,
+        tournament.status,
+        canViewParticipantPages,
+        canAccessInscriptions
+      )
+  const hasSidebarNavigation = isLongTournament
+    ? sidebarNavigationItems.some((item) => item.href !== '')
+    : sidebarNavigationItems.length > 0
   const tournamentThemeClass = isLongTournament
     ? TENANT_CONFIG.tournaments.theme.className
     : undefined
+  const SidebarComponent = isLongTournament
+    ? TournamentLongSidebar
+    : TournamentAmericanSidebar
+  const mobileNavItems = buildMobileNavItems(tournament.id, sidebarNavigationItems)
+  const { primaryItems: mobilePrimaryItems, overflowItems: mobileOverflowItems } =
+    splitMobileNavItems(mobileNavItems)
+  const hasMobileNavigation = mobilePrimaryItems.length > 0
+  const hasMobileOverflow = mobileOverflowItems.length > 0
 
   const sidebarProps = {
     tournament: {
@@ -215,16 +310,8 @@ function TournamentLongLayout({ children }: TournamentLongLayoutProps) {
       category: tournament.category_name,
       status: tournament.status,
       enable_public_inscriptions: tournament.enable_public_inscriptions,
+      registration_locked: tournament.registration_locked,
       is_draft: tournament.is_draft ?? false,
-      organization: organization ? {
-        name: organization.name,
-        logo_url: organization.logo_url,
-        slug: organization.slug
-      } : null,
-      club: club ? {
-        name: club.name,
-        logo_url: club.logo_url
-      } : null
     },
     userRole: userDetails?.role,
     playerInscription,
@@ -233,40 +320,44 @@ function TournamentLongLayout({ children }: TournamentLongLayoutProps) {
     hasManagePermission
   }
 
+  if (!hasSidebarNavigation) {
+    return (
+      <div className={cn("min-h-screen bg-background", tournamentThemeClass, isLongTournament && "tournament-long-shell")}>
+        <main className="min-w-0 bg-background">
+          {children}
+        </main>
+      </div>
+    )
+  }
+
   if (isMobile) {
     console.log('[TournamentLongLayout] Rendering MOBILE layout with tournament:', sidebarProps.tournament.name)
     return (
       <div className={cn("min-h-screen bg-background", tournamentThemeClass, isLongTournament && "tournament-long-shell")}>
-        {!isLongTournament && (
-          <TournamentMobileHeader
-            tournament={sidebarProps.tournament}
-            onSidebarToggle={() => setSidebarOpen(true)}
-          />
-        )}
+        {hasMobileOverflow ? (
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent side="left" className="w-80 p-0">
+              <SheetTitle className="sr-only">Menu del torneo</SheetTitle>
+              <TournamentMobileMoreMenu
+                items={mobileOverflowItems}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
+        ) : null}
 
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent side="left" className="w-80 p-0">
-            <SheetTitle className="sr-only">Menú del Torneo</SheetTitle>
-            <SidebarComponent
-              {...sidebarProps}
-              mobile={true}
-              onNavigate={() => setSidebarOpen(false)}
-            />
-          </SheetContent>
-        </Sheet>
-
-        <main className={cn(isLongTournament && "pb-20")}>
+        <main className={cn(hasMobileNavigation && "pb-20")}>
           {children}
         </main>
 
-        {isLongTournament && (
+        {hasMobileNavigation ? (
           <TournamentMobileBottomNav
             tournamentId={tournament.id}
-            role={mobileNavigationRole}
-            showAvailability={hasActivePlayerInscription}
-            onMore={() => setSidebarOpen(true)}
+            items={mobilePrimaryItems}
+            hasMoreItems={hasMobileOverflow}
+            onMore={hasMobileOverflow ? () => setSidebarOpen(true) : undefined}
           />
-        )}
+        ) : null}
       </div>
     )
   }

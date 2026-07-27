@@ -60,7 +60,12 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
     }
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (!headerRef.current?.contains(event.target as Node)) {
+      const target = event.target
+      const isInsideHeader = target instanceof Node && headerRef.current?.contains(target)
+      const isInsideNavbarDropdown =
+        target instanceof Element && target.closest("[data-navbar-dropdown-content='true']")
+
+      if (!isInsideHeader && !isInsideNavbarDropdown) {
         setMobileMenuOpen(false)
       }
     }

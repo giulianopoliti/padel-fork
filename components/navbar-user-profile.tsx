@@ -169,7 +169,11 @@ export default function NavbarUserProfile({ profileLinks = [] }: NavbarUserProfi
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 bg-white border-gray-200 shadow-lg rounded-md mt-1">
+      <DropdownMenuContent
+        align="end"
+        className="w-64 bg-white border-gray-200 shadow-lg rounded-md mt-1"
+        data-navbar-dropdown-content="true"
+      >
         <DropdownMenuLabel className="px-3 py-2.5">
           <div className="flex flex-col space-y-0.5">
             <p className="text-sm font-semibold leading-none text-gray-800 truncate" title={displayName}>{displayName}</p>

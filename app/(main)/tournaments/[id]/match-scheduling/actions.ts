@@ -1428,6 +1428,32 @@ export interface DraftMatch {
   } | null
 }
 
+const compareNullableScheduleValue = (
+  first: string | null,
+  second: string | null
+) => {
+  if (first && second) return first.localeCompare(second)
+  if (first) return -1
+  if (second) return 1
+  return 0
+}
+
+const compareDraftMatchesBySchedule = (first: DraftMatch, second: DraftMatch) => {
+  const dateComparison = compareNullableScheduleValue(first.scheduled_date, second.scheduled_date)
+  if (dateComparison !== 0) return dateComparison
+
+  const startTimeComparison = compareNullableScheduleValue(first.scheduled_start_time, second.scheduled_start_time)
+  if (startTimeComparison !== 0) return startTimeComparison
+
+  const endTimeComparison = compareNullableScheduleValue(first.scheduled_end_time, second.scheduled_end_time)
+  if (endTimeComparison !== 0) return endTimeComparison
+
+  const courtComparison = compareNullableScheduleValue(first.court_assignment, second.court_assignment)
+  if (courtComparison !== 0) return courtComparison
+
+  return first.id.localeCompare(second.id)
+}
+
 // 7. Get Draft Matches for a Fecha
 export async function getDraftMatches(
   fechaId: string
@@ -1517,7 +1543,7 @@ export async function getDraftMatches(
       couple1: unwrapRelation<any>(match.couple1),
       couple2: unwrapRelation<any>(match.couple2)
       }]
-    })
+    }).sort(compareDraftMatchesBySchedule)
 
     return {
       success: true,

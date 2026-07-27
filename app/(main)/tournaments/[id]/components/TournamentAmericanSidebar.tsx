@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Users,
@@ -19,7 +18,6 @@ import {
   Trophy as TrophyIcon,
   EyeOff
 } from 'lucide-react'
-import OrganizerLogo from './OrganizerLogo'
 
 interface TournamentAmericanSidebarProps {
   tournament: {
@@ -28,16 +26,8 @@ interface TournamentAmericanSidebarProps {
     category?: string
     status?: string
     enable_public_inscriptions?: boolean | null
+    registration_locked?: boolean | null
     is_draft?: boolean
-    organization?: {
-      name: string
-      logo_url?: string | null
-      slug?: string
-    } | null
-    club?: {
-      name: string
-      logo_url?: string | null
-    } | null
   }
   userRole?: string
   playerInscription?: {
@@ -62,10 +52,11 @@ interface NavItem {
   requiresParticipantVisibility?: boolean
 }
 
-const getNavigationItems = (
+export const getAmericanNavigationItems = (
   userRole?: string,
   tournamentStatus?: string,
-  canViewParticipantPages: boolean = true
+  canViewParticipantPages: boolean = true,
+  canAccessInscriptions: boolean = canViewParticipantPages
 ): NavItem[] => {
   const isPlayer = userRole === 'PLAYER'
   const isTournamentActive = tournamentStatus !== 'NOT_STARTED' && tournamentStatus !== 'CANCELED'
@@ -104,6 +95,7 @@ const getNavigationItems = (
 
   const filteredItems = baseItems.filter(item =>
     (!item.requiresActive || isTournamentActive) &&
+    (item.href !== '/inscriptions' || canAccessInscriptions) &&
     (canViewParticipantPages || !item.requiresParticipantVisibility)
   )
 
@@ -138,12 +130,21 @@ export default function TournamentAmericanSidebar({
     Boolean(tournament.enable_public_inscriptions) ||
     hasManagePermission ||
     hasActivePlayerInscription
+  const canAccessInscriptions =
+    hasManagePermission ||
+    hasActivePlayerInscription ||
+    (Boolean(tournament.enable_public_inscriptions) && !tournament.registration_locked)
 
-  const navigationItems = getNavigationItems(
+  const navigationItems = getAmericanNavigationItems(
     userRole,
     tournament.status,
-    canViewParticipantPages
+    canViewParticipantPages,
+    canAccessInscriptions
   )
+
+  if (navigationItems.length === 0) {
+    return null
+  }
 
   const getIsActive = (href: string) => {
     return pathname.includes(href)
@@ -157,26 +158,19 @@ export default function TournamentAmericanSidebar({
 
   return (
     <div className={cn(
-      "flex flex-col bg-gradient-to-b from-card via-card to-card/95 border-r border-border/50 shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.05)] relative transition-all duration-300",
+      "flex flex-col border-r border-border/70 bg-card/95 transition-all duration-300",
       mobile ? "w-full" : collapsed ? "w-16" : "w-64",
       !mobile && "flex-shrink-0 h-full"
     )}>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
-
       <div className={cn(
-        "transition-all duration-300 relative",
-        collapsed && !mobile ? "p-3" : "p-6 space-y-4"
+        "border-b border-border/70 transition-all duration-300",
+        collapsed && !mobile ? "p-3" : "p-4 space-y-4"
       )}>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 rounded-lg blur-xl" />
-
-        <div className="flex items-start gap-3 relative">
-          <div className="flex-shrink-0 p-2.5 rounded-xl transition-all duration-300 relative group bg-gradient-to-br from-blue-500/10 via-blue-400/5 to-purple-500/10 border border-blue-500/20 shadow-lg shadow-blue-500/10">
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-all duration-500" />
-
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 rounded-lg border border-border bg-muted/60 p-2 text-primary">
             <TrophyIcon className={cn(
-              "transition-all duration-300 relative z-10 text-blue-500",
-              collapsed && !mobile ? "h-5 w-5" : "h-6 w-6",
-              "drop-shadow-[0_0_8px_currentColor]"
+              "transition-all duration-300",
+              collapsed && !mobile ? "h-5 w-5" : "h-5 w-5"
             )} />
           </div>
           {(!collapsed || mobile) && (
@@ -191,7 +185,7 @@ export default function TournamentAmericanSidebar({
               )}
               <Badge
                 variant="secondary"
-                className="text-xs mt-2 bg-muted/80 text-foreground border border-border/50"
+                className="mt-2 border border-border/60 bg-muted/80 text-xs text-foreground"
               >
                 Torneo Americano
               </Badge>
@@ -204,13 +198,11 @@ export default function TournamentAmericanSidebar({
             </div>
           )}
         </div>
-
-        <Separator className="bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
 
       <nav className={cn(
         "flex-1 transition-all duration-300",
-        collapsed && !mobile ? "px-2 py-4" : "px-3 py-4"
+        collapsed && !mobile ? "px-2 py-3" : "px-3 py-3"
       )}>
         <ul className="space-y-1">
           {navigationItems.map((item) => {
@@ -226,36 +218,26 @@ export default function TournamentAmericanSidebar({
                         href={`/tournaments/${tournament.id}${item.href}`}
                         onClick={handleLinkClick}
                         className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm group relative overflow-hidden",
+                          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                           "active:scale-[0.98]",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           isActive && [
-                            "bg-gradient-to-r from-primary via-primary to-primary/90",
-                            "text-primary-foreground font-medium",
-                            "shadow-lg shadow-primary/25",
-                            "border border-primary/20"
+                            "border border-primary/20 bg-primary/10 text-primary font-medium"
                           ],
-                          !isActive && "border border-transparent hover:border-accent hover:bg-accent/50 hover:text-accent-foreground",
+                          !isActive && "border border-transparent text-muted-foreground hover:border-border hover:bg-muted/70 hover:text-foreground",
                           collapsed && !mobile && "justify-center px-2"
                         )}
                         aria-current={isActive ? "page" : undefined}
                       >
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-blue-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500" />
-
                         <Icon className={cn(
-                          "h-4 w-4 flex-shrink-0 transition-all duration-300 relative z-10",
-                          "group-hover:scale-110 group-hover:rotate-3",
-                          isActive && "drop-shadow-[0_0_4px_currentColor]"
+                          "h-4 w-4 flex-shrink-0 transition-colors",
+                          isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                         )} />
 
                         {(!collapsed || mobile) && (
-                          <span className="truncate relative z-10 transition-all duration-200 group-hover:translate-x-0.5">
+                          <span className="truncate">
                             {item.title}
                           </span>
-                        )}
-
-                        {isActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-primary-foreground/0 via-primary-foreground to-primary-foreground/0 rounded-r-full" />
                         )}
                       </Link>
                     </TooltipTrigger>
@@ -273,7 +255,7 @@ export default function TournamentAmericanSidebar({
       </nav>
 
       {!mobile && onToggle && (
-        <div className="relative px-3 pb-4">
+        <div className="border-t border-border/70 px-3 py-3">
           <TooltipProvider>
             <Tooltip delayDuration={300}>
               <TooltipTrigger asChild>
@@ -283,7 +265,7 @@ export default function TournamentAmericanSidebar({
                   onClick={onToggle}
                   className={cn(
                     "w-full justify-center transition-all duration-200",
-                    "hover:bg-accent",
+                    "text-muted-foreground hover:bg-muted hover:text-foreground",
                     collapsed && "px-2"
                   )}
                   aria-label={collapsed ? "Expandir sidebar de navegación" : "Comprimir sidebar de navegación"}
@@ -300,16 +282,6 @@ export default function TournamentAmericanSidebar({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        </div>
-      )}
-
-      {(!collapsed || mobile) && (
-        <div className="p-6 border-t border-border">
-          <OrganizerLogo
-            organization={tournament.organization}
-            club={tournament.club}
-            collapsed={collapsed && !mobile}
-          />
         </div>
       )}
     </div>

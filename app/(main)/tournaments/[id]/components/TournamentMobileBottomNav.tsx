@@ -3,21 +3,28 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { BarChart3, CalendarCheck2, Clock3, Home, Menu, Trophy } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+export interface TournamentMobileNavItem {
+  label: string
+  href: string
+  icon: LucideIcon
+}
+
 interface TournamentMobileBottomNavProps {
   tournamentId: string
-  onMore: () => void
-  showAvailability: boolean
-  role?: 'PLAYER' | 'ORGANIZER' | 'PUBLIC'
+  items: TournamentMobileNavItem[]
+  hasMoreItems?: boolean
+  onMore?: () => void
 }
 
 export const getMobileTournamentNavigationItems = (
   tournamentId: string,
   role: 'PLAYER' | 'ORGANIZER' | 'PUBLIC',
   showAvailability: boolean
-) => {
+): TournamentMobileNavItem[] => {
   const publicItems = [
     { label: "Inicio", href: `/tournaments/${tournamentId}`, icon: Home },
     { label: "Tablas", href: `/tournaments/${tournamentId}/qually`, icon: BarChart3 },
@@ -49,19 +56,32 @@ const getIsActive = (pathname: string, href: string, tournamentId: string) => {
 
 export default function TournamentMobileBottomNav({
   tournamentId,
+  items,
+  hasMoreItems = false,
   onMore,
-  showAvailability,
-  role = 'PLAYER',
 }: TournamentMobileBottomNavProps) {
   const pathname = usePathname()
-  const items = getMobileTournamentNavigationItems(tournamentId, role, showAvailability)
+  const columnCount = Math.min(items.length + (hasMoreItems ? 1 : 0), 5)
+
+  if (columnCount === 0) {
+    return null
+  }
 
   return (
     <nav
       aria-label="Navegacion principal del torneo"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 px-1 pb-[max(env(safe-area-inset-bottom),0.25rem)] pt-1 shadow-[0_-8px_30px_rgba(15,23,42,0.12)] backdrop-blur-lg lg:hidden"
     >
-      <div className={cn("mx-auto grid max-w-lg", items.length === 4 ? "grid-cols-5" : "grid-cols-4")}>
+      <div
+        className={cn(
+          "mx-auto grid max-w-lg",
+          columnCount === 1 && "grid-cols-1",
+          columnCount === 2 && "grid-cols-2",
+          columnCount === 3 && "grid-cols-3",
+          columnCount === 4 && "grid-cols-4",
+          columnCount === 5 && "grid-cols-5"
+        )}
+      >
         {items.map((item) => {
           const active = getIsActive(pathname, item.href, tournamentId)
           const Icon = item.icon
@@ -80,15 +100,17 @@ export default function TournamentMobileBottomNav({
             </Link>
           )
         })}
-        <button
-          type="button"
-          onClick={onMore}
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Abrir menu completo del torneo"
-        >
-          <Menu className="h-5 w-5" />
-          <span>Mas</span>
-        </button>
+        {hasMoreItems && onMore ? (
+          <button
+            type="button"
+            onClick={onMore}
+            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Abrir menu completo del torneo"
+          >
+            <Menu className="h-5 w-5" />
+            <span>Mas</span>
+          </button>
+        ) : null}
       </div>
     </nav>
   )
