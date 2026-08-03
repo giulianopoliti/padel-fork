@@ -22,6 +22,13 @@ export const canViewTournamentParticipantPages = ({
   return Boolean(enablePublicInscriptions) || canAccessPrivateParticipantPages(accessLevel)
 }
 
+export const canViewTournamentInscriptionsPage = ({
+  enablePublicInscriptions,
+  accessLevel,
+}: TournamentParticipantVisibilityOptions): boolean => {
+  return Boolean(enablePublicInscriptions) || accessLevel === 'FULL_MANAGEMENT'
+}
+
 export const canViewTournamentParticipantPagesFromFlags = ({
   enablePublicInscriptions,
   hasManagementPermission = false,
@@ -32,4 +39,11 @@ export const canViewTournamentParticipantPagesFromFlags = ({
     hasManagementPermission ||
     hasActivePlayerInscription
   )
+}
+
+export const canViewTournamentInscriptionsPageFromFlags = ({
+  enablePublicInscriptions,
+  hasManagementPermission = false,
+}: TournamentParticipantVisibilityFlags): boolean => {
+  return Boolean(enablePublicInscriptions) || hasManagementPermission
 }

@@ -271,7 +271,6 @@ function TournamentLongLayout({ children }: TournamentLongLayoutProps) {
     hasActivePlayerInscription
   const canAccessInscriptions =
     hasManagePermission ||
-    hasActivePlayerInscription ||
     (Boolean(tournament.enable_public_inscriptions) && !tournament.registration_locked)
   const sidebarNavigationItems = isLongTournament
     ? getLongNavigationItems(

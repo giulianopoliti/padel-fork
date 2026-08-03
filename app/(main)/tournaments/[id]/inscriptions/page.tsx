@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getTournamentDetailsWithInscriptions } from '@/app/api/tournaments/actions';
 import { getAllPlayersDTO } from '@/app/api/players/actions';
 import { checkTournamentAccess } from '@/utils/tournament-permissions';
-import { canViewTournamentParticipantPages } from '@/utils/tournament-visibility';
+import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
 import InscriptionsClient from './components/InscriptionsClient';
 
 interface InscriptionsPageProps {
@@ -96,7 +96,7 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
 
   const accessCheck = await checkTournamentAccess(user?.id || null, tournamentId);
 
-  if (!canViewTournamentParticipantPages({
+  if (!canViewTournamentInscriptionsPage({
     enablePublicInscriptions: tournament.enable_public_inscriptions,
     accessLevel: accessCheck.accessLevel,
   })) {

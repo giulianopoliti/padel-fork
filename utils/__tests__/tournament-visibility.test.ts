@@ -1,5 +1,7 @@
 import {
   canAccessPrivateParticipantPages,
+  canViewTournamentInscriptionsPage,
+  canViewTournamentInscriptionsPageFromFlags,
   canViewTournamentParticipantPages,
   canViewTournamentParticipantPagesFromFlags,
 } from '../tournament-visibility'
@@ -48,6 +50,45 @@ describe('tournament participant visibility', () => {
     expect(
       canViewTournamentParticipantPagesFromFlags({
         enablePublicInscriptions: false,
+      })
+    ).toBe(false)
+  })
+
+  it('does not allow active players to view private inscriptions', () => {
+    expect(
+      canViewTournamentInscriptionsPage({
+        enablePublicInscriptions: false,
+        accessLevel: 'PLAYER_ACTIVE',
+      })
+    ).toBe(false)
+
+    expect(
+      canViewTournamentInscriptionsPage({
+        enablePublicInscriptions: false,
+        accessLevel: 'FULL_MANAGEMENT',
+      })
+    ).toBe(true)
+
+    expect(
+      canViewTournamentInscriptionsPage({
+        enablePublicInscriptions: true,
+        accessLevel: 'PUBLIC_VIEW',
+      })
+    ).toBe(true)
+  })
+
+  it('reuses the private inscriptions rule from client-side flags', () => {
+    expect(
+      canViewTournamentInscriptionsPageFromFlags({
+        enablePublicInscriptions: false,
+        hasManagementPermission: true,
+      })
+    ).toBe(true)
+
+    expect(
+      canViewTournamentInscriptionsPageFromFlags({
+        enablePublicInscriptions: false,
+        hasActivePlayerInscription: true,
       })
     ).toBe(false)
   })

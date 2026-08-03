@@ -132,7 +132,6 @@ export default function TournamentAmericanSidebar({
     hasActivePlayerInscription
   const canAccessInscriptions =
     hasManagePermission ||
-    hasActivePlayerInscription ||
     (Boolean(tournament.enable_public_inscriptions) && !tournament.registration_locked)
 
   const navigationItems = getAmericanNavigationItems(
