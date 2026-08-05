@@ -5,14 +5,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import BrandLogo from "@/components/ui/brand-logo"
 import { getTenantBranding } from "@/config/tenant"
-import { getTenantHomeData } from "@/lib/services/tenant-home.service"
+import { getTenantHomeData, getTenantWeeklyMatchesByClub } from "@/lib/services/tenant-home.service"
 import { HomeTournamentTabs } from "@/components/tournaments/home-tournament-tabs"
 import PublicTournamentList from "@/components/public/public-tournament-list"
 import SponsorMarquee from "@/components/sponsor-marquee"
+import { WeeklyMatchesSection } from "@/components/home/WeeklyMatchesSection"
 
 export async function HomeContent() {
   const branding = getTenantBranding()
-  const { organization, tournaments, clubs } = await getTenantHomeData()
+  const isPadelFv = branding.key === "padel-fv"
+  const [{ organization, tournaments, clubs }, weeklyMatchesByClub] = await Promise.all([
+    getTenantHomeData(),
+    isPadelFv ? getTenantWeeklyMatchesByClub() : Promise.resolve([]),
+  ])
 
   if (branding.home.variant === "padel-elite") {
     return <PadelEliteHomeContent branding={branding} tournaments={tournaments} clubs={clubs} />
@@ -45,7 +50,7 @@ export async function HomeContent() {
               <div className="mt-8 border-t border-white/10 pt-8 text-center sm:mt-10 sm:pt-10">
                 <div className="space-y-4">
                   <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-5xl">
-                    Proximos torneos
+                    {isPadelFv ? "Torneos activos y proximos" : "Proximos torneos"}
                   </h1>
                 </div>
 
@@ -77,7 +82,11 @@ export async function HomeContent() {
           {tournaments.length === 0 ? (
             <SetupEmptyState
               title="Todavia no hay torneos publicados"
-              description="En cuanto Padel FV cargue nuevos torneos, van a aparecer aca automaticamente con su informacion principal."
+              description={
+                isPadelFv
+                  ? "En cuanto Padel FV tenga torneos activos o proximos publicados, van a aparecer aca automaticamente con su informacion principal."
+                  : "En cuanto Padel FV cargue nuevos torneos, van a aparecer aca automaticamente con su informacion principal."
+              }
             />
           ) : (
             <HomeTournamentTabs tournaments={tournaments} />
@@ -86,6 +95,8 @@ export async function HomeContent() {
       </section>
 
       <SponsorMarquee />
+
+      {isPadelFv ? <WeeklyMatchesSection groups={weeklyMatchesByClub} /> : null}
 
       <section
         className="border-y border-white/12 bg-[linear-gradient(180deg,rgba(17,29,54,0.94)_0%,rgba(14,24,46,0.96)_100%)] py-12 sm:py-16"
