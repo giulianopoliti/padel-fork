@@ -1,19 +1,26 @@
 {
   "name": "PadelElite",
   "short_name": "TPE Padel",
+  "description": "Torneos, inscripciones, partidos y resultados de PadelElite.",
+  "id": "/?tenant=padel-elite",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "icons": [
     {
       "src": "/tenants/padel-elite/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/tenants/padel-elite/android-chrome-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  "theme_color": "#19214f",
+  "background_color": "#f8fafc",
+  "display": "standalone",
+  "orientation": "portrait"
 }

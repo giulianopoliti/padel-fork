@@ -8,6 +8,7 @@ import Navbar from '@/components/navbar'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { getUserDetails } from '@/utils/db/getUserDetails'
 import { ensureSerializable } from '@/utils/serialization'
+import { InstallPwaPrompt } from '@/components/pwa/install-pwa-prompt'
 
 export default async function MainLayout({
   children,
@@ -72,6 +73,7 @@ export default async function MainLayout({
         <UserProvider initialUserDetails={serializedUserDetails}> 
           <Navbar />
           {children}
+          <InstallPwaPrompt />
           <Toaster />
           <SpeedInsights />
         </UserProvider> 
