@@ -44,6 +44,8 @@ interface ClientTournament {
   club_id: string | null;
   organization_id: string | null;
   enable_public_inscriptions: boolean;
+  registration_locked: boolean | null;
+  bracket_status: string | null;
   format_type: string | null;
   clubes: {
     id: string;
@@ -100,6 +102,8 @@ const serializeTournamentForClient = (
   club_id: tournament.club_id ?? null,
   organization_id: tournament.organization_id ?? null,
   enable_public_inscriptions: Boolean(tournament.enable_public_inscriptions),
+  registration_locked: tournament.registration_locked ?? null,
+  bracket_status: tournament.bracket_status ?? null,
   format_type: tournament.format_type ?? null,
   clubes: tournament.clubes
     ? {

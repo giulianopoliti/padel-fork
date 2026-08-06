@@ -22,6 +22,9 @@ interface Tournament {
   gender?: Gender | string | null;
   price?: string | number | null;
   enable_transfer_proof?: boolean;
+  enable_public_inscriptions?: boolean;
+  registration_locked?: boolean | null;
+  bracket_status?: string | null;
   transfer_alias?: string | null;
   transfer_amount?: number | null;
   is_full?: boolean;
@@ -152,6 +155,9 @@ const LongTournamentView: React.FC<LongTournamentViewProps> = ({
             gender: (tournament.gender as Gender | null) ?? undefined,
             price: tournament.price,
             enable_transfer_proof: tournament.enable_transfer_proof,
+            enable_public_inscriptions: tournament.enable_public_inscriptions,
+            registration_locked: tournament.registration_locked,
+            bracket_status: tournament.bracket_status,
             transfer_alias: tournament.transfer_alias,
             transfer_amount: tournament.transfer_amount,
             is_full: tournament.is_full,

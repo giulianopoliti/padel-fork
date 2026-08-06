@@ -5,11 +5,13 @@ import Image from 'next/image'
 import { AlertCircle, Building2, MapPin, Navigation, Phone, Trophy, UserPlus } from 'lucide-react'
 
 import PublicRegistrationLauncher from '@/components/tournament/public-registration-launcher'
+import { getTenantBranding } from '@/config/tenant'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { TournamentPublicInfo } from '@/lib/tournaments/public-tournament-details'
+import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from '@/lib/tournaments/registration-availability'
 import { Gender } from '@/types'
 import { getStorageUrl } from '@/utils/storage-url'
 
@@ -23,6 +25,9 @@ interface NotRegisteredViewProps {
     gender?: Gender
     price?: number | string | null
     enable_transfer_proof?: boolean
+    enable_public_inscriptions?: boolean | null
+    registration_locked?: boolean | null
+    bracket_status?: string | null
     transfer_alias?: string | null
     transfer_amount?: number | null
     is_full?: boolean
@@ -35,7 +40,19 @@ export default function NotRegisteredView({
   tournamentId,
   tournament,
 }: NotRegisteredViewProps) {
+  const branding = getTenantBranding()
   const isFull = Boolean(tournament.is_full)
+  const canRegister = canShowPublicRegistration({
+    status: tournament.status,
+    enablePublicInscriptions: tournament.enable_public_inscriptions,
+    registrationLocked: tournament.registration_locked,
+    bracketStatus: tournament.bracket_status,
+    isFull,
+    allowActivePhaseRegistration: branding.key === 'padel-fv',
+  })
+  const closedLabel = getPublicRegistrationClosedLabel({
+    isFull,
+  })
   const publicInfo = tournament.publicInfo
   const clubImageUrl = getStorageUrl(publicInfo?.clubImageUrl)
 
@@ -153,25 +170,21 @@ export default function NotRegisteredView({
         </AlertDescription>
       </Alert>
 
-      <Card className={isFull ? 'border-red-300 bg-red-50' : 'border-blue-200 bg-blue-50'}>
+      <Card className={canRegister ? 'border-blue-200 bg-blue-50' : 'border-red-300 bg-red-50'}>
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${isFull ? 'text-red-900' : 'text-blue-900'}`}>
+          <CardTitle className={`flex items-center gap-2 ${canRegister ? 'text-blue-900' : 'text-red-900'}`}>
             <UserPlus className="h-5 w-5" />
-            {isFull ? 'Cupo completo' : 'Quieres participar?'}
+            {canRegister ? 'Quieres participar?' : closedLabel}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className={isFull ? 'text-red-800' : 'text-blue-800'}>
-            {isFull
-              ? 'Este torneo ya completo su cupo de parejas. Cuando se libere un lugar, volvera a habilitarse la inscripcion.'
-              : 'Para unirte a este torneo, abre el formulario de inscripcion y completa tu registro.'}
+          <p className={canRegister ? 'text-blue-800' : 'text-red-800'}>
+            {canRegister
+              ? 'Para unirte a este torneo, abre el formulario de inscripcion y completa tu registro.'
+              : 'Este torneo no acepta nuevas inscripciones en este momento.'}
           </p>
 
-          {isFull ? (
-            <div className="w-full rounded-md border border-red-300 bg-red-100 px-4 py-3 text-center text-sm font-semibold text-red-800 shadow-[0_0_0_1px_rgba(220,38,38,0.08)]">
-              Cupo completo
-            </div>
-          ) : (
+          {canRegister ? (
             <PublicRegistrationLauncher
               tournamentId={tournamentId}
               tournamentName={tournament.name}
@@ -183,9 +196,13 @@ export default function NotRegisteredView({
               buttonLabel="Inscribirme"
               buttonClassName="w-full"
             />
+          ) : (
+            <div className="w-full rounded-md border border-red-300 bg-red-100 px-4 py-3 text-center text-sm font-semibold text-red-800 shadow-[0_0_0_1px_rgba(220,38,38,0.08)]">
+              {closedLabel}
+            </div>
           )}
 
-          <div className={`space-y-1 text-sm ${isFull ? 'text-red-700' : 'text-blue-700'}`}>
+          <div className={`space-y-1 text-sm ${canRegister ? 'text-blue-700' : 'text-red-700'}`}>
             <p>
               <strong>Recuerda:</strong>
             </p>

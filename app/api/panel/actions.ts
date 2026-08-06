@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { getTenantBranding } from '@/config/tenant'
 import { getTenantUpcomingTournamentSummaries } from '@/lib/services/tenant-home.service'
 import { getTournamentCategoryDisplay } from '@/lib/services/tournament-category-config'
 import { buildTournamentCapacitySummary } from '@/lib/services/tournament-capacity.service'
@@ -101,6 +102,8 @@ export type UpcomingTournament = {
   has_few_slots: boolean
   show_few_slots_alert: boolean
   enable_public_inscriptions: boolean
+  registration_locked?: boolean | null
+  bracket_status?: string | null
   enable_transfer_proof?: boolean
   transfer_alias?: string | null
   transfer_amount?: number | null
@@ -293,10 +296,12 @@ export async function getPlayerUpcomingTournaments(
 ): Promise<UpcomingTournamentsResult> {
   try {
     const supabase = await createClient()
+    const branding = getTenantBranding()
     const explicitGenderFilter = isTournamentGenderFilter(options.genderFilter) ? options.genderFilter : null
     const tournaments = await getTenantUpcomingTournamentSummaries(8, {
       genderFilter: explicitGenderFilter,
       priorityGender: explicitGenderFilter ? null : options.playerGender ?? null,
+      statusMode: branding.key === "padel-fv" ? "active" : "upcoming",
     })
 
     if (tournaments.length === 0) {
@@ -360,6 +365,8 @@ export async function getPlayerUpcomingTournaments(
         has_few_slots: capacity.hasFewSlots,
         show_few_slots_alert: tournament.showFewSlotsAlert !== false,
         enable_public_inscriptions: Boolean(tournament.enablePublicInscriptions),
+        registration_locked: tournament.registrationLocked,
+        bracket_status: tournament.bracketStatus,
         enable_transfer_proof: tournament.enableTransferProof || false,
         transfer_alias: tournament.transferAlias || null,
         transfer_amount: tournament.transferAmount || null,

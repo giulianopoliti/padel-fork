@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Gender } from "@/types"
 import { isTournamentGenderFilter } from "@/lib/tournaments/gender-filtering"
+import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
 import { formatDateLabel, formatPrice, formatTimeLabel } from "./panel-formatters"
 
@@ -87,10 +88,10 @@ export default function PlayerFvUpcomingTournamentsSection({
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-court-500/10 text-court-300">
           <CalendarDays className="h-8 w-8" />
         </div>
-        <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">Proximos torneos</p>
-        <h2 className="text-2xl font-black text-white sm:text-3xl">No hay fechas listas para anotarte</h2>
+        <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">Torneos activos</p>
+        <h2 className="text-2xl font-black text-white sm:text-3xl">No hay torneos activos publicados</h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
-          En cuanto aparezcan nuevas competencias para tu categoria, vas a verlas aca primero.
+          En cuanto aparezcan nuevas competencias del circuito, vas a verlas aca primero.
         </p>
       </section>
     )
@@ -101,8 +102,8 @@ export default function PlayerFvUpcomingTournamentsSection({
       <div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(198,222,6,0.12)_0%,rgba(18,29,57,0)_100%)] px-5 py-5 sm:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">Inscripciones abiertas</p>
-            <h2 className="text-2xl font-black text-white sm:text-3xl">Proximos torneos</h2>
+            <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">Circuito FV</p>
+            <h2 className="text-2xl font-black text-white sm:text-3xl">Torneos activos</h2>
           </div>
           <div className="flex flex-col gap-3 sm:w-auto sm:min-w-[240px] sm:items-end">
             <div className="w-full sm:w-56">
@@ -133,7 +134,15 @@ export default function PlayerFvUpcomingTournamentsSection({
           const priceLabel = formatPrice(tournament.price)
           const statusLabel = statusLabels[tournament.status] || tournament.status
           const tournamentType = tournament.type || "LONG"
-          const canRegister = !tournament.is_inscribed && !tournament.is_full && tournament.status === "NOT_STARTED"
+          const registrationAvailable = canShowPublicRegistration({
+            status: tournament.status,
+            enablePublicInscriptions: tournament.enable_public_inscriptions,
+            registrationLocked: tournament.registration_locked,
+            bracketStatus: tournament.bracket_status,
+            isFull: tournament.is_full,
+            allowActivePhaseRegistration: true,
+          })
+          const canRegister = !tournament.is_inscribed && registrationAvailable
           const hideVenue = Boolean(tournament.hide_venue)
           const venueLabel = [tournament.club?.name, tournament.club?.address].filter(Boolean).join(" - ")
           const timeLabel = formatTimeLabel(tournament.start_date)
@@ -220,7 +229,9 @@ export default function PlayerFvUpcomingTournamentsSection({
                   ) : (
                     <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
                       <p className="font-medium text-white">
-                        {tournament.is_inscribed ? "Ya estas anotado." : "Ver detalles del torneo."}
+                        {tournament.is_inscribed
+                          ? "Ya estas anotado."
+                          : getPublicRegistrationClosedLabel({ isFull: tournament.is_full })}
                       </p>
                     </div>
                   )}

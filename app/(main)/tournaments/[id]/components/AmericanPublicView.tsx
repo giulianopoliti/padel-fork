@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher";
 import TournamentHeroDetails from "@/components/tournament/TournamentHeroDetails";
 import TournamentPublicInfoCard from "@/components/tournament/TournamentPublicInfoCard";
+import { getTenantBranding } from "@/config/tenant";
 import type { TournamentPublicInfo } from "@/lib/tournaments/public-tournament-details";
 import { Gender } from "@/types";
 import type { AccessLevel, TournamentPermission } from "@/utils/tournament-permissions";
+import { canShowPublicRegistration } from "@/lib/tournaments/registration-availability";
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility";
 import { PLAYER_INSCRIPTION_COPY } from "@/lib/tournaments/player-inscription-copy";
 
@@ -57,9 +59,18 @@ export default function AmericanPublicView({
   const isInscribed = Boolean(metadata.isInscribed);
   const isPending = Boolean(metadata.isPending);
   const isFull = Boolean(tournament.is_full);
+  const branding = getTenantBranding();
   const hasFewSlots = Boolean(tournament.has_few_slots);
   const showFewSlotsAlert = tournament.show_few_slots_alert !== false;
-  const canShowRegistration = (isGuest || canRegister) && !isInscribed && !isCanceled && !isFull;
+  const registrationAvailable = canShowPublicRegistration({
+    status: tournament.status,
+    enablePublicInscriptions: tournament.enable_public_inscriptions,
+    registrationLocked: tournament.registration_locked,
+    bracketStatus: tournament.bracket_status,
+    isFull,
+    allowActivePhaseRegistration: branding.key === "padel-fv",
+  });
+  const canShowRegistration = (isGuest || canRegister) && !isInscribed && !isCanceled && registrationAvailable;
 
   const registrationLauncher = (
     <PublicRegistrationLauncher
@@ -210,7 +221,7 @@ export default function AmericanPublicView({
         <div className="max-w-4xl mx-auto space-y-6">
           <TournamentPublicInfoCard publicInfo={publicInfo} />
 
-          {isGuest && !isFull ? (
+          {isGuest && registrationAvailable ? (
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
@@ -225,7 +236,7 @@ export default function AmericanPublicView({
             </Card>
           ) : null}
 
-          {canRegister && !isGuest && !isInscribed && !isFull && (
+          {canRegister && !isGuest && !isInscribed && registrationAvailable && (
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">

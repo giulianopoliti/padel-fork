@@ -183,7 +183,8 @@ export default function MatchMatrixRow({
 
   // Determinar estado del match
   const isBYE = match.status === 'BYE'
-  const canSchedule = couple1 && couple2 && match.status === 'PENDING' && !isBYE
+  const isSchedulableStatus = match.status === 'PENDING' || match.status === 'DRAFT'
+  const canSchedule = couple1 && couple2 && isSchedulableStatus && !isBYE
   const canLoadResult = couple1 && couple2 && (match.status === 'NOT_STARTED' || match.status === 'IN_PROGRESS') && !isBYE
   const isCompleted = match.status === 'FINISHED'
   const isScheduled = !!(match.scheduling?.scheduled_time || match.scheduling?.court)
@@ -209,6 +210,8 @@ export default function MatchMatrixRow({
         return <Badge className="bg-yellow-600 text-white">Programado</Badge>
       case 'PENDING':
         return <Badge variant="outline">Pendiente</Badge>
+      case 'DRAFT':
+        return <Badge className="bg-amber-100 text-amber-800 border border-amber-200">Borrador</Badge>
       default:
         return <Badge variant="secondary">Desconocido</Badge>
     }

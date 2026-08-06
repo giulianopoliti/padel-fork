@@ -3,8 +3,10 @@ import { CalendarDays, ChevronRight, Clock3, MapPin, Ticket } from "lucide-react
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { getTenantBranding } from "@/config/tenant"
 import { Gender } from "@/types"
 import type { PublicTournamentSummary } from "@/types/public-tournament"
+import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
 
 interface PublicTournamentListProps {
@@ -79,6 +81,9 @@ export default function PublicTournamentList({
   emptyDescription,
   showRegistration = false,
 }: PublicTournamentListProps) {
+  const branding = getTenantBranding()
+  const allowActivePhaseRegistration = branding.key === "padel-fv"
+
   if (tournaments.length === 0) {
     return (
       <div className="tpe-shell rounded-[2rem] p-8 text-center text-white">
@@ -108,7 +113,14 @@ export default function PublicTournamentList({
               : "Categoria abierta"
           const priceLabel = formatPrice(tournament.price)
           const categoryLabel = getCategoryLabel(tournament)
-          const canRegister = showRegistration && tournament.status === "NOT_STARTED" && !tournament.isFull
+          const canRegister = showRegistration && canShowPublicRegistration({
+            status: tournament.status,
+            enablePublicInscriptions: tournament.enablePublicInscriptions,
+            registrationLocked: tournament.registrationLocked,
+            bracketStatus: tournament.bracketStatus,
+            isFull: tournament.isFull,
+            allowActivePhaseRegistration,
+          })
 
           return (
             <article
@@ -191,9 +203,11 @@ export default function PublicTournamentList({
                     fullWidth
                     buttonClassName="w-full rounded-full bg-[var(--tpe-lime)] text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-night)] hover:bg-[#e6ff63]"
                   />
-                ) : showRegistration && tournament.status === "NOT_STARTED" ? (
+                ) : showRegistration && (allowActivePhaseRegistration || tournament.status === "NOT_STARTED") ? (
                   <div className="rounded-[1.25rem] border border-white/12 bg-white/6 px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/80">
-                    {tournament.isFull ? "Torneo completo" : "Inscripciones cerradas"}
+                    {getPublicRegistrationClosedLabel({
+                      isFull: tournament.isFull,
+                    })}
                   </div>
                 ) : null}
 

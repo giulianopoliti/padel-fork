@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Gender } from "@/types"
 import { getTenantBranding } from "@/config/tenant"
 import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
+import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
 import { CalendarDays, Clock3, MapPin, Navigation, Tag, Trophy } from "lucide-react"
 
@@ -24,6 +25,8 @@ export interface PublicTournamentSummary {
   price?: number | string | null
   award?: string | null
   enablePublicInscriptions?: boolean
+  registrationLocked?: boolean | null
+  bracketStatus?: string | null
   currentParticipants?: number
   maxParticipants?: number | null
   remainingSlots?: number | null
@@ -148,6 +151,7 @@ export function PublicTournamentCards({
 }: PublicTournamentCardsProps) {
   const branding = getTenantBranding()
   const isElite = branding.key === "padel-elite"
+  const allowActivePhaseRegistration = branding.key === "padel-fv"
 
   const emptyStateClassName = isElite
     ? "tpe-shell rounded-[2rem] px-5 py-10 text-center text-white sm:px-6 sm:py-12"
@@ -229,10 +233,14 @@ export function PublicTournamentCards({
           Boolean(tournament.enablePublicInscriptions) &&
           typeof tournament.maxParticipants === "number" &&
           tournament.maxParticipants > 0
-        const canRegister =
-          tournament.status === "NOT_STARTED" &&
-          (isElite || Boolean(tournament.enablePublicInscriptions)) &&
-          !tournament.isFull
+        const canRegister = canShowPublicRegistration({
+          status: tournament.status,
+          enablePublicInscriptions: isElite || Boolean(tournament.enablePublicInscriptions),
+          registrationLocked: tournament.registrationLocked,
+          bracketStatus: tournament.bracketStatus,
+          isFull: tournament.isFull,
+          allowActivePhaseRegistration,
+        })
         const registrationStatusLabel = canRegister ? "Inscripciones abiertas" : "Inscripciones cerradas"
         const registrationBadgeClassName = canRegister
           ? "rounded-full border border-emerald-200/90 bg-emerald-600 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-[0_0_18px_rgba(16,185,129,0.28)]"
@@ -382,7 +390,9 @@ export function PublicTournamentCards({
                     />
                   ) : !isElite || tournament.status === "NOT_STARTED" ? (
                     <div className="rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/80">
-                      {tournament.isFull ? "Torneo completo" : registrationStatusLabel}
+                      {getPublicRegistrationClosedLabel({
+                        isFull: tournament.isFull,
+                      })}
                     </div>
                   ) : null}
                   <Button asChild variant="outline" className={`${detailsButtonClassName} lg:max-w-[220px]`}>

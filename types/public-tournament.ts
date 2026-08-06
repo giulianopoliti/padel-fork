@@ -13,6 +13,8 @@ export interface PublicTournamentSummary {
   price?: number | string | null
   award?: string | null
   enablePublicInscriptions?: boolean
+  registrationLocked?: boolean | null
+  bracketStatus?: string | null
   currentParticipants?: number
   maxParticipants?: number | null
   remainingSlots?: number | null
