@@ -1,15 +1,21 @@
 "use client"
 
 import { useState, useEffect, useTransition } from 'react'
+import Link from 'next/link'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, User, Mail, Hash, Award, Lock, Pencil, Eye, Phone } from 'lucide-react'
+import { Loader2, User, Mail, Hash, Award, Lock, Pencil, Eye, Phone, History, ExternalLink } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { getPlayerDetailsAction, updatePlayerAction } from '@/lib/services/players/players.actions'
+import {
+  getPlayerDetailsAction,
+  getPlayerOrganizationTournamentHistoryAction,
+  updatePlayerAction,
+  type PlayerOrganizationTournamentHistoryItem
+} from '@/lib/services/players/players.actions'
 import { PlayerDetails } from '@/lib/services/players/get-player-details'
 import PlayerDniDisplay from '@/components/players/player-dni-display'
 
@@ -35,6 +41,10 @@ export default function PlayerDetailsDialog({
   const [canView, setCanView] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
+  const [historyItems, setHistoryItems] = useState<PlayerOrganizationTournamentHistoryItem[]>([])
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false)
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   // Form state
@@ -68,6 +78,9 @@ export default function PlayerDetailsDialog({
         setPlayer(result.player)
         setCanEdit(result.canEdit || false)
         setCanView(result.canView || false)
+        setHistoryItems([])
+        setIsHistoryVisible(false)
+        setHistoryLoaded(false)
 
         // Inicializar form con datos del jugador
         setFirstName(result.player.first_name)
@@ -146,6 +159,10 @@ export default function PlayerDetailsDialog({
         setCanEdit(false)
         setCanView(false)
         setIsLoading(true)
+        setHistoryItems([])
+        setIsHistoryVisible(false)
+        setIsHistoryLoading(false)
+        setHistoryLoaded(false)
       }
       onOpenChange(newOpen)
     }
@@ -164,6 +181,63 @@ export default function PlayerDetailsDialog({
   const getInitials = () => {
     if (!player) return '?'
     return `${player.first_name.charAt(0)}${player.last_name.charAt(0)}`.toUpperCase()
+  }
+
+  const formatTournamentDate = (date: string | null) => {
+    if (!date) return 'Sin fecha'
+
+    try {
+      return new Date(date).toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'America/Argentina/Buenos_Aires'
+      })
+    } catch {
+      return 'Sin fecha'
+    }
+  }
+
+  const getTournamentTypeLabel = (type: string | null) => {
+    if (type === 'LONG') return 'Largo'
+    if (type === 'AMERICAN') return 'Americano'
+    return type || 'Torneo'
+  }
+
+  const handleToggleHistory = async () => {
+    if (isHistoryVisible) {
+      setIsHistoryVisible(false)
+      return
+    }
+
+    setIsHistoryVisible(true)
+
+    if (historyLoaded) return
+
+    setIsHistoryLoading(true)
+    try {
+      const result = await getPlayerOrganizationTournamentHistoryAction(playerId, tournamentId)
+
+      if (result.success) {
+        setHistoryItems(result.history)
+        setHistoryLoaded(true)
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'No se pudo cargar el historial del jugador',
+          variant: 'destructive'
+        })
+      }
+    } catch (error) {
+      console.error('Error loading player tournament history:', error)
+      toast({
+        title: 'Error',
+        description: 'Ocurrio un error al cargar el historial',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsHistoryLoading(false)
+    }
   }
 
   return (
@@ -358,6 +432,80 @@ export default function PlayerDetailsDialog({
               )}
             </div>
 
+              {canView && (
+                <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                        <History className="h-4 w-4 text-blue-600" />
+                        Historial con la organizacion
+                      </h4>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Torneos jugados por este jugador en parejas de la organizacion.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleHistory}
+                      disabled={isHistoryLoading}
+                      className="shrink-0"
+                    >
+                      {isHistoryLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <History className="mr-2 h-4 w-4" />
+                      )}
+                      {isHistoryVisible ? 'Ocultar historial' : 'Ver historial de jugador'}
+                    </Button>
+                  </div>
+
+                  {isHistoryVisible && (
+                    <div className="space-y-2">
+                      {isHistoryLoading ? (
+                        <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Cargando historial...
+                        </div>
+                      ) : historyItems.length > 0 ? (
+                        historyItems.map((item) => (
+                          <Button
+                            key={`${item.tournamentId}-${item.inscriptionId}`}
+                            asChild
+                            variant="outline"
+                            className="h-auto w-full justify-between gap-3 bg-white px-3 py-3 text-left"
+                          >
+                            <Link href={`/tournaments/${item.tournamentId}`}>
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm font-medium text-slate-900">
+                                  {item.tournamentName}
+                                </span>
+                                <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                                  <span>{formatTournamentDate(item.startDate)}</span>
+                                  <span>-</span>
+                                  <span>{getTournamentTypeLabel(item.tournamentType)}</span>
+                                  {item.categoryName && (
+                                    <>
+                                      <span>-</span>
+                                      <span>{item.categoryName}</span>
+                                    </>
+                                  )}
+                                </span>
+                              </span>
+                              <ExternalLink className="h-4 w-4 shrink-0 text-slate-500" />
+                            </Link>
+                          </Button>
+                        ))
+                      ) : (
+                        <div className="rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
+                          Este jugador no tiene torneos previos registrados con esta organizacion.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             <DialogFooter className="gap-2">
               {canEdit && isEditing ? (
                 <>
