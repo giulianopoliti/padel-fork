@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Search, Trash2, Loader2, CheckCircle2, X, DollarSign } from "lucide-react"
+import { PlusCircle, Search, Trash2, Loader2, CheckCircle2, X, DollarSign, AlertTriangle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
@@ -17,6 +17,7 @@ import { useTournamentPermissions } from "@/hooks/use-tournament-permissions"
 import PlayerDetailsDialog from "@/components/tournament/player-details-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
+import PlayerHistoryMarkDialog from "@/components/tournament/player-history-mark-dialog"
 
 interface PlayerInfo {
   id: string
@@ -97,6 +98,8 @@ export default function TournamentCouplesTab({
   const [coupleToReject, setCoupleToReject] = useState<CoupleInfo | null>(null)
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
   const [openingProofId, setOpeningProofId] = useState<string | null>(null)
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
+  const [historyTargets, setHistoryTargets] = useState<{ id: string; name: string }[]>([])
 
   const { toast } = useToast()
   const { user, userDetails } = useUser()
@@ -269,6 +272,20 @@ export default function TournamentCouplesTab({
     if (onRefresh) {
       await onRefresh()
     }
+  }
+
+  const handleOpenHistoryDialog = (couple: CoupleInfo) => {
+    const targets = [
+      couple.player_1_info?.id
+        ? { id: couple.player_1_info.id, name: getPlayerDisplayName(couple.player_1_info) }
+        : null,
+      couple.player_2_info?.id
+        ? { id: couple.player_2_info.id, name: getPlayerDisplayName(couple.player_2_info) }
+        : null,
+    ].filter((target): target is { id: string; name: string } => target !== null)
+
+    setHistoryTargets(targets)
+    setHistoryDialogOpen(true)
   }
 
   // Aprobar inscripcion
@@ -495,7 +512,7 @@ export default function TournamentCouplesTab({
                   {canManageTournament && (
                     <TableHead className="font-semibold text-slate-700 text-center">Estado</TableHead>
                   )}
-                  {!isRegistrationBlocked && (
+                  {(canManageTournament || !isRegistrationBlocked) && (
                     <TableHead className="font-semibold text-slate-700 text-center">Acciones</TableHead>
                   )}
                 </TableRow>
@@ -681,11 +698,23 @@ export default function TournamentCouplesTab({
                         )}
                       </TableCell>
                     )}
-                    {!isRegistrationBlocked && (
+                    {(canManageTournament || !isRegistrationBlocked) && (
                       <TableCell className="text-center">
                         <div className="flex gap-2 justify-center">
+                          {canManageTournament && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenHistoryDialog(couple)}
+                              className="text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                              title="Marcar historial"
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                            </Button>
+                          )}
+
                           {/* Show "Cancel my registration" button if user is part of this couple */}
-                          {isUserInCouple(couple) && (
+                          {!isRegistrationBlocked && isUserInCouple(couple) && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -697,7 +726,7 @@ export default function TournamentCouplesTab({
                           )}
                           
                           {/* Show admin delete button for clubs and organizadores with permissions */}
-                          {canManageTournament && (
+                          {!isRegistrationBlocked && canManageTournament && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -871,6 +900,14 @@ export default function TournamentCouplesTab({
       )}
 
       {/* Diálogo de confirmación para rechazar inscripción */}
+      <PlayerHistoryMarkDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        tournamentId={tournamentId}
+        targets={historyTargets}
+        defaultScope="all"
+      />
+
       <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

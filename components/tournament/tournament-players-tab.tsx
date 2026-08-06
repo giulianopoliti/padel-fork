@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { UserPlus, Search, Users, Loader2, CheckCircle, Trash2 } from "lucide-react"
+import { UserPlus, Search, Users, Loader2, CheckCircle, Trash2, AlertTriangle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
@@ -17,6 +17,7 @@ import { useTournamentPermissions } from "@/hooks/use-tournament-permissions"
 import { Gender } from "@/types"
 import PlayerDetailsDialog from "@/components/tournament/player-details-dialog"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
+import PlayerHistoryMarkDialog from "@/components/tournament/player-history-mark-dialog"
 
 interface PlayerInfo {
   id: string
@@ -92,6 +93,8 @@ export default function TournamentPlayersTab({
   const [registerCoupleDialogOpen, setRegisterCoupleDialogOpen] = useState(false)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [playerDetailsDialogOpen, setPlayerDetailsDialogOpen] = useState(false)
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
+  const [historyTargets, setHistoryTargets] = useState<{ id: string; name: string }[]>([])
 
   const { toast } = useToast()
   const { user, userDetails } = useUser()
@@ -515,6 +518,11 @@ export default function TournamentPlayersTab({
     }
   }
 
+  const handleOpenHistoryDialog = (player: PlayerInfo) => {
+    setHistoryTargets([{ id: player.id, name: getPlayerDisplayName(player) }])
+    setHistoryDialogOpen(true)
+  }
+
   return (
     <>
       <div className="p-4 sm:p-6 border-b border-gray-200 bg-slate-50">
@@ -663,8 +671,23 @@ export default function TournamentPlayersTab({
                       ) : (
                         <span className="text-slate-400 text-sm">Sin puntaje</span>
                       )}
-                      {!isRegistrationBlocked && !isPublicView && (
+                      {!isPublicView && (canManageTournament || !isRegistrationBlocked) && (
                         <>
+                          {canManageTournament && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenHistoryDialog(player)
+                              }}
+                              className="text-amber-700 border-amber-200 hover:bg-amber-50 hover:border-amber-300"
+                            >
+                              <AlertTriangle className="h-4 w-4 mr-1" />
+                              Historial
+                            </Button>
+                          )}
+
                           {isPlayer && player.id === userDetails.player_id ? (
                             <Button
                               variant="outline"
@@ -678,7 +701,7 @@ export default function TournamentPlayersTab({
                               <Trash2 className="h-4 w-4 mr-1" />
                               Cancelar
                             </Button>
-                          ) : canManageTournament ? (
+                          ) : !isRegistrationBlocked && canManageTournament ? (
                             <Button
                               variant="outline"
                               size="sm"
@@ -714,7 +737,7 @@ export default function TournamentPlayersTab({
                       </>
                     )}
                     <TableHead className="font-semibold text-slate-700 text-center">Puntaje</TableHead>
-                    {!isRegistrationBlocked && !isPublicView && (
+                    {!isPublicView && (canManageTournament || !isRegistrationBlocked) && (
                       <TableHead className="font-semibold text-slate-700 text-center">Acciones</TableHead>
                     )}
                   </TableRow>
@@ -749,8 +772,24 @@ export default function TournamentPlayersTab({
                           <span className="text-slate-400">—</span>
                         )}
                       </TableCell>
-                      {!isRegistrationBlocked && !isPublicView && (
+                      {!isPublicView && (canManageTournament || !isRegistrationBlocked) && (
                         <TableCell className="text-center">
+                          <div className="flex justify-center gap-2">
+                          {canManageTournament && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenHistoryDialog(player)
+                              }}
+                              className="text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                              title="Marcar historial"
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                            </Button>
+                          )}
+
                           {isPlayer && player.id === userDetails.player_id ? (
                             <Button
                               variant="ghost"
@@ -763,7 +802,7 @@ export default function TournamentPlayersTab({
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                          ) : canManageTournament ? (
+                          ) : !isRegistrationBlocked && canManageTournament ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -778,6 +817,7 @@ export default function TournamentPlayersTab({
                           ) : (
                             <span className="text-slate-400">—</span>
                           )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -1206,6 +1246,14 @@ export default function TournamentPlayersTab({
           onPlayerUpdate={handlePlayerDetailsUpdate}
         />
       )}
+
+      <PlayerHistoryMarkDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        tournamentId={tournamentId}
+        targets={historyTargets}
+        defaultScope={historyTargets[0]?.id || "all"}
+      />
     </>
   )
 }

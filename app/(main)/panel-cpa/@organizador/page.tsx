@@ -40,6 +40,25 @@ interface PlayerData {
   users?: { email: string | null } | null
 }
 
+interface PlayerHistoryMarkData {
+  id: string
+  mark_type: string
+  note: string
+  created_at: string
+  players?: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    dni: string | null
+    phone: string | null
+    category_name: string | null
+  } | null
+  tournaments?: {
+    id: string
+    name: string | null
+  } | null
+}
+
 export default async function OrganizadorDashboardPage() {
   const supabase = await createClient()
 
@@ -114,6 +133,35 @@ export default async function OrganizadorDashboardPage() {
   // 7. Fetch categorías para la edición de jugadores
   const categories = await getCategories()
 
+  const { data: historyMarks, error: historyMarksError } = await (supabase as any)
+    .from("player_history_marks")
+    .select(`
+      id,
+      mark_type,
+      note,
+      created_at,
+      players:player_id (
+        id,
+        first_name,
+        last_name,
+        dni,
+        phone,
+        category_name
+      ),
+      tournaments:tournament_id (
+        id,
+        name
+      )
+    `)
+    .eq("organization_id", organizationId)
+    .is("resolved_at", null)
+    .order("created_at", { ascending: false })
+    .limit(8)
+
+  if (historyMarksError) {
+    console.error("Error fetching player history marks:", historyMarksError)
+  }
+
   const normalizedPlayers: PlayerData[] = (players || []).map((player) => ({
     ...player,
     users: Array.isArray(player.users) ? player.users[0] : player.users
@@ -124,6 +172,7 @@ export default async function OrganizadorDashboardPage() {
       tournaments={tournamentsWithMetrics}
       players={normalizedPlayers}
       categories={categories}
+      playerHistoryMarks={(historyMarks || []) as PlayerHistoryMarkData[]}
       totalPlayers={totalPlayers || 0}
       organizationId={organizationId}
       canResolvePlayerIdentity={['owner', 'admin'].includes(orgMember.member_role)}
