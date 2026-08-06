@@ -9,6 +9,7 @@ export type Player = {
   id: string
   first_name: string | null
   last_name: string | null
+  phone?: string | null
   user_id?: string | null
   users?: { email?: string | null } | Array<{ email?: string | null }> | null
 }
@@ -18,6 +19,7 @@ export type TournamentEmailContext = {
   name: string
   type: string | null
   category_name: string | null
+  price?: number | null
   start_date?: string | null
   end_date?: string | null
   club_id?: string | null
@@ -53,7 +55,7 @@ export const fetchPlayersWithEmails = async (supabase: SupabaseLike, playerIds: 
 
   const { data, error } = await supabase
     .from("players")
-    .select("id, first_name, last_name, user_id, users!players_user_id_fkey(email)")
+    .select("id, first_name, last_name, phone, user_id, users!players_user_id_fkey(email)")
     .in("id", ids)
 
   if (error) {

@@ -13,7 +13,7 @@ import { BaseRegistrationStrategy } from './registration-strategy.interface'
 import { validateMixedPairGender } from '@/lib/services/tournament-category-config'
 import { normalizePlayerDni } from '@/lib/utils/player-dni'
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity'
-import { shouldRequireInscriptionValidation } from './inscription-validation'
+import { resolveRegistrationPaymentPolicy } from './payment-policy'
 import type {
   RegisterCoupleRequest,
   RegisterNewPlayersRequest,
@@ -83,6 +83,14 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       }
 
       const coupleId = coupleResult.coupleId
+      const paymentPolicy = await resolveRegistrationPaymentPolicy({
+        supabase,
+        tournament: context.tournament,
+        actorRole: user.role,
+        isOrganizerRegistration,
+        registeringPlayerId: isOrganizerRegistration ? null : player1Id,
+        paymentMethod: request.paymentMethod ?? null,
+      })
 
       // Verificar inscripción existente de la pareja
       const { data: existingInscription } = await supabase
@@ -109,11 +117,16 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
           tournament_id: tournamentId,
           couple_id: coupleId,
           player_id: isOrganizerRegistration ? null : player1Id,
-          is_pending: shouldRequireInscriptionValidation({
-            validateInscriptions: context.tournament.validate_inscriptions,
-            actorRole: context.user.role,
-            isOrganizerRegistration,
-          })
+          is_pending: paymentPolicy.isPending,
+          payment_method: paymentPolicy.paymentMethod,
+          payment_proof_status: paymentPolicy.proofRequired ? 'PENDING_REVIEW' : 'NOT_REQUIRED',
+          payment_alias_snapshot: paymentPolicy.proofRequired ? context.tournament.transfer_alias ?? null : null,
+          payment_amount_snapshot: paymentPolicy.totalAmount,
+          payment_amount_per_player_snapshot: paymentPolicy.amountPerPlayer,
+          payment_total_amount_snapshot: paymentPolicy.totalAmount,
+          trust_policy_applied: paymentPolicy.policyApplied,
+          trust_policy_min_tournaments_snapshot: paymentPolicy.minPlayedTournaments,
+          trust_player_played_tournaments_snapshot: paymentPolicy.playedTournaments,
         })
         .select('id')
         .single()
@@ -173,6 +186,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
         player1Id: player1Result.playerId,
         player2Id: player2Result.playerId,
         isOrganizerRegistration: request.isOrganizerRegistration,
+        paymentMethod: request.paymentMethod,
       }, context)
 
     } catch (error) {
@@ -219,16 +233,30 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       }
 
       // Registrar como individual
+      const paymentPolicy = await resolveRegistrationPaymentPolicy({
+        supabase,
+        tournament: context.tournament,
+        actorRole: context.user.role,
+        registeringPlayerId: playerId,
+        paymentMethod: request.paymentMethod ?? null,
+      })
+
       const { data: inscription, error: insertError } = await supabase
         .from('inscriptions')
         .insert({
           player_id: playerId,
           tournament_id: tournamentId,
           couple_id: null,
-          is_pending: shouldRequireInscriptionValidation({
-            validateInscriptions: context.tournament.validate_inscriptions,
-            actorRole: context.user.role,
-          })
+          is_pending: paymentPolicy.isPending,
+          payment_method: paymentPolicy.paymentMethod,
+          payment_proof_status: paymentPolicy.proofRequired ? 'PENDING_REVIEW' : 'NOT_REQUIRED',
+          payment_alias_snapshot: paymentPolicy.proofRequired ? context.tournament.transfer_alias ?? null : null,
+          payment_amount_snapshot: paymentPolicy.totalAmount,
+          payment_amount_per_player_snapshot: paymentPolicy.amountPerPlayer,
+          payment_total_amount_snapshot: paymentPolicy.totalAmount,
+          trust_policy_applied: paymentPolicy.policyApplied,
+          trust_policy_min_tournaments_snapshot: paymentPolicy.minPlayedTournaments,
+          trust_player_played_tournaments_snapshot: paymentPolicy.playedTournaments,
         })
         .select('id')
         .single()
@@ -303,6 +331,14 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       }
 
       // Registrar como individual con datos adicionales
+      const paymentPolicy = await resolveRegistrationPaymentPolicy({
+        supabase,
+        tournament: context.tournament,
+        actorRole: context.user.role,
+        registeringPlayerId: playerData.id,
+        paymentMethod: request.paymentMethod ?? null,
+      })
+
       const { data: inscription, error: insertError } = await supabase
         .from('inscriptions')
         .insert({
@@ -311,10 +347,16 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
           couple_id: null,
           phone: phone || null,
           created_at: new Date().toISOString(),
-          is_pending: shouldRequireInscriptionValidation({
-            validateInscriptions: context.tournament.validate_inscriptions,
-            actorRole: context.user.role,
-          })
+          is_pending: paymentPolicy.isPending,
+          payment_method: paymentPolicy.paymentMethod,
+          payment_proof_status: paymentPolicy.proofRequired ? 'PENDING_REVIEW' : 'NOT_REQUIRED',
+          payment_alias_snapshot: paymentPolicy.proofRequired ? context.tournament.transfer_alias ?? null : null,
+          payment_amount_snapshot: paymentPolicy.totalAmount,
+          payment_amount_per_player_snapshot: paymentPolicy.amountPerPlayer,
+          payment_total_amount_snapshot: paymentPolicy.totalAmount,
+          trust_policy_applied: paymentPolicy.policyApplied,
+          trust_policy_min_tournaments_snapshot: paymentPolicy.minPlayedTournaments,
+          trust_player_played_tournaments_snapshot: paymentPolicy.playedTournaments,
         })
         .select('id')
         .single()

@@ -12,6 +12,7 @@ export type TournamentType = "AMERICAN" | "LONG"
 export type Gender = "MALE" | "FEMALE" | "MIXED"
 
 export type RegistrationType = "individual" | "couple"
+export type InscriptionPaymentMethod = "CASH" | "TRANSFER"
 
 // ===== INTERFACES BASE =====
 
@@ -61,11 +62,13 @@ export interface RegisterCoupleRequest {
   player2Id: string
   /** Si es true, player_id quedara null (inscripcion hecha por organizador) */
   isOrganizerRegistration?: boolean
+  paymentMethod?: InscriptionPaymentMethod | null
 }
 
 export interface RegisterNewPlayersRequest {
   tournamentId: string
   isOrganizerRegistration?: boolean
+  paymentMethod?: InscriptionPaymentMethod | null
   player1: {
     firstName: string
     lastName: string
@@ -87,11 +90,13 @@ export interface RegisterNewPlayersRequest {
 export interface RegisterIndividualRequest {
   tournamentId: string
   playerId: string
+  paymentMethod?: InscriptionPaymentMethod | null
 }
 
 export interface RegisterAuthenticatedPlayerRequest {
   tournamentId: string
   phone?: string
+  paymentMethod?: InscriptionPaymentMethod | null
 }
 
 export interface RemoveCoupleRequest {
@@ -140,10 +145,17 @@ export interface Tournament {
   name: string
   type: TournamentType
   gender: Gender
+  organization_id?: string | null
   category_name?: string
   category_config?: TournamentCategoryConfig | null
   status: string
   validate_inscriptions: boolean
+  enable_transfer_proof?: boolean | null
+  transfer_alias?: string | null
+  transfer_amount?: number | string | null
+  enable_trust_based_payment_policy?: boolean | null
+  trust_policy_min_played_tournaments?: number | null
+  transfer_amount_per_player?: number | string | null
 }
 
 export interface RegistrationContext {

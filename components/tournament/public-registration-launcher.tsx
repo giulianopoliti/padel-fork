@@ -19,8 +19,11 @@ interface PublicRegistrationLauncherProps {
   tournamentGender: Gender
   tournamentPrice?: string | number | null
   enableTransferProof?: boolean
+  enableTrustBasedPaymentPolicy?: boolean
+  trustPolicyMinPlayedTournaments?: number
   transferAlias?: string | null
   transferAmount?: number | null
+  transferAmountPerPlayer?: number | null
   buttonLabel?: string
   buttonClassName?: string
   fullWidth?: boolean
@@ -32,13 +35,16 @@ export default function PublicRegistrationLauncher({
   tournamentGender,
   tournamentPrice = null,
   enableTransferProof = false,
+  enableTrustBasedPaymentPolicy = false,
+  trustPolicyMinPlayedTournaments = 2,
   transferAlias = null,
   transferAmount = null,
+  transferAmountPerPlayer = null,
   buttonLabel = "Inscribirme",
   buttonClassName,
   fullWidth = false,
 }: PublicRegistrationLauncherProps) {
-  const coupleOnlyMode = enableTransferProof
+  const coupleOnlyMode = enableTransferProof || enableTrustBasedPaymentPolicy
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"couple" | "individual">("couple")
@@ -169,8 +175,11 @@ export default function PublicRegistrationLauncher({
                 tournamentGender={tournamentGender}
                 transferConfig={{
                   enabled: enableTransferProof,
+                  trustPolicyEnabled: enableTrustBasedPaymentPolicy,
+                  minPlayedTournaments: trustPolicyMinPlayedTournaments,
                   alias: transferAlias,
                   amount: transferAmount,
+                  amountPerPlayer: transferAmountPerPlayer,
                 }}
               />
             </TabsContent>

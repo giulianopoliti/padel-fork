@@ -236,7 +236,7 @@ export default function TournamentBasicInfoForm({
       <div className="space-y-2">
         <Label htmlFor="tournament-price" className="flex items-center gap-2">
           <Tag className="h-4 w-4 text-emerald-600" />
-          Precio de inscripcion
+          Precio por jugador
         </Label>
         <Input
           id="tournament-price"
@@ -256,13 +256,13 @@ export default function TournamentBasicInfoForm({
         />
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            Opcional. Solo numeros enteros.
+            Opcional. Es el valor final por jugador para jugar el torneo.
           </p>
           {price !== '' && !isPriceValid() && (
             <Alert variant="destructive" className="py-2">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                El precio debe ser un entero entre 0 y {MAX_TOURNAMENT_PRICE.toLocaleString('es-AR')}
+                El precio por jugador debe ser un entero entre 0 y {MAX_TOURNAMENT_PRICE.toLocaleString('es-AR')}
               </AlertDescription>
             </Alert>
           )}

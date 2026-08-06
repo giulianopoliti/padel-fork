@@ -2,6 +2,8 @@ import type { SupabaseLike } from "@/lib/services/email/notification-utils"
 
 export type TournamentMessageType =
   | "INSCRIPTION_SUBMITTED_ADMIN"
+  | "INSCRIPTION_APPROVED_ADMIN"
+  | "INSCRIPTION_PENDING_PLAYER"
   | "INSCRIPTION_APPROVED_PLAYER"
   | "INSCRIPTION_CANCELLED_ADMIN"
   | "LONG_MATCH_CONFIRMED_PLAYER"
@@ -16,6 +18,16 @@ export type TournamentMessageEvent =
     }
   | {
       type: "INSCRIPTION_APPROVED_PLAYER"
+      supabase: SupabaseLike
+      inscriptionId: string
+    }
+  | {
+      type: "INSCRIPTION_APPROVED_ADMIN"
+      supabase: SupabaseLike
+      inscriptionId: string
+    }
+  | {
+      type: "INSCRIPTION_PENDING_PLAYER"
       supabase: SupabaseLike
       inscriptionId: string
     }

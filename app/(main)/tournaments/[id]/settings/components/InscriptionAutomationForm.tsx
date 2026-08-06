@@ -16,9 +16,12 @@ interface InscriptionAutomationFormProps {
   initialShowFewSlotsAlert: boolean
   initialEnablePaymentCheckboxes: boolean
   initialEnableTransferProof: boolean
+  initialEnableTrustBasedPaymentPolicy: boolean
+  initialTrustPolicyMinPlayedTournaments: number
   initialMessagesEnabled: boolean
   initialTransferAlias: string | null
   initialTransferAmount: number | null
+  initialTransferAmountPerPlayer: number | null
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error"
@@ -29,9 +32,12 @@ interface PersistPatch {
   show_few_slots_alert?: boolean
   enable_payment_checkboxes?: boolean
   enable_transfer_proof?: boolean
+  enable_trust_based_payment_policy?: boolean
+  trust_policy_min_played_tournaments?: number
   messages_enabled?: boolean
   transfer_alias?: string | null
   transfer_amount?: number | null
+  transfer_amount_per_player?: number | null
 }
 
 function StatusBadge({ state }: { state: SaveState }) {
@@ -92,19 +98,31 @@ export default function InscriptionAutomationForm({
   initialShowFewSlotsAlert,
   initialEnablePaymentCheckboxes,
   initialEnableTransferProof,
+  initialEnableTrustBasedPaymentPolicy,
+  initialTrustPolicyMinPlayedTournaments,
   initialMessagesEnabled,
   initialTransferAlias,
   initialTransferAmount,
+  initialTransferAmountPerPlayer,
 }: InscriptionAutomationFormProps) {
   const [validateInscriptions, setValidateInscriptions] = useState(initialValidateInscriptions)
   const [enablePublicInscriptions, setEnablePublicInscriptions] = useState(initialEnablePublicInscriptions)
   const [showFewSlotsAlert, setShowFewSlotsAlert] = useState(initialShowFewSlotsAlert)
   const [enablePaymentCheckboxes, setEnablePaymentCheckboxes] = useState(initialEnablePaymentCheckboxes)
   const [enableTransferProof, setEnableTransferProof] = useState(initialEnableTransferProof)
+  const [enableTrustBasedPaymentPolicy, setEnableTrustBasedPaymentPolicy] = useState(initialEnableTrustBasedPaymentPolicy)
   const [messagesEnabled, setMessagesEnabled] = useState(initialMessagesEnabled)
   const [transferAlias, setTransferAlias] = useState(initialTransferAlias || "")
   const [transferAmount, setTransferAmount] = useState(
     initialTransferAmount !== null && initialTransferAmount !== undefined ? String(initialTransferAmount) : ""
+  )
+  const [transferAmountPerPlayer, setTransferAmountPerPlayer] = useState(
+    initialTransferAmountPerPlayer !== null && initialTransferAmountPerPlayer !== undefined
+      ? String(initialTransferAmountPerPlayer)
+      : ""
+  )
+  const [trustPolicyMinPlayedTournaments, setTrustPolicyMinPlayedTournaments] = useState(
+    String(initialTrustPolicyMinPlayedTournaments || 2)
   )
 
   const [validationStatus, setValidationStatus] = useState<SaveState>("idle")
@@ -112,6 +130,7 @@ export default function InscriptionAutomationForm({
   const [fewSlotsStatus, setFewSlotsStatus] = useState<SaveState>("idle")
   const [checkboxStatus, setCheckboxStatus] = useState<SaveState>("idle")
   const [transferToggleStatus, setTransferToggleStatus] = useState<SaveState>("idle")
+  const [trustPolicyStatus, setTrustPolicyStatus] = useState<SaveState>("idle")
   const [messagesStatus, setMessagesStatus] = useState<SaveState>("idle")
   const [transferFieldsStatus, setTransferFieldsStatus] = useState<SaveState>("idle")
   const [transferFieldsError, setTransferFieldsError] = useState<string | null>(null)
@@ -342,10 +361,69 @@ export default function InscriptionAutomationForm({
       toast({
         title: checked ? "Transferencia con comprobante activada" : "Transferencia con comprobante desactivada",
         description: checked
-          ? "Ahora debes completar alias y monto para los jugadores."
-          : "Los jugadores ya no veran alias, importe ni carga de comprobante.",
+          ? "Ahora debes completar alias e importe a transferir por pareja."
+          : "Los jugadores ya no veran alias, importe a transferir ni carga de comprobante.",
       })
     }
+  }
+
+  const handleTrustPolicyToggle = async (checked: boolean) => {
+    setEnableTrustBasedPaymentPolicy(checked)
+
+    const result = await persistSettings(
+      {
+        enable_trust_based_payment_policy: checked,
+        trust_policy_min_played_tournaments: Number(trustPolicyMinPlayedTournaments || 2),
+        transfer_alias: transferAlias.trim() || null,
+        transfer_amount_per_player: transferAmountPerPlayer ? Number(transferAmountPerPlayer) : null,
+      },
+      {
+        onStart: () => setTrustPolicyStatus("saving"),
+        onSuccess: () => setTrustPolicyStatus("saved"),
+        onError: (message) => {
+          setTrustPolicyStatus("error")
+          setEnableTrustBasedPaymentPolicy((current) => !current)
+          toast({
+            title: "No se pudo actualizar la politica de pago",
+            description: message,
+            variant: "destructive",
+          })
+        },
+      }
+    )
+
+    if (result.success) {
+      toast({
+        title: checked ? "Politica de pago activada" : "Politica de pago desactivada",
+        description: checked
+          ? "El flujo publico ahora usa efectivo o transferencia segun confianza del jugador."
+          : "El torneo vuelve a usar las reglas generales de inscripcion.",
+      })
+    }
+  }
+
+  const handleTrustPolicyFieldsBlur = async () => {
+    const result = await persistSettings(
+      {
+        trust_policy_min_played_tournaments: Number(trustPolicyMinPlayedTournaments || 2),
+        transfer_alias: transferAlias.trim() || null,
+        transfer_amount_per_player: transferAmountPerPlayer ? Number(transferAmountPerPlayer) : null,
+      },
+      {
+        onStart: () => setTrustPolicyStatus("saving"),
+        onSuccess: () => setTrustPolicyStatus("saved"),
+        onError: (message) => {
+          setTrustPolicyStatus("error")
+          toast({
+            title: "No se pudo guardar la politica de pago",
+            description: message,
+            variant: "destructive",
+          })
+        },
+      }
+    )
+
+    return result
   }
 
   useEffect(() => {
@@ -374,7 +452,7 @@ export default function InscriptionAutomationForm({
 
       if (parsedTransferAmount === null || parsedTransferAmount <= 0) {
         setTransferFieldsStatus("error")
-        setTransferFieldsError("Indica un importe mayor a 0.")
+        setTransferFieldsError("Indica un importe a transferir por pareja mayor a 0.")
         return
       }
     }
@@ -603,9 +681,102 @@ export default function InscriptionAutomationForm({
       </SettingCard>
 
       <SettingCard
+        icon={<ShieldCheck className="h-4 w-4 text-violet-600" />}
+        title="Politica de pago por confianza"
+        description="Para torneos americanos: efectivo puede quedar pendiente segun historial; transferencia confirma con comprobante."
+        status={trustPolicyStatus}
+      >
+        <div className="space-y-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={enableTrustBasedPaymentPolicy ? "default" : "secondary"}
+                  className={enableTrustBasedPaymentPolicy ? "bg-violet-600 hover:bg-violet-600" : ""}
+                >
+                  {enableTrustBasedPaymentPolicy ? "Activa" : "Inactiva"}
+                </Badge>
+                <span className="text-sm font-medium text-slate-900">Efectivo o transferencia</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Si esta activa, reemplaza validacion general y comprobante obligatorio en la inscripcion publica.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Label htmlFor="trust-payment-policy" className="text-sm font-medium">
+                Activar politica
+              </Label>
+              <Switch
+                id="trust-payment-policy"
+                checked={enableTrustBasedPaymentPolicy}
+                onCheckedChange={handleTrustPolicyToggle}
+                disabled={trustPolicyStatus === "saving"}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 rounded-xl border bg-white p-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="trust-transfer-alias">Alias para transferencia</Label>
+              <Input
+                id="trust-transfer-alias"
+                value={transferAlias}
+                onChange={(event) => setTransferAlias(event.target.value)}
+                onBlur={handleTrustPolicyFieldsBlur}
+                placeholder="alias.del.club"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se muestra cuando el jugador elige transferencia.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="trust-min-tournaments">Inscripciones confirmadas para confiar</Label>
+              <Input
+                id="trust-min-tournaments"
+                type="number"
+                min="0"
+                step="1"
+                value={trustPolicyMinPlayedTournaments}
+                onChange={(event) => setTrustPolicyMinPlayedTournaments(event.target.value)}
+                onBlur={handleTrustPolicyFieldsBlur}
+              />
+              <p className="text-xs text-muted-foreground">
+                Con menos de este numero de inscripciones confirmadas previas, efectivo queda pendiente.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transfer-amount-per-player">Seña por jugador</Label>
+              <Input
+                id="transfer-amount-per-player"
+                type="number"
+                min="0"
+                step="0.01"
+                value={transferAmountPerPlayer}
+                onChange={(event) => setTransferAmountPerPlayer(event.target.value)}
+                onBlur={handleTrustPolicyFieldsBlur}
+                placeholder="7500"
+              />
+              <p className="text-xs text-muted-foreground">
+                En transferencia se muestra la seña total de la pareja.
+              </p>
+            </div>
+          </div>
+
+          <Alert className="border-violet-200 bg-white">
+            <AlertDescription className="text-violet-950">
+              La seña total de la pareja es la seña por jugador multiplicada por 2.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </SettingCard>
+
+      <SettingCard
         icon={<Landmark className="h-4 w-4 text-amber-600" />}
         title="Transferencia con comprobante"
-        description="Los jugadores veran alias, importe y podran adjuntar comprobante desde el popup de inscripcion."
+        description="Los jugadores veran alias, importe a transferir y podran adjuntar comprobante desde el popup de inscripcion."
         status={transferToggleStatus === "saving" ? "saving" : transferFieldsStatus === "error" ? "error" : transferToggleStatus === "saved" || transferFieldsStatus === "saved" ? "saved" : "idle"}
       >
         <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
@@ -618,7 +789,7 @@ export default function InscriptionAutomationForm({
                 >
                   {enableTransferProof ? "Activa" : "Inactiva"}
                 </Badge>
-                <span className="text-sm font-medium text-slate-900">Alias, importe y carga de comprobante</span>
+                <span className="text-sm font-medium text-slate-900">Alias, importe a transferir y carga de comprobante</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Al activarla, la inscripcion queda registrada cuando el jugador adjunta el comprobante.
@@ -654,7 +825,7 @@ export default function InscriptionAutomationForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="transfer-amount">Importe por pareja</Label>
+              <Label htmlFor="transfer-amount">Importe a transferir por pareja</Label>
               <Input
                 id="transfer-amount"
                 type="number"
@@ -674,7 +845,7 @@ export default function InscriptionAutomationForm({
           {enableTransferProof && (
             <Alert className="border-amber-200 bg-white">
               <AlertDescription className="text-amber-950">
-                Flujo del jugador: primero elige companero, despues ve alias e importe, sube el comprobante y la inscripcion queda registrada.
+                Flujo del jugador: primero elige companero, despues ve alias e importe a transferir por pareja, sube el comprobante y la inscripcion queda registrada.
               </AlertDescription>
             </Alert>
           )}

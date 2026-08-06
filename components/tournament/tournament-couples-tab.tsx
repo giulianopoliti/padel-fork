@@ -59,8 +59,11 @@ interface TournamentCouplesTabProps {
   bracketStatus?: string
   enablePaymentCheckboxes?: boolean
   enableTransferProof?: boolean
+  enableTrustBasedPaymentPolicy?: boolean
+  trustPolicyMinPlayedTournaments?: number
   transferAlias?: string | null
   transferAmount?: number | null
+  transferAmountPerPlayer?: number | null
   // 🚀 Optimistic mutations callbacks
   onCoupleAdded?: (couple: CoupleInfo) => Promise<void>
   onCoupleRemoved?: (coupleId: string) => Promise<void>
@@ -79,8 +82,11 @@ export default function TournamentCouplesTab({
   bracketStatus = "NOT_STARTED",
   enablePaymentCheckboxes = false,
   enableTransferProof = false,
+  enableTrustBasedPaymentPolicy = false,
+  trustPolicyMinPlayedTournaments = 2,
   transferAlias = null,
   transferAmount = null,
+  transferAmountPerPlayer = null,
   // 🚀 Optimistic mutations
   onCoupleAdded,
   onCoupleRemoved,
@@ -122,7 +128,7 @@ export default function TournamentCouplesTab({
   // Use centralized permissions instead of basic role checks
   const canManageTournament = hasManagementPermissions || isOwner
   const showPaymentCheckboxes = canManageTournament && enablePaymentCheckboxes
-  const showTransferProof = canManageTournament && enableTransferProof
+  const showTransferProof = canManageTournament && (enableTransferProof || enableTrustBasedPaymentPolicy)
 
   // Use isOwner from useTournamentPermissions to show/hide player details
   const canViewPlayerDetails = isOwner
@@ -421,7 +427,7 @@ export default function TournamentCouplesTab({
   }
 
   const formatMoney = (amount?: number | null) => {
-    if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return 'Sin monto'
+    if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return 'Sin importe'
     return `$${Number(amount).toLocaleString('es-AR', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
@@ -507,7 +513,7 @@ export default function TournamentCouplesTab({
                     </TableHead>
                   )}
                   {showTransferProof && (
-                    <TableHead className="font-semibold text-slate-700 text-center">Comprobante</TableHead>
+                    <TableHead className="font-semibold text-slate-700 text-center">Comprobante / seña</TableHead>
                   )}
                   {canManageTournament && (
                     <TableHead className="font-semibold text-slate-700 text-center">Estado</TableHead>
@@ -638,7 +644,7 @@ export default function TournamentCouplesTab({
                           </span>
                           <div className="text-xs text-slate-600">
                             <div>{couple.payment_alias_snapshot || "Sin alias"}</div>
-                            <div>{formatMoney(couple.payment_amount_snapshot)}</div>
+                            <div>Seña total de la pareja: {formatMoney(couple.payment_amount_snapshot)}</div>
                           </div>
                           {couple.inscription_id &&
                             couple.payment_proof_status &&
@@ -781,8 +787,11 @@ export default function TournamentCouplesTab({
               tournamentGender={tournamentGender}
               transferConfig={{
                 enabled: enableTransferProof,
+                trustPolicyEnabled: enableTrustBasedPaymentPolicy,
+                minPlayedTournaments: trustPolicyMinPlayedTournaments,
                 alias: transferAlias,
                 amount: transferAmount,
+                amountPerPlayer: transferAmountPerPlayer,
               }}
             />
           ) : (

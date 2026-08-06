@@ -47,14 +47,14 @@ export default async function SettingsDatosPage({ params }: SettingsDatosPagePro
       <SettingsSectionHeader
         eyebrow="Datos"
         title="Datos del torneo"
-        description="Nombre, fechas, cupos, precio, portada y relaciones base del torneo."
+        description="Nombre, fechas, cupos, precio por jugador, portada y relaciones base del torneo."
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <SettingsShellCard
           icon={<FileText className="h-5 w-5 text-emerald-600" />}
           title="Informacion basica"
-          description="Edita nombre, descripcion, precio, cupo y rango de fechas sin salir del panel."
+          description="Edita nombre, descripcion, precio por jugador, cupo y rango de fechas sin salir del panel."
         >
           <TournamentBasicInfoForm
             tournamentId={tournament.id}

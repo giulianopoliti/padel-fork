@@ -172,7 +172,7 @@ export default function PublicTournamentList({
                   {priceLabel ? (
                     <Badge className="rounded-full border-0 bg-[var(--tpe-lime)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--tpe-night)]">
                       <Ticket className="mr-1 h-3.5 w-3.5" />
-                      {priceLabel}
+                      {priceLabel} por jugador
                     </Badge>
                   ) : null}
                 </div>

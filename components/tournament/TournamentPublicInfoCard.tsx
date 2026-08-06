@@ -60,7 +60,7 @@ export default function TournamentPublicInfoCard({
             <InfoItem icon={Clock} label="Horario" value={publicInfo.startTimeLabel} />
           )}
 
-          {priceLabel && <InfoItem icon={Trophy} label="Precio" value={priceLabel} />}
+          {priceLabel && <InfoItem icon={Trophy} label="Precio por jugador" value={priceLabel} />}
           {publicInfo.award && <InfoItem icon={Award} label="Premios" value={publicInfo.award} />}
 
           {publicInfo.clubName && <InfoItem icon={Building2} label="Club" value={publicInfo.clubName} />}

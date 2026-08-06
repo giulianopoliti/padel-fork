@@ -100,7 +100,16 @@ export async function POST(
 
     const { data: tournament, error: tournamentError } = await supabase
       .from('tournaments')
-      .select('id, name, enable_transfer_proof, transfer_alias, transfer_amount')
+      .select(`
+        id,
+        name,
+        enable_transfer_proof,
+        transfer_alias,
+        transfer_amount,
+        enable_trust_based_payment_policy,
+        trust_policy_min_played_tournaments,
+        transfer_amount_per_player
+      `)
       .eq('id', tournamentId)
       .single()
 
@@ -111,21 +120,34 @@ export async function POST(
       )
     }
 
-    if (!tournament.enable_transfer_proof) {
+    const trustPolicyEnabled = tournament.enable_trust_based_payment_policy === true
+
+    if (!trustPolicyEnabled && !tournament.enable_transfer_proof) {
       return NextResponse.json(
         { success: false, message: 'Este torneo no acepta comprobantes de transferencia' },
         { status: 400 }
       )
     }
 
-    if (!tournament.transfer_alias || !tournament.transfer_amount) {
+    const amountPerPlayer = Number(tournament.transfer_amount_per_player ?? 0)
+    const totalAmount = trustPolicyEnabled
+      ? amountPerPlayer * 2
+      : Number(tournament.transfer_amount ?? 0)
+
+    if (!tournament.transfer_alias || totalAmount <= 0) {
       return NextResponse.json(
-        { success: false, message: 'El torneo no tiene alias y monto configurados' },
+        { success: false, message: 'El torneo no tiene alias y seña total de la pareja configurados' },
         { status: 400 }
       )
     }
 
-    const registrationResult = await registerCoupleForTournament(tournamentId, player1Id, player2Id)
+    const registrationResult = await registerCoupleForTournament(
+      tournamentId,
+      player1Id,
+      player2Id,
+      false,
+      trustPolicyEnabled ? 'TRANSFER' : null
+    )
 
     if (!registrationResult.success || !registrationResult.inscription?.id || !registrationResult.inscription?.coupleId) {
       return NextResponse.json(
@@ -159,11 +181,14 @@ export async function POST(
     const { error: updateError } = await supabase
       .from('inscriptions')
       .update({
-        payment_proof_status: 'PENDING_REVIEW',
+        payment_method: trustPolicyEnabled ? 'TRANSFER' : null,
+        payment_proof_status: trustPolicyEnabled ? 'APPROVED' : 'PENDING_REVIEW',
         payment_proof_path: uploadResult.filePath,
         payment_proof_uploaded_at: new Date().toISOString(),
         payment_alias_snapshot: tournament.transfer_alias,
-        payment_amount_snapshot: tournament.transfer_amount,
+        payment_amount_snapshot: totalAmount,
+        payment_amount_per_player_snapshot: trustPolicyEnabled ? amountPerPlayer : null,
+        payment_total_amount_snapshot: totalAmount,
       })
       .eq('id', inscriptionId)
 
@@ -181,13 +206,33 @@ export async function POST(
     revalidatePath(`/tournaments/${tournamentId}/inscriptions`)
     revalidatePath(`/my-tournaments/${tournamentId}`)
 
+    if (trustPolicyEnabled) {
+      try {
+        const { sendTournamentMessage } = await import('@/lib/services/messages')
+        await sendTournamentMessage({
+          type: 'INSCRIPTION_APPROVED_PLAYER',
+          supabase,
+          inscriptionId,
+        })
+        await sendTournamentMessage({
+          type: 'INSCRIPTION_APPROVED_ADMIN',
+          supabase,
+          inscriptionId,
+        })
+      } catch (messageError) {
+        console.error('[couple-with-proof] Error sending approval message:', messageError)
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'La inscripción quedó registrada y pendiente de revisión',
+      message: trustPolicyEnabled
+        ? 'La inscripcion quedo confirmada con el comprobante'
+        : 'La inscripcion quedo registrada y pendiente de revision',
       data: {
         inscriptionId,
         coupleId,
-        paymentProofStatus: 'PENDING_REVIEW',
+        paymentProofStatus: trustPolicyEnabled ? 'APPROVED' : 'PENDING_REVIEW',
       },
     })
   } catch (error) {

@@ -25,12 +25,20 @@ export type InscriptionMessageData = {
     player_id: string | null
     is_pending: boolean
     created_at: string | null
+    phone?: string | null
+    payment_method?: 'CASH' | 'TRANSFER' | null
+    payment_amount_per_player_snapshot?: number | null
+    payment_total_amount_snapshot?: number | null
+    trust_policy_applied?: boolean | null
+    trust_policy_min_tournaments_snapshot?: number | null
+    trust_player_played_tournaments_snapshot?: number | null
   }
   tournament: TournamentEmailContext & {
     messages_enabled?: boolean | null
   }
   participantName: string
   playerEmails: string[]
+  contactPhones: string[]
   adminEmails: string[]
   clubLocation: ClubLocation | null
 }
@@ -68,7 +76,7 @@ export type LongMatchMessageData = {
 }
 
 const TOURNAMENT_SELECT =
-  "id, name, type, category_name, start_date, end_date, club_id, organization_id, organizador_id, messages_enabled"
+  "id, name, type, category_name, price, start_date, end_date, club_id, organization_id, organizador_id, messages_enabled"
 
 export const isTournamentMessagesEnabled = (tournament: { messages_enabled?: boolean | null }) =>
   tournament.messages_enabled !== false
@@ -96,6 +104,7 @@ const resolveInscriptionParticipant = async (
   return {
     participantName,
     playerEmails: uniqueEmails(players.map(getRelatedEmail)),
+    contactPhones: Array.from(new Set(players.map((player) => player.phone?.trim()).filter(Boolean))) as string[],
   }
 }
 
@@ -145,7 +154,21 @@ export const loadInscriptionMessageData = async (
 
   const { data: inscription, error: inscriptionError } = await supabase
     .from("inscriptions")
-    .select("id, tournament_id, couple_id, player_id, is_pending, created_at")
+    .select(`
+      id,
+      tournament_id,
+      couple_id,
+      player_id,
+      is_pending,
+      created_at,
+      phone,
+      payment_method,
+      payment_amount_per_player_snapshot,
+      payment_total_amount_snapshot,
+      trust_policy_applied,
+      trust_policy_min_tournaments_snapshot,
+      trust_player_played_tournaments_snapshot
+    `)
     .eq("id", inscriptionId)
     .single()
 
@@ -174,6 +197,7 @@ export const loadInscriptionMessageData = async (
     tournament,
     participantName: participant.participantName,
     playerEmails: participant.playerEmails,
+    contactPhones: participant.contactPhones,
     adminEmails: uniqueEmails(recipients.adminEmails.filter((email) => !participant.playerEmails.includes(email))),
     clubLocation,
   }

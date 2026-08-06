@@ -56,9 +56,12 @@ export default async function SettingsInscripcionesPage({
             initialShowFewSlotsAlert={tournament.show_few_slots_alert ?? true}
             initialEnablePaymentCheckboxes={tournament.enable_payment_checkboxes ?? false}
             initialEnableTransferProof={tournament.enable_transfer_proof ?? false}
+            initialEnableTrustBasedPaymentPolicy={tournament.enable_trust_based_payment_policy ?? false}
+            initialTrustPolicyMinPlayedTournaments={tournament.trust_policy_min_played_tournaments ?? 2}
             initialMessagesEnabled={tournament.messages_enabled ?? true}
             initialTransferAlias={tournament.transfer_alias ?? null}
             initialTransferAmount={tournament.transfer_amount ?? null}
+            initialTransferAmountPerPlayer={tournament.transfer_amount_per_player ?? null}
           />
         </SettingsShellCard>
       </div>

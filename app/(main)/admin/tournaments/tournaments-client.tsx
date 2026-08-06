@@ -184,7 +184,7 @@ export const TournamentsClient = ({ tournaments: initialTournaments }: Tournamen
                   <th className="text-left py-3 px-4 font-medium text-slate-700">Club/Org</th>
                   <th className="text-left py-3 px-4 font-medium text-slate-700">Fechas</th>
                   <th className="text-left py-3 px-4 font-medium text-slate-700">Max</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-700">Precio</th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-700">Precio por jugador</th>
                   <th className="text-left py-3 px-4 font-medium text-slate-700">Acciones</th>
                 </tr>
               </thead>
@@ -305,7 +305,7 @@ export const TournamentsClient = ({ tournaments: initialTournaments }: Tournamen
                   <span>{tournament.max_participants || "-"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Precio:</span>
+                  <span className="text-slate-600">Precio por jugador:</span>
                   <span className="font-semibold">${tournament.price || 0}</span>
                 </div>
                 <div className="flex gap-2 pt-2 border-t">

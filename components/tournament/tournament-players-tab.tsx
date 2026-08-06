@@ -40,8 +40,11 @@ interface TournamentPlayersTabProps {
   registrationLocked?: boolean
   bracketStatus?: string
   enableTransferProof?: boolean
+  enableTrustBasedPaymentPolicy?: boolean
+  trustPolicyMinPlayedTournaments?: number
   transferAlias?: string | null
   transferAmount?: number | null
+  transferAmountPerPlayer?: number | null
   // 🚀 Optimistic mutations callbacks
   onPlayerAdded?: (player: PlayerInfo) => Promise<void>
   onPlayerRemoved?: (playerId: string) => Promise<void>
@@ -62,8 +65,11 @@ export default function TournamentPlayersTab({
   registrationLocked = false,
   bracketStatus = "NOT_STARTED",
   enableTransferProof = false,
+  enableTrustBasedPaymentPolicy = false,
+  trustPolicyMinPlayedTournaments = 2,
   transferAlias = null,
   transferAmount = null,
+  transferAmountPerPlayer = null,
   // 🚀 Optimistic mutations
   onPlayerAdded,
   onPlayerRemoved,
@@ -115,7 +121,7 @@ export default function TournamentPlayersTab({
 
   // Use centralized permissions instead of basic role checks
   const canManageTournament = hasManagementPermissions
-  const selfServiceRequiresCouple = enableTransferProof && !canManageTournament
+  const selfServiceRequiresCouple = (enableTransferProof || enableTrustBasedPaymentPolicy) && !canManageTournament
 
   // Use isOwner from useTournamentPermissions to show/hide player details
   const canViewPlayerDetails = hasManagementPermissions
@@ -1207,8 +1213,11 @@ export default function TournamentPlayersTab({
               tournamentGender={tournamentGender}
               transferConfig={{
                 enabled: enableTransferProof,
+                trustPolicyEnabled: enableTrustBasedPaymentPolicy,
+                minPlayedTournaments: trustPolicyMinPlayedTournaments,
                 alias: transferAlias,
                 amount: transferAmount,
+                amountPerPlayer: transferAmountPerPlayer,
               }}
             />
           ) : (

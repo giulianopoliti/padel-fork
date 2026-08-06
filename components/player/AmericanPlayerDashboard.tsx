@@ -32,8 +32,11 @@ interface AmericanPlayerDashboardProps {
     price?: string | number | null
     enable_public_inscriptions?: boolean
     enable_transfer_proof?: boolean
+    enable_trust_based_payment_policy?: boolean
+    trust_policy_min_played_tournaments?: number
     transfer_alias?: string | null
     transfer_amount?: number | null
+    transfer_amount_per_player?: number | null
     publicInfo?: TournamentPublicInfo
   }
 }
@@ -428,8 +431,11 @@ function NotRegisteredView({
                 tournamentGender={tournament.gender || Gender.MALE}
                 tournamentPrice={tournament.price ?? null}
                 enableTransferProof={tournament.enable_transfer_proof || false}
+                enableTrustBasedPaymentPolicy={tournament.enable_trust_based_payment_policy || false}
+                trustPolicyMinPlayedTournaments={tournament.trust_policy_min_played_tournaments || 2}
                 transferAlias={tournament.transfer_alias || null}
                 transferAmount={tournament.transfer_amount || null}
+                transferAmountPerPlayer={tournament.transfer_amount_per_player || null}
                 buttonLabel="Inscribirme"
                 buttonClassName="w-full"
               />

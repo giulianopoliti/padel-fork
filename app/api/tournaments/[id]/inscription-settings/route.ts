@@ -9,9 +9,12 @@ interface InscriptionSettingsPayload {
   show_few_slots_alert: boolean
   enable_payment_checkboxes: boolean
   enable_transfer_proof: boolean
+  enable_trust_based_payment_policy: boolean
+  trust_policy_min_played_tournaments: number
   messages_enabled: boolean
   transfer_alias: string | null
   transfer_amount: number | null
+  transfer_amount_per_player: number | null
 }
 
 export async function PATCH(
@@ -51,9 +54,12 @@ export async function PATCH(
         show_few_slots_alert,
         enable_payment_checkboxes,
         enable_transfer_proof,
+        enable_trust_based_payment_policy,
+        trust_policy_min_played_tournaments,
         messages_enabled,
         transfer_alias,
-        transfer_amount
+        transfer_amount,
+        transfer_amount_per_player
       `)
       .eq('id', tournamentId)
       .single()
@@ -75,6 +81,15 @@ export async function PATCH(
       payload.enable_payment_checkboxes ?? currentTournament.enable_payment_checkboxes ?? false
     const enableTransferProof =
       payload.enable_transfer_proof ?? currentTournament.enable_transfer_proof ?? false
+    const enableTrustBasedPaymentPolicy =
+      payload.enable_trust_based_payment_policy ??
+      currentTournament.enable_trust_based_payment_policy ??
+      false
+    const trustPolicyMinPlayedTournaments = Number(
+      payload.trust_policy_min_played_tournaments ??
+      currentTournament.trust_policy_min_played_tournaments ??
+      2
+    )
     const messagesEnabled =
       payload.messages_enabled ?? currentTournament.messages_enabled ?? true
     const transferAlias =
@@ -89,6 +104,19 @@ export async function PATCH(
       rawAmount === null || rawAmount === undefined || Number.isNaN(Number(rawAmount))
         ? null
         : Number(rawAmount)
+    const rawAmountPerPlayer =
+      payload.transfer_amount_per_player !== undefined
+        ? payload.transfer_amount_per_player
+        : currentTournament.transfer_amount_per_player
+    const transferAmountPerPlayer =
+      rawAmountPerPlayer === null || rawAmountPerPlayer === undefined || Number.isNaN(Number(rawAmountPerPlayer))
+        ? null
+        : Number(rawAmountPerPlayer)
+    const touchesTrustPaymentPolicy =
+      payload.enable_trust_based_payment_policy !== undefined ||
+      payload.trust_policy_min_played_tournaments !== undefined ||
+      payload.transfer_alias !== undefined ||
+      payload.transfer_amount_per_player !== undefined
 
     if (enableTransferProof) {
       if (!transferAlias) {
@@ -100,7 +128,30 @@ export async function PATCH(
 
       if (transferAmount === null || transferAmount <= 0) {
         return NextResponse.json(
-          { success: false, message: 'El monto debe ser mayor a 0 cuando la transferencia está activa' },
+          { success: false, message: 'El importe a transferir por pareja debe ser mayor a 0 cuando la transferencia esta activa' },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (enableTrustBasedPaymentPolicy && touchesTrustPaymentPolicy) {
+      if (!transferAlias) {
+        return NextResponse.json(
+          { success: false, message: 'El alias es obligatorio cuando la politica de pago esta activa' },
+          { status: 400 }
+        )
+      }
+
+      if (trustPolicyMinPlayedTournaments < 0) {
+        return NextResponse.json(
+          { success: false, message: 'La cantidad minima de torneos no puede ser negativa' },
+          { status: 400 }
+        )
+      }
+
+      if (transferAmountPerPlayer === null || transferAmountPerPlayer <= 0) {
+        return NextResponse.json(
+          { success: false, message: 'La seña por jugador debe ser mayor a 0 cuando la politica de pago esta activa' },
           { status: 400 }
         )
       }
@@ -112,9 +163,12 @@ export async function PATCH(
       show_few_slots_alert: showFewSlotsAlert,
       enable_payment_checkboxes: enablePaymentCheckboxes,
       enable_transfer_proof: enableTransferProof,
+      enable_trust_based_payment_policy: enableTrustBasedPaymentPolicy,
+      trust_policy_min_played_tournaments: trustPolicyMinPlayedTournaments,
       messages_enabled: messagesEnabled,
       transfer_alias: transferAlias,
       transfer_amount: transferAmount,
+      transfer_amount_per_player: transferAmountPerPlayer,
     }
 
     const shouldApprovePendingInscriptions =

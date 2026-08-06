@@ -198,7 +198,7 @@ export default function PlayerFvUpcomingTournamentsSection({
                     {priceLabel ? (
                       <Badge className="bg-court-500 text-brand-900 hover:bg-court-500">
                         <Ticket className="mr-1 h-3.5 w-3.5" />
-                        {priceLabel}
+                        {priceLabel} por jugador
                       </Badge>
                     ) : null}
                   </div>

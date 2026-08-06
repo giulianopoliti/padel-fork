@@ -23,6 +23,8 @@ import {
   Clock,
   Calendar,
   X,
+  Landmark,
+  ShieldCheck,
 } from 'lucide-react';
 import { useForm, type FieldPath } from 'react-hook-form';
 import * as z from 'zod';
@@ -88,6 +90,9 @@ const DEFAULT_PRESET_BY_TYPE: Record<'AMERICAN' | 'LONG', TournamentFormatPreset
   LONG: 'LONG_SINGLE_ZONE_BRACKET',
 };
 
+const DEFAULT_ENABLE_TRUST_PAYMENT_POLICY =
+  process.env.NEXT_PUBLIC_TENANT_KEY !== 'padel-fv';
+
 const PRESET_OPTIONS = {
   AMERICAN: getPresetOptionsByType('AMERICAN'),
   LONG: getPresetOptionsByType('LONG'),
@@ -138,8 +143,12 @@ const tournamentSchema = z.object({
   max_participants: z.number().min(2, 'Minimo 2 parejas').max(64, 'Maximo 64 parejas').optional(),
   club_id: z.string().min(1, 'Selecciona un club'),
   extra_club_ids: z.array(z.string()).default([]),
-  price: z.number().int('El precio debe ser un numero entero').min(0, 'El precio no puede ser negativo').max(MAX_TOURNAMENT_PRICE, 'El precio es demasiado alto').optional(),
+  price: z.number().int('El precio por jugador debe ser un numero entero').min(0, 'El precio por jugador no puede ser negativo').max(MAX_TOURNAMENT_PRICE, 'El precio por jugador es demasiado alto').optional(),
   award: z.string().optional(),
+  enable_trust_based_payment_policy: z.boolean().default(DEFAULT_ENABLE_TRUST_PAYMENT_POLICY),
+  trust_policy_min_played_tournaments: z.number().int('Debe ser un numero entero').min(0, 'No puede ser negativo').default(2),
+  transfer_alias: z.string().optional(),
+  transfer_amount_per_player: z.number().min(0, 'No puede ser negativo').optional(),
   american_multizone_algorithm: z.enum(['SERPENTINE_BY_ZONE', 'GLOBAL_STANDINGS', 'HYBRID_FIRSTS_GLOBAL_REST_ZONES']).optional(),
   american_zone_matches_per_couple: z.enum(['2', '3']).optional(),
   american_couples_per_zone: z.enum(['2', '3', 'ALL']).optional(),
@@ -213,6 +222,24 @@ const tournamentSchema = z.object({
 }, {
   message: 'La categoria por suma solo esta disponible para torneos mixtos',
   path: ['gender'],
+}).refine((data) => {
+  if (data.type !== 'AMERICAN' || !data.enable_trust_based_payment_policy) {
+    return true;
+  }
+
+  return Boolean(data.transfer_alias?.trim());
+}, {
+  message: 'Completa el alias para transferencia',
+  path: ['transfer_alias'],
+}).refine((data) => {
+  if (data.type !== 'AMERICAN' || !data.enable_trust_based_payment_policy) {
+    return true;
+  }
+
+  return typeof data.transfer_amount_per_player === 'number' && data.transfer_amount_per_player > 0;
+}, {
+  message: 'Indica la seña por jugador',
+  path: ['transfer_amount_per_player'],
 });
 
 type TournamentFormData = z.infer<typeof tournamentSchema>;
@@ -347,6 +374,10 @@ export default function TournamentCreateForm() {
       extra_club_ids: [],
       price: undefined,
       award: '',
+      enable_trust_based_payment_policy: DEFAULT_ENABLE_TRUST_PAYMENT_POLICY,
+      trust_policy_min_played_tournaments: 2,
+      transfer_alias: '',
+      transfer_amount_per_player: undefined,
       american_multizone_algorithm: 'SERPENTINE_BY_ZONE',
       american_zone_matches_per_couple: '2',
       american_couples_per_zone: 'ALL',
@@ -708,6 +739,10 @@ export default function TournamentCreateForm() {
         : ['start_date', 'end_date'];
     }
 
+    if (currentStep === 3 && isAmericanTournament && watchedValues.enable_trust_based_payment_policy) {
+      return ['transfer_alias', 'transfer_amount_per_player', 'trust_policy_min_played_tournaments'];
+    }
+
     return [];
   };
 
@@ -813,6 +848,14 @@ export default function TournamentCreateForm() {
         extra_club_ids: (data.extra_club_ids || []).filter((id) => id && id !== data.club_id),
         price: data.price ?? null,
         award: data.award?.trim() || null,
+        enable_trust_based_payment_policy:
+          data.type === 'AMERICAN' ? data.enable_trust_based_payment_policy : false,
+        trust_policy_min_played_tournaments: data.trust_policy_min_played_tournaments ?? 2,
+        transfer_alias: data.transfer_alias?.trim() || null,
+        transfer_amount_per_player:
+          data.type === 'AMERICAN' && data.enable_trust_based_payment_policy
+            ? data.transfer_amount_per_player ?? null
+            : null,
       };
 
       const result = await createTournamentAction(dataForAction);
@@ -1910,7 +1953,7 @@ export default function TournamentCreateForm() {
                     <CardHeader className="space-y-2 border-b border-slate-100 p-4 sm:p-6">
                       <CardTitle className="flex items-center gap-3 text-lg font-light text-slate-900 sm:text-xl">
                         <Users className="h-5 w-5 text-slate-700" />
-                        Cupo, precio y premio
+                        Cupo, precio por jugador y premio
                       </CardTitle>
                       <CardDescription className="text-sm text-slate-500">
                         Ultimos datos antes de crear el torneo.
@@ -1953,7 +1996,7 @@ export default function TournamentCreateForm() {
                             <FormItem>
                               <FormLabel className="font-medium text-slate-700">
                                 <Tag className="mr-1 inline h-4 w-4" />
-                                Precio de inscripcion
+                                Precio por jugador
                               </FormLabel>
                               <FormControl>
                                 <Input
@@ -1968,7 +2011,7 @@ export default function TournamentCreateForm() {
                                 />
                               </FormControl>
                               <FormDescription className="text-slate-500">
-                                Opcional. Solo numeros enteros.
+                                Opcional. Es el valor final por jugador para jugar el torneo.
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
@@ -2000,6 +2043,117 @@ export default function TournamentCreateForm() {
                           </FormItem>
                         )}
                       />
+
+                      {isAmericanTournament && (
+                        <div className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
+                          <FormField
+                            control={form.control}
+                            name="enable_trust_based_payment_policy"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="space-y-2">
+                                  <FormLabel className="flex items-center gap-2 text-base font-medium text-slate-900">
+                                    <ShieldCheck className="h-4 w-4 text-emerald-700" />
+                                    Politica de pago por confianza
+                                  </FormLabel>
+                                  <FormDescription className="max-w-2xl text-slate-600">
+                                    Ofrece efectivo o transferencia. En efectivo, los jugadores con poco historial quedan pendientes; con transferencia suben comprobante y quedan confirmados.
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2">
+                                    <Checkbox
+                                      id="create-trust-payment-policy"
+                                      checked={field.value}
+                                      onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                                    />
+                                    <label htmlFor="create-trust-payment-policy" className="text-sm font-medium text-slate-800">
+                                      Activada
+                                    </label>
+                                  </div>
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          {watchedValues.enable_trust_based_payment_policy && (
+                            <div className="grid gap-4 rounded-xl border border-white bg-white p-4 md:grid-cols-3">
+                              <FormField
+                                control={form.control}
+                                name="transfer_alias"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="font-medium text-slate-700">
+                                      <Landmark className="mr-1 inline h-4 w-4" />
+                                      Alias
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="alias.del.club"
+                                        className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormDescription className="text-slate-500">
+                                      Se muestra en transferencia.
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="transfer_amount_per_player"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="font-medium text-slate-700">Seña por jugador</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="Ej: 7500"
+                                        className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
+                                        value={field.value ?? ''}
+                                        onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)}
+                                      />
+                                    </FormControl>
+                                    <FormDescription className="text-slate-500">
+                                      Seña total de la pareja: {formatCurrency(field.value ? Number(field.value) * 2 : undefined)}.
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="trust_policy_min_played_tournaments"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="font-medium text-slate-700">Inscripciones confirmadas para confiar</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
+                                        value={field.value ?? 2}
+                                        onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : 0)}
+                                      />
+                                    </FormControl>
+                                    <FormDescription className="text-slate-500">
+                                      Menos que esto en efectivo queda pendiente.
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -2078,7 +2232,7 @@ export default function TournamentCreateForm() {
                         </div>
 
                         <div className="flex items-center justify-between gap-4">
-                          <span className="text-slate-500">Inscripcion</span>
+                          <span className="text-slate-500">Precio por jugador</span>
                           <span className="text-right font-medium text-slate-900">{formatCurrency(watchedValues.price)}</span>
                         </div>
 

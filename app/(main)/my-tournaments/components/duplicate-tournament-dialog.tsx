@@ -260,7 +260,7 @@ export function DuplicateTournamentDialog({
 
     const price = formState.price ? Number(formState.price) : null
     if (price !== null && (!Number.isInteger(price) || price < 0 || price > MAX_TOURNAMENT_PRICE)) {
-      setError("El precio debe ser un numero entero valido")
+      setError("El precio por jugador debe ser un numero entero valido")
       return
     }
 
@@ -484,7 +484,7 @@ export function DuplicateTournamentDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor={`duplicate-price-${tournamentId}`}>Precio</Label>
+                <Label htmlFor={`duplicate-price-${tournamentId}`}>Precio por jugador</Label>
                 <Input
                   id={`duplicate-price-${tournamentId}`}
                   type="number"

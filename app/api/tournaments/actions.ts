@@ -83,6 +83,10 @@ interface CreateTournamentData {
   price: number | null;
   award: string | null;
   format_config?: any;
+  enable_trust_based_payment_policy?: boolean | null;
+  trust_policy_min_played_tournaments?: number | null;
+  transfer_alias?: string | null;
+  transfer_amount_per_player?: number | null;
 }
 
 // Interface for couple with extended stats used in sorting (extends the imported CoupleWithStats)
@@ -604,22 +608,73 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
 
     if (formData.price !== null) {
       if (!Number.isInteger(formData.price)) {
-        return { success: false, error: 'El precio debe ser un numero entero' };
+        return { success: false, error: 'El precio por jugador debe ser un numero entero' };
       }
 
       if (formData.price < 0) {
-        return { success: false, error: 'El precio no puede ser negativo' };
+        return { success: false, error: 'El precio por jugador no puede ser negativo' };
       }
 
       if (formData.price > MAX_TOURNAMENT_PRICE) {
-        return { success: false, error: 'El precio es demasiado alto' };
+        return { success: false, error: 'El precio por jugador es demasiado alto' };
       }
     }
 
     // 3. Prepare data for insertion (remove club_id and extra_club_ids from formData to avoid conflicts)
     const { club_id: _, extra_club_ids: __, ...cleanFormData } = formData;
+    let organizationSlug: string | null = null
+
+    if (organization_id) {
+      const { data: organizationData, error: organizationError } = await supabase
+        .from('organizaciones')
+        .select('slug')
+        .eq('id', organization_id)
+        .maybeSingle()
+
+      if (organizationError) {
+        console.warn('[createTournamentAction] Could not resolve organization slug for payment defaults:', organizationError.message)
+      }
+
+      organizationSlug = organizationData?.slug ?? null
+    }
+
+    const shouldEnableTrustPaymentByDefault =
+      (
+        process.env.NEXT_PUBLIC_TENANT_KEY === 'padel-elite' ||
+        organizationSlug === 'padel-elite' ||
+        organizationSlug === 'tpe-padel'
+      ) &&
+      cleanFormData.type === 'AMERICAN'
+    const enableTrustBasedPaymentPolicy =
+      cleanFormData.enable_trust_based_payment_policy ?? shouldEnableTrustPaymentByDefault
+    const trustPolicyMinPlayedTournaments =
+      cleanFormData.trust_policy_min_played_tournaments ?? 2
+    const transferAmountPerPlayer = cleanFormData.transfer_amount_per_player ?? null
+
+    if (enableTrustBasedPaymentPolicy) {
+      if (cleanFormData.type !== 'AMERICAN') {
+        return { success: false, error: 'La politica de pago por confianza solo aplica a torneos americanos.' }
+      }
+
+      if (!cleanFormData.transfer_alias?.trim()) {
+        return { success: false, error: 'Completa el alias para activar la politica de pago por confianza.' }
+      }
+
+      if (trustPolicyMinPlayedTournaments < 0) {
+        return { success: false, error: 'La cantidad de torneos de confianza no puede ser negativa.' }
+      }
+
+      if (transferAmountPerPlayer === null || transferAmountPerPlayer <= 0) {
+        return { success: false, error: 'Completa la seña por jugador para transferencia.' }
+      }
+    }
+
     const tournamentToInsert = {
       ...cleanFormData,
+      enable_trust_based_payment_policy: enableTrustBasedPaymentPolicy,
+      trust_policy_min_played_tournaments: trustPolicyMinPlayedTournaments,
+      transfer_alias: cleanFormData.transfer_alias?.trim() || null,
+      transfer_amount_per_player: transferAmountPerPlayer,
       category_name: normalizedCategoryName,
       club_id: club_id,
       status: 'NOT_STARTED', // Default status
@@ -1258,12 +1313,13 @@ export async function registerCoupleForTournament(
   tournamentId: string, 
   player1Id: string, 
   player2Id: string,
-  isOrganizerRegistration: boolean = false
+  isOrganizerRegistration: boolean = false,
+  paymentMethod?: 'CASH' | 'TRANSFER' | null
 ): Promise<{ success: boolean; error?: string; inscription?: any }> {
   console.log(`[registerCoupleForTournament] 🔄 Refactorizado con Strategy Pattern - torneo ${tournamentId}`, { player1Id, player2Id, isOrganizerRegistration });
   
   // Usar la nueva implementación V2 con Strategy Pattern
-  return await registerCoupleForTournamentV2(tournamentId, player1Id, player2Id, isOrganizerRegistration);
+  return await registerCoupleForTournamentV2(tournamentId, player1Id, player2Id, isOrganizerRegistration, paymentMethod);
 }
 
 /**
@@ -1272,11 +1328,11 @@ export async function registerCoupleForTournament(
  * Función principal refactorizada para usar el sistema Strategy Pattern.
  * Mantiene backward compatibility con la signatura original.
  */
-export async function registerAuthenticatedPlayerForTournament(tournamentId: string, phone?: string): Promise<{ success: boolean; message: string; inscriptionId?: string }> {
+export async function registerAuthenticatedPlayerForTournament(tournamentId: string, phone?: string, paymentMethod?: 'CASH' | 'TRANSFER' | null): Promise<{ success: boolean; message: string; inscriptionId?: string }> {
   console.log(`[registerAuthenticatedPlayerForTournament] 🔄 Refactorizado con Strategy Pattern - torneo: ${tournamentId}`);
   
   // Usar la nueva implementación V2 con Strategy Pattern
-  return await registerAuthenticatedPlayerForTournamentV2(tournamentId, phone);
+  return await registerAuthenticatedPlayerForTournamentV2(tournamentId, phone, paymentMethod);
 }
 
 export async function getTournamentDetailsWithInscriptions(tournamentId: string) {
@@ -5873,7 +5929,8 @@ export async function registerCoupleForTournamentV2(
   tournamentId: string, 
   player1Id: string, 
   player2Id: string,
-  isOrganizerRegistration: boolean = false
+  isOrganizerRegistration: boolean = false,
+  paymentMethod?: 'CASH' | 'TRANSFER' | null
 ): Promise<{ success: boolean; error?: string; inscription?: any }> {
   console.log(`[registerCoupleForTournamentV2] 🎾 Usando Strategy Pattern para torneo ${tournamentId}`, { player1Id, player2Id, isOrganizerRegistration });
   
@@ -5885,7 +5942,8 @@ export async function registerCoupleForTournamentV2(
       tournamentId,
       player1Id,
       player2Id,
-      isOrganizerRegistration
+      isOrganizerRegistration,
+      paymentMethod,
     });
     
     // Revalidar path para mantener comportamiento anterior
@@ -6077,7 +6135,8 @@ export async function registerNewPlayerForTournamentV2(
  */
 export async function registerAuthenticatedPlayerForTournamentV2(
   tournamentId: string, 
-  phone?: string
+  phone?: string,
+  paymentMethod?: 'CASH' | 'TRANSFER' | null
 ): Promise<{ success: boolean; message: string; inscriptionId?: string }> {
   console.log(`[registerAuthenticatedPlayerForTournamentV2] 🎾 Auto-registro con Strategy Pattern para torneo ${tournamentId}`);
   
@@ -6087,7 +6146,8 @@ export async function registerAuthenticatedPlayerForTournamentV2(
     
     const result = await registerAuthenticatedPlayer({
       tournamentId,
-      phone
+      phone,
+      paymentMethod,
     });
     
     // Revalidar paths para mantener comportamiento anterior

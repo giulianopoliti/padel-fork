@@ -99,7 +99,7 @@ export const EditTournamentForm = ({ tournament, onDataChange }: EditTournamentF
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="price">Precio</Label>
+            <Label htmlFor="price">Precio por jugador</Label>
             <Input
               id="price"
               type="number"

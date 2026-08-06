@@ -652,21 +652,21 @@ export async function updateTournamentBasicInfo(
       if (!Number.isInteger(params.price)) {
         return {
           success: false,
-          error: 'El precio debe ser un numero entero'
+          error: 'El precio por jugador debe ser un numero entero'
         }
       }
 
       if (params.price < 0) {
         return {
           success: false,
-          error: 'El precio no puede ser negativo'
+          error: 'El precio por jugador no puede ser negativo'
         }
       }
 
       if (params.price > MAX_TOURNAMENT_PRICE) {
         return {
           success: false,
-          error: 'El precio es demasiado alto'
+          error: 'El precio por jugador es demasiado alto'
         }
       }
     }

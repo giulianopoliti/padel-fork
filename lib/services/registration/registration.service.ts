@@ -338,7 +338,23 @@ export class RegistrationService {
       // Obtener datos del torneo
       const { data: tournament, error: tournamentError } = await this.supabase
         .from('tournaments')
-        .select('id, name, type, gender, category_name, category_config, status, validate_inscriptions')
+        .select(`
+          id,
+          name,
+          type,
+          gender,
+          organization_id,
+          category_name,
+          category_config,
+          status,
+          validate_inscriptions,
+          enable_transfer_proof,
+          transfer_alias,
+          transfer_amount,
+          enable_trust_based_payment_policy,
+          trust_policy_min_played_tournaments,
+          transfer_amount_per_player
+        `)
         .eq('id', tournamentId)
         .single()
 
@@ -354,10 +370,17 @@ export class RegistrationService {
           name: tournament.name,
           type: tournament.type,
           gender: tournament.gender,
+          organization_id: tournament.organization_id,
           category_name: tournament.category_name,
           category_config: tournament.category_config,
           status: tournament.status,
-          validate_inscriptions: tournament.validate_inscriptions ?? false
+          validate_inscriptions: tournament.validate_inscriptions ?? false,
+          enable_transfer_proof: tournament.enable_transfer_proof ?? false,
+          transfer_alias: tournament.transfer_alias ?? null,
+          transfer_amount: tournament.transfer_amount ?? null,
+          enable_trust_based_payment_policy: tournament.enable_trust_based_payment_policy ?? false,
+          trust_policy_min_played_tournaments: tournament.trust_policy_min_played_tournaments ?? 2,
+          transfer_amount_per_player: tournament.transfer_amount_per_player ?? null,
         },
         user: {
           id: user.id,
@@ -388,17 +411,31 @@ export class RegistrationService {
     if (!inscriptionId) return
 
     try {
+      const { data: inscription } = await context.supabase
+        .from('inscriptions')
+        .select('is_pending, payment_proof_status')
+        .eq('id', inscriptionId)
+        .maybeSingle()
+
       await sendTournamentMessage({
         type: 'INSCRIPTION_SUBMITTED_ADMIN',
         supabase: context.supabase,
         inscriptionId,
       })
 
-      await sendTournamentMessage({
-        type: 'INSCRIPTION_APPROVED_PLAYER',
-        supabase: context.supabase,
-        inscriptionId,
-      })
+      if (inscription?.is_pending) {
+        await sendTournamentMessage({
+          type: 'INSCRIPTION_PENDING_PLAYER',
+          supabase: context.supabase,
+          inscriptionId,
+        })
+      } else if (inscription?.payment_proof_status !== 'PENDING_REVIEW') {
+        await sendTournamentMessage({
+          type: 'INSCRIPTION_APPROVED_PLAYER',
+          supabase: context.supabase,
+          inscriptionId,
+        })
+      }
     } catch (error) {
       console.error('[RegistrationService] Error enviando email de inscripcion:', error)
     }

@@ -33,6 +33,20 @@ const renderDirectionsLink = (mapsUrl: string | null | undefined) =>
     ? `<p style="margin:18px 0 0;"><a href="${escapeHtml(mapsUrl)}" style="display:inline-block;color:#1d4ed8;text-decoration:none;font-weight:700;">Como llegar</a></p>`
     : ""
 
+const formatPaymentMethod = (method?: 'CASH' | 'TRANSFER' | null) => {
+  if (method === 'CASH') return 'Efectivo'
+  if (method === 'TRANSFER') return 'Transferencia'
+  return null
+}
+
+const formatMoney = (amount?: number | null) => {
+  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return null
+  return `$${Number(amount).toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`
+}
+
 const renderLocationText = (clubLocation: {
   name: string | null
   address: string | null
@@ -60,6 +74,7 @@ const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEve
 
   const tournamentUrl = buildAppUrl(`/tournaments/${data.tournament.id}/inscriptions`)
   const statusLabel = data.inscription.is_pending ? "Pendiente de revision" : "Confirmada"
+  const contactPhone = data.inscription.phone || data.contactPhones[0] || null
 
   return sendSafely(
     {
@@ -76,6 +91,12 @@ const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEve
             { label: "Formato", value: data.tournament.type },
             { label: "Categoria", value: data.tournament.category_name },
             { label: "Estado", value: statusLabel },
+            { label: "Precio por jugador", value: formatMoney(data.tournament.price) },
+            { label: "Metodo de pago", value: formatPaymentMethod(data.inscription.payment_method) },
+            { label: "Seña por jugador", value: formatMoney(data.inscription.payment_amount_per_player_snapshot) },
+            { label: "Seña total de la pareja", value: formatMoney(data.inscription.payment_total_amount_snapshot) },
+            { label: "Telefono / WhatsApp del jugador", value: contactPhone },
+            { label: "Inscripciones confirmadas previas", value: data.inscription.trust_player_played_tournaments_snapshot === null || data.inscription.trust_player_played_tournaments_snapshot === undefined ? null : String(data.inscription.trust_player_played_tournaments_snapshot) },
             { label: "Fecha de alta", value: formatDateTime(data.inscription.created_at) },
             ...getLocationDetails(data.clubLocation),
           ])}
@@ -83,7 +104,7 @@ const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEve
         `,
         cta: { label: "Ver inscripciones", href: tournamentUrl },
       }),
-      text: `Nueva inscripcion\nTorneo: ${data.tournament.name}\nPareja/Jugador: ${data.participantName}\nEstado: ${statusLabel}${renderLocationText(data.clubLocation)}\n${tournamentUrl}`,
+      text: `Nueva inscripcion\nTorneo: ${data.tournament.name}\nPareja/Jugador: ${data.participantName}\nEstado: ${statusLabel}\nPrecio por jugador: ${formatMoney(data.tournament.price) || "-"}\nMetodo de pago: ${formatPaymentMethod(data.inscription.payment_method) || "-"}\nSeña total de la pareja: ${formatMoney(data.inscription.payment_total_amount_snapshot) || "-"}\nTelefono / WhatsApp del jugador: ${contactPhone || "-"}${renderLocationText(data.clubLocation)}\n${tournamentUrl}`,
       idempotencyKey: `message-inscription-submitted-admin-${data.inscription.id}`,
       tags: [
         { name: "type", value: "inscription_submitted_admin" },
@@ -91,6 +112,53 @@ const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEve
       ],
     },
     "message inscription submitted admin",
+  )
+}
+
+const sendInscriptionPendingPlayer = async (event: Extract<TournamentMessageEvent, { type: "INSCRIPTION_PENDING_PLAYER" }>) => {
+  const data = await loadInscriptionMessageData(event.supabase, event.inscriptionId)
+  if (!data) return skipped("missing inscription data")
+  if (!isTournamentMessagesEnabled(data.tournament)) return skipped("messages disabled")
+  if (!data.inscription.is_pending) return skipped("inscription is not pending")
+  if (data.playerEmails.length === 0) return skipped("no player recipients")
+
+  const tournamentUrl = buildAppUrl(`/tournaments/${data.tournament.id}`)
+  const title = "Inscripcion pendiente"
+  const contactPhone = data.inscription.phone || data.contactPhones[0] || null
+
+  return sendSafely(
+    {
+      to: data.playerEmails,
+      subject: `${title}: ${data.tournament.name}`,
+      html: renderEmailLayout({
+        title,
+        preview: `${escapeHtml(data.tournament.name)} - Pendiente`,
+        body: `
+          <p style="margin:0 0 14px;">Hola,</p>
+          <p style="margin:0 0 14px;">Recibimos tu inscripcion, pero todavia debe confirmarla el organizador.</p>
+          <p style="margin:0 0 14px;">Cuando se apruebe, te vamos a avisar por este mismo medio.</p>
+          ${detailsList([
+            { label: "Torneo", value: data.tournament.name },
+            { label: "Pareja/Jugador", value: data.participantName },
+            { label: "Precio por jugador", value: formatMoney(data.tournament.price) },
+            { label: "Metodo de pago", value: formatPaymentMethod(data.inscription.payment_method) },
+            { label: "Seña total de la pareja", value: formatMoney(data.inscription.payment_total_amount_snapshot) },
+            { label: "WhatsApp registrado", value: contactPhone },
+            { label: "Estado", value: "Pendiente" },
+            ...getLocationDetails(data.clubLocation),
+          ])}
+          ${renderDirectionsLink(data.clubLocation?.mapsUrl)}
+        `,
+        cta: { label: "Ver torneo", href: tournamentUrl },
+      }),
+      text: `${title}\nTorneo: ${data.tournament.name}\nPareja/Jugador: ${data.participantName}\nPrecio por jugador: ${formatMoney(data.tournament.price) || "-"}\nMetodo de pago: ${formatPaymentMethod(data.inscription.payment_method) || "-"}\nSeña total de la pareja: ${formatMoney(data.inscription.payment_total_amount_snapshot) || "-"}\nWhatsApp registrado: ${contactPhone || "-"}\nEstado: Pendiente${renderLocationText(data.clubLocation)}\n${tournamentUrl}`,
+      idempotencyKey: `message-inscription-pending-player-${data.inscription.id}`,
+      tags: [
+        { name: "type", value: "inscription_pending_player" },
+        { name: "tenant", value: process.env.NEXT_PUBLIC_TENANT_KEY || "unknown" },
+      ],
+    },
+    "message inscription pending player",
   )
 }
 
@@ -119,6 +187,9 @@ const sendInscriptionApprovedPlayer = async (event: Extract<TournamentMessageEve
             { label: "Pareja/Jugador", value: data.participantName },
             { label: "Formato", value: data.tournament.type },
             { label: "Categoria", value: data.tournament.category_name },
+            { label: "Precio por jugador", value: formatMoney(data.tournament.price) },
+            { label: "Metodo de pago", value: formatPaymentMethod(data.inscription.payment_method) },
+            { label: "Seña total de la pareja", value: formatMoney(data.inscription.payment_total_amount_snapshot) },
             { label: "Inicio", value: formatTournamentDateTime(data.tournament.start_date) },
             { label: "Estado", value: "Confirmada" },
             ...getLocationDetails(data.clubLocation),
@@ -127,7 +198,7 @@ const sendInscriptionApprovedPlayer = async (event: Extract<TournamentMessageEve
         `,
         cta: { label: "Ver torneo", href: tournamentUrl },
       }),
-      text: `${title}\nTorneo: ${data.tournament.name}\nPareja/Jugador: ${data.participantName}\nEstado: Confirmada${renderLocationText(data.clubLocation)}\n${tournamentUrl}`,
+      text: `${title}\nTorneo: ${data.tournament.name}\nPareja/Jugador: ${data.participantName}\nPrecio por jugador: ${formatMoney(data.tournament.price) || "-"}\nMetodo de pago: ${formatPaymentMethod(data.inscription.payment_method) || "-"}\nSeña total de la pareja: ${formatMoney(data.inscription.payment_total_amount_snapshot) || "-"}\nEstado: Confirmada${renderLocationText(data.clubLocation)}\n${tournamentUrl}`,
       idempotencyKey: `message-inscription-approved-player-${data.inscription.id}`,
       tags: [
         { name: "type", value: "inscription_approved_player" },
@@ -135,6 +206,51 @@ const sendInscriptionApprovedPlayer = async (event: Extract<TournamentMessageEve
       ],
     },
     "message inscription approved player",
+  )
+}
+
+const sendInscriptionApprovedAdmin = async (event: Extract<TournamentMessageEvent, { type: "INSCRIPTION_APPROVED_ADMIN" }>) => {
+  const data = await loadInscriptionMessageData(event.supabase, event.inscriptionId)
+  if (!data) return skipped("missing inscription data")
+  if (!isTournamentMessagesEnabled(data.tournament)) return skipped("messages disabled")
+  if (data.inscription.is_pending) return skipped("inscription still pending")
+  if (data.adminEmails.length === 0) return skipped("no admin recipients")
+
+  const tournamentUrl = buildAppUrl(`/tournaments/${data.tournament.id}/inscriptions`)
+  const contactPhone = data.inscription.phone || data.contactPhones[0] || null
+
+  return sendSafely(
+    {
+      to: data.adminEmails,
+      subject: `Inscripcion confirmada: ${data.tournament.name}`,
+      html: renderEmailLayout({
+        title: "Inscripcion confirmada",
+        preview: `${data.participantName} - ${data.tournament.name}`,
+        body: `
+          <p style="margin:0 0 14px;">Una inscripcion quedo confirmada.</p>
+          ${detailsList([
+            { label: "Torneo", value: data.tournament.name },
+            { label: "Pareja/Jugador", value: data.participantName },
+            { label: "Estado", value: "Confirmada" },
+            { label: "Precio por jugador", value: formatMoney(data.tournament.price) },
+            { label: "Metodo de pago", value: formatPaymentMethod(data.inscription.payment_method) },
+            { label: "Seña total de la pareja", value: formatMoney(data.inscription.payment_total_amount_snapshot) },
+            { label: "Telefono / WhatsApp del jugador", value: contactPhone },
+            { label: "Fecha de alta", value: formatDateTime(data.inscription.created_at) },
+            ...getLocationDetails(data.clubLocation),
+          ])}
+          ${renderDirectionsLink(data.clubLocation?.mapsUrl)}
+        `,
+        cta: { label: "Ver inscripciones", href: tournamentUrl },
+      }),
+      text: `Inscripcion confirmada\nTorneo: ${data.tournament.name}\nPareja/Jugador: ${data.participantName}\nEstado: Confirmada\nPrecio por jugador: ${formatMoney(data.tournament.price) || "-"}\nMetodo de pago: ${formatPaymentMethod(data.inscription.payment_method) || "-"}\nSeña total de la pareja: ${formatMoney(data.inscription.payment_total_amount_snapshot) || "-"}\nTelefono / WhatsApp del jugador: ${contactPhone || "-"}${renderLocationText(data.clubLocation)}\n${tournamentUrl}`,
+      idempotencyKey: `message-inscription-approved-admin-${data.inscription.id}`,
+      tags: [
+        { name: "type", value: "inscription_approved_admin" },
+        { name: "tenant", value: process.env.NEXT_PUBLIC_TENANT_KEY || "unknown" },
+      ],
+    },
+    "message inscription approved admin",
   )
 }
 
@@ -239,6 +355,10 @@ export const emailMessageAdapter: TournamentMessageAdapter = {
     switch (event.type) {
       case "INSCRIPTION_SUBMITTED_ADMIN":
         return sendInscriptionSubmittedAdmin(event)
+      case "INSCRIPTION_APPROVED_ADMIN":
+        return sendInscriptionApprovedAdmin(event)
+      case "INSCRIPTION_PENDING_PLAYER":
+        return sendInscriptionPendingPlayer(event)
       case "INSCRIPTION_APPROVED_PLAYER":
         return sendInscriptionApprovedPlayer(event)
       case "INSCRIPTION_CANCELLED_ADMIN":

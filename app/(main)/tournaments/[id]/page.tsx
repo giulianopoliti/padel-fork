@@ -27,8 +27,11 @@ interface ClientTournament {
   gender: string | null;
   price: string | number | null;
   enable_transfer_proof: boolean;
+  enable_trust_based_payment_policy: boolean;
+  trust_policy_min_played_tournaments: number;
   transfer_alias: string | null;
   transfer_amount: number | null;
+  transfer_amount_per_player: number | null;
   start_date: string | null;
   end_date: string | null;
   category_name: string | null;
@@ -83,8 +86,11 @@ const serializeTournamentForClient = (
   gender: tournament.gender ?? null,
   price: tournament.price ?? null,
   enable_transfer_proof: Boolean(tournament.enable_transfer_proof),
+  enable_trust_based_payment_policy: Boolean(tournament.enable_trust_based_payment_policy),
+  trust_policy_min_played_tournaments: tournament.trust_policy_min_played_tournaments ?? 2,
   transfer_alias: tournament.transfer_alias ?? null,
   transfer_amount: tournament.transfer_amount ?? null,
+  transfer_amount_per_player: tournament.transfer_amount_per_player ?? null,
   start_date: tournament.start_date ?? null,
   end_date: tournament.end_date ?? null,
   category_name: getTournamentCategoryDisplay(tournament),

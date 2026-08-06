@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { registerCoupleForTournament } from "@/app/api/tournaments/actions"
 import { useUser } from "@/contexts/user-context"
-import { Search, UserPlus, AlertCircle, Users, User, Phone, CreditCard, Loader2, Upload, CheckCircle2 } from "lucide-react"
+import { Search, UserPlus, AlertCircle, Users, User, Phone, CreditCard, Loader2, Upload, CheckCircle2, Banknote } from "lucide-react"
 import { Gender } from "@/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "@/components/ui/use-toast"
@@ -174,8 +174,11 @@ interface RegisterCoupleFormProps {
   tournamentGender: Gender
   transferConfig?: {
     enabled: boolean
+    trustPolicyEnabled?: boolean
+    minPlayedTournaments?: number
     alias: string | null
     amount: number | null
+    amountPerPlayer?: number | null
   }
 }
 
@@ -209,10 +212,21 @@ export default function RegisterCoupleForm({
   const player2PhoneInputRef = useRef<HTMLInputElement | null>(null)
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
   const [paymentProofError, setPaymentProofError] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER'>('CASH')
 
-  const transferProofEnabled = !!transferConfig?.enabled
+  const trustPolicyEnabled = !!transferConfig?.trustPolicyEnabled
+  const transferProofEnabled = trustPolicyEnabled
+    ? paymentMethod === 'TRANSFER'
+    : !!transferConfig?.enabled
   const transferAlias = transferConfig?.alias?.trim() || null
-  const transferAmount = transferConfig?.amount ?? null
+  const transferAmountPerPlayer = trustPolicyEnabled
+    ? transferConfig?.amountPerPlayer ?? null
+    : null
+  const transferAmount = trustPolicyEnabled
+    ? transferAmountPerPlayer !== null && transferAmountPerPlayer !== undefined
+      ? Number(transferAmountPerPlayer) * 2
+      : null
+    : transferConfig?.amount ?? null
   const transferConfigInvalid = transferProofEnabled && (!transferAlias || transferAmount === null || transferAmount <= 0)
 
   // Formulario para registrar nuevo jugador
@@ -662,22 +676,87 @@ export default function RegisterCoupleForm({
     console.log("[RegisterCoupleForm] Llamando registerCoupleForTournament")
     console.log("Player IDs:", { player1Id: userDetails.player_id, player2Id: companionId })
 
-    return await registerCoupleForTournament(tournamentId, userDetails.player_id, companionId)
+    return await registerCoupleForTournament(
+      tournamentId,
+      userDetails.player_id,
+      companionId,
+      false,
+      trustPolicyEnabled ? paymentMethod : null
+    )
   }
 
   const formatTransferAmount = (amount: number | null) => {
-    if (amount === null || Number.isNaN(Number(amount))) return "Monto no disponible"
+    if (amount === null || Number.isNaN(Number(amount))) return "Importe no disponible"
     return `$${Number(amount).toLocaleString("es-AR", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     })}`
   }
 
+  const renderPaymentMethodStep = () => {
+    if (!trustPolicyEnabled) return null
+
+    return (
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+            <CreditCard className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Metodo de pago</p>
+            <h3 className="text-base font-semibold text-slate-900">Elegí como vas a pagar</h3>
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPaymentMethod('CASH')
+              setPaymentProofError(null)
+            }}
+            className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+              paymentMethod === 'CASH'
+                ? 'border-blue-500 bg-blue-50 text-blue-950'
+                : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            <Banknote className="mt-0.5 h-5 w-5 shrink-0" />
+            <span>
+              <span className="block text-sm font-semibold">Efectivo</span>
+              <span className="block text-xs text-slate-600">
+                Si tenes menos de {transferConfig?.minPlayedTournaments ?? 2} inscripciones confirmadas previas con la organizacion, queda pendiente.
+              </span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPaymentMethod('TRANSFER')}
+            className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+              paymentMethod === 'TRANSFER'
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-950'
+                : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            <CreditCard className="mt-0.5 h-5 w-5 shrink-0" />
+            <span>
+              <span className="block text-sm font-semibold">Transferencia</span>
+              <span className="block text-xs text-slate-600">
+                Transferis la seña total de la pareja, subis el comprobante y la inscripcion queda confirmada.
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const getTransferProofValidationError = () => {
     if (!transferProofEnabled) return null
 
     if (transferConfigInvalid) {
-      return "El organizador no configuró correctamente alias y monto para esta inscripción."
+      return "El organizador no configuro correctamente el alias o la seña total de la pareja."
     }
 
     if (!paymentProofFile) {
@@ -719,9 +798,9 @@ export default function RegisterCoupleForm({
         </div>
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{stepLabel}</p>
-          <h3 className="text-base font-semibold text-slate-900">Transferi y subi el comprobante</h3>
+          <h3 className="text-base font-semibold text-slate-900">Transferi la seña total de la pareja</h3>
           <p className="text-sm text-slate-700">
-            Cuando adjuntas el comprobante, la inscripcion queda registrada.
+            Cuando adjuntas el comprobante de esa seña, la inscripcion queda confirmada.
           </p>
         </div>
       </div>
@@ -741,10 +820,17 @@ export default function RegisterCoupleForm({
           </p>
         </div>
         <div className="rounded-xl border border-white/80 bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Importe</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {trustPolicyEnabled ? 'Seña total de la pareja' : 'Importe a transferir'}
+          </p>
           <p className="mt-1 text-base font-semibold text-slate-900">
             {formatTransferAmount(transferAmount)}
           </p>
+          {trustPolicyEnabled && (
+            <p className="mt-1 text-xs text-slate-600">
+              Se calcula como {formatTransferAmount(transferAmountPerPlayer ?? null)} de seña por jugador
+            </p>
+          )}
         </div>
       </div>
 
@@ -753,7 +839,7 @@ export default function RegisterCoupleForm({
           <AlertCircle className="h-4 w-4 text-red-600" />
           <AlertTitle className="text-red-800">Configuracion incompleta</AlertTitle>
           <AlertDescription className="text-red-700">
-            El organizador todavia no configuro correctamente el alias y el monto de esta inscripcion.
+            El organizador todavia no configuro correctamente el alias o la seña total de la pareja.
           </AlertDescription>
         </Alert>
       )}
@@ -768,7 +854,7 @@ export default function RegisterCoupleForm({
             const file = event.target.files?.[0] || null
             setPaymentProofFile(file)
             if (transferConfigInvalid) {
-              setPaymentProofError("El organizador no configuró correctamente alias y monto para esta inscripción.")
+              setPaymentProofError("El organizador no configuro correctamente el alias o la seña total de la pareja.")
             } else if (file) {
               setPaymentProofError(null)
             } else {
@@ -1029,6 +1115,8 @@ export default function RegisterCoupleForm({
 
             {selectedCompanionId && !showPhoneForm && (
               <div className="space-y-4 pt-4">
+                {renderPaymentMethodStep()}
+
                 {transferProofEnabled && renderTransferProofStep(
                   "Paso 3",
                   "payment-proof-search",
@@ -1184,6 +1272,8 @@ export default function RegisterCoupleForm({
                     </FormItem>
                   )}
                 />
+
+                {renderPaymentMethodStep()}
 
                 {transferProofEnabled && renderTransferProofStep("Paso 3", "payment-proof-new")}
 

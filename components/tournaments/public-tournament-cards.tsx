@@ -340,7 +340,7 @@ export function PublicTournamentCards({
                       {priceLabel ? (
                         <div className={pricePillClassName}>
                           <Tag className="h-3.5 w-3.5" />
-                          Inscripción {priceLabel}
+                          Precio por jugador {priceLabel}
                         </div>
                       ) : null}
                       {tournament.award ? (

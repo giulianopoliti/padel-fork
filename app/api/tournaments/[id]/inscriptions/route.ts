@@ -92,8 +92,11 @@ export async function GET(
         enable_public_inscriptions,
         enable_payment_checkboxes,
         enable_transfer_proof,
+        enable_trust_based_payment_policy,
+        trust_policy_min_played_tournaments,
         transfer_alias,
-        transfer_amount
+        transfer_amount,
+        transfer_amount_per_player
       `)
       .eq('id', tournamentId)
       .single();
@@ -255,8 +258,11 @@ export async function GET(
         enable_public_inscriptions: tournament.enable_public_inscriptions,
         enable_payment_checkboxes: tournament.enable_payment_checkboxes,
         enable_transfer_proof: tournament.enable_transfer_proof,
+        enable_trust_based_payment_policy: tournament.enable_trust_based_payment_policy,
+        trust_policy_min_played_tournaments: tournament.trust_policy_min_played_tournaments,
         transfer_alias: tournament.transfer_alias,
-        transfer_amount: tournament.transfer_amount
+        transfer_amount: tournament.transfer_amount,
+        transfer_amount_per_player: tournament.transfer_amount_per_player
       },
       meta: {
         total: coupleInscriptions.length + individualInscriptions.length,

@@ -205,8 +205,11 @@ export default function AmericanTournamentOverview({
           price: tournament.price ?? null,
           enable_public_inscriptions: tournament.enable_public_inscriptions ?? false,
           enable_transfer_proof: tournament.enable_transfer_proof ?? false,
+          enable_trust_based_payment_policy: tournament.enable_trust_based_payment_policy ?? false,
+          trust_policy_min_played_tournaments: tournament.trust_policy_min_played_tournaments ?? 2,
           transfer_alias: tournament.transfer_alias ?? null,
           transfer_amount: tournament.transfer_amount ?? null,
+          transfer_amount_per_player: tournament.transfer_amount_per_player ?? null,
           publicInfo
         }}
       />

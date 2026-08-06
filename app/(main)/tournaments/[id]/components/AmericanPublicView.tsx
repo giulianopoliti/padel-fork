@@ -68,8 +68,11 @@ export default function AmericanPublicView({
       tournamentGender={tournament.gender || Gender.MALE}
       tournamentPrice={tournament.price ?? null}
       enableTransferProof={tournament.enable_transfer_proof || false}
+      enableTrustBasedPaymentPolicy={tournament.enable_trust_based_payment_policy || false}
+      trustPolicyMinPlayedTournaments={tournament.trust_policy_min_played_tournaments || 2}
       transferAlias={tournament.transfer_alias || null}
       transferAmount={tournament.transfer_amount || null}
+      transferAmountPerPlayer={tournament.transfer_amount_per_player || null}
       buttonLabel="Inscribirme"
       buttonClassName="bg-white text-blue-600 hover:bg-blue-50 font-semibold"
     />

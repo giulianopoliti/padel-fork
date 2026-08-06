@@ -67,8 +67,11 @@ interface Tournament {
   enable_public_inscriptions?: boolean;
   enable_payment_checkboxes?: boolean;
   enable_transfer_proof?: boolean;
+  enable_trust_based_payment_policy?: boolean;
+  trust_policy_min_played_tournaments?: number;
   transfer_alias?: string | null;
   transfer_amount?: number | null;
+  transfer_amount_per_player?: number | null;
   hide_venue?: boolean;
   clubes?: {
     name?: string;
@@ -272,8 +275,11 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
                   bracketStatus={tournament.bracket_status || "NOT_STARTED"}
                   enablePaymentCheckboxes={tournament.enable_payment_checkboxes || false}
                   enableTransferProof={tournament.enable_transfer_proof || false}
+                  enableTrustBasedPaymentPolicy={tournament.enable_trust_based_payment_policy || false}
+                  trustPolicyMinPlayedTournaments={tournament.trust_policy_min_played_tournaments || 2}
                   transferAlias={tournament.transfer_alias || null}
                   transferAmount={tournament.transfer_amount || null}
+                  transferAmountPerPlayer={tournament.transfer_amount_per_player || null}
                   // 🚀 Optimistic mutations para UX inmediata
                   onCoupleAdded={addCoupleOptimistic}
                   onCoupleRemoved={removeCoupleOptimistic}
@@ -294,8 +300,11 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
                   registrationLocked={tournament.registration_locked || false}
                   bracketStatus={tournament.bracket_status || "NOT_STARTED"}
                   enableTransferProof={tournament.enable_transfer_proof || false}
+                  enableTrustBasedPaymentPolicy={tournament.enable_trust_based_payment_policy || false}
+                  trustPolicyMinPlayedTournaments={tournament.trust_policy_min_played_tournaments || 2}
                   transferAlias={tournament.transfer_alias || null}
                   transferAmount={tournament.transfer_amount || null}
+                  transferAmountPerPlayer={tournament.transfer_amount_per_player || null}
                   // 🚀 Optimistic mutations para UX inmediata
                   onPlayerAdded={addPlayerOptimistic}
                   onPlayerRemoved={removePlayerOptimistic}
