@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { getTournamentDetailsWithInscriptions } from '@/app/api/tournaments/actions';
 import { getAllPlayersDTO } from '@/app/api/players/actions';
+import { getTenantBranding } from '@/config/tenant';
+import { shouldTreatTournamentRegistrationAsPublic } from '@/lib/tournaments/tenant-registration-policy';
 import { checkTournamentAccess } from '@/utils/tournament-permissions';
 import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
 import InscriptionsClient from './components/InscriptionsClient';
@@ -95,9 +97,15 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
   }
 
   const accessCheck = await checkTournamentAccess(user?.id || null, tournamentId);
+  const branding = getTenantBranding();
+  const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
+    tenantKey: branding.key,
+    tournamentType: tournament.type,
+    enablePublicInscriptions: tournament.enable_public_inscriptions,
+  });
 
   if (!canViewTournamentInscriptionsPage({
-    enablePublicInscriptions: tournament.enable_public_inscriptions,
+    enablePublicInscriptions: enablePublicRegistration,
     accessLevel: accessCheck.accessLevel,
   })) {
     redirect(`/tournaments/${tournamentId}`);

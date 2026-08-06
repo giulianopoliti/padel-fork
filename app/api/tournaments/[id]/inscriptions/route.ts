@@ -1,5 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest } from 'next/server';
+import { getTenantBranding } from '@/config/tenant';
+import { shouldTreatTournamentRegistrationAsPublic } from '@/lib/tournaments/tenant-registration-policy';
 import { checkTournamentAccess } from '@/utils/tournament-permissions';
 import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
 
@@ -114,8 +116,15 @@ export async function GET(
 
     const { data: { user } } = await supabase.auth.getUser();
     const accessCheck = await checkTournamentAccess(user?.id || null, tournamentId);
-    if (!canViewTournamentInscriptionsPage({
+    const branding = getTenantBranding();
+    const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
+      tenantKey: branding.key,
+      tournamentType: tournament.type,
       enablePublicInscriptions: tournament.enable_public_inscriptions,
+    });
+
+    if (!canViewTournamentInscriptionsPage({
+      enablePublicInscriptions: enablePublicRegistration,
       accessLevel: accessCheck.accessLevel,
     })) {
       return Response.json(

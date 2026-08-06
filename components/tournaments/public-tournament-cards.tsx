@@ -9,6 +9,7 @@ import { Gender } from "@/types"
 import { getTenantBranding } from "@/config/tenant"
 import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
 import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
+import { shouldTreatTournamentRegistrationAsPublic } from "@/lib/tournaments/tenant-registration-policy"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
 import { CalendarDays, Clock3, MapPin, Navigation, Tag, Trophy } from "lucide-react"
 
@@ -233,9 +234,14 @@ export function PublicTournamentCards({
           Boolean(tournament.enablePublicInscriptions) &&
           typeof tournament.maxParticipants === "number" &&
           tournament.maxParticipants > 0
+        const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
+          tenantKey: branding.key,
+          tournamentType: tournament.type,
+          enablePublicInscriptions: tournament.enablePublicInscriptions,
+        })
         const canRegister = canShowPublicRegistration({
           status: tournament.status,
-          enablePublicInscriptions: isElite || Boolean(tournament.enablePublicInscriptions),
+          enablePublicInscriptions: enablePublicRegistration,
           registrationLocked: tournament.registrationLocked,
           bracketStatus: tournament.bracketStatus,
           isFull: tournament.isFull,

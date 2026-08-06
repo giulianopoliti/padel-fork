@@ -12,6 +12,7 @@ import type { TournamentPublicInfo } from "@/lib/tournaments/public-tournament-d
 import { Gender } from "@/types";
 import type { AccessLevel, TournamentPermission } from "@/utils/tournament-permissions";
 import { canShowPublicRegistration } from "@/lib/tournaments/registration-availability";
+import { shouldTreatTournamentRegistrationAsPublic } from "@/lib/tournaments/tenant-registration-policy";
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility";
 import { PLAYER_INSCRIPTION_COPY } from "@/lib/tournaments/player-inscription-copy";
 
@@ -62,9 +63,14 @@ export default function AmericanPublicView({
   const branding = getTenantBranding();
   const hasFewSlots = Boolean(tournament.has_few_slots);
   const showFewSlotsAlert = tournament.show_few_slots_alert !== false;
+  const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
+    tenantKey: branding.key,
+    tournamentType: tournament.type,
+    enablePublicInscriptions: tournament.enable_public_inscriptions,
+  });
   const registrationAvailable = canShowPublicRegistration({
     status: tournament.status,
-    enablePublicInscriptions: tournament.enable_public_inscriptions,
+    enablePublicInscriptions: enablePublicRegistration,
     registrationLocked: tournament.registration_locked,
     bracketStatus: tournament.bracket_status,
     isFull,

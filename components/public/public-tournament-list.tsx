@@ -7,6 +7,7 @@ import { getTenantBranding } from "@/config/tenant"
 import { Gender } from "@/types"
 import type { PublicTournamentSummary } from "@/types/public-tournament"
 import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
+import { shouldTreatTournamentRegistrationAsPublic } from "@/lib/tournaments/tenant-registration-policy"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
 
 interface PublicTournamentListProps {
@@ -113,9 +114,14 @@ export default function PublicTournamentList({
               : "Categoria abierta"
           const priceLabel = formatPrice(tournament.price)
           const categoryLabel = getCategoryLabel(tournament)
+          const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
+            tenantKey: branding.key,
+            tournamentType: tournament.type,
+            enablePublicInscriptions: tournament.enablePublicInscriptions,
+          })
           const canRegister = showRegistration && canShowPublicRegistration({
             status: tournament.status,
-            enablePublicInscriptions: tournament.enablePublicInscriptions,
+            enablePublicInscriptions: enablePublicRegistration,
             registrationLocked: tournament.registrationLocked,
             bracketStatus: tournament.bracketStatus,
             isFull: tournament.isFull,
