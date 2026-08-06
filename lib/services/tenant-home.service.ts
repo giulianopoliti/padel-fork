@@ -1,7 +1,5 @@
-import "server-only"
-
-import { supabaseAdmin } from "@/lib/supabase-admin"
 import { createClient } from "@/utils/supabase/server"
+import { getTenantBranding } from "@/config/tenant"
 import { getTenantOrganization } from "@/lib/services/tenant-organization.service"
 import { getTournamentCategoryDisplay } from "@/lib/services/tournament-category-config"
 import {
@@ -15,7 +13,6 @@ import {
   prioritizeTournamentsByGender,
   type TournamentGenderFilter,
 } from "@/lib/tournaments/gender-filtering"
-import { getTenantBranding } from "@/config/tenant"
 
 export interface TenantClub {
   id: string
@@ -35,44 +32,6 @@ export interface TenantRankingPlayer {
   profile_image_url: string | null
 }
 
-export interface TenantWeeklyMatchPlayer {
-  id: string | null
-  firstName: string
-  lastName: string
-  imageUrl: string | null
-}
-
-export interface TenantWeeklyMatchCouple {
-  id: string | null
-  players: TenantWeeklyMatchPlayer[]
-  placeholderLabel: string | null
-}
-
-export interface TenantWeeklyMatch {
-  id: string
-  tournamentId: string
-  tournamentName: string
-  category: string | null
-  stage: string
-  status: string
-  scheduledDate: string
-  scheduledStartTime: string | null
-  scheduledEndTime: string | null
-  courtAssignment: string | null
-  clubId: string
-  clubName: string
-  clubAddress: string | null
-  couple1: TenantWeeklyMatchCouple
-  couple2: TenantWeeklyMatchCouple
-}
-
-export interface TenantWeeklyMatchesClubGroup {
-  clubId: string
-  clubName: string
-  clubAddress: string | null
-  matches: TenantWeeklyMatch[]
-}
-
 export interface TenantHomeData {
   organization: {
     id: string
@@ -90,88 +49,6 @@ interface TenantUpcomingTournamentSummaryOptions {
   genderFilter?: TournamentGenderFilter | null
   priorityGender?: string | null
   statusMode?: "upcoming" | "active"
-}
-
-const ARGENTINA_TIME_ZONE = "America/Argentina/Buenos_Aires"
-
-const unwrapRelation = <T>(value: T | T[] | null | undefined): T | null => {
-  if (!value) return null
-  return Array.isArray(value) ? value[0] ?? null : value
-}
-
-const toIsoDate = (date: Date) => date.toISOString().slice(0, 10)
-
-const getArgentinaTodayAsUtcDate = () => {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: ARGENTINA_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date())
-
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  const year = Number(values.year)
-  const month = Number(values.month)
-  const day = Number(values.day)
-
-  return new Date(Date.UTC(year, month - 1, day, 12))
-}
-
-const getCurrentArgentinaWeekRange = () => {
-  const today = getArgentinaTodayAsUtcDate()
-  const daysFromMonday = (today.getUTCDay() + 6) % 7
-  const start = new Date(today)
-  start.setUTCDate(today.getUTCDate() - daysFromMonday)
-
-  const end = new Date(start)
-  end.setUTCDate(start.getUTCDate() + 6)
-
-  return {
-    startDate: toIsoDate(start),
-    endDate: toIsoDate(end),
-  }
-}
-
-const getRoundDisplayName = (round: string | null | undefined) => {
-  const roundNames: Record<string, string> = {
-    ZONE: "Zona",
-    "32VOS": "32vos de Final",
-    "16VOS": "16vos de Final",
-    "8VOS": "Octavos de Final",
-    "4TOS": "Cuartos de Final",
-    SEMIFINAL: "Semifinal",
-    FINAL: "Final",
-  }
-
-  return roundNames[round || ""] || round || "Instancia a confirmar"
-}
-
-const toWeeklyMatchPlayer = (player: any): TenantWeeklyMatchPlayer | null => {
-  if (!player) return null
-
-  return {
-    id: player.id || null,
-    firstName: player.first_name || "",
-    lastName: player.last_name || "",
-    imageUrl: player.profile_image_url || null,
-  }
-}
-
-const toWeeklyMatchCouple = (
-  couple: any,
-  placeholderLabel: string | null | undefined,
-): TenantWeeklyMatchCouple => {
-  const normalizedCouple = unwrapRelation<any>(couple)
-  const players = [
-    toWeeklyMatchPlayer(unwrapRelation<any>(normalizedCouple?.player1)),
-    toWeeklyMatchPlayer(unwrapRelation<any>(normalizedCouple?.player2)),
-  ].filter((player): player is TenantWeeklyMatchPlayer => Boolean(player))
-
-  return {
-    id: normalizedCouple?.id || null,
-    players,
-    placeholderLabel: placeholderLabel || null,
-  }
 }
 
 export async function getTenantUpcomingTournamentSummaries(
@@ -221,7 +98,7 @@ export async function getTenantUpcomingTournamentSummaries(
     .eq("organization_id", organization.id)
     .in("status", dbStatuses)
     .neq("is_draft", true)
-    .order("start_date", { ascending: true })
+    .order(statusMode === "active" ? "created_at" : "start_date", { ascending: statusMode !== "active" })
 
   if (explicitGenderFilter) {
     query = query.eq("gender", explicitGenderFilter)
@@ -290,156 +167,10 @@ export async function getTenantUpcomingTournamentSummaries(
   })
 }
 
-export async function getTenantWeeklyMatchesByClub(): Promise<TenantWeeklyMatchesClubGroup[]> {
-  const organization = await getTenantOrganization()
-
-  if (!organization) {
-    return []
-  }
-
-  const { startDate, endDate } = getCurrentArgentinaWeekRange()
-
-  const { data, error } = await supabaseAdmin
-    .from("fecha_matches")
-    .select(`
-      match_id,
-      scheduled_date,
-      scheduled_start_time,
-      scheduled_end_time,
-      court_assignment,
-      matches!inner (
-        id,
-        status,
-        round,
-        club_id,
-        tournament_id,
-        placeholder_couple1_label,
-        placeholder_couple2_label,
-        tournaments!inner (
-          id,
-          name,
-          category_name,
-          category_config,
-          organization_id,
-          club_id,
-          is_draft,
-          clubes (
-            id,
-            name,
-            address
-          )
-        ),
-        club:clubes (
-          id,
-          name,
-          address
-        ),
-        couple1:couples!matches_couple1_id_fkey (
-          id,
-          player1:players!couples_player1_id_fkey (
-            id,
-            first_name,
-            last_name,
-            profile_image_url
-          ),
-          player2:players!couples_player2_id_fkey (
-            id,
-            first_name,
-            last_name,
-            profile_image_url
-          )
-        ),
-        couple2:couples!matches_couple2_id_fkey (
-          id,
-          player1:players!couples_player1_id_fkey (
-            id,
-            first_name,
-            last_name,
-            profile_image_url
-          ),
-          player2:players!couples_player2_id_fkey (
-            id,
-            first_name,
-            last_name,
-            profile_image_url
-          )
-        )
-      )
-    `)
-    .gte("scheduled_date", startDate)
-    .lte("scheduled_date", endDate)
-    .neq("matches.status", "DRAFT")
-    .order("scheduled_date", { ascending: true })
-    .order("scheduled_start_time", { ascending: true, nullsFirst: false })
-    .limit(200)
-
-  if (error) {
-    console.error("Error fetching tenant weekly matches:", error)
-    return []
-  }
-
-  const matches = (data || []).flatMap((item: any): TenantWeeklyMatch[] => {
-    const match = unwrapRelation<any>(item.matches)
-    const tournament = unwrapRelation<any>(match?.tournaments)
-
-    if (!match || !tournament || tournament.organization_id !== organization.id || tournament.is_draft === true) {
-      return []
-    }
-
-    const matchClub = unwrapRelation<any>(match.club)
-    const tournamentClub = unwrapRelation<any>(tournament.clubes)
-    const club = matchClub || tournamentClub
-
-    if (!club?.id || !item.scheduled_date) {
-      return []
-    }
-
-    return [
-      {
-        id: match.id,
-        tournamentId: tournament.id,
-        tournamentName: tournament.name || "Torneo",
-        category: getTournamentCategoryDisplay(tournament),
-        stage: getRoundDisplayName(match.round),
-        status: match.status || "PENDING",
-        scheduledDate: item.scheduled_date,
-        scheduledStartTime: item.scheduled_start_time || null,
-        scheduledEndTime: item.scheduled_end_time || null,
-        courtAssignment: item.court_assignment || null,
-        clubId: club.id,
-        clubName: club.name || "Club a confirmar",
-        clubAddress: club.address || null,
-        couple1: toWeeklyMatchCouple(match.couple1, match.placeholder_couple1_label),
-        couple2: toWeeklyMatchCouple(match.couple2, match.placeholder_couple2_label),
-      },
-    ]
-  })
-
-  const groups = new Map<string, TenantWeeklyMatchesClubGroup>()
-
-  for (const match of matches) {
-    const existingGroup = groups.get(match.clubId)
-
-    if (existingGroup) {
-      existingGroup.matches.push(match)
-      continue
-    }
-
-    groups.set(match.clubId, {
-      clubId: match.clubId,
-      clubName: match.clubName,
-      clubAddress: match.clubAddress,
-      matches: [match],
-    })
-  }
-
-  return Array.from(groups.values()).sort((first, second) => first.clubName.localeCompare(second.clubName))
-}
-
 export async function getTenantHomeData(): Promise<TenantHomeData> {
   const supabase = await createClient()
-  const organization = await getTenantOrganization()
   const branding = getTenantBranding()
+  const organization = await getTenantOrganization()
 
   if (!organization) {
     return {
