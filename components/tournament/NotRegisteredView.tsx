@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { TournamentPublicInfo } from '@/lib/tournaments/public-tournament-details'
 import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from '@/lib/tournaments/registration-availability'
+import { shouldTreatTournamentRegistrationAsPublic } from '@/lib/tournaments/tenant-registration-policy'
 import { Gender } from '@/types'
 import { getStorageUrl } from '@/utils/storage-url'
 
@@ -21,6 +22,7 @@ interface NotRegisteredViewProps {
     id: string
     name: string
     category?: string
+    type?: string | null
     status?: string
     gender?: Gender
     price?: number | string | null
@@ -42,9 +44,14 @@ export default function NotRegisteredView({
 }: NotRegisteredViewProps) {
   const branding = getTenantBranding()
   const isFull = Boolean(tournament.is_full)
+  const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
+    tenantKey: branding.key,
+    tournamentType: tournament.type,
+    enablePublicInscriptions: tournament.enable_public_inscriptions,
+  })
   const canRegister = canShowPublicRegistration({
     status: tournament.status,
-    enablePublicInscriptions: tournament.enable_public_inscriptions,
+    enablePublicInscriptions: enablePublicRegistration,
     registrationLocked: tournament.registration_locked,
     bracketStatus: tournament.bracket_status,
     isFull,

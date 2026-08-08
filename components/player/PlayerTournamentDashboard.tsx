@@ -38,12 +38,18 @@ interface PlayerTournamentDashboardProps {
     id: string
     name: string
     category?: string
+    type?: string | null
     status?: string
     gender?: Gender
     price?: number | string | null
     enable_transfer_proof?: boolean
+    enable_public_inscriptions?: boolean | null
+    registration_locked?: boolean | null
+    bracket_status?: string | null
     transfer_alias?: string | null
     transfer_amount?: number | null
+    is_full?: boolean
+    has_few_slots?: boolean
     publicInfo?: TournamentPublicInfo
   }
   overview: LongPlayerOverview

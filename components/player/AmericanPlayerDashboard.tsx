@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Trophy, Users, UserPlus, AlertCircle, Calendar, CheckCircle } from 'lucide-react'
 
 import CancelRegistrationButton from '@/components/tournament/player/cancel-registration-button'
+import SharedNotRegisteredView from '@/components/tournament/NotRegisteredView'
 import PublicRegistrationLauncher from '@/components/tournament/public-registration-launcher'
 import TournamentHeroDetails from '@/components/tournament/TournamentHeroDetails'
 import TournamentPublicInfoCard from '@/components/tournament/TournamentPublicInfoCard'
@@ -27,10 +28,15 @@ interface AmericanPlayerDashboardProps {
     id: string
     name: string
     clubName?: string
+    type?: string | null
     status?: string
     gender?: Gender
     price?: string | number | null
     enable_public_inscriptions?: boolean
+    registration_locked?: boolean | null
+    bracket_status?: string | null
+    is_full?: boolean
+    has_few_slots?: boolean
     enable_transfer_proof?: boolean
     transfer_alias?: string | null
     transfer_amount?: number | null
@@ -96,7 +102,11 @@ export default function AmericanPlayerDashboard({
   }
 
   if (registrationCancelled || !playerData?.isRegistered) {
-    return <NotRegisteredView tournamentId={tournamentId} tournament={tournament} />
+    return (
+      <div className="mx-auto max-w-5xl p-4 sm:p-6">
+        <SharedNotRegisteredView tournamentId={tournamentId} tournament={tournament} />
+      </div>
+    )
   }
 
   const totalMatches = playerData.zoneMatches.length + playerData.bracketMatches.length
