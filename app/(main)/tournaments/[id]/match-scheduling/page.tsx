@@ -4,12 +4,12 @@ import { checkTournamentPermissions } from "@/utils/tournament-permissions"
 import MatchSchedulingContainer from "./components/MatchSchedulingContainer"
 
 interface MatchSchedulingPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
-  searchParams: {
+  }>
+  searchParams: Promise<{
     fecha_id?: string
-  }
+  }>
 }
 
 interface Club {
@@ -55,14 +55,15 @@ export default async function MatchSchedulingPage({
     .eq('tournament_id', resolvedParams.id)
 
   // Map to Club[] format
-  const clubs: Club[] = (clubsData || [])
-    .map(item => item.clubes)
-    .filter((club): club is { id: string; name: string } => club !== null && typeof club === 'object')
+  const clubs: Club[] = (clubsData || []).flatMap(item => {
+    const club = Array.isArray(item.clubes) ? item.clubes[0] : item.clubes
+    return club ? [{ id: club.id, name: club.name }] : []
+  })
 
   // Get tournament fechas - 🔒 ONLY ZONE round type fechas
   const { data: fechas } = await supabase
     .from('tournament_fechas')
-    .select('id, name, fecha_number, description, status, start_date, end_date, round_type')
+    .select('id, name, fecha_number, description, status, start_date, end_date, round_type, estimated_match_duration_minutes')
     .eq('tournament_id', resolvedParams.id)
     .eq('round_type', 'ZONE')
     .order('fecha_number', { ascending: true })
@@ -90,7 +91,7 @@ export default async function MatchSchedulingPage({
     <MatchSchedulingContainer
       tournamentId={resolvedParams.id}
       tournamentName={tournament.name || 'Torneo'}
-      clubName={tournament.clubes?.name || 'Sin club'}
+      clubName={(Array.isArray(tournament.clubes) ? tournament.clubes[0]?.name : tournament.clubes?.name) || 'Sin club'}
       clubes={clubs || []}
       fechas={fechas}
       selectedFechaId={selectedFechaId}

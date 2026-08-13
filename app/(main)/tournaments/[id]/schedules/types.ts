@@ -43,6 +43,7 @@ export interface TournamentFecha {
   end_date?: string
   status: 'NOT_STARTED' | 'SCHEDULING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELED'
   max_matches_per_couple?: number
+  estimated_match_duration_minutes: 60 | 75 | 90
   round_type: 'ZONE' | '32VOS' | '16VOS' | '8VOS' | '4TOS' | 'SEMIFINAL' | 'FINAL'
   bracket_key: 'MAIN' | 'GOLD' | 'SILVER'
   bracket_label?: string | null

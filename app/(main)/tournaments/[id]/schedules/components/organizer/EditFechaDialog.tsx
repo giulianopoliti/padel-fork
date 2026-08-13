@@ -40,6 +40,7 @@ const baseEditFechaSchema = z.object({
   round_type: z.enum(['ZONE', '32VOS', '16VOS', '8VOS', '4TOS', 'SEMIFINAL', 'FINAL']).default('ZONE'),
   bracket_key: z.enum(['MAIN', 'GOLD', 'SILVER']).default('MAIN'),
   max_matches_per_couple: z.number().min(1).max(10).default(3),
+  estimated_match_duration_minutes: z.union([z.literal(60), z.literal(75), z.literal(90)]).default(90),
   status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELED']).default('NOT_STARTED'),
 }).refine((data) => {
   if (data.start_date && data.end_date) {
@@ -137,6 +138,7 @@ export default function EditFechaDialog({
       round_type: z.enum(availableRoundValues as [string, ...string[]]).default(availableRoundValues[0] || 'ZONE'),
       bracket_key: z.enum(['MAIN', 'GOLD', 'SILVER']).default('MAIN'),
       max_matches_per_couple: z.number().min(1).max(10).default(3),
+      estimated_match_duration_minutes: z.union([z.literal(60), z.literal(75), z.literal(90)]).default(90),
       status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELED']).default('NOT_STARTED'),
     }).refine((data) => {
       if (data.start_date && data.end_date) {
@@ -159,6 +161,7 @@ export default function EditFechaDialog({
       round_type: fecha.round_type || 'ZONE',
       bracket_key: fecha.bracket_key || 'MAIN',
       max_matches_per_couple: fecha.max_matches_per_couple || 3,
+      estimated_match_duration_minutes: fecha.estimated_match_duration_minutes || 90,
       status: fecha.status as any || 'NOT_STARTED',
     },
   })
@@ -173,6 +176,7 @@ export default function EditFechaDialog({
       round_type: fecha.round_type || 'ZONE',
       bracket_key: fecha.bracket_key || 'MAIN',
       max_matches_per_couple: fecha.max_matches_per_couple || 3,
+      estimated_match_duration_minutes: fecha.estimated_match_duration_minutes || 90,
       status: fecha.status as any || 'NOT_STARTED',
     })
   }, [fecha, form])
@@ -228,6 +232,7 @@ export default function EditFechaDialog({
         round_type: data.round_type,
         bracket_key: data.bracket_key,
         max_matches_per_couple: data.max_matches_per_couple,
+        estimated_match_duration_minutes: data.estimated_match_duration_minutes,
         status: data.status,
       }
 
@@ -438,6 +443,33 @@ export default function EditFechaDialog({
                       {...field}
                       onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="estimated_match_duration_minutes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Duracion reservada por partido</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([60, 75, 90] as const).map(duration => (
+                        <Button
+                          key={duration}
+                          type="button"
+                          variant={field.value === duration ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => field.onChange(duration)}
+                          disabled={isSubmitting}
+                        >
+                          {duration} min
+                        </Button>
+                      ))}
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

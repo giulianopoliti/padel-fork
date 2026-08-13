@@ -11,6 +11,7 @@ import { useTournamentPermissions } from '@/hooks/use-tournament-permissions'
 import { getMatchSchedulingData, SchedulingData, CoupleWithData, TimeSlot, createMatch, CustomSchedule } from '../actions'
 import SchedulingMatrixV0 from './SchedulingMatrixV0'
 import DraftMatchesManager from './DraftMatchesManager'
+import MatchRecommendationPanel from './MatchRecommendationPanel'
 
 interface TournamentFecha {
   id: string
@@ -364,7 +365,17 @@ const MatchSchedulingContainer: React.FC<MatchSchedulingContainerProps> = ({
           </div>
 
           {/* Draft Matches Manager - Only visible when draft mode is enabled */}
+          {permissions.hasPermission && !permissionsLoading && (
+            <MatchRecommendationPanel
+              tournamentId={tournamentId}
+              fechaId={selectedFechaId}
+              enabled={isDraftModeEnabled}
+              onDraftsChanged={handleMatchCreated}
+            />
+          )}
+
           <DraftMatchesManager
+            key={`${selectedFechaId}-${refreshKey}`}
             fechaId={selectedFechaId}
             tournamentId={tournamentId}
             isDraftModeEnabled={isDraftModeEnabled}

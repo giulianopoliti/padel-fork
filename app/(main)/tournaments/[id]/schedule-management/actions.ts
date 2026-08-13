@@ -190,10 +190,18 @@ export async function updateTournamentFecha(fechaId: string, updateData: {
   end_date?: string
   status?: string
   max_matches_per_couple?: number
+  estimated_match_duration_minutes?: 60 | 75 | 90
   round_type?: FechaRoundType
   bracket_key?: FechaBracketKey
 }) {
   try {
+    if (
+      updateData.estimated_match_duration_minutes !== undefined &&
+      ![60, 75, 90].includes(updateData.estimated_match_duration_minutes)
+    ) {
+      return { success: false, error: 'La duracion debe ser 60, 75 o 90 minutos' }
+    }
+
     const supabase = await createClient()
 
     const { data: existingFecha, error: existingFechaError } = await supabase

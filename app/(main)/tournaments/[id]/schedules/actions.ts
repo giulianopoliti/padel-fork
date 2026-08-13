@@ -17,6 +17,7 @@ import {
 } from './types'
 import { validateTimeSlot, getBracketLabel, getErrorMessage } from './utils'
 import { checkUserTournamentInscription } from '@/utils/tournament-permissions'
+import { interpretAvailabilityNote } from '@/lib/services/match-recommendation/note-interpreter'
 
 export type { CreateTimeSlotData } from './types'
 
@@ -929,7 +930,7 @@ export async function updateCoupleAvailability(
     const { data: timeSlot } = await supabase
       .from('tournament_time_slots')
       .select(`
-        fecha_id, slot_type, is_system,
+        fecha_id, slot_type, is_system, start_time, end_time,
         tournament_fechas!inner(tournament_id, round_type, bracket_key)
       `)
       .eq('id', data.time_slot_id)
@@ -1018,7 +1019,7 @@ export async function updateCoupleAvailability(
     }
 
     // Upsert availability
-    const { error: upsertError } = await supabase
+    const { data: savedAvailability, error: upsertError } = await supabase
       .from('couple_time_availability')
       .upsert({
         couple_id: data.couple_id,
@@ -1029,9 +1030,24 @@ export async function updateCoupleAvailability(
       }, {
         onConflict: 'couple_id,time_slot_id'
       })
+      .select('id')
+      .single()
 
     if (upsertError) {
       throw upsertError
+    }
+
+    const interpretation = data.is_available
+      ? await interpretAvailabilityNote(data.notes, timeSlot.start_time, timeSlot.end_time)
+      : await interpretAvailabilityNote(null, timeSlot.start_time, timeSlot.end_time)
+
+    const { error: interpretationError } = await supabase
+      .from('couple_time_availability')
+      .update(interpretation)
+      .eq('id', savedAvailability.id)
+
+    if (interpretationError) {
+      throw interpretationError
     }
 
     revalidatePath(`/tournaments/${(timeSlot.tournament_fechas as any).tournament_id}/schedules`)
