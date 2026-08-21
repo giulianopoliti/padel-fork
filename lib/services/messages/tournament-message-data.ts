@@ -33,6 +33,7 @@ export type InscriptionMessageData = {
   playerEmails: string[]
   adminEmails: string[]
   clubLocation: ClubLocation | null
+  currentInscriptions?: number
 }
 
 export type CancelledInscriptionMessageData = {
@@ -137,9 +138,24 @@ const loadClubLocation = async (
   }
 }
 
+const countCurrentInscriptions = async (supabase: SupabaseLike, tournamentId: string) => {
+  const { data, error } = await supabase
+    .from("inscriptions")
+    .select("id, es_prueba")
+    .eq("tournament_id", tournamentId)
+
+  if (error) {
+    console.error("[messages] Error counting tournament inscriptions:", error)
+    return null
+  }
+
+  return (data || []).filter((inscription: any) => inscription.es_prueba !== true).length
+}
+
 export const loadInscriptionMessageData = async (
   fallbackSupabase: SupabaseLike,
   inscriptionId: string,
+  options: { includeCurrentInscriptions?: boolean } = {},
 ): Promise<InscriptionMessageData | null> => {
   const supabase = await getNotificationSupabase(fallbackSupabase)
 
@@ -168,6 +184,9 @@ export const loadInscriptionMessageData = async (
   const participant = await resolveInscriptionParticipant(supabase, inscription)
   const recipients = await resolveTournamentNotificationRecipients(supabase, tournament)
   const clubLocation = await loadClubLocation(supabase, tournament.club_id)
+  const currentInscriptions = options.includeCurrentInscriptions
+    ? await countCurrentInscriptions(supabase, tournament.id)
+    : undefined
 
   return {
     inscription,
@@ -176,6 +195,7 @@ export const loadInscriptionMessageData = async (
     playerEmails: participant.playerEmails,
     adminEmails: uniqueEmails(recipients.adminEmails.filter((email) => !participant.playerEmails.includes(email))),
     clubLocation,
+    currentInscriptions: currentInscriptions ?? undefined,
   }
 }
 

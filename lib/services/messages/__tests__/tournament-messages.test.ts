@@ -39,7 +39,7 @@ const baseTables = (overrides: Record<string, any[]> = {}) => ({
       name: "Americano Test",
       type: "AMERICAN",
       category_name: "Suma 7",
-      start_date: "2026-07-01",
+      start_date: "2026-07-01T19:30:00-03:00",
       end_date: null,
       club_id: "club-1",
       organization_id: null,
@@ -115,6 +115,27 @@ describe("sendTournamentMessage", () => {
     const supabase = makeSupabase(
       baseTables({
         clubes: [{ id: "club-1", email: "tenant@example.com", user_id: null }],
+        inscriptions: [
+          ...baseTables().inscriptions,
+          {
+            id: "inscription-2",
+            tournament_id: "tournament-1",
+            couple_id: "couple-2",
+            player_id: null,
+            is_pending: false,
+            created_at: "2026-06-25T12:15:00Z",
+            es_prueba: false,
+          },
+          {
+            id: "test-inscription",
+            tournament_id: "tournament-1",
+            couple_id: "couple-test",
+            player_id: null,
+            is_pending: false,
+            created_at: "2026-06-25T12:30:00Z",
+            es_prueba: true,
+          },
+        ],
       }),
     )
 
@@ -127,6 +148,11 @@ describe("sendTournamentMessage", () => {
     const firstCall = (sendTransactionalEmail as jest.Mock).mock.calls[0]?.[0]
     expect(firstCall.to).toEqual(["tenant@example.com", "eventosdeportivosfv@gmail.com"])
     expect(firstCall.to.filter((email: string) => email === "tenant@example.com")).toHaveLength(1)
+    expect(firstCall.subject).toContain("Nueva inscripcion: Americano Test")
+    expect(firstCall.subject).toContain("2 inscriptos")
+    expect(firstCall.html).toContain("Inicio del torneo")
+    expect(firstCall.html).toContain("Inscriptos actuales")
+    expect(firstCall.text).toContain("Inscriptos actuales: 2")
   })
 
   it("does not send LONG match messages while match is draft", async () => {

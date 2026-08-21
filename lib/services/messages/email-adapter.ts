@@ -53,25 +53,32 @@ const renderLocationText = (clubLocation: {
 }
 
 const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEvent, { type: "INSCRIPTION_SUBMITTED_ADMIN" }>) => {
-  const data = await loadInscriptionMessageData(event.supabase, event.inscriptionId)
+  const data = await loadInscriptionMessageData(event.supabase, event.inscriptionId, {
+    includeCurrentInscriptions: true,
+  })
   if (!data) return skipped("missing inscription data")
   if (!isTournamentMessagesEnabled(data.tournament)) return skipped("messages disabled")
   if (data.adminEmails.length === 0) return skipped("no admin recipients")
 
   const tournamentUrl = buildAppUrl(`/tournaments/${data.tournament.id}/inscriptions`)
   const statusLabel = data.inscription.is_pending ? "Pendiente de revision" : "Confirmada"
+  const tournamentStartLabel = formatTournamentDateTime(data.tournament.start_date)
+  const currentInscriptionsLabel =
+    typeof data.currentInscriptions === "number" ? String(data.currentInscriptions) : "A confirmar"
 
   return sendSafely(
     {
       to: data.adminEmails,
-      subject: `Nueva inscripcion: ${data.tournament.name}`,
+      subject: `Nueva inscripcion: ${data.tournament.name} - ${tournamentStartLabel} - ${currentInscriptionsLabel} inscriptos`,
       html: renderEmailLayout({
         title: "Nueva inscripcion",
-        preview: `${data.participantName} - ${data.tournament.name}`,
+        preview: `${data.participantName} - ${data.tournament.name} - ${tournamentStartLabel}`,
         body: `
           <p style="margin:0 0 14px;">Se registro una nueva inscripcion en el torneo.</p>
           ${detailsList([
             { label: "Torneo", value: data.tournament.name },
+            { label: "Inicio del torneo", value: tournamentStartLabel },
+            { label: "Inscriptos actuales", value: currentInscriptionsLabel },
             { label: "Pareja/Jugador", value: data.participantName },
             { label: "Formato", value: data.tournament.type },
             { label: "Categoria", value: data.tournament.category_name },
@@ -83,7 +90,7 @@ const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEve
         `,
         cta: { label: "Ver inscripciones", href: tournamentUrl },
       }),
-      text: `Nueva inscripcion\nTorneo: ${data.tournament.name}\nPareja/Jugador: ${data.participantName}\nEstado: ${statusLabel}${renderLocationText(data.clubLocation)}\n${tournamentUrl}`,
+      text: `Nueva inscripcion\nTorneo: ${data.tournament.name}\nInicio del torneo: ${tournamentStartLabel}\nInscriptos actuales: ${currentInscriptionsLabel}\nPareja/Jugador: ${data.participantName}\nEstado: ${statusLabel}${renderLocationText(data.clubLocation)}\n${tournamentUrl}`,
       idempotencyKey: `message-inscription-submitted-admin-${data.inscription.id}`,
       tags: [
         { name: "type", value: "inscription_submitted_admin" },
