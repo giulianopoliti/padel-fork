@@ -2,13 +2,17 @@
 
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Check, Clock, Info, CalendarX, Loader2, Plus } from 'lucide-react'
+import { Check, Clock, Info, CalendarX, Loader2, Plus, AlertCircle, MessageSquareText } from 'lucide-react'
 import { CoupleWithData, SchedulingData } from '../actions'
 import { formatTimeRange, formatDateWithDay } from '../utils/dateUtils'
 
@@ -22,7 +26,7 @@ interface AvailabilityMatrixProps {
   onDragEnd: () => void
   manualAvailabilityEnabled: boolean
   manualAvailabilitySavingKey: string | null
-  onManualAvailabilityToggle: (coupleId: string, timeSlotId: string) => Promise<boolean>
+  onManualAvailabilityToggle: (coupleId: string, timeSlotId: string, isAvailable?: boolean, notes?: string | null) => Promise<boolean>
 }
 
 const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
@@ -37,6 +41,10 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
   manualAvailabilitySavingKey,
   onManualAvailabilityToggle
 }) => {
+  const [noteDialog, setNoteDialog] = React.useState<{ coupleId: string; timeSlotId: string } | null>(null)
+  const [noteDraft, setNoteDraft] = React.useState('')
+  const [savingNote, setSavingNote] = React.useState(false)
+
   const handleDragStart = (couple: CoupleWithData, e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', couple.id)
     e.dataTransfer.effectAllowed = 'move'
@@ -65,6 +73,26 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
       a.couple_id === coupleId && a.time_slot_id === timeSlotId
     )
     return coupleAvailability?.notes || null
+  }
+
+  const openNoteDialog = (coupleId: string, timeSlotId: string) => {
+    setNoteDraft(getAvailabilityNotes(coupleId, timeSlotId) || '')
+    setNoteDialog({ coupleId, timeSlotId })
+  }
+
+  const handleNoteSave = async () => {
+    if (!noteDialog) return
+
+    setSavingNote(true)
+    const saved = await onManualAvailabilityToggle(
+      noteDialog.coupleId,
+      noteDialog.timeSlotId,
+      true,
+      noteDraft
+    )
+    setSavingNote(false)
+
+    if (saved) setNoteDialog(null)
   }
 
   // Get couple display name
@@ -233,76 +261,125 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
                         )}
                       </div>
                     </td>
-                    {timeSlots.map((timeSlot) => (
-                      <td
+                    {timeSlots.map((timeSlot) => {
+                      const isAvailable = isCoupleAvailable(couple.id, timeSlot.id)
+                      const notes = getAvailabilityNotes(couple.id, timeSlot.id)
+
+                      return <td
                         key={timeSlot.id}
                         className={`text-center p-3 ${rowBgColor} ${manualAvailabilityEnabled ? 'cursor-pointer hover:bg-blue-50' : ''}`}
                         onClick={(e) => {
                           if (!manualAvailabilityEnabled) return
                           e.stopPropagation()
-                          void onManualAvailabilityToggle(couple.id, timeSlot.id)
+                          if (!isAvailable) {
+                            openNoteDialog(couple.id, timeSlot.id)
+                          } else {
+                            void onManualAvailabilityToggle(couple.id, timeSlot.id, false)
+                          }
                         }}
                       >
                         {manualAvailabilityEnabled ? (
-                          <button
-                            type="button"
-                            disabled={manualAvailabilitySavingKey === `${couple.id}:${timeSlot.id}`}
-                            className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
-                              isCoupleAvailable(couple.id, timeSlot.id)
-                                ? 'border-blue-700 bg-blue-600 text-white shadow-sm hover:bg-blue-700'
-                                : 'border-slate-300 bg-white text-slate-500 hover:border-blue-400 hover:text-blue-600'
-                            } disabled:cursor-wait disabled:opacity-70`}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              void onManualAvailabilityToggle(couple.id, timeSlot.id)
-                            }}
-                            aria-label={`${isCoupleAvailable(couple.id, timeSlot.id) ? 'Desmarcar' : 'Marcar'} disponibilidad de ${getCoupleDisplayName(couple)} en ${formatTimeSlot(timeSlot)}`}
-                          >
-                            {manualAvailabilitySavingKey === `${couple.id}:${timeSlot.id}` ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : isCoupleAvailable(couple.id, timeSlot.id) ? (
-                              <Check className="h-3.5 w-3.5" />
-                            ) : (
-                              <Plus className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                        ) : isCoupleAvailable(couple.id, timeSlot.id) && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="w-6 h-6 mx-auto bg-blue-600 rounded-full flex items-center justify-center shadow-sm border border-blue-700 cursor-help">
-                                  <span className="text-white text-xs font-bold">✓</span>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="top"
-                                className="bg-white border-gray-200 text-slate-900 shadow-lg max-w-xs"
+                          <div className="mx-auto flex w-fit items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={manualAvailabilitySavingKey === `${couple.id}:${timeSlot.id}`}
+                              className={`flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
+                                isAvailable
+                                  ? 'border-blue-700 bg-blue-600 text-white shadow-sm hover:bg-blue-700'
+                                  : 'border-slate-300 bg-white text-slate-500 hover:border-blue-400 hover:text-blue-600'
+                              } disabled:cursor-wait disabled:opacity-70`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (!isAvailable) {
+                                  openNoteDialog(couple.id, timeSlot.id)
+                                } else {
+                                  void onManualAvailabilityToggle(couple.id, timeSlot.id, false)
+                                }
+                              }}
+                              aria-label={`${isAvailable ? 'Desmarcar' : 'Marcar'} disponibilidad de ${getCoupleDisplayName(couple)} en ${formatTimeSlot(timeSlot)}`}
+                            >
+                              {manualAvailabilitySavingKey === `${couple.id}:${timeSlot.id}` ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : isAvailable ? (
+                                <Check className="h-3.5 w-3.5" />
+                              ) : (
+                                <Plus className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            {isAvailable && (
+                              <button
+                                type="button"
+                                className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openNoteDialog(couple.id, timeSlot.id)
+                                }}
+                                aria-label={notes ? 'Editar nota de disponibilidad' : 'Agregar nota de disponibilidad'}
                               >
-                                <div className="space-y-1">
-                                  <div className="font-medium">
-                                    {formatTimeSlot(timeSlot)}
-                                  </div>
-                                  <div className="text-xs text-slate-600">
-                                    {timeSlot.date && formatDateWithDay(timeSlot.date)}
-                                  </div>
-                                  {getAvailabilityNotes(couple.id, timeSlot.id) && (
-                                    <div className="text-xs text-blue-600 border-t border-gray-200 pt-1 mt-1">
-                                      <strong>Nota:</strong> {getAvailabilityNotes(couple.id, timeSlot.id)}
-                                    </div>
-                                  )}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
+                                <AlertCircle className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ) : isAvailable ? (
+                          <div className="mx-auto flex w-fit items-center gap-1">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full border border-blue-700 bg-blue-600 shadow-sm">
+                              <Check className="h-3.5 w-3.5 text-white" />
+                            </div>
+                            {notes && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700" aria-label="Esta disponibilidad tiene una nota">
+                                      <AlertCircle className="h-3.5 w-3.5" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs bg-white text-slate-900 shadow-lg">
+                                    <strong>Nota:</strong> {notes}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        ) : null}
                       </td>
-                    ))}
+                    })}
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
+
+        <Dialog open={Boolean(noteDialog)} onOpenChange={(open) => !open && setNoteDialog(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Agregar nota a la disponibilidad</DialogTitle>
+              <DialogDescription>
+                Esta nota quedará visible para quienes organizan el torneo.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="organizer-availability-note">Nota</Label>
+              <Textarea
+                id="organizer-availability-note"
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value)}
+                placeholder="Ej.: confirmó por WhatsApp"
+                maxLength={500}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setNoteDialog(null)} disabled={savingNote}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={handleNoteSave} disabled={savingNote}>
+                {savingNote ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquareText className="mr-2 h-4 w-4" />}
+                Guardar disponibilidad
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {timeSlots.length === 0 && (
           <div className="text-center py-8">

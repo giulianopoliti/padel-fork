@@ -52,6 +52,7 @@ export interface OrganizerAvailabilityData {
   coupleId: string
   timeSlotId: string
   isAvailable: boolean
+  notes?: string | null
 }
 
 export interface ExistingMatch {
@@ -1414,6 +1415,7 @@ export interface DraftMatch {
   couple1_id: string | null
   couple2_id: string | null
   status: string
+  club_id: string | null
   scheduled_date: string | null
   scheduled_start_time: string | null
   scheduled_end_time: string | null
@@ -1507,6 +1509,7 @@ export async function getDraftMatches(
           couple1_id,
           couple2_id,
           status,
+          club_id,
           couple1:couples!couple1_id (
             player1:players!couples_player1_id_fkey (first_name, last_name),
             player2:players!couples_player2_id_fkey (first_name, last_name)
@@ -1536,6 +1539,7 @@ export async function getDraftMatches(
       couple1_id: match.couple1_id,
       couple2_id: match.couple2_id,
       status: match.status,
+      club_id: match.club_id,
       scheduled_date: item.scheduled_date,
       scheduled_start_time: item.scheduled_start_time,
       scheduled_end_time: item.scheduled_end_time,
@@ -1642,7 +1646,7 @@ export async function updateOrganizerCoupleAvailability(
           couple_id: data.coupleId,
           time_slot_id: data.timeSlotId,
           is_available: true,
-          notes: 'Cargado manualmente por el organizador',
+          notes: data.notes?.trim() || null,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'couple_id,time_slot_id'
@@ -1673,7 +1677,7 @@ export async function updateOrganizerCoupleAvailability(
         couple_id: data.coupleId,
         time_slot_id: data.timeSlotId,
         is_available: data.isAvailable,
-        notes: data.isAvailable ? 'Cargado manualmente por el organizador' : null
+        notes: data.isAvailable ? data.notes?.trim() || null : null
       }
     }
   } catch (error) {

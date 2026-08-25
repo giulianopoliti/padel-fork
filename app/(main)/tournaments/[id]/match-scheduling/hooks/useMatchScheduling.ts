@@ -120,12 +120,17 @@ export const useMatchScheduling = (
     }))
   }, [getFreeDateWarningMessage])
 
-  const handleManualAvailabilityToggle = useCallback(async (coupleId: string, timeSlotId: string) => {
+  const handleManualAvailabilityToggle = useCallback(async (
+    coupleId: string,
+    timeSlotId: string,
+    isAvailable?: boolean,
+    notes?: string | null
+  ) => {
     const savingKey = `${coupleId}:${timeSlotId}`
     const currentAvailability = state.availability.find(item =>
       item.couple_id === coupleId && item.time_slot_id === timeSlotId
     )
-    const nextIsAvailable = !(currentAvailability?.is_available ?? false)
+    const nextIsAvailable = isAvailable ?? !(currentAvailability?.is_available ?? false)
 
     setState(prev => ({
       ...prev,
@@ -137,7 +142,8 @@ export const useMatchScheduling = (
       const result = await updateOrganizerCoupleAvailability({
         coupleId,
         timeSlotId,
-        isAvailable: nextIsAvailable
+        isAvailable: nextIsAvailable,
+        notes
       })
 
       if (!result.success) {
@@ -163,7 +169,7 @@ export const useMatchScheduling = (
                   couple_id: coupleId,
                   time_slot_id: timeSlotId,
                   is_available: true,
-                  notes: result.data?.notes || 'Cargado manualmente por el organizador'
+                  notes: result.data?.notes || null
                 }
               ]
             : availabilityWithoutCell,

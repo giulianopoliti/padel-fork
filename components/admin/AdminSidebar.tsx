@@ -11,6 +11,7 @@ import {
   Building2,
   Trophy,
   Swords,
+  ReceiptText,
   Shield,
   LogOut,
   Menu,
@@ -62,6 +63,11 @@ const navItems: NavItem[] = [
     label: "Partidos",
     href: "/admin/matches",
     icon: Swords
+  },
+  {
+    label: "Cobros",
+    href: "/admin/cobros",
+    icon: ReceiptText
   }
 ]
 

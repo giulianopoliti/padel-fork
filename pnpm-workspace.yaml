@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - '@vercel/speed-insights'
+  - esbuild
+  - sharp
+  - supabase
+  - unrs-resolver

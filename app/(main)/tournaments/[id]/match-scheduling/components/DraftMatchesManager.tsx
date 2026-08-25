@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { FileEdit, Send, Clock, MapPin, Loader2, CheckCircle2, AlertCircle, Info, Trash2, Edit } from 'lucide-react'
+import { FileEdit, Send, Clock, MapPin, Building2, Loader2, CheckCircle2, AlertCircle, Info, Trash2, Edit } from 'lucide-react'
 import { getDraftMatches, publishMatches, deleteMatches, modifyMatchSchedule, type DraftMatch, type ExistingMatch, type ModifyScheduleData } from '../actions'
 import ModifyScheduleDialog from './ModifyScheduleDialog'
 
@@ -194,6 +194,11 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
     return dateStr
   }
 
+  const getClubName = (clubId: string | null): string | null => {
+    if (!clubId) return null
+    return clubes?.find((club) => club.id === clubId)?.name || null
+  }
+
   // Convert DraftMatch to ExistingMatch for ModifyScheduleDialog compatibility
   const convertDraftToExistingMatch = (draft: DraftMatch): ExistingMatch => {
     return {
@@ -208,7 +213,7 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
       court_assignment: draft.court_assignment,
       couple1: draft.couple1,
       couple2: draft.couple2,
-      club_id: null,
+      club_id: draft.club_id,
       club: null
     } as ExistingMatch
   }
@@ -389,6 +394,12 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
                           <div className="flex items-center gap-1">
                             <MapPin className="h-3.5 w-3.5" />
                             Cancha {match.court_assignment}
+                          </div>
+                        )}
+                        {getClubName(match.club_id) && (
+                          <div className="flex items-center gap-1">
+                            <Building2 className="h-3.5 w-3.5" />
+                            {getClubName(match.club_id)}
                           </div>
                         )}
                       </div>
