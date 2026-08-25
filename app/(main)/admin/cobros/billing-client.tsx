@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -32,6 +33,7 @@ import { useToast } from "@/components/ui/use-toast"
 import {
   markTpeWeekPaid,
   setTournamentBillingStatus,
+  setTournamentsBillingStatus,
   updateBillingSettings,
 } from "@/app/api/admin/billing/actions"
 import { addDaysToDateOnly } from "@/lib/billing/rules"
@@ -70,6 +72,7 @@ type Confirmation =
   | { kind: "settings" }
   | { kind: "week" }
   | { kind: "item"; item: BillingItem; status: BillingStatus }
+  | { kind: "bulk"; items: BillingItem[]; status: "PAID" | "DISMISSED" }
   | null
 
 export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
@@ -79,6 +82,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const [confirmation, setConfirmation] = useState<Confirmation>(null)
   const [statusFilter, setStatusFilter] = useState<"ALL" | BillingStatus>("ALL")
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedTournamentIds, setSelectedTournamentIds] = useState<string[]>([])
   const [fvAmountUpTo16, setFvAmountUpTo16] = useState(String(data.settings.fvAmountUpTo16))
   const [fvAmountOver16, setFvAmountOver16] = useState(String(data.settings.fvAmountOver16))
   const [tpeAmountPerPlayer, setTpeAmountPerPlayer] = useState(
@@ -116,6 +120,38 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
 
   const pendingWeekItems = data.items.filter((item) => item.status === "PENDING")
 
+  const selectedItems = useMemo(() => {
+    const selectedSet = new Set(selectedTournamentIds)
+    return data.items.filter((item) => selectedSet.has(item.tournamentId))
+  }, [data.items, selectedTournamentIds])
+
+  const selectedPendingItems = useMemo(
+    () => selectedItems.filter((item) => item.status === "PENDING"),
+    [selectedItems],
+  )
+
+  const pendingVisibleItems = useMemo(
+    () => filteredItems.filter((item) => item.status === "PENDING"),
+    [filteredItems],
+  )
+
+  const selectedVisibleCount = useMemo(() => {
+    const selectedSet = new Set(selectedTournamentIds)
+    return pendingVisibleItems.filter((item) => selectedSet.has(item.tournamentId)).length
+  }, [pendingVisibleItems, selectedTournamentIds])
+
+  const allVisibleSelected =
+    pendingVisibleItems.length > 0 && selectedVisibleCount === pendingVisibleItems.length
+
+  const hasSelection = selectedPendingItems.length > 0
+
+  const selectedTotalAmount = selectedPendingItems.reduce((sum, item) => sum + item.amountArs, 0)
+
+  useEffect(() => {
+    const availableIds = new Set(data.items.map((item) => item.tournamentId))
+    setSelectedTournamentIds((current) => current.filter((id) => availableIds.has(id)))
+  }, [data.items])
+
   const handleNavigateWeek = (days: number) => {
     if (!data.weekStart) return
     router.push(`/admin/cobros?week=${addDaysToDateOnly(data.weekStart, days)}`)
@@ -132,6 +168,46 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
       return
     }
     setConfirmation({ kind: "settings" })
+  }
+
+  const handleToggleItemSelection = (tournamentId: string) => {
+    setSelectedTournamentIds((current) => {
+      if (current.includes(tournamentId)) {
+        return current.filter((id) => id !== tournamentId)
+      }
+      return [...current, tournamentId]
+    })
+  }
+
+  const handleToggleSelectAllVisible = (checked: boolean) => {
+    if (!checked) {
+      const visibleIds = new Set(pendingVisibleItems.map((item) => item.tournamentId))
+      setSelectedTournamentIds((current) => current.filter((id) => !visibleIds.has(id)))
+      return
+    }
+
+    setSelectedTournamentIds((current) => {
+      const merged = new Set(current)
+      for (const item of pendingVisibleItems) {
+        merged.add(item.tournamentId)
+      }
+      return Array.from(merged)
+    })
+  }
+
+  const handleSelectPendingVisible = () => {
+    setSelectedTournamentIds((current) => {
+      const merged = new Set(current)
+      for (const item of pendingVisibleItems) {
+        merged.add(item.tournamentId)
+      }
+      return Array.from(merged)
+    })
+  }
+
+  const handleOpenBulkConfirmation = (status: "PAID" | "DISMISSED") => {
+    if (selectedPendingItems.length === 0) return
+    setConfirmation({ kind: "bulk", status, items: selectedPendingItems })
   }
 
   const executeConfirmation = () => {
@@ -167,16 +243,36 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         return
       }
 
-      const result = await setTournamentBillingStatus(current.item.tournamentId, current.status)
-      if (!result.success) {
-        toast({ title: "No se pudo actualizar", description: result.error, variant: "destructive" })
+      if (current.kind === "item") {
+        const result = await setTournamentBillingStatus(current.item.tournamentId, current.status)
+        if (!result.success) {
+          toast({ title: "No se pudo actualizar", description: result.error, variant: "destructive" })
+          return
+        }
+        toast({
+          title: `Cobro ${statusLabels[current.status].toLocaleLowerCase("es")}`,
+          description: current.item.tournamentName,
+        })
+        router.refresh()
         return
       }
-      toast({
-        title: `Cobro ${statusLabels[current.status].toLocaleLowerCase("es")}`,
-        description: current.item.tournamentName,
+
+      const result = await setTournamentsBillingStatus({
+        tournamentIds: current.items.map((item) => item.tournamentId),
+        requestedStatus: current.status,
       })
+      if (!result.success) {
+        toast({ title: "No se pudo actualizar en lote", description: result.error, variant: "destructive" })
+        return
+      }
+
+      toast({
+        title: `Cobros ${statusLabels[current.status].toLocaleLowerCase("es")}`,
+        description: `${result.updated} torneos actualizados.`,
+      })
+      setSelectedTournamentIds([])
       router.refresh()
+      return
     })
   }
 
@@ -197,6 +293,20 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         description: `Se marcarán ${pendingWeekItems.length} torneos pendientes por un total de ${formatCurrency(total)}.`,
         confirmText: "Marcar semana",
         destructive: false,
+      }
+    }
+    if (confirmation.kind === "bulk") {
+      const total = confirmation.items.reduce((sum, item) => sum + item.amountArs, 0)
+      return {
+        title:
+          confirmation.status === "PAID"
+            ? "Marcar seleccionados como cobrados"
+            : confirmation.status === "DISMISSED"
+              ? "Descartar seleccionados"
+              : "Reabrir seleccionados",
+        description: `Se actualizarán ${confirmation.items.length} torneos por ${formatCurrency(total)} en total.`,
+        confirmText: statusLabels[confirmation.status],
+        destructive: confirmation.status === "DISMISSED",
       }
     }
     return {
@@ -394,6 +504,51 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="flex flex-col gap-3 pt-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-medium text-slate-900">{selectedPendingItems.length} pendientes seleccionados</p>
+            <p className="text-sm text-slate-500">Total pendiente seleccionado: {formatCurrency(selectedTotalAmount)}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isPending || pendingVisibleItems.length === 0}
+              onClick={handleSelectPendingVisible}
+            >
+              Seleccionar pendientes visibles
+            </Button>
+            <Button
+              size="sm"
+              disabled={isPending || !hasSelection}
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => handleOpenBulkConfirmation("PAID")}
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Marcar cobrados
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isPending || !hasSelection}
+              onClick={() => handleOpenBulkConfirmation("DISMISSED")}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Marcar descartados
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={isPending || !hasSelection}
+              onClick={() => setSelectedTournamentIds([])}
+            >
+              Limpiar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="hidden md:block">
         <CardHeader>
           <CardTitle>{data.billingModel === "FV_LEAGUE" ? "Ligas facturables" : "Torneos de la semana"}</CardTitle>
@@ -403,6 +558,13 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-slate-600">
+                <th className="px-3 py-3 font-medium">
+                  <Checkbox
+                    checked={allVisibleSelected}
+                    onCheckedChange={(checked) => handleToggleSelectAllVisible(checked === true)}
+                    aria-label="Seleccionar todos los pendientes visibles"
+                  />
+                </th>
                 <th className="px-3 py-3 font-medium">Torneo</th>
                 <th className="px-3 py-3 font-medium">Fecha</th>
                 <th className="px-3 py-3 font-medium">{data.billingModel === "FV_LEAGUE" ? "Parejas" : "Jugadores"}</th>
@@ -415,6 +577,15 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
             <tbody>
               {filteredItems.map((item) => (
                 <tr key={item.tournamentId} className="border-b align-top hover:bg-slate-50">
+                  <td className="px-3 py-4">
+                    {item.status === "PENDING" ? (
+                      <Checkbox
+                        checked={selectedTournamentIds.includes(item.tournamentId)}
+                        onCheckedChange={() => handleToggleItemSelection(item.tournamentId)}
+                        aria-label={`Seleccionar ${item.tournamentName}`}
+                      />
+                    ) : null}
+                  </td>
                   <td className="px-3 py-4">
                     <p className="font-medium text-slate-900">{item.tournamentName}</p>
                     <p className="text-xs text-slate-500">{item.tournamentStatus}</p>
@@ -433,7 +604,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 </tr>
               ))}
               {filteredItems.length === 0 && (
-                <tr><td colSpan={7} className="py-10 text-center text-slate-500">No hay cobros para estos filtros.</td></tr>
+                <tr><td colSpan={8} className="py-10 text-center text-slate-500">No hay cobros para estos filtros.</td></tr>
               )}
             </tbody>
           </table>
@@ -449,7 +620,16 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                   <CardTitle className="text-base">{item.tournamentName}</CardTitle>
                   <CardDescription>{formatDate(item.startDate)}</CardDescription>
                 </div>
-                {getStatusBadge(item.status)}
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(item.status)}
+                  {item.status === "PENDING" ? (
+                    <Checkbox
+                      checked={selectedTournamentIds.includes(item.tournamentId)}
+                      onCheckedChange={() => handleToggleItemSelection(item.tournamentId)}
+                      aria-label={`Seleccionar ${item.tournamentName}`}
+                    />
+                  ) : null}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">

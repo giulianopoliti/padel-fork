@@ -93,6 +93,53 @@ export const setTournamentBillingStatus = async (
   }
 }
 
+const bulkStatusSchema = z.object({
+  tournamentIds: z.array(z.string().min(1)).min(1).max(500),
+  requestedStatus: statusSchema,
+})
+
+export const setTournamentsBillingStatus = async (
+  input: z.infer<typeof bulkStatusSchema>,
+) => {
+  try {
+    const adminUserId = await verifyAdmin()
+    const parsed = bulkStatusSchema.parse(input)
+    const context = await getBillingContext()
+    const tournamentIds = Array.from(new Set(parsed.tournamentIds))
+
+    const payloads = await Promise.all(
+      tournamentIds.map(async (tournamentId) => {
+        const { tournament, snapshot } = await getFreshTournamentBillingSnapshot(
+          tournamentId,
+          context,
+        )
+        return buildChargePayload({
+          tournament,
+          snapshot,
+          organizationId: context.organizationId,
+          status: parsed.requestedStatus,
+          adminUserId,
+        })
+      }),
+    )
+
+    const { error } = await supabaseAdmin
+      .from("tournament_billing_charges")
+      .upsert(payloads, { onConflict: "tournament_id" })
+
+    if (error) throw error
+
+    revalidatePath("/admin/cobros")
+    return { success: true as const, updated: payloads.length }
+  } catch (error) {
+    console.error("[billing] Error bulk-changing charge status:", error)
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "No se pudieron actualizar los cobros",
+    }
+  }
+}
+
 export const markTpeWeekPaid = async (weekStart: string) => {
   try {
     const adminUserId = await verifyAdmin()
