@@ -9,6 +9,8 @@ import type { PublicTournamentSummary } from "@/types/public-tournament"
 import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
 import { shouldTreatTournamentRegistrationAsPublic } from "@/lib/tournaments/tenant-registration-policy"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
+import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
+import { Navigation } from "lucide-react"
 
 interface PublicTournamentListProps {
   tournaments: PublicTournamentSummary[]
@@ -108,6 +110,16 @@ export default function PublicTournamentList({
           const statusLabel = statusLabels[tournament.status] || tournament.status
           const hideVenue = Boolean(tournament.hideVenue)
           const venueName = tournament.club?.name || tournament.club?.address || null
+          const venueMapsUrl = hideVenue
+            ? null
+            : tournament.club?.mapsUrl || buildGoogleMapsSearchUrl({
+                name: tournament.club?.name,
+                address: tournament.club?.address,
+                formattedAddress: tournament.club?.formattedAddress,
+                googlePlaceId: tournament.club?.googlePlaceId,
+                latitude: tournament.club?.latitude,
+                longitude: tournament.club?.longitude,
+              })
           const genderLabel =
             typeof tournament.gender === "string"
               ? genderLabels[tournament.gender as Gender] || tournament.gender
@@ -163,12 +175,23 @@ export default function PublicTournamentList({
                   <div className="space-y-2">
                     <p className="inline-flex items-start gap-2 text-sm font-black uppercase tracking-[0.04em] text-[var(--tpe-cyan)] sm:text-lg">
                       <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                      <span>{venueName}</span>
+                      {venueMapsUrl ? (
+                        <a href={venueMapsUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline" aria-label={`Abrir ${venueName} en Google Maps`}>
+                          {venueName}
+                        </a>
+                      ) : <span>{venueName}</span>}
                     </p>
                     {tournament.club?.address && tournament.club.address !== venueName ? (
-                      <p className="pl-6 text-sm font-semibold uppercase tracking-[0.03em] text-white/82">
-                        {tournament.club.address}
-                      </p>
+                      venueMapsUrl ? (
+                        <a href={venueMapsUrl} target="_blank" rel="noopener noreferrer" className="block pl-6 text-sm font-semibold uppercase tracking-[0.03em] text-white/82 underline-offset-4 hover:underline" aria-label={`Abrir ${tournament.club.address} en Google Maps`}>
+                          {tournament.club.address}
+                        </a>
+                      ) : <p className="pl-6 text-sm font-semibold uppercase tracking-[0.03em] text-white/82">{tournament.club.address}</p>
+                    ) : null}
+                    {venueMapsUrl ? (
+                      <a href={venueMapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 pl-6 text-xs font-bold uppercase tracking-[0.1em] text-white underline-offset-4 hover:underline" aria-label={`Como llegar a ${venueName}`}>
+                        <Navigation className="h-3.5 w-3.5" /> Como llegar
+                      </a>
                     ) : null}
                   </div>
                 ) : null}

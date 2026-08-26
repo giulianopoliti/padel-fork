@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/utils/supabase/client'

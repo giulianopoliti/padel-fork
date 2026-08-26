@@ -93,7 +93,7 @@ export async function getTenantUpcomingTournamentSummaries(
       enable_transfer_proof,
       transfer_alias,
       transfer_amount,
-      clubes(id, name, address)
+      clubes(id, name, address, formatted_address, google_place_id, latitude, longitude, maps_url)
     `)
     .eq("organization_id", organization.id)
     .in("status", dbStatuses)
@@ -161,6 +161,11 @@ export async function getTenantUpcomingTournamentSummaries(
             id: club.id || null,
             name: club.name || null,
             address: club.address || null,
+            formattedAddress: club.formatted_address || null,
+            googlePlaceId: club.google_place_id || null,
+            latitude: club.latitude || null,
+            longitude: club.longitude || null,
+            mapsUrl: club.maps_url || null,
           }
         : null,
     }

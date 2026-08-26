@@ -2,7 +2,8 @@
 
 import React from 'react'
 import Image from 'next/image'
-import { AlertCircle, Building2, MapPin, Navigation, Phone, Trophy, UserPlus } from 'lucide-react'
+import { AlertCircle, BookOpen, Building2, MapPin, Navigation, Phone, Trophy, UserPlus } from 'lucide-react'
+import Link from 'next/link'
 
 import PublicRegistrationLauncher from '@/components/tournament/public-registration-launcher'
 import { getTenantBranding } from '@/config/tenant'
@@ -168,6 +169,13 @@ export default function NotRegisteredView({
             </CardContent>
           </Card>
         )}
+
+        <Button asChild variant="outline" className="w-full justify-center sm:w-auto">
+          <Link href={`/tournaments/${tournamentId}/formato`}>
+            <BookOpen className="mr-2 h-4 w-4" />
+            Ver formato del torneo
+          </Link>
+        </Button>
       </div>
 
       <Alert className="border-orange-200 bg-orange-50">

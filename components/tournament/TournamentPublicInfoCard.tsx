@@ -1,4 +1,5 @@
-import { Award, Building2, CalendarDays, Clock, FileText, MapPin, Navigation, Phone, Trophy, UserRound } from 'lucide-react'
+import { Award, BookOpen, Building2, CalendarDays, Clock, FileText, MapPin, Navigation, Phone, Trophy, UserRound } from 'lucide-react'
+import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,7 +38,15 @@ export default function TournamentPublicInfoCard({
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl font-semibold text-slate-900">{title}</CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="text-xl font-semibold text-slate-900">{title}</CardTitle>
+          <Button asChild size="sm" variant="outline" className="shrink-0 border-slate-300 text-slate-700 hover:bg-slate-50">
+            <Link href={`/tournaments/${publicInfo.id}/formato`}>
+              <BookOpen className="mr-1.5 h-4 w-4" />
+              Ver formato
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

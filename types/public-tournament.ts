@@ -26,6 +26,11 @@ export interface PublicTournamentSummary {
     id?: string | null
     name: string | null
     address: string | null
+    formattedAddress?: string | null
+    googlePlaceId?: string | null
+    latitude?: number | string | null
+    longitude?: number | string | null
+    mapsUrl?: string | null
   } | null
   enableTransferProof?: boolean
   transferAlias?: string | null
