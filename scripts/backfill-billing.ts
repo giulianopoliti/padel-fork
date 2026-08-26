@@ -115,7 +115,13 @@ const fetchTournaments = async (organizationId: string) => {
   const statuses =
     billingModel === "FV_LEAGUE"
       ? ["ZONE_PHASE", "BRACKET_PHASE", "FINISHED_POINTS_PENDING", "FINISHED_POINTS_CALCULATED"]
-      : ["NOT_STARTED", "BRACKET_PHASE", "FINISHED_POINTS_PENDING", "FINISHED_POINTS_CALCULATED"]
+      : [
+          "NOT_STARTED",
+          "ZONE_PHASE",
+          "BRACKET_PHASE",
+          "FINISHED_POINTS_PENDING",
+          "FINISHED_POINTS_CALCULATED",
+        ]
 
   let query = supabase
     .from("tournaments")

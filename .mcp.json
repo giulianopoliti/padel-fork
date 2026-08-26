@@ -4,6 +4,10 @@
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=bfmaqrythlwbfjuqumom"
     },
+    "supabase-tpepadel": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=lzowflvgnspjdbvdxliy"
+    },
     "supabase-develop": {
       "type": "stdio",
       "command": "npx",

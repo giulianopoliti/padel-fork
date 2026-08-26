@@ -125,7 +125,18 @@ describe("billing rules", () => {
   it("filters exact type, status and test tournament rules per tenant", () => {
     expect(isTournamentEligibleForBilling({ type: "LONG", status: "ZONE_PHASE", es_prueba: false }, "FV_LEAGUE")).toBe(true)
     expect(isTournamentEligibleForBilling({ type: "LONG", status: "NOT_STARTED", es_prueba: false }, "FV_LEAGUE")).toBe(false)
-    expect(isTournamentEligibleForBilling({ type: "AMERICAN", status: "NOT_STARTED", es_prueba: false }, "TPE_PLAYER")).toBe(true)
+    for (const status of [
+      "NOT_STARTED",
+      "ZONE_PHASE",
+      "BRACKET_PHASE",
+      "FINISHED_POINTS_PENDING",
+      "FINISHED_POINTS_CALCULATED",
+    ]) {
+      expect(
+        isTournamentEligibleForBilling({ type: "AMERICAN", status, es_prueba: false }, "TPE_PLAYER"),
+      ).toBe(true)
+    }
+    expect(isTournamentEligibleForBilling({ type: "AMERICAN", status: "CANCELED", es_prueba: false }, "TPE_PLAYER")).toBe(false)
     expect(isTournamentEligibleForBilling({ type: "AMERICAN", status: "BRACKET_PHASE", es_prueba: true }, "TPE_PLAYER")).toBe(false)
   })
 })
