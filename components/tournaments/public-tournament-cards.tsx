@@ -68,6 +68,8 @@ const genderLabel = {
   MIXED: "Mixto",
 }
 
+const TOURNAMENT_DISPLAY_TIME_ZONE = "America/Argentina/Buenos_Aires"
+
 const hasExplicitTime = (dateString: string | null | undefined) => {
   return Boolean(dateString && dateString.includes("T"))
 }
@@ -83,34 +85,48 @@ const formatDate = (dateString: string | null | undefined) => {
     weekday: "short",
     day: "numeric",
     month: "short",
-    timeZone: "America/Argentina/Buenos_Aires",
+    timeZone: TOURNAMENT_DISPLAY_TIME_ZONE,
   })
 }
 
-const formatTime = (dateString: string | null | undefined) => {
+const formatCompactTime = (dateString: string | null | undefined) => {
   if (!dateString || !hasExplicitTime(dateString)) {
-    return "Horario a confirmar"
+    return null
   }
 
-  const date = new Date(dateString)
-
-  return date.toLocaleTimeString("es-AR", {
-    hour: "2-digit",
+  const parts = new Intl.DateTimeFormat("es-AR", {
+    hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/Argentina/Buenos_Aires",
-  })
+    hour12: false,
+    hourCycle: "h23",
+    timeZone: TOURNAMENT_DISPLAY_TIME_ZONE,
+  }).formatToParts(new Date(dateString))
+
+  const hourPart = parts.find((part) => part.type === "hour")?.value
+  const minutePart = parts.find((part) => part.type === "minute")?.value
+  const hour = hourPart ? Number.parseInt(hourPart, 10) : Number.NaN
+
+  if (Number.isNaN(hour)) {
+    return null
+  }
+
+  if (!minutePart || minutePart === "00") {
+    return `${hour}hs`
+  }
+
+  return `${hour}:${minutePart}hs`
 }
 
-const formatSchedule = (tournament: PublicTournamentSummary) => {
+const formatSchedule = (
+  tournament: PublicTournamentSummary,
+  { showLongDateRange }: { showLongDateRange: boolean },
+) => {
   if (!tournament.startDate) {
     return "Fecha a confirmar"
   }
 
-  if (tournament.type === "AMERICAN") {
-    const timeLabel = formatTime(tournament.startDate)
-    return timeLabel === "Horario a confirmar"
-      ? formatDate(tournament.startDate)
-      : `${formatDate(tournament.startDate)} - ${timeLabel} hs`
+  if (tournament.type === "AMERICAN" || !showLongDateRange) {
+    return formatDate(tournament.startDate)
   }
 
   if (!tournament.endDate || tournament.endDate === tournament.startDate) {
@@ -162,44 +178,44 @@ export function PublicTournamentCards({
     ? "mx-auto mt-3 max-w-2xl text-sm text-white/72 sm:text-base"
     : "mx-auto mt-3 max-w-2xl text-slate-300"
   const cardClassName = isElite
-    ? "overflow-hidden rounded-[2rem] border-2 border-[var(--tpe-forest)] bg-[linear-gradient(180deg,#2f3169_0%,#2b2e62_100%)] shadow-[0_20px_50px_rgba(16,24,40,0.24)]"
+    ? "overflow-hidden rounded-3xl border-2 border-[var(--tpe-forest)] bg-[linear-gradient(180deg,#2f3169_0%,#2b2e62_100%)] shadow-[0_16px_36px_rgba(16,24,40,0.22)]"
     : "overflow-hidden border-white/10 bg-brand-800/70 shadow-sm transition-shadow hover:border-court-500/40 hover:shadow-md"
   const primaryBadgeClassName = isElite
-    ? "rounded-full border-0 bg-[var(--tpe-lime)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--tpe-night)] hover:bg-[var(--tpe-lime)]"
+    ? "rounded-full border-0 bg-[var(--tpe-lime)] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--tpe-night)] hover:bg-[var(--tpe-lime)]"
     : "bg-court-500 text-brand-900 hover:bg-court-500"
   const secondaryBadgeClassName = isElite
-    ? "tpe-chip rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em]"
+    ? "tpe-chip rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em]"
     : "border-court-500/30 bg-court-500/10 text-court-200"
   const mutedBadgeClassName = isElite
-    ? "rounded-full border-white/15 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/80"
+    ? "rounded-full border-white/15 bg-white/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80"
     : "border-white/10 text-slate-300"
   const titleClassName = isElite
-    ? "text-2xl font-black uppercase tracking-tight text-[var(--tpe-paper)] sm:text-3xl"
-    : "text-xl font-black tracking-tight text-white sm:text-2xl"
+    ? "text-xl font-black uppercase tracking-tight text-[var(--tpe-paper)] sm:text-2xl"
+    : "text-lg font-black tracking-tight text-white sm:text-xl"
   const bodyTextClassName = isElite
-    ? "text-sm font-semibold uppercase tracking-[0.03em] text-white"
-    : "text-sm text-slate-300"
+    ? "text-xs font-semibold uppercase tracking-[0.03em] text-white"
+    : "text-xs text-slate-300 sm:text-sm"
   const infoBoxClassName = isElite
-    ? "flex items-start gap-3 rounded-2xl border border-white/20 bg-[rgba(16,25,50,0.86)] px-4 py-3 sm:px-5"
-    : "flex items-start gap-3 rounded-2xl bg-white/5 px-3 py-3 sm:px-4"
-  const infoIconClassName = isElite ? "mt-0.5 h-4 w-4 text-[var(--tpe-lime)]" : "mt-0.5 h-4 w-4 text-court-300"
-  const infoLabelClassName = isElite ? "text-[11px] font-black uppercase tracking-[0.14em] text-white/88" : "font-semibold text-white"
-  const infoValueClassName = isElite ? "font-semibold text-white" : ""
+    ? "flex items-start gap-2.5 rounded-xl border border-white/20 bg-[rgba(16,25,50,0.86)] px-3 py-2 sm:px-4"
+    : "flex items-start gap-2.5 rounded-xl bg-white/5 px-3 py-2 sm:px-3.5"
+  const infoIconClassName = isElite ? "mt-0.5 h-3.5 w-3.5 text-[var(--tpe-lime)]" : "mt-0.5 h-3.5 w-3.5 text-court-300"
+  const infoLabelClassName = isElite ? "text-[10px] font-black uppercase tracking-[0.14em] text-white/88" : "text-sm font-semibold text-white"
+  const infoValueClassName = isElite ? "text-sm font-semibold text-white" : "text-sm"
   const pricePillClassName = isElite
-    ? "inline-flex items-center gap-2 rounded-full bg-[var(--tpe-lime)] px-3 py-1 text-sm font-black uppercase tracking-[0.12em] text-[var(--tpe-night)]"
-    : "inline-flex items-center gap-2 rounded-full bg-court-500 px-3 py-1 text-sm font-semibold text-brand-900"
+    ? "inline-flex items-center gap-1.5 rounded-full bg-[var(--tpe-lime)] px-2.5 py-0.5 text-xs font-black uppercase tracking-[0.12em] text-[var(--tpe-night)]"
+    : "inline-flex items-center gap-1.5 rounded-full bg-court-500 px-2.5 py-0.5 text-xs font-semibold text-brand-900 sm:text-sm"
   const awardPillClassName = isElite
-    ? "inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm font-bold uppercase tracking-[0.12em] text-[var(--tpe-paper)]"
-    : "inline-flex items-center gap-2 rounded-full bg-court-500/15 px-3 py-1 text-sm font-semibold text-court-200"
+    ? "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs font-bold uppercase tracking-[0.12em] text-[var(--tpe-paper)]"
+    : "inline-flex items-center gap-1.5 rounded-full bg-court-500/15 px-2.5 py-0.5 text-xs font-semibold text-court-200 sm:text-sm"
   const registrationButtonClassName = isElite
-    ? "h-11 rounded-full bg-[var(--tpe-lime)] text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-night)] hover:bg-[#e6ff63]"
-    : "h-11 bg-court-500 text-base font-semibold text-brand-900 hover:bg-court-400"
+    ? "h-9 rounded-full bg-[var(--tpe-lime)] text-xs font-black uppercase tracking-[0.16em] text-[var(--tpe-night)] hover:bg-[#e6ff63] sm:h-10"
+    : "h-9 bg-court-500 text-sm font-semibold text-brand-900 hover:bg-court-400 sm:h-10 sm:text-base"
   const detailsButtonClassName = isElite
-    ? "h-11 rounded-full border-white/24 bg-white/8 text-sm font-bold uppercase tracking-[0.14em] text-white hover:bg-white/14 hover:text-white"
-    : "h-11 border-white/20 bg-white/5 text-base font-semibold text-white hover:bg-white/10"
+    ? "h-9 rounded-full border-white/24 bg-white/8 text-xs font-bold uppercase tracking-[0.14em] text-white hover:bg-white/14 hover:text-white sm:h-10"
+    : "h-9 border-white/20 bg-white/5 text-sm font-semibold text-white hover:bg-white/10 sm:h-10 sm:text-base"
   const statsPanelClassName = isElite
-    ? "rounded-2xl border border-white/20 bg-[rgba(16,25,50,0.86)] px-4 py-3"
-    : "rounded-2xl bg-white/5 px-4 py-3"
+    ? "rounded-xl border border-white/20 bg-[rgba(16,25,50,0.86)] px-3 py-2"
+    : "rounded-xl bg-white/5 px-3 py-2"
   const progressTrackClassName = isElite ? "bg-white/10" : "bg-white/10"
   const progressFillClassName = isElite ? "bg-[var(--tpe-lime)]" : "bg-court-500"
 
@@ -213,7 +229,7 @@ export function PublicTournamentCards({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {tournaments.map((tournament) => {
         const priceLabel = formatPrice(tournament.price)
         const hideVenue = Boolean(tournament.hideVenue)
@@ -249,24 +265,24 @@ export function PublicTournamentCards({
         })
         const registrationStatusLabel = canRegister ? "Inscripciones abiertas" : "Inscripciones cerradas"
         const registrationBadgeClassName = canRegister
-          ? "rounded-full border border-emerald-200/90 bg-emerald-600 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-[0_0_18px_rgba(16,185,129,0.28)]"
-          : "rounded-full border border-white/[0.15] bg-white/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/80"
+          ? "rounded-full border border-emerald-200/90 bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_0_18px_rgba(16,185,129,0.28)]"
+          : "rounded-full border border-white/[0.15] bg-white/[0.08] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80"
         const currentParticipants = tournament.currentParticipants || 0
         const progressWidth = canShowParticipantStats
           ? `${Math.min((currentParticipants / tournament.maxParticipants!) * 100, 100)}%`
           : "0%"
-        const timeLabel = tournament.startDate
-          ? hasExplicitTime(tournament.startDate)
-            ? `${formatTime(tournament.startDate)} hs`
-            : "A confirmar"
-          : "A confirmar"
+        const isLongTournament = tournament.type === "LONG"
+        const shouldShowTime = !isLongTournament
+        const timeLabel = shouldShowTime
+          ? formatCompactTime(tournament.startDate) || "A confirmar"
+          : null
 
         return (
           <Card key={tournament.id} className={cardClassName}>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-stretch lg:justify-between">
-                <div className="min-w-0 flex-1 space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:gap-3.5 lg:flex-row lg:items-stretch lg:justify-between">
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Badge className={primaryBadgeClassName}>
                       {typeLabel[(tournament.type || "LONG") as keyof typeof typeLabel] || tournament.type || "Torneo"}
                     </Badge>
@@ -286,12 +302,12 @@ export function PublicTournamentCards({
                       </Badge>
                     ) : null}
                     {tournament.isFull ? (
-                      <Badge className="rounded-full border border-red-200/90 bg-red-700 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-[0_0_22px_rgba(220,38,38,0.38)]">
+                      <Badge className="rounded-full border border-red-200/90 bg-red-700 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_0_22px_rgba(220,38,38,0.38)]">
                         Completo
                       </Badge>
                     ) : null}
                     {shouldShowFewSlotsAlert(tournament.showFewSlotsAlert, tournament.hasFewSlots) ? (
-                      <Badge className="animate-pulse rounded-full border border-red-200/90 bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_0_24px_rgba(220,38,38,0.45)]">
+                      <Badge className="animate-pulse rounded-full border border-red-200/90 bg-red-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-[0_0_24px_rgba(220,38,38,0.45)]">
                         Pocos cupos
                       </Badge>
                     ) : null}
@@ -299,28 +315,32 @@ export function PublicTournamentCards({
 
                   <div>
                     <h3 className={titleClassName}>{tournament.name}</h3>
-                    <p className={`mt-1 ${bodyTextClassName}`}>
-                      {tournament.type === "AMERICAN"
-                        ? "Formato rapido con horario puntual y registro simple."
-                        : "Liga con fechas programadas y seguimiento durante la semana."}
-                    </p>
+                    {isLongTournament ? (
+                      <p className={`mt-1 ${bodyTextClassName}`}>
+                        Liga con fechas programadas y seguimiento durante la semana.
+                      </p>
+                    ) : null}
                   </div>
 
-                  <div className={`grid gap-3 text-sm ${isElite ? "text-white" : "text-slate-200"} sm:grid-cols-2`}>
+                  <div className={`grid gap-2 text-sm ${isElite ? "text-white" : "text-slate-200"} sm:grid-cols-2 sm:gap-3`}>
                     <div className={infoBoxClassName}>
                       <CalendarDays className={infoIconClassName} />
                       <div className="min-w-0">
                         <p className={infoLabelClassName}>Fecha</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                          <p className={infoValueClassName}>{formatSchedule(tournament)}</p>
-                          <p className="inline-flex items-center gap-1 font-semibold text-white">
-                            <Clock3 className={`h-3.5 w-3.5 ${isElite ? "text-[var(--tpe-lime)]" : "text-court-300"}`} />
-                            {timeLabel}
+                        <div className="mt-0.5 flex flex-col gap-0.5">
+                          <p className={infoValueClassName}>
+                            {formatSchedule(tournament, { showLongDateRange: isElite })}
                           </p>
+                          {shouldShowTime && timeLabel ? (
+                            <p
+                              className="inline-flex items-center gap-1 text-sm font-semibold text-white"
+                              aria-label={`Horario ${timeLabel}`}
+                            >
+                              <Clock3 className={`h-3.5 w-3.5 ${isElite ? "text-[var(--tpe-lime)]" : "text-court-300"}`} />
+                              {timeLabel}
+                            </p>
+                          ) : null}
                         </div>
-                        <p className="mt-1 text-xs text-white/82">
-                          {tournament.type === "AMERICAN" ? "Partido único con horario definido." : "Fecha principal del torneo."}
-                        </p>
                       </div>
                     </div>
 
@@ -331,14 +351,42 @@ export function PublicTournamentCards({
                           <p className={infoLabelClassName}>Sede</p>
                           <p className={infoValueClassName}>{venueName}</p>
                           {tournament.club?.address && tournament.club.address !== venueName ? (
-                            <p className="mt-1 text-xs text-white/82">{tournament.club.address}</p>
-                          ) : null}
+                            venueMapsUrl ? (
+                              <a
+                                href={venueMapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1 block text-xs text-white/82 underline-offset-4 hover:underline"
+                                aria-label={`Abrir ${tournament.club.address} en Google Maps`}
+                                tabIndex={0}
+                              >
+                                {tournament.club.address}
+                              </a>
+                            ) : (
+                              <p className="mt-1 text-xs text-white/82">{tournament.club.address}</p>
+                            )
+                          ) : venueMapsUrl ? (
+                            <a
+                              href={venueMapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`${infoValueClassName} underline-offset-4 hover:underline`}
+                              aria-label={`Abrir ${venueName} en Google Maps`}
+                              tabIndex={0}
+                            >
+                              {venueName}
+                            </a>
+                          ) : (
+                            <p className={infoValueClassName}>{venueName}</p>
+                          )}
                           {venueMapsUrl ? (
                             <a
                               href={venueMapsUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="mt-2 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-[0.1em] text-white underline-offset-4 hover:underline"
+                              className="mt-1 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-[0.1em] text-white underline-offset-4 hover:underline"
+                              aria-label={`Como llegar a ${venueName}`}
+                              tabIndex={0}
                             >
                               <Navigation className="h-3.5 w-3.5" />
                               Como llegar
@@ -374,14 +422,14 @@ export function PublicTournamentCards({
                           {currentParticipants}/{tournament.maxParticipants}
                         </span>
                       </div>
-                      <div className={`mt-3 h-2 overflow-hidden rounded-full ${progressTrackClassName}`}>
+                      <div className={`mt-2 h-1.5 overflow-hidden rounded-full ${progressTrackClassName}`}>
                         <div className={`h-full rounded-full ${progressFillClassName}`} style={{ width: progressWidth }} />
                       </div>
                     </div>
                   ) : null}
                 </div>
 
-                <div className="flex w-full flex-col justify-end gap-3 lg:w-56 lg:items-center">
+                <div className="flex w-full flex-col justify-end gap-2 lg:w-52 lg:items-center">
                   {canRegister ? (
                     <PublicRegistrationLauncher
                       tournamentId={tournament.id}
@@ -395,7 +443,7 @@ export function PublicTournamentCards({
                       fullWidth
                     />
                   ) : !isElite || tournament.status === "NOT_STARTED" ? (
-                    <div className="rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/80">
+                    <div className="rounded-xl border border-white/12 bg-white/6 px-3 py-2 text-center text-[11px] font-bold uppercase tracking-[0.16em] text-white/80">
                       {getPublicRegistrationClosedLabel({
                         isFull: tournament.isFull,
                       })}

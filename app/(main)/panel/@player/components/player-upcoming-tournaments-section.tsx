@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Gender } from "@/types"
 import { isTournamentGenderFilter } from "@/lib/tournaments/gender-filtering"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
+import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
 import { formatDateLabel, formatPrice, formatTimeLabel } from "./panel-formatters"
 
 interface PlayerUpcomingTournamentsSectionProps {
@@ -118,6 +119,12 @@ export default function PlayerUpcomingTournamentsSection({
           const canRegister = !tournament.is_inscribed && !tournament.is_full && tournament.status === "NOT_STARTED"
           const hideVenue = Boolean(tournament.hide_venue)
           const venueName = tournament.club?.name || tournament.club?.address || null
+          const venueMapsUrl = hideVenue
+            ? null
+            : buildGoogleMapsSearchUrl({
+                name: tournament.club?.name,
+                address: tournament.club?.address,
+              })
 
           return (
             <article
@@ -167,14 +174,39 @@ export default function PlayerUpcomingTournamentsSection({
 
                 {!hideVenue && venueName ? (
                   <div className="space-y-2">
-                    <p className="inline-flex items-start gap-2 text-sm font-black uppercase tracking-[0.04em] text-[var(--tpe-cyan)] sm:text-lg">
-                      <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                      <span>{venueName}</span>
-                    </p>
-                    {tournament.club?.address && tournament.club.address !== venueName ? (
-                      <p className="pl-6 text-sm font-semibold uppercase tracking-[0.03em] text-white/82">
-                        {tournament.club.address}
+                    {venueMapsUrl ? (
+                      <a
+                        href={venueMapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-start gap-2 text-sm font-black uppercase tracking-[0.04em] text-[var(--tpe-cyan)] sm:text-lg hover:underline"
+                        aria-label={`Abrir ${venueName} en Google Maps`}
+                      >
+                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <span>{venueName}</span>
+                      </a>
+                    ) : (
+                      <p className="inline-flex items-start gap-2 text-sm font-black uppercase tracking-[0.04em] text-[var(--tpe-cyan)] sm:text-lg">
+                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <span>{venueName}</span>
                       </p>
+                    )}
+                    {tournament.club?.address && tournament.club.address !== venueName ? (
+                      venueMapsUrl ? (
+                        <a
+                          href={venueMapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block pl-6 text-sm font-semibold uppercase tracking-[0.03em] text-white/82 hover:underline"
+                          aria-label={`Abrir ${tournament.club.address} en Google Maps`}
+                        >
+                          {tournament.club.address}
+                        </a>
+                      ) : (
+                        <p className="pl-6 text-sm font-semibold uppercase tracking-[0.03em] text-white/82">
+                          {tournament.club.address}
+                        </p>
+                      )
                     ) : null}
                   </div>
                 ) : null}
