@@ -721,6 +721,20 @@ export default function RegisterCoupleForm({
     null
 
   const isTransferStepReady = !transferProofEnabled || (!!paymentProofFile && !transferConfigInvalid)
+  const isTermsStepReady = !requireTermsAcceptance || termsAccepted
+
+  const renderTermsAcceptance = () => {
+    if (!requireTermsAcceptance) return null
+
+    return (
+      <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-slate-700">
+        <Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked === true)} />
+        <span>
+          Leí y acepto los <Link href={TPE_TERMS_PATH} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">Términos y Condiciones</Link>.
+        </span>
+      </label>
+    )
+  }
 
   const renderTransferProofStep = (stepLabel: string, inputId: string, companionName?: string | null) => (
     <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4">
@@ -896,7 +910,7 @@ export default function RegisterCoupleForm({
           </Button>
           <Button
             onClick={handleUpdatePhonesAndRegister}
-            disabled={isUpdatingPhones || isSubmitting}
+            disabled={isUpdatingPhones || isSubmitting || !isTermsStepReady}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isUpdatingPhones || isSubmitting ? (
@@ -943,15 +957,6 @@ export default function RegisterCoupleForm({
             </p>
           </div>
         </div>
-
-        {requireTermsAcceptance && (
-          <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-slate-700">
-            <Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked === true)} />
-            <span>
-              Leí y acepto los <Link href={TPE_TERMS_PATH} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">Términos y Condiciones</Link>.
-            </span>
-          </label>
-        )}
 
         <Tabs defaultValue="new" className="w-full">
           <TabsList className="grid h-11 w-full grid-cols-2 bg-gray-100">
@@ -1065,10 +1070,12 @@ export default function RegisterCoupleForm({
                   </div>
                 )}
 
+                {renderTermsAcceptance()}
+
                 <div className="flex justify-end">
                   <Button
                     onClick={onSubmitCouple}
-                    disabled={isSubmitting || isCheckingPhones || !isTransferStepReady}
+                    disabled={isSubmitting || isCheckingPhones || !isTransferStepReady || !isTermsStepReady}
                     className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
                   >
                     {isCheckingPhones ? (
@@ -1207,6 +1214,8 @@ export default function RegisterCoupleForm({
 
                 {transferProofEnabled && renderTransferProofStep("Paso 3", "payment-proof-new")}
 
+                {renderTermsAcceptance()}
+
                 <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
@@ -1219,7 +1228,7 @@ export default function RegisterCoupleForm({
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isSubmitting || !isTransferStepReady}
+                    disabled={isSubmitting || !isTransferStepReady || !isTermsStepReady}
                     className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
                   >
                     {isSubmitting ? "Procesando..." : "Crear y registrar pareja"}

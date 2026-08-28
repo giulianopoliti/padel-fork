@@ -3,7 +3,8 @@ import { readFileSync, unlinkSync, writeFileSync } from "node:fs"
 import { spawn, spawnSync } from "node:child_process"
 import { createClient } from "@supabase/supabase-js"
 
-const DEFAULT_SOURCE_ENV = "C:/Users/54116/Downloads/padel-tournament-system/.env.local"
+// The source must always be one of this repository's tenant env files, passed explicitly.
+const DEFAULT_SOURCE_ENV = ""
 const DEFAULT_SOURCE_ORG_ID = "10c62a15-2ee4-44b8-9a23-016ef2183205"
 const DEFAULT_DEST_ORG_ID = "1ee10ee3-8895-4279-8cdb-38a974b88d29"
 const DEFAULT_DEST_CONTAINER = "supabase_db_padel-base"
@@ -47,21 +48,22 @@ const stableUuid = (value) => {
 }
 
 const readEnvValues = (envPath, name) =>
-  readFileSync(envPath, "utf8")
+  (envPath ? readFileSync(envPath, "utf8") : "")
     .split(/\r?\n/)
     .map((line) => line.replace(/^#\s*/, ""))
     .filter((line) => line.startsWith(`${name}=`))
     .map((line) => line.split("=").slice(1).join("=").trim().replace(/^['"]|['"]$/g, ""))
 
-const sourceUrl = readEnvValues(SOURCE_ENV, "NEXT_PUBLIC_SUPABASE_URL").find((value) =>
-  value.includes("vulusxqgknaejdxnhiex")
-)
+const sourceUrl = readEnvValues(SOURCE_ENV, "NEXT_PUBLIC_SUPABASE_URL").find((value) => {
+  const host = new URL(value).hostname
+  return host !== "localhost" && host !== "127.0.0.1" && host !== "::1"
+})
 const sourceServiceKey =
   readEnvValues(SOURCE_ENV, "SUPABASE_SERVICE_ROLE_KEY")[0] ||
   readEnvValues(SOURCE_ENV, "SERVICE_ROLE_KEY")[0]
 
-if (!sourceUrl || !sourceServiceKey) {
-  throw new Error(`Missing source Supabase URL or service role key in ${SOURCE_ENV}`)
+if (!SOURCE_ENV || !sourceUrl || !sourceServiceKey) {
+  throw new Error("Usá --source-env=.env.padel-fv.local o --source-env=.env.padel-elite.local con credenciales del tenant correcto")
 }
 
 const source = createClient(sourceUrl, sourceServiceKey, {

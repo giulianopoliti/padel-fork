@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs"
 import { createClient } from "@supabase/supabase-js"
 
-const envPath =
-  process.argv[2] || "C:/Users/54116/Downloads/padel-tournament-system/.env.local"
+const envPath = process.argv[2]
+
+if (!envPath) {
+  throw new Error("Uso: node scripts/analyze_source_supabase.mjs .env.padel-fv.local")
+}
 
 const envText = readFileSync(envPath, "utf8")
 
@@ -13,9 +16,10 @@ const getEnvValues = (name) =>
     .filter((line) => line.startsWith(`${name}=`))
     .map((line) => line.split("=").slice(1).join("=").trim().replace(/^['"]|['"]$/g, ""))
 
-const sourceUrl = getEnvValues("NEXT_PUBLIC_SUPABASE_URL").find((value) =>
-  value.includes("vulusxqgknaejdxnhiex")
-)
+const sourceUrl = getEnvValues("NEXT_PUBLIC_SUPABASE_URL").find((value) => {
+  const host = new URL(value).hostname
+  return host !== "localhost" && host !== "127.0.0.1" && host !== "::1"
+})
 const serviceRoleKey =
   getEnvValues("SUPABASE_SERVICE_ROLE_KEY")[0] || getEnvValues("SERVICE_ROLE_KEY")[0]
 
@@ -133,7 +137,7 @@ const countWhereIn = async (table, column, values) => {
 }
 
 const main = async () => {
-  console.log(JSON.stringify({ sourceRef: "vulusxqgknaejdxnhiex" }))
+  console.log(JSON.stringify({ sourceHost: new URL(sourceUrl).hostname }))
 
   const { data: orgs, error: orgError } = await supabase
     .from("organizaciones")

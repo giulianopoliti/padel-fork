@@ -1,6 +1,5 @@
-[mcp_servers.supabase]
+[mcp_servers.supabase-fv]
 url = "https://mcp.supabase.com/mcp?project_ref=bfmaqrythlwbfjuqumom"
 
-[mcp_servers.supabase-develop]
-args = ["@supabase/mcp-server-supabase@latest"]
-command = "npx"
+[mcp_servers.supabase-elite]
+url = "https://mcp.supabase.com/mcp?project_ref=lzowflvgnspjdbvdxliy"

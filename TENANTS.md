@@ -19,6 +19,17 @@ Vercel project padel-elite -> variables Elite -> Supabase Elite
 
 El codigo y las migraciones son compartidos. Los deploys y las bases de datos se separan por configuracion de entorno.
 
+## MCP de Supabase
+
+Nunca usar un MCP generico llamado `supabase` ni `supabase-develop` en este repo: ambos nombres permiten terminar conectado al proyecto equivocado. Los dos destinos remotos estan nombrados explicitamente en `.mcp.json` y `.codex/config.toml`:
+
+```txt
+supabase-fv     -> Supabase de Padel FV
+supabase-elite  -> Supabase de Padel Elite
+```
+
+Antes de cualquier consulta o cambio remoto, confirmar el tenant solicitado y usar exclusivamente el MCP con ese sufijo. La configuracion se carga al abrir el proyecto; tras modificarla, reiniciar Codex o reabrir esta carpeta para que desaparezca el MCP generico de la sesion actual.
+
 En produccion, cada proyecto de Vercel define sus propias variables de entorno. En local, usamos archivos separados por tenant para simular ese mismo comportamiento.
 
 ## Comandos locales

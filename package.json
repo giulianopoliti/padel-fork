@@ -22,6 +22,7 @@
     "test:coverage": "jest --coverage",
     "test:zone-position": "jest lib/services/zone-position",
     "cleanup-tournament": "tsx scripts/cleanup_tournament_data.ts",
+    "clone-tournament-local": "tsx scripts/clone_tournament_to_local.mjs",
     "auto-register-top-players": "tsx scripts/auto_register_top_players.ts",
     "auto-register-top-couples": "tsx scripts/auto_register_top_players.ts",
     "billing:backfill": "tsx scripts/backfill-billing.ts"

@@ -263,6 +263,15 @@ export default function RegisterPlayerForm({ tournamentId, tournament, onComplet
             </p>
           </div>
 
+          {requireTermsAcceptance && (
+            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked === true)} />
+              <span>
+                Leí y acepto los <Link href={TPE_TERMS_PATH} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">Términos y Condiciones</Link>.
+              </span>
+            </label>
+          )}
+
           <div className="flex gap-3 pt-4">
             <Button
               type="button"
@@ -273,18 +282,10 @@ export default function RegisterPlayerForm({ tournamentId, tournament, onComplet
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+            <Button type="submit" disabled={isSubmitting || (requireTermsAcceptance && !termsAccepted)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
               {isSubmitting ? "Registrando..." : "Confirmar registro"}
             </Button>
           </div>
-          {requireTermsAcceptance && (
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-              <Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked === true)} />
-              <span>
-                Leí y acepto los <Link href={TPE_TERMS_PATH} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">Términos y Condiciones</Link>.
-              </span>
-            </label>
-          )}
         </form>
       </CardContent>
 

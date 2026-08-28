@@ -1,16 +1,12 @@
 {
   "mcpServers": {
-    "supabase-develop": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@supabase/mcp-server-supabase@latest",
-        "--read-only",
-        "--project-ref=zviohwpywdqifmwwqlnx"
-      ],
-      "env": {
-        "SUPABASE_ACCESS_TOKEN": "YOUR_SUPABASE_ACCESS_TOKEN"
-      }
+    "supabase-fv": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=bfmaqrythlwbfjuqumom"
+    },
+    "supabase-elite": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=lzowflvgnspjdbvdxliy"
     }
   }
 }
