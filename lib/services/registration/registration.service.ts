@@ -32,6 +32,14 @@ import type {
 } from './types/registration-types'
 import { hasRealDni, sanitizeDniInput } from '@/lib/utils/player-dni'
 import { hasSameNormalizedPlayerName } from '@/lib/utils/player-identity'
+import { getTenantBranding } from '@/config/tenant'
+import {
+  assertTpePlayersCanRegister,
+  recordTpeLateWithdrawal,
+  recordTpeBlockOverrides,
+  recordTpeTermsAcceptance,
+  TPE_BLOCKED_REGISTRATION_MESSAGE,
+} from '@/lib/services/tpe-registration-restrictions'
 
 export class RegistrationService {
   private supabase: any
@@ -69,6 +77,24 @@ export class RegistrationService {
 
       // Delegar a la estrategia específica
       const result = await strategy.registerCouple(request, context.context)
+
+      if (result.success && result.inscriptionId && !request.isOrganizerRegistration) {
+        await recordTpeTermsAcceptance({
+          tournamentType: context.context.tournament.type,
+          tournamentId: request.tournamentId,
+          inscriptionId: result.inscriptionId,
+          playerId: request.player1Id,
+          userId: context.context.user.id,
+        })
+      }
+      if (result.success && request.isOrganizerRegistration && request.allowBlockedPlayerOverride) {
+        await recordTpeBlockOverrides({
+          tournamentType: context.context.tournament.type,
+          tournamentId: request.tournamentId,
+          playerIds: [request.player1Id, request.player2Id],
+          authorizedByUserId: context.context.user.id,
+        })
+      }
 
       // Log del resultado
       this.logRegistrationResult('registerCouple', request.tournamentId, result)
@@ -182,6 +208,15 @@ export class RegistrationService {
       }
 
       const result = await strategy.registerAuthenticatedPlayer(request, context.context)
+      if (result.success && result.inscriptionId && result.playerId) {
+        await recordTpeTermsAcceptance({
+          tournamentType: context.context.tournament.type,
+          tournamentId: request.tournamentId,
+          inscriptionId: result.inscriptionId,
+          playerId: result.playerId,
+          userId: context.context.user.id,
+        })
+      }
       this.logRegistrationResult('registerAuthenticatedPlayer', request.tournamentId, result)
       await this.notifyInscriptionCreated(result.inscriptionId, context.context)
 
@@ -254,7 +289,31 @@ export class RegistrationService {
         return { success: false, error: validation.error }
       }
 
+      const { data: couple } = await context.context.supabase
+        .from('couples')
+        .select('player1_id, player2_id')
+        .eq('id', request.coupleId)
+        .maybeSingle()
+
+      const { data: inscription } = await context.context.supabase
+        .from('inscriptions')
+        .select('id')
+        .eq('tournament_id', request.tournamentId)
+        .eq('couple_id', request.coupleId)
+        .maybeSingle()
+
       const result = await strategy.removeCouple(request, context.context)
+      if (result.success && couple && inscription) {
+        const cancellationSource = context.context.user.role === 'PLAYER' ? 'PLAYER' : 'ORGANIZER'
+        await recordTpeLateWithdrawal({
+          tournamentId: request.tournamentId,
+          inscriptionId: inscription.id,
+          playerIds: [couple.player1_id, couple.player2_id],
+          cancelledByUserId: context.context.user.id,
+          cancellationSource,
+          forceRecord: cancellationSource === 'ORGANIZER' && Boolean(request.recordLateWithdrawal),
+        })
+      }
       this.logRegistrationResult('removeCouple', request.tournamentId, result)
       await this.notifyInscriptionCancelled(request, context.context, result.success)
       await this.handleTournamentCapacitySideEffects(request.tournamentId, result.success)
@@ -439,6 +498,19 @@ export class RegistrationService {
       return { success: false, error: 'Un jugador no puede formar pareja consigo mismo' }
     }
 
+    if (context.tournament.type === 'AMERICAN' && getTenantBranding().key === 'padel-elite' && !request.isOrganizerRegistration && !request.termsAccepted) {
+      return { success: false, error: 'Debes aceptar los Términos y Condiciones para inscribirte.' }
+    }
+
+    const restrictionResult = await assertTpePlayersCanRegister({
+      tournamentType: context.tournament.type,
+      playerIds: [request.player1Id, request.player2Id],
+      allowBlockedPlayerOverride: Boolean(request.isOrganizerRegistration && request.allowBlockedPlayerOverride),
+    })
+    if (!restrictionResult.success) {
+      return { success: false, error: TPE_BLOCKED_REGISTRATION_MESSAGE }
+    }
+
     // Validar que los jugadores existan
     const { data: players } = await context.supabase
       .from('players')
@@ -552,6 +624,18 @@ export class RegistrationService {
 
     if (!playerProfile) {
       return { success: false, error: 'No tienes un perfil de jugador creado' }
+    }
+
+    if (context.tournament.type === 'AMERICAN' && getTenantBranding().key === 'padel-elite' && !request.termsAccepted) {
+      return { success: false, error: 'Debes aceptar los Términos y Condiciones para inscribirte.' }
+    }
+
+    const restrictionResult = await assertTpePlayersCanRegister({
+      tournamentType: context.tournament.type,
+      playerIds: [playerProfile.id],
+    })
+    if (!restrictionResult.success) {
+      return { success: false, error: TPE_BLOCKED_REGISTRATION_MESSAGE }
     }
 
     const tournamentValidation = await this.validateTournamentRegistrationState(context.tournament.id)

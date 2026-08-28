@@ -17,6 +17,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
+import { Checkbox } from "@/components/ui/checkbox"
+import Link from "next/link"
+import { TPE_TERMS_PATH } from "@/lib/tpe/terms"
 
 // Define the PlayerInfo interface locally
 interface PlayerInfo {
@@ -177,6 +180,7 @@ interface RegisterCoupleFormProps {
     alias: string | null
     amount: number | null
   }
+  requireTermsAcceptance?: boolean
 }
 
 export default function RegisterCoupleForm({
@@ -185,6 +189,7 @@ export default function RegisterCoupleForm({
   players,
   tournamentGender,
   transferConfig,
+  requireTermsAcceptance = false,
 }: RegisterCoupleFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
@@ -209,6 +214,7 @@ export default function RegisterCoupleForm({
   const player2PhoneInputRef = useRef<HTMLInputElement | null>(null)
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
   const [paymentProofError, setPaymentProofError] = useState<string | null>(null)
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   const transferProofEnabled = !!transferConfig?.enabled
   const transferAlias = transferConfig?.alias?.trim() || null
@@ -615,6 +621,10 @@ export default function RegisterCoupleForm({
       }
     }
 
+    if (requireTermsAcceptance && !termsAccepted) {
+      return { success: false, error: "Debes aceptar los Términos y Condiciones para inscribirte." }
+    }
+
     if (transferProofEnabled) {
       const validationError = getTransferProofValidationError()
 
@@ -637,6 +647,7 @@ export default function RegisterCoupleForm({
       const formData = new FormData()
       formData.append("player1Id", userDetails.player_id)
       formData.append("player2Id", companionId)
+      formData.append("termsAccepted", String(termsAccepted))
       formData.append("proof", proofFile)
 
       const response = await fetch(`/api/tournaments/${tournamentId}/inscriptions/couple-with-proof`, {
@@ -662,7 +673,7 @@ export default function RegisterCoupleForm({
     console.log("[RegisterCoupleForm] Llamando registerCoupleForTournament")
     console.log("Player IDs:", { player1Id: userDetails.player_id, player2Id: companionId })
 
-    return await registerCoupleForTournament(tournamentId, userDetails.player_id, companionId)
+    return await registerCoupleForTournament(tournamentId, userDetails.player_id, companionId, false, termsAccepted)
   }
 
   const formatTransferAmount = (amount: number | null) => {
@@ -932,6 +943,15 @@ export default function RegisterCoupleForm({
             </p>
           </div>
         </div>
+
+        {requireTermsAcceptance && (
+          <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-slate-700">
+            <Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked === true)} />
+            <span>
+              Leí y acepto los <Link href={TPE_TERMS_PATH} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">Términos y Condiciones</Link>.
+            </span>
+          </label>
+        )}
 
         <Tabs defaultValue="new" className="w-full">
           <TabsList className="grid h-11 w-full grid-cols-2 bg-gray-100">

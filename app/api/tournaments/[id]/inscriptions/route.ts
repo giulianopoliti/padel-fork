@@ -4,6 +4,7 @@ import { getTenantBranding } from '@/config/tenant';
 import { shouldTreatTournamentRegistrationAsPublic } from '@/lib/tournaments/tenant-registration-policy';
 import { checkTournamentAccess } from '@/utils/tournament-permissions';
 import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
+import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
 
 /**
  * 🎯 API ROUTE: INSCRIPCIONES PARA TORNEOS (AMERICAN Y LONG)
@@ -250,6 +251,19 @@ export async function GET(
         dni: inscription.player!.dni ?? null,
         phone: inscription.player!.phone ?? null,
       }));
+
+    const playerIds = [
+      ...coupleInscriptions.flatMap((inscription) => [inscription.player_1_id, inscription.player_2_id]),
+      ...individualInscriptions.map((player) => player.id),
+    ].filter((playerId): playerId is string => Boolean(playerId));
+    const lateWithdrawalCounts = await getTpeLateWithdrawalCounts(playerIds);
+    coupleInscriptions.forEach((inscription) => {
+      if (inscription.player_1_info) (inscription.player_1_info as any).late_withdrawal_count = lateWithdrawalCounts.get(inscription.player_1_id || '') || 0;
+      if (inscription.player_2_info) (inscription.player_2_info as any).late_withdrawal_count = lateWithdrawalCounts.get(inscription.player_2_id || '') || 0;
+    });
+    individualInscriptions.forEach((player) => {
+      (player as any).late_withdrawal_count = lateWithdrawalCounts.get(player.id) || 0;
+    });
 
     return Response.json({
       coupleInscriptions,

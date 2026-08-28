@@ -44,6 +44,7 @@ import RegisterCoupleForm from "./register-couple-form"
 import { useUser } from "@/contexts/user-context"
 import { removePlayerFromTournament } from "@/app/api/tournaments/actions"
 import { toast } from "@/components/ui/use-toast"
+import { getTenantBranding } from "@/config/tenant"
 import { Gender } from "@/types"
 
 // Tipos (mismos que guest-tournament-client)
@@ -134,6 +135,14 @@ export default function PlayerTournamentClient({
   const { user, userDetails } = useUser()
 
   const isTournamentActive = tournament.status !== "NOT_STARTED"
+  const millisecondsUntilStart = tournament.startDate
+    ? new Date(tournament.startDate).getTime() - Date.now()
+    : null
+  const isTpeLateCancellation = getTenantBranding().key === "padel-elite"
+    && tournament.type === "AMERICAN"
+    && millisecondsUntilStart !== null
+    && millisecondsUntilStart >= 0
+    && millisecondsUntilStart < 3 * 60 * 60 * 1000
   const registerBaseHref = `/register?role=PLAYER&redirectTo=${encodeURIComponent(pathname)}`
 
   const formatDate = (dateString: string) => {
@@ -519,8 +528,9 @@ export default function PlayerTournamentClient({
                       Confirmar eliminación
                     </DialogTitle>
                     <DialogDescription className="pt-2">
-                      ¿Estás seguro de que quieres eliminar tu inscripción del torneo "{tournament.name}"? 
-                      Esta acción no se puede deshacer.
+                      {isTpeLateCancellation
+                        ? "Faltan menos de 3 horas para que comience el torneo. Si confirmás la baja, deberás abonar de igual forma el 50% de la inscripción. ¿Estás seguro de dar la baja?"
+                        : <>¿Estás seguro de que quieres eliminar tu inscripción del torneo "{tournament.name}"? Esta acción no se puede deshacer.</>}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex gap-3 pt-4">

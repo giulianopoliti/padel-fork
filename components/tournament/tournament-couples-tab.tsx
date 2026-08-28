@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Search, Trash2, Loader2, CheckCircle2, X, DollarSign } from "lucide-react"
+import { PlusCircle, Search, Trash2, Loader2, CheckCircle2, X, DollarSign, CircleHelp } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
@@ -17,6 +17,7 @@ import { useTournamentPermissions } from "@/hooks/use-tournament-permissions"
 import PlayerDetailsDialog from "@/components/tournament/player-details-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
+import { getTenantBranding } from "@/config/tenant"
 
 interface PlayerInfo {
   id: string
@@ -25,6 +26,7 @@ interface PlayerInfo {
   score: number | null
   dni?: string | null
   phone?: string | null
+  late_withdrawal_count?: number
 }
 
 interface CoupleInfo {
@@ -53,6 +55,8 @@ interface TournamentCouplesTabProps {
   allPlayers?: PlayerInfo[]
   isOwner?: boolean
   tournamentGender: Gender
+  tournamentType?: string | null
+  tournamentStartDate?: string | null
   // 🚀 New registration control props
   registrationLocked?: boolean
   bracketStatus?: string
@@ -73,6 +77,8 @@ export default function TournamentCouplesTab({
   allPlayers = [],
   isOwner = false,
   tournamentGender,
+  tournamentType,
+  tournamentStartDate = null,
   // 🚀 New registration control props
   registrationLocked = false,
   bracketStatus = "NOT_STARTED",
@@ -89,6 +95,7 @@ export default function TournamentCouplesTab({
   const [deleteCoupleDialogOpen, setDeleteCoupleDialogOpen] = useState(false)
   const [coupleToDelete, setCoupleToDelete] = useState<CoupleInfo | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [recordLateWithdrawal, setRecordLateWithdrawal] = useState(false)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [playerDetailsDialogOpen, setPlayerDetailsDialogOpen] = useState(false)
@@ -118,6 +125,14 @@ export default function TournamentCouplesTab({
 
   // Use centralized permissions instead of basic role checks
   const canManageTournament = hasManagementPermissions || isOwner
+  const canRecordTpeLateWithdrawal = getTenantBranding().key === "padel-elite" && tournamentType === "AMERICAN"
+  const millisecondsUntilStart = tournamentStartDate
+    ? new Date(tournamentStartDate).getTime() - Date.now()
+    : null
+  const isTpeLateCancellationWindow = canRecordTpeLateWithdrawal
+    && millisecondsUntilStart !== null
+    && millisecondsUntilStart >= 0
+    && millisecondsUntilStart < 3 * 60 * 60 * 1000
   const showPaymentCheckboxes = canManageTournament && enablePaymentCheckboxes
   const showTransferProof = canManageTournament && enableTransferProof
 
@@ -156,6 +171,7 @@ export default function TournamentCouplesTab({
 
   const handleDeleteCoupleClick = (couple: CoupleInfo) => {
     setCoupleToDelete(couple)
+    setRecordLateWithdrawal(false)
     setDeleteCoupleDialogOpen(true)
   }
 
@@ -171,7 +187,11 @@ export default function TournamentCouplesTab({
         await onCoupleRemoved(coupleToDelete.id)
       }
 
-      const result = await removeCoupleFromTournament(tournamentId, coupleToDelete.id)
+      const result = await removeCoupleFromTournament(
+        tournamentId,
+        coupleToDelete.id,
+        !isUserCouple && recordLateWithdrawal,
+      )
 
       if (result.success) {
         // 🔄 Force refresh to ensure cache sync after successful deletion
@@ -514,6 +534,9 @@ export default function TournamentCouplesTab({
                       ) : (
                         getPlayerDisplayName(couple.player_1_info)
                       )}
+                      {isOwner && (couple.player_1_info?.late_withdrawal_count || 0) > 0 && (
+                        <span title={`Historial de bajas tardías: ${couple.player_1_info?.late_withdrawal_count}`} className="ml-2 inline-flex align-middle text-amber-600"><CircleHelp className="h-4 w-4" /></span>
+                      )}
                     </TableCell>
                     {canViewPlayerDetails && (
                       <TableCell className="text-center text-slate-600 text-sm">
@@ -568,6 +591,9 @@ export default function TournamentCouplesTab({
                         </button>
                       ) : (
                         getPlayerDisplayName(couple.player_2_info)
+                      )}
+                      {isOwner && (couple.player_2_info?.late_withdrawal_count || 0) > 0 && (
+                        <span title={`Historial de bajas tardías: ${couple.player_2_info?.late_withdrawal_count}`} className="ml-2 inline-flex align-middle text-amber-600"><CircleHelp className="h-4 w-4" /></span>
                       )}
                     </TableCell>
                     {canViewPlayerDetails && (
@@ -781,7 +807,9 @@ export default function TournamentCouplesTab({
               }
             </DialogTitle>
             <DialogDescription>
-              {coupleToDelete && isUserInCouple(coupleToDelete)
+              {coupleToDelete && isUserInCouple(coupleToDelete) && isTpeLateCancellationWindow
+                ? "Faltan menos de 3 horas para que comience el torneo. Si confirmás la baja, deberás abonar de igual forma el 50% de la inscripción. ¿Estás seguro de dar la baja?"
+                : coupleToDelete && isUserInCouple(coupleToDelete)
                 ? "Esta acción cancelará tu inscripción como pareja en este torneo. No se puede deshacer."
                 : "Esta acción eliminará permanentemente a la pareja del torneo. No se puede deshacer."
               }
@@ -813,6 +841,16 @@ export default function TournamentCouplesTab({
                 </div>
               </div>
             </div>
+          )}
+
+          {coupleToDelete && canManageTournament && isTpeLateCancellationWindow && !isUserInCouple(coupleToDelete) && (
+            <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <Checkbox checked={recordLateWithdrawal} onCheckedChange={(checked) => setRecordLateWithdrawal(checked === true)} />
+              <span>
+                <strong className="block">Faltan menos de 3 horas para el torneo.</strong>
+                ¿Deseás aplicar una marca de baja tardía a ambos jugadores?
+              </span>
+            </label>
           )}
 
           <DialogFooter className="gap-2">

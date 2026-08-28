@@ -186,11 +186,11 @@ export default function CoupleRegistrationAdvanced({
   }
 
   // Ejecutar el registro preservando el contexto real del usuario.
-  const executeRegistration = async (player1Id: string, player2Id: string) => {
+  const executeRegistration = async (player1Id: string, player2Id: string, allowBlockedPlayerOverride = false) => {
     console.log("[CoupleRegistrationAdvanced] Ejecutando registro de pareja existente");
     console.log("Player IDs:", { player1Id, player2Id });
     
-    const result = await registerCoupleForTournament(tournamentId, player1Id, player2Id, isClubMode)
+    const result = await registerCoupleForTournament(tournamentId, player1Id, player2Id, isClubMode, false, allowBlockedPlayerOverride)
     
     if (result.success) {
       toast({
@@ -199,6 +199,13 @@ export default function CoupleRegistrationAdvanced({
       })
       onComplete(true)
     } else {
+      if (isClubMode && !allowBlockedPlayerOverride && result.error?.startsWith("Te prohibieron la inscripción")) {
+        const shouldOverride = window.confirm("Uno de los jugadores está bloqueado para los torneos TPE. ¿Deseas registrar esta inscripción como excepción sin quitar el bloqueo?")
+        if (shouldOverride) {
+          await executeRegistration(player1Id, player2Id, true)
+          return
+        }
+      }
       console.error('[CoupleRegistrationAdvanced] Registration error:', result.error)
       toast({
         title: "Error en el registro",

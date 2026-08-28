@@ -35,6 +35,7 @@ interface PlayerInfo {
   score: number | null;
   dni?: string | null;
   phone?: string | null;
+  late_withdrawal_count?: number;
 }
 
 interface CoupleInfo {
@@ -61,6 +62,7 @@ interface Tournament {
   name: string;
   type: string;
   status: string;
+  start_date?: string | null;
   gender: Gender;
   registration_locked?: boolean;
   bracket_status?: string;
@@ -267,6 +269,8 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
                   allPlayers={allPlayers}
                   isOwner={isOwner}
                   tournamentGender={tournament.gender}
+                  tournamentType={tournament.type}
+                  tournamentStartDate={tournament.start_date}
                   // 🔒 NEW: Registration control props
                   registrationLocked={tournament.registration_locked || false}
                   bracketStatus={tournament.bracket_status || "NOT_STARTED"}
@@ -290,6 +294,8 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
                   allPlayers={allPlayers}
                   isPublicView={false}
                   tournamentGender={tournament.gender}
+                  tournamentType={tournament.type}
+                  tournamentStartDate={tournament.start_date}
                   // 🔒 NEW: Registration control props
                   registrationLocked={tournament.registration_locked || false}
                   bracketStatus={tournament.bracket_status || "NOT_STARTED"}

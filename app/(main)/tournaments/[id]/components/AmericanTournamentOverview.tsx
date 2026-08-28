@@ -204,6 +204,7 @@ export default function AmericanTournamentOverview({
           status: tournament.status,
           gender: tournament.gender,
           price: tournament.price ?? null,
+          start_date: tournament.start_date ?? null,
           enable_public_inscriptions: tournament.enable_public_inscriptions ?? false,
           registration_locked: tournament.registration_locked ?? null,
           bracket_status: tournament.bracket_status ?? null,

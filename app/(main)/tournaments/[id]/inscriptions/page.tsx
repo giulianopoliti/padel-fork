@@ -9,6 +9,7 @@ import { shouldTreatTournamentRegistrationAsPublic } from '@/lib/tournaments/ten
 import { checkTournamentAccess } from '@/utils/tournament-permissions';
 import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
 import InscriptionsClient from './components/InscriptionsClient';
+import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
 
 interface InscriptionsPageProps {
   params: { id: string };
@@ -187,6 +188,19 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
         phone: null,
       };
     });
+
+  const playerIdsForHistory = [
+    ...coupleInscriptions.flatMap((inscription: any) => [inscription?.player_1_id, inscription?.player_2_id]),
+    ...individualInscriptions.map((player: any) => player.id),
+  ].filter(Boolean);
+  const lateWithdrawalCounts = await getTpeLateWithdrawalCounts(playerIdsForHistory);
+  coupleInscriptions.forEach((inscription: any) => {
+    if (inscription.player_1_info) inscription.player_1_info.late_withdrawal_count = lateWithdrawalCounts.get(inscription.player_1_id) || 0;
+    if (inscription.player_2_info) inscription.player_2_info.late_withdrawal_count = lateWithdrawalCounts.get(inscription.player_2_id) || 0;
+  });
+  individualInscriptions.forEach((player: any) => {
+    player.late_withdrawal_count = lateWithdrawalCounts.get(player.id) || 0;
+  });
 
   // ========================================
   // PASO 4: RENDERIZAR CLIENT COMPONENT

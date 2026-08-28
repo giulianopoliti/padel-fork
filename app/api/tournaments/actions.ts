@@ -1258,12 +1258,14 @@ export async function registerCoupleForTournament(
   tournamentId: string, 
   player1Id: string, 
   player2Id: string,
-  isOrganizerRegistration: boolean = false
+  isOrganizerRegistration: boolean = false,
+  termsAccepted: boolean = false,
+  allowBlockedPlayerOverride: boolean = false,
 ): Promise<{ success: boolean; error?: string; inscription?: any }> {
   console.log(`[registerCoupleForTournament] 🔄 Refactorizado con Strategy Pattern - torneo ${tournamentId}`, { player1Id, player2Id, isOrganizerRegistration });
   
   // Usar la nueva implementación V2 con Strategy Pattern
-  return await registerCoupleForTournamentV2(tournamentId, player1Id, player2Id, isOrganizerRegistration);
+  return await registerCoupleForTournamentV2(tournamentId, player1Id, player2Id, isOrganizerRegistration, termsAccepted, allowBlockedPlayerOverride);
 }
 
 /**
@@ -1272,11 +1274,11 @@ export async function registerCoupleForTournament(
  * Función principal refactorizada para usar el sistema Strategy Pattern.
  * Mantiene backward compatibility con la signatura original.
  */
-export async function registerAuthenticatedPlayerForTournament(tournamentId: string, phone?: string): Promise<{ success: boolean; message: string; inscriptionId?: string }> {
+export async function registerAuthenticatedPlayerForTournament(tournamentId: string, phone?: string, termsAccepted: boolean = false): Promise<{ success: boolean; message: string; inscriptionId?: string }> {
   console.log(`[registerAuthenticatedPlayerForTournament] 🔄 Refactorizado con Strategy Pattern - torneo: ${tournamentId}`);
   
   // Usar la nueva implementación V2 con Strategy Pattern
-  return await registerAuthenticatedPlayerForTournamentV2(tournamentId, phone);
+  return await registerAuthenticatedPlayerForTournamentV2(tournamentId, phone, termsAccepted);
 }
 
 export async function getTournamentDetailsWithInscriptions(tournamentId: string) {
@@ -3117,7 +3119,7 @@ export async function populateTournamentSeedCouples(tournamentId: string): Promi
   }
 } 
 
-export async function removePlayerFromTournament(tournamentId: string, playerId?: string): Promise<{ success: boolean; message: string }> {
+export async function removePlayerFromTournament(tournamentId: string, playerId?: string, recordLateWithdrawal: boolean = false): Promise<{ success: boolean; message: string }> {
   const supabase = await createClient();
   
   // Si no se proporciona playerId, obtener el del usuario autenticado
@@ -3194,6 +3196,20 @@ export async function removePlayerFromTournament(tournamentId: string, playerId?
       console.error("[removePlayerFromTournament] Error deleting inscriptions:", deleteError);
       return { success: false, message: "Error al eliminar la inscripción." };
     }
+
+    const { recordTpeLateWithdrawal } = await import('@/lib/services/tpe-registration-restrictions')
+    const cancellationSource = isDeletingOwnRegistration ? 'PLAYER' : 'ORGANIZER'
+    await Promise.all(
+      inscriptions.map((inscription) => recordTpeLateWithdrawal({
+        tournamentId,
+        inscriptionId: inscription.id,
+        playerIds: [targetPlayerId!],
+        cancelledByUserId: currentUserId!,
+        cancellationSource,
+        forceRecord: cancellationSource === 'ORGANIZER' && recordLateWithdrawal,
+      })
+    )
+    )
 
     try {
       const { sendTournamentMessage } = await import('@/lib/services/messages');
@@ -3528,11 +3544,11 @@ export async function pairIndividualPlayers(tournamentId: string, player1Id: str
  * Función principal refactorizada para usar el sistema Strategy Pattern.
  * Mantiene backward compatibility con la signatura original.
  */
-export async function removeCoupleFromTournament(tournamentId: string, coupleId: string): Promise<{ success: boolean; message: string }> {
+export async function removeCoupleFromTournament(tournamentId: string, coupleId: string, recordLateWithdrawal: boolean = false): Promise<{ success: boolean; message: string }> {
   console.log(`[removeCoupleFromTournament] 🔄 Refactorizado con Strategy Pattern`, { tournamentId, coupleId });
   
   // Usar la nueva implementación V2 con Strategy Pattern
-  return await removeCoupleFromTournamentV2(tournamentId, coupleId);
+  return await removeCoupleFromTournamentV2(tournamentId, coupleId, recordLateWithdrawal);
 }
 
 /**
@@ -5873,7 +5889,9 @@ export async function registerCoupleForTournamentV2(
   tournamentId: string, 
   player1Id: string, 
   player2Id: string,
-  isOrganizerRegistration: boolean = false
+  isOrganizerRegistration: boolean = false,
+  termsAccepted: boolean = false,
+  allowBlockedPlayerOverride: boolean = false,
 ): Promise<{ success: boolean; error?: string; inscription?: any }> {
   console.log(`[registerCoupleForTournamentV2] 🎾 Usando Strategy Pattern para torneo ${tournamentId}`, { player1Id, player2Id, isOrganizerRegistration });
   
@@ -5885,7 +5903,9 @@ export async function registerCoupleForTournamentV2(
       tournamentId,
       player1Id,
       player2Id,
-      isOrganizerRegistration
+      isOrganizerRegistration,
+      termsAccepted,
+      allowBlockedPlayerOverride,
     });
     
     // Revalidar path para mantener comportamiento anterior
@@ -6077,7 +6097,8 @@ export async function registerNewPlayerForTournamentV2(
  */
 export async function registerAuthenticatedPlayerForTournamentV2(
   tournamentId: string, 
-  phone?: string
+  phone?: string,
+  termsAccepted: boolean = false,
 ): Promise<{ success: boolean; message: string; inscriptionId?: string }> {
   console.log(`[registerAuthenticatedPlayerForTournamentV2] 🎾 Auto-registro con Strategy Pattern para torneo ${tournamentId}`);
   
@@ -6087,7 +6108,8 @@ export async function registerAuthenticatedPlayerForTournamentV2(
     
     const result = await registerAuthenticatedPlayer({
       tournamentId,
-      phone
+      phone,
+      termsAccepted,
     });
     
     // Revalidar paths para mantener comportamiento anterior
@@ -6121,7 +6143,8 @@ export async function registerAuthenticatedPlayerForTournamentV2(
  */
 export async function removeCoupleFromTournamentV2(
   tournamentId: string, 
-  coupleId: string
+  coupleId: string,
+  recordLateWithdrawal: boolean = false,
 ): Promise<{ success: boolean; message: string }> {
   console.log(`[removeCoupleFromTournamentV2] 🎾 Eliminando pareja con Strategy Pattern`, { tournamentId, coupleId });
   
@@ -6131,7 +6154,8 @@ export async function removeCoupleFromTournamentV2(
     
     const result = await removeCouple({
       tournamentId,
-      coupleId
+      coupleId,
+      recordLateWithdrawal,
     });
     
     // Revalidar paths para mantener comportamiento anterior

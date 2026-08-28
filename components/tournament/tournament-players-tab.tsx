@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { UserPlus, Search, Users, Loader2, CheckCircle, Trash2 } from "lucide-react"
+import { UserPlus, Search, Users, Loader2, CheckCircle, Trash2, CircleHelp } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
@@ -17,6 +17,8 @@ import { useTournamentPermissions } from "@/hooks/use-tournament-permissions"
 import { Gender } from "@/types"
 import PlayerDetailsDialog from "@/components/tournament/player-details-dialog"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
+import { Checkbox } from "@/components/ui/checkbox"
+import { getTenantBranding } from "@/config/tenant"
 
 interface PlayerInfo {
   id: string
@@ -25,6 +27,7 @@ interface PlayerInfo {
   score: number | null
   dni?: string | null
   phone?: string | null
+  late_withdrawal_count?: number
 }
 
 interface TournamentPlayersTabProps {
@@ -35,6 +38,8 @@ interface TournamentPlayersTabProps {
   allPlayers?: PlayerInfo[]
   isPublicView?: boolean
   tournamentGender: Gender
+  tournamentType?: string | null
+  tournamentStartDate?: string | null
   // 🚀 New registration control props
   registrationLocked?: boolean
   bracketStatus?: string
@@ -57,6 +62,8 @@ export default function TournamentPlayersTab({
   allPlayers = [],
   isPublicView = false,
   tournamentGender,
+  tournamentType,
+  tournamentStartDate = null,
   // 🚀 New registration control props
   registrationLocked = false,
   bracketStatus = "NOT_STARTED",
@@ -83,6 +90,7 @@ export default function TournamentPlayersTab({
   })
   const [isPairing, setIsPairing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [recordLateWithdrawal, setRecordLateWithdrawal] = useState(false)
   const [isRegisteringMyself, setIsRegisteringMyself] = useState(false)
   const [showRegisterConfirmation, setShowRegisterConfirmation] = useState(false)
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false)
@@ -112,6 +120,14 @@ export default function TournamentPlayersTab({
 
   // Use centralized permissions instead of basic role checks
   const canManageTournament = hasManagementPermissions
+  const canRecordTpeLateWithdrawal = getTenantBranding().key === "padel-elite" && tournamentType === "AMERICAN"
+  const millisecondsUntilStart = tournamentStartDate
+    ? new Date(tournamentStartDate).getTime() - Date.now()
+    : null
+  const isTpeLateCancellationWindow = canRecordTpeLateWithdrawal
+    && millisecondsUntilStart !== null
+    && millisecondsUntilStart >= 0
+    && millisecondsUntilStart < 3 * 60 * 60 * 1000
   const selfServiceRequiresCouple = enableTransferProof && !canManageTournament
 
   // Use isOwner from useTournamentPermissions to show/hide player details
@@ -366,6 +382,7 @@ export default function TournamentPlayersTab({
 
   const handleDeletePlayerClick = (player: PlayerInfo) => {
     setPlayerToDelete(player)
+    setRecordLateWithdrawal(false)
     setDeletePlayerDialogOpen(true)
   }
 
@@ -379,7 +396,7 @@ export default function TournamentPlayersTab({
         await onPlayerRemoved(playerToDelete.id)
       }
 
-      const result = await removePlayerFromTournament(tournamentId, playerToDelete.id)
+      const result = await removePlayerFromTournament(tournamentId, playerToDelete.id, recordLateWithdrawal)
 
       if (result.success) {
         // 🔄 Force refresh to ensure cache sync after successful deletion
@@ -730,6 +747,9 @@ export default function TournamentPlayersTab({
                     >
                       <TableCell className={`font-medium text-slate-900 ${canViewPlayerDetails ? 'hover:text-blue-600' : ''}`}>
                         {player.first_name || "—"}
+                        {hasManagementPermissions && tournamentType === "AMERICAN" && (player.late_withdrawal_count || 0) > 0 && (
+                          <span title={`Historial de bajas tardías: ${player.late_withdrawal_count}`} className="ml-2 inline-flex align-middle text-amber-600"><CircleHelp className="h-4 w-4" /></span>
+                        )}
                       </TableCell>
                       <TableCell className="text-slate-700">{player.last_name || "—"}</TableCell>
                       {canViewPlayerDetails && (
@@ -1010,6 +1030,16 @@ export default function TournamentPlayersTab({
             </div>
           )}
 
+          {playerToDelete && canManageTournament && isTpeLateCancellationWindow && (
+            <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <Checkbox checked={recordLateWithdrawal} onCheckedChange={(checked) => setRecordLateWithdrawal(checked === true)} />
+              <span>
+                <strong className="block">Faltan menos de 3 horas para el torneo.</strong>
+                ¿Deseás aplicar una marca de baja tardía a este jugador?
+              </span>
+            </label>
+          )}
+
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
@@ -1102,7 +1132,9 @@ export default function TournamentPlayersTab({
               ¿Cancelar tu inscripción?
             </DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que quieres cancelar tu inscripción en este torneo? Esta acción no se puede deshacer.
+              {isTpeLateCancellationWindow
+                ? "Faltan menos de 3 horas para que comience el torneo. Si confirmás la baja, deberás abonar de igual forma el 50% de la inscripción. ¿Estás seguro de dar la baja?"
+                : "¿Estás seguro de que quieres cancelar tu inscripción en este torneo? Esta acción no se puede deshacer."}
             </DialogDescription>
           </DialogHeader>
 

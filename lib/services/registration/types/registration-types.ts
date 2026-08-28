@@ -61,6 +61,8 @@ export interface RegisterCoupleRequest {
   player2Id: string
   /** Si es true, player_id quedara null (inscripcion hecha por organizador) */
   isOrganizerRegistration?: boolean
+  termsAccepted?: boolean
+  allowBlockedPlayerOverride?: boolean
 }
 
 export interface RegisterNewPlayersRequest {
@@ -92,11 +94,13 @@ export interface RegisterIndividualRequest {
 export interface RegisterAuthenticatedPlayerRequest {
   tournamentId: string
   phone?: string
+  termsAccepted?: boolean
 }
 
 export interface RemoveCoupleRequest {
   tournamentId: string
   coupleId: string
+  recordLateWithdrawal?: boolean
 }
 
 // ===== RESULT TYPES =====

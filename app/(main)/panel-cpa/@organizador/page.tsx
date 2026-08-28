@@ -2,6 +2,9 @@ import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 import OrganizadorDashboard from "./components/organizador-dashboard"
 import { getCategories } from "@/lib/services/players/players.service"
+import { getTenantBranding } from "@/config/tenant"
+import { getTpeRestrictionPlayers } from "@/lib/services/tpe-registration-restrictions"
+import TpeRegistrationRestrictionsPanel from "@/app/(main)/panel/@organizador/components/tpe-registration-restrictions-panel"
 
 export const dynamic = 'force-dynamic'
 
@@ -113,6 +116,9 @@ export default async function OrganizadorDashboardPage() {
 
   // 7. Fetch categorías para la edición de jugadores
   const categories = await getCategories()
+  const tpeRestrictionPlayers = getTenantBranding().key === "padel-elite"
+    ? await getTpeRestrictionPlayers()
+    : []
 
   const normalizedPlayers: PlayerData[] = (players || []).map((player) => ({
     ...player,
@@ -120,14 +126,21 @@ export default async function OrganizadorDashboardPage() {
   }))
 
   return (
-    <OrganizadorDashboard
-      tournaments={tournamentsWithMetrics}
-      players={normalizedPlayers}
-      categories={categories}
-      totalPlayers={totalPlayers || 0}
-      organizationId={organizationId}
-      canResolvePlayerIdentity={['owner', 'admin'].includes(orgMember.member_role)}
-      hasError={!!tournamentsError || !!playersError}
-    />
+    <>
+      <OrganizadorDashboard
+        tournaments={tournamentsWithMetrics}
+        players={normalizedPlayers}
+        categories={categories}
+        totalPlayers={totalPlayers || 0}
+        organizationId={organizationId}
+        canResolvePlayerIdentity={['owner', 'admin'].includes(orgMember.member_role)}
+        hasError={!!tournamentsError || !!playersError}
+      />
+      {getTenantBranding().key === "padel-elite" && (
+        <div className="container mx-auto px-4 pb-8 sm:px-6 lg:px-8">
+          <TpeRegistrationRestrictionsPanel players={tpeRestrictionPlayers} />
+        </div>
+      )}
+    </>
   )
 }

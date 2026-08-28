@@ -115,6 +115,7 @@ const LongTournamentView: React.FC<LongTournamentViewProps> = ({
           status: tournament.status ?? undefined,
           gender: (tournament.gender as Gender | null) ?? undefined,
           price: tournament.price,
+          start_date: tournament.start_date ?? null,
           enable_transfer_proof: tournament.enable_transfer_proof,
           enable_public_inscriptions: tournament.enable_public_inscriptions,
           registration_locked: tournament.registration_locked,

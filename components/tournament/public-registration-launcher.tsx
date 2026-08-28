@@ -12,6 +12,7 @@ import RegisterCoupleForm from "@/components/tournament/player/register-couple-f
 import { useUser } from "@/contexts/user-context"
 import { Gender } from "@/types"
 import { useToast } from "@/components/ui/use-toast"
+import { getTenantBranding } from "@/config/tenant"
 
 interface PublicRegistrationLauncherProps {
   tournamentId: string
@@ -24,6 +25,7 @@ interface PublicRegistrationLauncherProps {
   buttonLabel?: string
   buttonClassName?: string
   fullWidth?: boolean
+  requireTermsAcceptance?: boolean
 }
 
 export default function PublicRegistrationLauncher({
@@ -37,6 +39,7 @@ export default function PublicRegistrationLauncher({
   buttonLabel = "Inscribirme",
   buttonClassName,
   fullWidth = false,
+  requireTermsAcceptance = getTenantBranding().key === "padel-elite",
 }: PublicRegistrationLauncherProps) {
   const coupleOnlyMode = enableTransferProof
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false)
@@ -172,6 +175,7 @@ export default function PublicRegistrationLauncher({
                   alias: transferAlias,
                   amount: transferAmount,
                 }}
+                requireTermsAcceptance={requireTermsAcceptance}
               />
             </TabsContent>
 
@@ -185,6 +189,7 @@ export default function PublicRegistrationLauncher({
                     price: tournamentPrice ? Number(tournamentPrice) : null,
                   }}
                   onComplete={handleRegistrationComplete}
+                  requireTermsAcceptance={requireTermsAcceptance}
                 />
               </TabsContent>
             )}

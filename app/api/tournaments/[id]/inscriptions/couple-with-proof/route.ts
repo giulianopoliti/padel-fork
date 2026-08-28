@@ -68,6 +68,7 @@ export async function POST(
 
     const player1Id = String(formData.get('player1Id') || '')
     const player2Id = String(formData.get('player2Id') || '')
+    const termsAccepted = formData.get('termsAccepted') === 'true'
     const proofFile = formData.get('proof')
 
     if (!player1Id || !player2Id) {
@@ -125,7 +126,7 @@ export async function POST(
       )
     }
 
-    const registrationResult = await registerCoupleForTournament(tournamentId, player1Id, player2Id)
+    const registrationResult = await registerCoupleForTournament(tournamentId, player1Id, player2Id, false, termsAccepted)
 
     if (!registrationResult.success || !registrationResult.inscription?.id || !registrationResult.inscription?.coupleId) {
       return NextResponse.json(

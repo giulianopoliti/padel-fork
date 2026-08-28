@@ -12,6 +12,9 @@ import { useTournamentOrganizer } from "@/hooks/use-tournament-organizer"
 import OrganizerConsentDialog from "./organizer-consent-dialog"
 import type { ConsentResult } from "@/types/organizer-consent"
 import { createClient } from "@/utils/supabase/client"
+import { Checkbox } from "@/components/ui/checkbox"
+import Link from "next/link"
+import { TPE_TERMS_PATH } from "@/lib/tpe/terms"
 
 interface Tournament {
   id: string
@@ -23,14 +26,16 @@ interface RegisterPlayerFormProps {
   tournamentId: string
   tournament?: Tournament
   onComplete: (success: boolean) => void
+  requireTermsAcceptance?: boolean
 }
 
-export default function RegisterPlayerForm({ tournamentId, tournament, onComplete }: RegisterPlayerFormProps) {
+export default function RegisterPlayerForm({ tournamentId, tournament, onComplete, requireTermsAcceptance = false }: RegisterPlayerFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConsentDialog, setShowConsentDialog] = useState(false)
   const [consentResult, setConsentResult] = useState<ConsentResult | null>(null)
   const [pendingPhone, setPendingPhone] = useState("")
   const [phone, setPhone] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   const { user: contextUser, userDetails } = useUser()
   const { organizador, hasOrganizador } = useTournamentOrganizer(tournamentId)
@@ -92,7 +97,7 @@ export default function RegisterPlayerForm({ tournamentId, tournament, onComplet
     setIsSubmitting(true)
 
     try {
-      const result = await registerAuthenticatedPlayerForTournament(tournamentId, phoneValue)
+      const result = await registerAuthenticatedPlayerForTournament(tournamentId, phoneValue, termsAccepted)
 
       if (result.success) {
         if (consentResult) {
@@ -143,6 +148,11 @@ export default function RegisterPlayerForm({ tournamentId, tournament, onComplet
         description: "No se pudo obtener tu informacion de jugador. Verifica tu perfil.",
         variant: "destructive",
       })
+      return
+    }
+
+    if (requireTermsAcceptance && !termsAccepted) {
+      toast({ title: "Términos requeridos", description: "Debes aceptar los Términos y Condiciones para inscribirte.", variant: "destructive" })
       return
     }
 
@@ -267,6 +277,14 @@ export default function RegisterPlayerForm({ tournamentId, tournament, onComplet
               {isSubmitting ? "Registrando..." : "Confirmar registro"}
             </Button>
           </div>
+          {requireTermsAcceptance && (
+            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked === true)} />
+              <span>
+                Leí y acepto los <Link href={TPE_TERMS_PATH} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">Términos y Condiciones</Link>.
+              </span>
+            </label>
+          )}
         </form>
       </CardContent>
 

@@ -17,12 +17,15 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useUser } from "@/contexts/user-context"
 import { removeCoupleFromTournament, removePlayerFromTournament } from "@/app/api/tournaments/actions"
+import { getTenantBranding } from "@/config/tenant"
 import { toast } from "@/components/ui/use-toast"
 
 interface CancelRegistrationButtonProps {
   tournamentId: string
   tournamentName: string
   coupleId?: string | null
+  tournamentType?: string | null
+  tournamentStartDate?: string | null
   className?: string
   onCancelled?: () => void
 }
@@ -31,6 +34,8 @@ export default function CancelRegistrationButton({
   tournamentId,
   tournamentName,
   coupleId = null,
+  tournamentType = null,
+  tournamentStartDate = null,
   className,
   onCancelled,
 }: CancelRegistrationButtonProps) {
@@ -38,6 +43,14 @@ export default function CancelRegistrationButton({
   const { userDetails } = useUser()
   const [open, setOpen] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
+  const millisecondsUntilStart = tournamentStartDate
+    ? new Date(tournamentStartDate).getTime() - Date.now()
+    : null
+  const isTpeLateCancellation = getTenantBranding().key === "padel-elite"
+    && tournamentType === "AMERICAN"
+    && millisecondsUntilStart !== null
+    && millisecondsUntilStart >= 0
+    && millisecondsUntilStart < 3 * 60 * 60 * 1000
 
   const handleCancelRegistration = async () => {
     if (!userDetails?.player_id) {
@@ -107,7 +120,9 @@ export default function CancelRegistrationButton({
         <AlertDialogHeader>
           <AlertDialogTitle>¿Cancelar tu inscripción?</AlertDialogTitle>
           <AlertDialogDescription>
-            {coupleId
+            {isTpeLateCancellation
+              ? "Faltan menos de 3 horas para que comience el torneo. Si confirmás la baja, deberás abonar de igual forma el 50% de la inscripción. ¿Estás seguro de dar la baja?"
+              : coupleId
               ? `Se cancelará tu inscripción en pareja para "${tournamentName}". Esta acción no se puede deshacer.`
               : `Se cancelará tu inscripción para "${tournamentName}". Esta acción no se puede deshacer.`}
           </AlertDialogDescription>

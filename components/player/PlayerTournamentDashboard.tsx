@@ -42,6 +42,7 @@ interface PlayerTournamentDashboardProps {
     status?: string
     gender?: Gender
     price?: number | string | null
+    start_date?: string | null
     enable_transfer_proof?: boolean
     enable_public_inscriptions?: boolean | null
     registration_locked?: boolean | null
@@ -131,6 +132,8 @@ export default function PlayerTournamentDashboard({ tournamentId, tournament, ov
           tournamentId={tournamentId}
           tournamentName={tournament.name}
           coupleId={overview.coupleId}
+          tournamentType={tournament.type}
+          tournamentStartDate={tournament.start_date}
           className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
           onCancelled={() => setRegistrationCancelled(true)}
         />
@@ -247,7 +250,7 @@ const AwaitingPartnerView = ({ tournamentId, tournament }: Omit<PlayerTournament
       <Users className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-4 text-2xl font-bold">Completa tu pareja</h1><p className="mt-2 text-muted-foreground">Ya estas inscripto individualmente. Falta asociar a tu compañero para participar.</p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
         <PublicRegistrationLauncher tournamentId={tournamentId} tournamentName={tournament.name} tournamentGender={tournament.gender || Gender.MALE} tournamentPrice={tournament.price || null} enableTransferProof={tournament.enable_transfer_proof || false} transferAlias={tournament.transfer_alias || null} transferAmount={tournament.transfer_amount || null} buttonLabel="Completar pareja" />
-        <CancelRegistrationButton tournamentId={tournamentId} tournamentName={tournament.name} />
+        <CancelRegistrationButton tournamentId={tournamentId} tournamentName={tournament.name} tournamentType={tournament.type} tournamentStartDate={tournament.start_date} />
       </div>
     </CardContent></Card>
   </div>
@@ -286,6 +289,8 @@ const PendingRegistrationView = ({
         tournamentId={tournamentId}
         tournamentName={tournament.name}
         coupleId={overview.coupleId}
+        tournamentType={tournament.type}
+        tournamentStartDate={tournament.start_date}
         onCancelled={onCancelled}
       />
     </div>

@@ -118,6 +118,8 @@ export default function TournamentPageLayout({
             allPlayers={allPlayers}
             isPublicView={isPublicView}
             tournamentGender={tournamentGender}
+            tournamentType={tournament?.type}
+            tournamentStartDate={tournament?.start_date}
             registrationLocked={tournament?.registration_locked || false}
             bracketStatus={tournament?.bracket_status || "NOT_STARTED"}
             enableTransferProof={tournament?.enable_transfer_proof || false}
@@ -134,6 +136,8 @@ export default function TournamentPageLayout({
             allPlayers={allPlayers}
             isOwner={isOwner}
             tournamentGender={tournamentGender}
+            tournamentType={tournament?.type}
+            tournamentStartDate={tournament?.start_date}
             registrationLocked={tournament?.registration_locked || false}
             bracketStatus={tournament?.bracket_status || "NOT_STARTED"}
             enablePaymentCheckboxes={tournament?.enable_payment_checkboxes || false}

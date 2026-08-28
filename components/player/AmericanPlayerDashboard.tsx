@@ -32,6 +32,7 @@ interface AmericanPlayerDashboardProps {
     status?: string
     gender?: Gender
     price?: string | number | null
+    start_date?: string | null
     enable_public_inscriptions?: boolean
     registration_locked?: boolean | null
     bracket_status?: string | null
@@ -169,6 +170,8 @@ export default function AmericanPlayerDashboard({
                 tournamentId={tournamentId}
                 tournamentName={tournament.name}
                 coupleId={playerData.playerCoupleId}
+                tournamentType={tournament.type}
+                tournamentStartDate={tournament.start_date}
                 className="w-full border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 sm:w-auto"
                 onCancelled={() => setRegistrationCancelled(true)}
               />
