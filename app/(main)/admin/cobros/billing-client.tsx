@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  Download,
   ReceiptText,
   RotateCcw,
   Save,
@@ -54,6 +55,13 @@ const formatDate = (date: string | null) => {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(date.includes("T") ? date : `${date}T12:00:00Z`))
+}
+
+const escapeCsvValue = (value: string | number) => {
+  const serializedValue = String(value)
+  return /[",\n\r]/.test(serializedValue)
+    ? `"${serializedValue.replace(/"/g, '""')}"`
+    : serializedValue
 }
 
 const statusLabels: Record<BillingStatus, string> = {
@@ -119,6 +127,71 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   )
 
   const pendingWeekItems = data.items.filter((item) => item.status === "PENDING")
+
+  const getWeekReportRows = () => [
+    ["Torneo", "Fecha", "Jugadores", "Parejas", "Tarifa por jugador", "Importe", "Estado"],
+    ...data.items.map((item) => [
+      item.tournamentName,
+      formatDate(item.startDate),
+      item.billableUnits,
+      item.billableUnits / 2,
+      formatCurrency(item.unitAmountArs),
+      formatCurrency(item.amountArs),
+      statusLabels[item.status],
+    ]),
+  ]
+
+  const handleDownloadCsv = () => {
+    if (!data.weekStart || !data.weekEnd) return
+
+    const rows = getWeekReportRows()
+    const csv = `\uFEFF${rows.map((row) => row.map(escapeCsvValue).join(";")).join("\r\n")}`
+    const downloadUrl = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }))
+    const link = document.createElement("a")
+    link.href = downloadUrl
+    link.download = `cobros-${data.weekStart}-${data.weekEnd}.csv`
+    link.click()
+    URL.revokeObjectURL(downloadUrl)
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!data.weekStart || !data.weekEnd) return
+
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ])
+    const document = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+    const totalAmount = data.items.reduce((sum, item) => sum + item.amountArs, 0)
+    const totalPlayers = data.items.reduce((sum, item) => sum + item.billableUnits, 0)
+
+    document.setFontSize(18)
+    document.text("Cobros semanales", 14, 16)
+    document.setFontSize(10)
+    document.setTextColor(75, 85, 99)
+    document.text(`${data.tenantName} - ${formatDate(data.weekStart)} al ${formatDate(data.weekEnd)}`, 14, 23)
+    document.text(
+      `${data.items.length} torneos | ${totalPlayers} jugadores | ${totalPlayers / 2} parejas | Total: ${formatCurrency(totalAmount)}`,
+      14,
+      29,
+    )
+
+    const [head, ...body] = getWeekReportRows()
+    autoTable(document, {
+      head: [head.map(String)],
+      body: body.map((row) => row.map(String)),
+      startY: 35,
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: { fillColor: [15, 118, 110] },
+      columnStyles: { 0: { cellWidth: 72 } },
+      didDrawPage: () => {
+        document.setFontSize(8)
+        document.setTextColor(107, 114, 128)
+        document.text(`Generado el ${formatDate(new Date().toISOString())}`, 14, 203)
+      },
+    })
+    document.save(`cobros-${data.weekStart}-${data.weekEnd}.pdf`)
+  }
 
   const selectedItems = useMemo(() => {
     const selectedSet = new Set(selectedTournamentIds)
@@ -459,6 +532,16 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
               <CheckCircle2 className="mr-2 h-4 w-4" />
               Marcar semana como cobrada
             </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={data.items.length === 0} onClick={handleDownloadPdf}>
+                <Download className="mr-2 h-4 w-4" />
+                Descargar PDF
+              </Button>
+              <Button variant="outline" disabled={data.items.length === 0} onClick={handleDownloadCsv}>
+                <Download className="mr-2 h-4 w-4" />
+                Descargar CSV
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -567,7 +650,14 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 </th>
                 <th className="px-3 py-3 font-medium">Torneo</th>
                 <th className="px-3 py-3 font-medium">Fecha</th>
-                <th className="px-3 py-3 font-medium">{data.billingModel === "FV_LEAGUE" ? "Parejas" : "Jugadores"}</th>
+                {data.billingModel === "FV_LEAGUE" ? (
+                  <th className="px-3 py-3 font-medium">Parejas</th>
+                ) : (
+                  <>
+                    <th className="px-3 py-3 font-medium">Jugadores</th>
+                    <th className="px-3 py-3 font-medium">Parejas</th>
+                  </>
+                )}
                 <th className="px-3 py-3 font-medium">Tarifa</th>
                 <th className="px-3 py-3 font-medium">Importe</th>
                 <th className="px-3 py-3 font-medium">Estado</th>
@@ -593,6 +683,9 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                   </td>
                   <td className="px-3 py-4">{formatDate(item.startDate)}</td>
                   <td className="px-3 py-4 font-medium">{item.billableUnits}</td>
+                  {data.billingModel === "TPE_PLAYER" && (
+                    <td className="px-3 py-4 font-medium">{item.billableUnits / 2}</td>
+                  )}
                   <td className="px-3 py-4">
                     {data.billingModel === "FV_LEAGUE"
                       ? item.pricingRule === "FV_UP_TO_16" ? "Hasta 16" : "Más de 16"
@@ -604,7 +697,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 </tr>
               ))}
               {filteredItems.length === 0 && (
-                <tr><td colSpan={8} className="py-10 text-center text-slate-500">No hay cobros para estos filtros.</td></tr>
+                <tr><td colSpan={data.billingModel === "TPE_PLAYER" ? 9 : 8} className="py-10 text-center text-slate-500">No hay cobros para estos filtros.</td></tr>
               )}
             </tbody>
           </table>
@@ -633,7 +726,13 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
               </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-slate-500">Unidades</span><span>{item.billableUnits}</span></div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">{data.billingModel === "TPE_PLAYER" ? "Jugadores" : "Parejas"}</span>
+                <span>{item.billableUnits}</span>
+              </div>
+              {data.billingModel === "TPE_PLAYER" && (
+                <div className="flex justify-between"><span className="text-slate-500">Parejas</span><span>{item.billableUnits / 2}</span></div>
+              )}
               <div className="flex justify-between"><span className="text-slate-500">Tarifa</span><span>{formatCurrency(item.unitAmountArs)}</span></div>
               <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{formatCurrency(item.amountArs)}</span></div>
               {!item.isEligible && <p className="text-xs text-amber-700">Este es un registro histórico.</p>}

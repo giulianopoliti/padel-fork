@@ -1,0 +1,84 @@
+name: Deploy Supabase migrations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+  workflow_dispatch:
+    inputs:
+      tenant:
+        description: "Tenant al que se aplicarán las migraciones"
+        required: true
+        default: padel-fv
+        type: choice
+        options:
+          - padel-fv
+          - padel-elite
+          - both
+
+# Cada ejecución espera a que la anterior termine. Así se evita aplicar las
+# mismas migraciones en paralelo sobre un tenant.
+concurrency:
+  group: supabase-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-padel-fv:
+    name: Deploy migrations — Padel FV
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.tenant == 'padel-fv' || inputs.tenant == 'both'))
+    runs-on: ubuntu-latest
+    environment: padel-fv
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.116.0
+
+      - name: Apply pending migrations
+        run: supabase db push --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --yes
+
+  deploy-padel-elite:
+    name: Deploy migrations — Padel Elite
+    if: >-
+      (github.event_name == 'push' && vars.DEPLOY_ELITE_ON_PUSH == 'true') ||
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.tenant == 'padel-elite' || inputs.tenant == 'both'))
+    runs-on: ubuntu-latest
+    environment: padel-elite
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.116.0
+
+      - name: Apply pending migrations
+        run: supabase db push --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --yes
