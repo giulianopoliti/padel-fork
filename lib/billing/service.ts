@@ -23,7 +23,7 @@ import type {
 } from "@/lib/billing/types"
 
 const TOURNAMENT_SELECT =
-  "id, name, type, status, created_at, start_date, organization_id, es_prueba"
+  "id, name, type, status, created_at, start_date, organization_id, es_prueba, clubes(name)"
 
 const INSCRIPTION_SELECT = `
   tournament_id,
@@ -69,6 +69,11 @@ const toBillingSettings = (row: BillingSettingsRow): BillingSettings => ({
   tpeAmountPerPlayer: row.tpe_amount_per_player,
   updatedAt: row.updated_at,
 })
+
+const getClubName = (tournament: BillingTournamentRow) => {
+  const club = Array.isArray(tournament.clubes) ? tournament.clubes[0] : tournament.clubes
+  return club?.name?.trim() || "Sin club"
+}
 
 export const getBillingContext = async (): Promise<BillingContext> => {
   const branding = getTenantBranding()
@@ -247,6 +252,7 @@ export const getTenantBillingDashboard = async (
     return {
       tournamentId: tournament.id,
       tournamentName: tournament.name || "Torneo sin nombre",
+      clubName: getClubName(tournament),
       tournamentStatus: tournament.status,
       createdAt: tournament.created_at,
       startDate: tournament.start_date,

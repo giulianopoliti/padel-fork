@@ -129,9 +129,10 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const pendingWeekItems = data.items.filter((item) => item.status === "PENDING")
 
   const getWeekReportRows = () => [
-    ["Torneo", "Fecha", "Jugadores", "Parejas", "Tarifa por jugador", "Importe", "Estado"],
+    ["Torneo", "Club", "Fecha", "Jugadores", "Parejas", "Tarifa por jugador", "Importe", "Estado"],
     ...data.items.map((item) => [
       item.tournamentName,
+      item.clubName,
       formatDate(item.startDate),
       item.billableUnits,
       item.billableUnits / 2,
@@ -183,7 +184,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
       startY: 35,
       styles: { fontSize: 8, cellPadding: 2.5 },
       headStyles: { fillColor: [15, 118, 110] },
-      columnStyles: { 0: { cellWidth: 72 } },
+      columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 45 } },
       didDrawPage: () => {
         document.setFontSize(8)
         document.setTextColor(107, 114, 128)
@@ -678,6 +679,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                   </td>
                   <td className="px-3 py-4">
                     <p className="font-medium text-slate-900">{item.tournamentName}</p>
+                    <p className="text-xs text-slate-500">{item.clubName}</p>
                     <p className="text-xs text-slate-500">{item.tournamentStatus}</p>
                     {!item.isEligible && <p className="text-xs text-amber-700">Registro histórico</p>}
                   </td>
@@ -711,7 +713,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <CardTitle className="text-base">{item.tournamentName}</CardTitle>
-                  <CardDescription>{formatDate(item.startDate)}</CardDescription>
+                  <CardDescription>{item.clubName} · {formatDate(item.startDate)}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(item.status)}

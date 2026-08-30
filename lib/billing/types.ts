@@ -30,6 +30,7 @@ export interface BillingInscription {
 export interface BillingTournamentRow {
   id: string
   name: string | null
+  clubes?: { name: string | null } | { name: string | null }[] | null
   type: string | null
   status: string
   created_at: string
@@ -67,6 +68,7 @@ export interface BillingSnapshot {
 export interface BillingItem extends BillingSnapshot {
   tournamentId: string
   tournamentName: string
+  clubName: string
   tournamentStatus: string
   createdAt: string
   startDate: string | null
