@@ -17,7 +17,7 @@ const publicLinks = [
     icon: "Home" as const,
   },
   {
-    path: "/tournaments",
+    path: "/torneos",
     label: "Torneos",
     icon: "Trophy" as const,
   },

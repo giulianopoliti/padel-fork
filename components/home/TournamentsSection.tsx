@@ -40,7 +40,7 @@ export async function TournamentsSection() {
 
         <div className="text-center mt-12">
           <Button asChild variant="outline" className="border-gray-400 text-gray-700 hover:bg-gray-200 px-6 py-3">
-            <Link href="/tournaments">
+            <Link href="/torneos">
               Ver Todos los Torneos
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
@@ -49,4 +49,4 @@ export async function TournamentsSection() {
       </div>
     </section>
   )
-} 
+}

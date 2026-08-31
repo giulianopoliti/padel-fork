@@ -81,8 +81,8 @@ export function FooterSection() {
                 </Link>
               </li>
               <li>
-                <Link 
-                  href="/tournaments" 
+                <Link
+                  href="/torneos"
                   className="text-slate-300 hover:text-white transition-colors"
                 >
                   Torneos Disponibles
@@ -116,4 +116,4 @@ export function FooterSection() {
       </div>
     </footer>
   )
-} 
+}

@@ -101,7 +101,10 @@ export function checkRoutePermission(path: string, role?: Role | null): boolean 
     ...(branding.features.publicRanking ? ["/ranking"] : []),
   ]
 
-  if (path.startsWith("/tournaments") && !path.startsWith("/tournaments/create")) {
+  if (
+    (path.startsWith("/tournaments") && !path.startsWith("/tournaments/create")) ||
+    path.startsWith("/torneos")
+  ) {
     return true
   }
 

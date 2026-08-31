@@ -744,7 +744,8 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
     // 5. Revalidate paths
     revalidatePath('/my-tournaments');
     revalidatePath(`/my-tournaments/${newTournament.id}`); // For potential direct navigation or future use
-    revalidatePath('/tournaments'); // Public listing if exists
+    revalidatePath('/torneos');
+    revalidatePath('/tournaments'); // Legacy redirect
     revalidatePath(`/tournaments/${newTournament.id}`); // Public detail page
     if (seoSlug) revalidatePath(`/torneos/${seoSlug}`)
 
@@ -3280,6 +3281,7 @@ export async function removePlayerFromTournament(tournamentId: string, playerId?
 
     // Revalidar las rutas para actualizar la UI
     revalidatePath(`/tournaments/${tournamentId}`);
+    revalidatePath('/torneos');
     revalidatePath('/tournaments');
     revalidatePath(`/my-tournaments/${tournamentId}`);
 

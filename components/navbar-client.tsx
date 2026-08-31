@@ -77,7 +77,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
     }
   }, [mobileMenuOpen])
 
-  const isTournamentDetailPage = pathname?.startsWith("/tournaments/") && pathname !== "/tournaments"
+  const isTournamentDetailPage = (pathname?.startsWith("/tournaments/") && pathname !== "/tournaments") || pathname?.startsWith("/torneos/")
   const contextualLoginHref = isTournamentDetailPage ? `/login?redirectTo=${encodeURIComponent(pathname)}` : "/login"
   const contextualRegisterHref = isTournamentDetailPage ? `/register?redirectTo=${encodeURIComponent(pathname)}` : "/register"
   const headerClassName = isElite

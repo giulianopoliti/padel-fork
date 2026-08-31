@@ -21,7 +21,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const siteUrl = new URL(getTenantBranding().siteDomain)
-  return (data || []).flatMap((tournament: any) => {
+  const publicListing = {
+    url: new URL("/torneos", siteUrl).toString(),
+    changeFrequency: "daily" as const,
+    priority: 0.9,
+  }
+
+  const tournamentEntries = (data || []).flatMap((tournament: any) => {
     if (!tournament.seo_slug) return []
 
     return [{
@@ -31,4 +37,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }]
   })
+
+  return [publicListing, ...tournamentEntries]
 }

@@ -56,7 +56,7 @@ const PublicView: React.FC<PublicViewProps> = ({ extraNotice }) => {
       coupleInscriptions={coupleInscriptions}
       maxPlayers={maxPlayers}
       allPlayers={allPlayers}
-      backUrl="/tournaments"
+      backUrl="/torneos"
       backLabel="Volver a Torneos"
       statusBadge={statusBadge}
       isPublicView={true} // ← Clave: Vista de solo lectura
@@ -96,4 +96,4 @@ function getStatusText(status: string | null): string {
   }
 }
 
-export default PublicView; 
+export default PublicView;

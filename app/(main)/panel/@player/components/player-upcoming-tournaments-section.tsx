@@ -46,7 +46,7 @@ export default function PlayerUpcomingTournamentsSection({
     }
 
     const queryString = params.toString()
-    return queryString ? `/tournaments?${queryString}` : "/tournaments"
+    return queryString ? `/torneos?${queryString}` : "/torneos"
   })()
 
   const handleGenderFilterChange = (value: string) => {

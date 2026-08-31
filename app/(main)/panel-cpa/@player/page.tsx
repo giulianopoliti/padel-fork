@@ -447,7 +447,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
                </div>
              )}
 
-            <Link href="/tournaments" className="block">
+            <Link href="/torneos" className="block">
               <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
                 <Users className="mr-2 h-5 w-5" />
                 Buscar Torneos

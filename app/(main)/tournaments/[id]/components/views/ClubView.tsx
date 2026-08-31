@@ -105,7 +105,7 @@ const ClubView: React.FC<ClubViewProps> = ({ pointsReviewSection }) => {
         pendingInscriptions={serialize(pendingInscriptions)}
         maxPlayers={maxPlayers}
         allPlayers={serialize(allPlayers)}
-        backUrl="/tournaments"
+        backUrl="/torneos"
         backLabel="Volver a Torneos"
         statusBadge={statusBadge}
         actionButtons={actionButtons}
@@ -208,4 +208,4 @@ function getStatusVariant(status: string | null): "default" | "secondary" | "des
   }
 }
 
-export default ClubView; 
+export default ClubView;

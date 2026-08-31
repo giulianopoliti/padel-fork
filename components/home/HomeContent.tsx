@@ -36,7 +36,7 @@ export async function HomeContent() {
                 <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-5xl">Proximos torneos</h1>
                 <div className="mt-6 flex justify-center">
                   <Button asChild className="h-11 bg-court-500 px-6 text-base font-semibold text-brand-900 hover:bg-court-400">
-                    <Link href="/tournaments">Ver todos <ChevronRight className="ml-1 h-4 w-4" /></Link>
+                    <Link href="/torneos">Ver todos <ChevronRight className="ml-1 h-4 w-4" /></Link>
                   </Button>
                 </div>
               </div>
@@ -89,7 +89,7 @@ function PadelEliteHomeContent({
                 <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-700 sm:text-lg">{branding.home.subtitle}</p>
               </div>
               <Button asChild size="lg" className="rounded-full bg-[var(--tpe-night)] px-8 py-6 text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-paper)] hover:bg-[var(--tpe-night-soft)]">
-                <Link href="/tournaments">Ver torneos</Link>
+                <Link href="/torneos">Ver torneos</Link>
               </Button>
             </div>
           </div>
@@ -120,7 +120,7 @@ function SectionHeader({ title, dark = false }: { title: string; dark?: boolean 
         <h2 className={dark ? "text-2xl font-black text-white sm:text-3xl" : "text-3xl font-black text-[var(--tpe-night)] sm:text-4xl"}>{title}</h2>
       </div>
       <Button asChild variant="ghost" className={dark ? "text-court-300 hover:bg-white/10 hover:text-court-200" : "rounded-full px-0 text-sm font-black uppercase tracking-[0.14em] text-[var(--tpe-night)] hover:bg-transparent hover:text-[var(--tpe-night-soft)]"}>
-        <Link href="/tournaments">Ver todos <ChevronRight className="ml-1 h-4 w-4" /></Link>
+        <Link href="/torneos">Ver todos <ChevronRight className="ml-1 h-4 w-4" /></Link>
       </Button>
     </div>
   )

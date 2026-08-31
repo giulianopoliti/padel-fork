@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function TournamentTermsPage() {
   if (getTenantBranding().key !== "padel-elite") {
-    redirect("/tournaments")
+    redirect("/torneos")
   }
 
   return (

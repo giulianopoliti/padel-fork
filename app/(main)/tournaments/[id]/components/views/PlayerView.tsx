@@ -50,7 +50,7 @@ const PlayerView: React.FC = () => {
       coupleInscriptions={coupleInscriptions}
       maxPlayers={maxPlayers}
       allPlayers={allPlayers}
-      backUrl="/tournaments"
+      backUrl="/torneos"
       backLabel="Volver a Torneos"
       statusBadge={statusBadge}
       isPublicView={false} // ← Permite interacciones de registro
@@ -86,4 +86,4 @@ function getStatusText(status: string | null): string {
   }
 }
 
-export default PlayerView; 
+export default PlayerView;

@@ -66,7 +66,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
   const totalPlayers = playersData.length
   const topPlayers = playersData.slice(0, 3)
   const galleryImages = Array.isArray(club.galleryImages) ? club.galleryImages.filter(Boolean) : []
-  const tournamentsHref = "/tournaments"
+  const tournamentsHref = "/torneos"
   const websiteHref = formatWebsiteHref(club.website)
   const mapsHref = club.maps_url || buildGoogleMapsSearchUrl({
     name: club.name,

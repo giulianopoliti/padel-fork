@@ -79,7 +79,7 @@ export default function TournamentsLayout({
 
   useEffect(() => {
     if (isElite) return
-    if (pathname !== "/tournaments") return
+    if (pathname !== "/torneos") return
 
     const toastKey = "padel-fv-active-tournaments-toast"
     if (window.sessionStorage.getItem(toastKey)) return
@@ -95,20 +95,20 @@ export default function TournamentsLayout({
     const params = new URLSearchParams(searchParams.toString())
     params.delete("page")
     const queryString = buildQueryString(params)
-    const basePath = statusPath === "active" || (isElite && statusPath === "upcoming") ? "/tournaments" : `/tournaments/${statusPath}`
+    const basePath = statusPath === "active" || (isElite && statusPath === "upcoming") ? "/torneos" : `/tournaments/${statusPath}`
     return `${basePath}${queryString ? `?${queryString}` : ""}`
   }
 
   const isActiveStatus = (statusPath: "active" | "upcoming" | "in-progress" | "past") => {
     if (statusPath === "active") {
       return (
-        pathname === "/tournaments" ||
+        pathname === "/torneos" ||
         pathname.includes("/tournaments/upcoming") ||
         pathname.includes("/tournaments/in-progress")
       )
     }
 
-    if (isElite && statusPath === "upcoming" && pathname === "/tournaments") {
+    if (isElite && statusPath === "upcoming" && pathname === "/torneos") {
       return true
     }
 

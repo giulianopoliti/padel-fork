@@ -61,7 +61,7 @@ export default function TournamentFullLayout({
   maxPlayers = 32,
   allPlayers = [],
   pendingInscriptions = [],
-  backUrl = "/tournaments",
+  backUrl = "/torneos",
   backLabel = "Volver",
   statusBadge,
   actionButtons,
@@ -243,4 +243,4 @@ export default function TournamentFullLayout({
       )}
     </div>
   )
-} 
+}

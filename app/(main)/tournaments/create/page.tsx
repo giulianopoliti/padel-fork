@@ -14,7 +14,7 @@ function UnauthorizedPage() {
         <div className="container mx-auto px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <Button asChild variant="ghost" size="sm" className="h-9 px-2 text-slate-600 hover:text-slate-900">
-              <Link href="/tournaments">
+              <Link href="/torneos">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Volver
               </Link>
@@ -77,7 +77,7 @@ function UnauthorizedPage() {
 
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-center">
                 <Button asChild variant="outline" size="lg" className="w-full font-light sm:w-auto">
-                  <Link href="/tournaments">
+                  <Link href="/torneos">
                     Ver Torneos Disponibles
                   </Link>
                 </Button>

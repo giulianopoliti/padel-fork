@@ -131,7 +131,7 @@ function PadelElitePlayerPanel({
                   size="lg"
                   className="rounded-full bg-[var(--tpe-night)] px-8 py-6 text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-paper)] hover:bg-[var(--tpe-night-soft)]"
                 >
-                  <Link href="/tournaments">
+                  <Link href="/torneos">
                     Ver torneos
                     <ChevronRight className="h-4 w-4" />
                   </Link>
@@ -187,7 +187,7 @@ function PadelFvPlayerPanel({
                   asChild
                   className="h-11 rounded-full bg-court-500 px-6 text-base font-semibold text-brand-900 hover:bg-court-400"
                 >
-                  <Link href="/tournaments">
+                  <Link href="/torneos">
                     Ver torneos
                     <ChevronRight className="ml-1 h-4 w-4" />
                   </Link>

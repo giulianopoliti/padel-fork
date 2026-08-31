@@ -858,7 +858,7 @@ export default function TournamentCreateForm() {
           <div className="flex flex-col gap-4">
             <div className="flex items-start justify-between gap-3 sm:items-center">
               <Button asChild variant="ghost" size="sm" className="h-9 px-2 text-slate-600 hover:text-slate-900">
-                <Link href="/tournaments">
+                <Link href="/torneos">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Volver
                 </Link>
@@ -2102,7 +2102,7 @@ export default function TournamentCreateForm() {
 
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-                      <Link href="/tournaments">
+                      <Link href="/torneos">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Cancelar
                       </Link>

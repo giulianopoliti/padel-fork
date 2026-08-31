@@ -66,7 +66,7 @@ export default async function ZonesPage({ params }: ZonesPageProps) {
 
   if (error || !tournament) {
     console.error('Tournament not found');
-    redirect('/tournaments');
+    redirect('/torneos');
   }
 
   // ========================================

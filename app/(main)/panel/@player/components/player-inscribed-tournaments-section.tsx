@@ -35,7 +35,7 @@ export default function PlayerInscribedTournamentsSection({
           asChild
           className="mt-6 rounded-full bg-[var(--tpe-lime)] px-6 text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-night)] hover:bg-[#e6ff63]"
         >
-          <Link href="/tournaments">Buscar torneos</Link>
+          <Link href="/torneos">Buscar torneos</Link>
         </Button>
       </div>
     )

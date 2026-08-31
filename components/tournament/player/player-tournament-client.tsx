@@ -271,7 +271,7 @@ export default function PlayerTournamentClient({
       {/* Navegación */}
       <div className="mb-6">
         <Link
-          href="/tournaments"
+          href="/torneos"
           className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
