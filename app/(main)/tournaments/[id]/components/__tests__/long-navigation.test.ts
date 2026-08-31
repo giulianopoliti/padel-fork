@@ -25,7 +25,7 @@ describe('LONG player navigation', () => {
     const items = getLongNavigationItems('PUBLIC', false, false)
     const titles = items.map(item => item.title)
 
-    expect(titles).toEqual(['Inicio', 'Resultados', 'Llave'])
+    expect(titles).toEqual(['Inicio', 'Tablas de posiciones', 'Resultados', 'Llave'])
     expect(items.map(item => item.href)).not.toContain('/schedules')
     expect(items.map(item => item.href)).not.toContain('/match-scheduling')
   })

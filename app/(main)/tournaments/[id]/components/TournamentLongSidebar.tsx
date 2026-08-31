@@ -84,7 +84,7 @@ export const getLongNavigationItems = (
         icon: BarChart3,
         description: 'Posiciones del torneo',
         showForEliminated: true,
-        requiresParticipantVisibility: true
+        requiresParticipantVisibility: !shouldShowResults
       },
       ...(shouldShowResults ? [{
         title: 'Resultados',
@@ -131,7 +131,7 @@ export const getLongNavigationItems = (
         icon: BarChart3,
         description: 'Posiciones del torneo',
         showForEliminated: true,
-        requiresParticipantVisibility: true
+        requiresParticipantVisibility: !shouldShowResults
       },
       ...(shouldShowResults ? [{
         title: 'Resultados',
@@ -186,7 +186,7 @@ export const getLongNavigationItems = (
       icon: BarChart3,
       description: 'Resultados y posiciones',
       showForEliminated: true,
-      requiresParticipantVisibility: true
+      requiresParticipantVisibility: !shouldShowResults
     },
     ...(shouldShowResults ? [{
       title: 'Resultados',
