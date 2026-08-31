@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, CalendarDays, MapPin, Trophy } from "lucide-react"
+import { ArrowLeft, MapPin, Trophy } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type {
@@ -63,20 +63,6 @@ const getRoundLabel = (round: string | null) => {
   return round.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase())
 }
 
-const formatSchedule = (scheduledAt: string | null) => {
-  if (!scheduledAt) return null
-
-  const date = new Date(scheduledAt)
-  if (Number.isNaN(date.getTime())) return null
-
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date)
-}
-
 const MatchCard = ({
   match,
   coupleId,
@@ -100,7 +86,6 @@ const MatchCard = ({
     ? `${set.couple1Games}-${set.couple2Games}`
     : `${set.couple2Games}-${set.couple1Games}`)
   const isWinner = match.winnerId === coupleId
-  const schedule = formatSchedule(match.scheduledAt)
 
   return (
     <article className="rounded-xl border border-slate-200 bg-card p-4 shadow-sm">
@@ -138,10 +123,9 @@ const MatchCard = ({
         </div>
       ) : null}
 
-      {(schedule || match.court) ? (
+      {match.court ? (
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-          {schedule ? <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{schedule}</span> : null}
-          {match.court ? <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />Cancha {match.court}</span> : null}
+          <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />Cancha {match.court}</span>
         </div>
       ) : null}
     </article>

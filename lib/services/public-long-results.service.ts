@@ -37,7 +37,6 @@ export interface PublicLongMatch {
   resultCouple2: string | null
   status: string | null
   court: string | null
-  scheduledAt: string | null
   orderInRound: number | null
   sets: PublicLongSet[]
 }
@@ -173,7 +172,6 @@ export const getPublicLongResults = async (
         result_couple2,
         status,
         court,
-        scheduled_at,
         order_in_round
       `)
       .eq("tournament_id", tournamentId)
@@ -269,7 +267,6 @@ export const getPublicLongResults = async (
       resultCouple2: match.result_couple2 ?? null,
       status: match.status ?? null,
       court: match.court ?? null,
-      scheduledAt: match.scheduled_at ?? null,
       orderInRound: match.order_in_round ?? null,
       sets: (setsByMatchId.get(match.id) || []).sort((left, right) => left.setNumber - right.setNumber),
     })),

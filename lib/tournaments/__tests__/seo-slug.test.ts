@@ -16,7 +16,7 @@ describe("tournament SEO slugs", () => {
     })).toBe("americano-c6-nova-padel-02-septiembre")
   })
 
-  test("builds the agreed Padel FV long format with month and year", () => {
+  test("builds the long format from its normalized name only", () => {
     expect(buildTournamentSlugBase({
       name: "Lasaigues",
       type: "LONG",
@@ -24,7 +24,18 @@ describe("tournament SEO slugs", () => {
       categoryName: "8va",
       clubName: "Caballito",
       startDate: "2026-08-18T12:00:00-03:00",
-    })).toBe("lasaigues-caballito-c8-agosto-2026")
+    })).toBe("lasaigues")
+  })
+
+  test("does not require a club, category or date to build a long slug", () => {
+    expect(buildTournamentSlugBase({
+      name: "Liga de invierno",
+      type: "LONG",
+      gender: "FEMALE",
+      categoryName: null,
+      clubName: null,
+      startDate: null,
+    })).toBe("liga-de-invierno")
   })
 
   test("uses the category configuration for mixed sums and ranges", () => {

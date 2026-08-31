@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
+import { notFound, permanentRedirect } from "next/navigation"
 import { TournamentPageById } from "@/app/(main)/tournaments/[id]/page"
 import { getPublicTournamentBySlug } from "@/lib/services/public-tournament.service"
 
@@ -20,5 +20,9 @@ export default async function TournamentSlugPage({ params }: TournamentSlugPageP
   const tournament = await getPublicTournamentBySlug(slug)
 
   if (!tournament) notFound()
+  if (tournament.isAlias && tournament.seo_slug) {
+    permanentRedirect(`/torneos/${tournament.seo_slug}`)
+  }
+
   return <TournamentPageById tournamentId={tournament.id} />
 }

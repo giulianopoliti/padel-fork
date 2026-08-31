@@ -68,26 +68,23 @@ export const getCompactCategorySlug = ({
 /**
  * Public URL convention:
  * - TPE American: americano-c6-nova-padel-02-septiembre
- * - Padel FV long: lasaigues-caballito-c8-agosto-2026
+ * - Long: lasaigues-caballito-almagro-agosto-c7
  *
  * No year is included in American slugs by product decision. Callers must use
  * makeUniqueTournamentSlug before persisting one.
  */
 export const buildTournamentSlugBase = (source: TournamentSlugSource): string | null => {
-  const date = source.startDate ? getArgentinaDateParts(source.startDate) : null
-  const category = getCompactCategorySlug(source)
-  const club = source.clubName ? slugify(source.clubName) : ""
-
-  if (!date || !category || !club) return null
-
   if (source.type === "AMERICAN") {
+    const date = source.startDate ? getArgentinaDateParts(source.startDate) : null
+    const category = getCompactCategorySlug(source)
+    const club = source.clubName ? slugify(source.clubName) : ""
+    if (!date || !category || !club) return null
+
     return ["americano", category, club, date.day, spanishMonths[date.month - 1]].join("-")
   }
 
   const name = source.name ? slugify(source.name) : ""
-  if (!name) return null
-
-  return [name, club, category, spanishMonths[date.month - 1], date.year].join("-")
+  return name || null
 }
 
 export const makeUniqueTournamentSlug = (baseSlug: string, isTaken: (slug: string) => boolean): string => {

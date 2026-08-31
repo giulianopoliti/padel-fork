@@ -642,16 +642,25 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
       })
 
       if (baseSlug) {
-        const { data: existingSlugs, error: existingSlugsError } = await supabase
-          .from('tournaments')
-          .select('seo_slug')
-          .eq('organization_id', organization_id)
-          .not('seo_slug', 'is', null)
+        const [{ data: existingSlugs, error: existingSlugsError }, { data: aliasSlugs, error: aliasSlugsError }] = await Promise.all([
+          supabase
+            .from('tournaments')
+            .select('seo_slug')
+            .eq('organization_id', organization_id)
+            .not('seo_slug', 'is', null),
+          supabase
+            .from('tournament_seo_slug_aliases')
+            .select('seo_slug')
+            .eq('organization_id', organization_id),
+        ])
 
-        if (existingSlugsError) {
-          console.warn('[createTournamentAction] Could not check SEO slug collisions:', existingSlugsError.message)
+        if (existingSlugsError || aliasSlugsError) {
+          console.warn('[createTournamentAction] Could not check SEO slug collisions:', (existingSlugsError || aliasSlugsError)?.message)
         } else {
-          const takenSlugs = new Set((existingSlugs || []).map((tournament) => tournament.seo_slug).filter(Boolean))
+          const takenSlugs = new Set([
+            ...(existingSlugs || []).map((tournament) => tournament.seo_slug),
+            ...(aliasSlugs || []).map((alias) => alias.seo_slug),
+          ].filter(Boolean))
           seoSlug = makeUniqueTournamentSlug(baseSlug, (slug) => takenSlugs.has(slug))
         }
       }
