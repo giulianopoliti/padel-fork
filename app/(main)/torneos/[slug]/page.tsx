@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { notFound, permanentRedirect } from "next/navigation"
+import TournamentLongLayout from "@/app/(main)/tournaments/[id]/components/TournamentLongLayout"
 import { TournamentPageById } from "@/app/(main)/tournaments/[id]/page"
 import { getPublicTournamentBySlug } from "@/lib/services/public-tournament.service"
 
@@ -24,5 +25,9 @@ export default async function TournamentSlugPage({ params }: TournamentSlugPageP
     permanentRedirect(`/torneos/${tournament.seo_slug}`)
   }
 
-  return <TournamentPageById tournamentId={tournament.id} />
+  return (
+    <TournamentLongLayout tournamentIdOverride={tournament.id}>
+      <TournamentPageById tournamentId={tournament.id} />
+    </TournamentLongLayout>
+  )
 }

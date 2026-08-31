@@ -29,6 +29,7 @@ import {
 
 interface TournamentLongLayoutProps {
   children: React.ReactNode
+  tournamentIdOverride?: string
 }
 
 const EXCLUDED_PAGES = [
@@ -191,10 +192,10 @@ const organizerAccessFetcher = async ([, organizationId, userId]: [string, strin
   return Boolean(data)
 }
 
-function TournamentLongLayout({ children }: TournamentLongLayoutProps) {
+function TournamentLongLayout({ children, tournamentIdOverride }: TournamentLongLayoutProps) {
   const params = useParams()
   const pathname = usePathname()
-  const tournamentId = params?.id as string
+  const tournamentId = tournamentIdOverride ?? (params?.id as string)
   const { userDetails } = useUser()
   const isMobile = useIsMobile()
 
