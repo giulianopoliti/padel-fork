@@ -620,16 +620,26 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
 
     // 3. Prepare data for insertion (remove club_id and extra_club_ids from formData to avoid conflicts)
     const { club_id: _, extra_club_ids: __, ...cleanFormData } = formData;
-    let seoSlug: string | null = null
-    if (organization_id) {
+
+    const resolveSeoSlug = async (): Promise<{ seoSlug: string | null; error?: string }> => {
+      // Legacy club-owned tournaments can exist outside an organization and still use
+      // their UUID route. Tenant-owned public tournaments must never be inserted
+      // silently without their canonical slug.
+      if (!organization_id) return { seoSlug: null }
+
       const { data: clubForSlug, error: clubForSlugError } = await supabase
         .from('clubes')
         .select('name')
         .eq('id', club_id)
         .maybeSingle()
 
-      if (clubForSlugError) {
-        console.warn('[createTournamentAction] Could not load club for SEO slug:', clubForSlugError.message)
+      if (clubForSlugError || !clubForSlug?.name) {
+        console.error('[createTournamentAction] Could not load club for SEO slug:', {
+          clubId: club_id,
+          organizationId: organization_id,
+          message: clubForSlugError?.message || 'Club without name',
+        })
+        return { seoSlug: null, error: 'No se pudo identificar el club para generar la URL pública del torneo.' }
       }
 
       const baseSlug = buildTournamentSlugBase({
@@ -642,32 +652,52 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
         startDate: formData.start_date,
       })
 
-      if (baseSlug) {
-        const [{ data: existingSlugs, error: existingSlugsError }, { data: aliasSlugs, error: aliasSlugsError }] = await Promise.all([
-          supabase
-            .from('tournaments')
-            .select('seo_slug')
-            .eq('organization_id', organization_id)
-            .not('seo_slug', 'is', null),
-          supabase
-            .from('tournament_seo_slug_aliases')
-            .select('seo_slug')
-            .eq('organization_id', organization_id),
-        ])
-
-        if (existingSlugsError || aliasSlugsError) {
-          console.warn('[createTournamentAction] Could not check SEO slug collisions:', (existingSlugsError || aliasSlugsError)?.message)
-        } else {
-          const takenSlugs = new Set([
-            ...(existingSlugs || []).map((tournament) => tournament.seo_slug),
-            ...(aliasSlugs || []).map((alias) => alias.seo_slug),
-          ].filter(Boolean))
-          seoSlug = makeUniqueTournamentSlug(baseSlug, (slug) => takenSlugs.has(slug))
-        }
+      if (!baseSlug) {
+        console.error('[createTournamentAction] Could not build SEO slug base:', {
+          clubId: club_id,
+          organizationId: organization_id,
+          type: formData.type,
+          gender: formData.gender,
+          categoryName: normalizedCategoryName,
+          startDate: formData.start_date,
+        })
+        return { seoSlug: null, error: 'No se pudo generar la URL pública del torneo. Revisá categoría, club y fecha.' }
       }
+
+      const [{ data: existingSlugs, error: existingSlugsError }, { data: aliasSlugs, error: aliasSlugsError }] = await Promise.all([
+        supabase
+          .from('tournaments')
+          .select('seo_slug')
+          .eq('organization_id', organization_id)
+          .not('seo_slug', 'is', null),
+        supabase
+          .from('tournament_seo_slug_aliases')
+          .select('seo_slug')
+          .eq('organization_id', organization_id),
+      ])
+
+      if (existingSlugsError || aliasSlugsError) {
+        console.error('[createTournamentAction] Could not check SEO slug collisions:', {
+          organizationId: organization_id,
+          message: (existingSlugsError || aliasSlugsError)?.message,
+        })
+        return { seoSlug: null, error: 'No se pudo validar la URL pública del torneo. Intentá nuevamente.' }
+      }
+
+      const takenSlugs = new Set([
+        ...(existingSlugs || []).map((tournament) => tournament.seo_slug),
+        ...(aliasSlugs || []).map((alias) => alias.seo_slug),
+      ].filter(Boolean))
+
+      return { seoSlug: makeUniqueTournamentSlug(baseSlug, (slug) => takenSlugs.has(slug)) }
     }
 
-    const tournamentToInsert = {
+    let seoSlugResult = await resolveSeoSlug()
+    if (seoSlugResult.error) {
+      return { success: false, error: seoSlugResult.error }
+    }
+
+    const buildTournamentToInsert = (seoSlug: string | null) => ({
       ...cleanFormData,
       category_name: normalizedCategoryName,
       seo_slug: seoSlug,
@@ -682,14 +712,34 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
       end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
       // max_participants is already number | null from formData type and client-side conversion
       // max_participants: formData.max_participants === '' ? null : Number(formData.max_participants)
-    };
+    });
 
-    // 4. Insert tournament
-    const { data: newTournament, error: insertError } = await supabase
-      .from('tournaments')
-      .insert(tournamentToInsert)
-      .select()
-      .single();
+    // 4. Insert tournament. A concurrent creation can take the same slug after
+    // the collision read; refresh the allocation a few times before giving up.
+    let seoSlug = seoSlugResult.seoSlug
+    let newTournament: any = null
+    let insertError: any = null
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const result = await supabase
+        .from('tournaments')
+        .insert(buildTournamentToInsert(seoSlug))
+        .select()
+        .single()
+
+      newTournament = result.data
+      insertError = result.error
+
+      if (!insertError || !organization_id || insertError.code !== '23505') break
+
+      seoSlugResult = await resolveSeoSlug()
+      if (seoSlugResult.error) {
+        return { success: false, error: seoSlugResult.error }
+      }
+
+      if (!seoSlugResult.seoSlug || seoSlugResult.seoSlug === seoSlug) break
+      seoSlug = seoSlugResult.seoSlug
+    }
 
     if (insertError) {
       console.error('[createTournamentAction] Error inserting tournament:', insertError);
@@ -750,7 +800,7 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
     revalidatePath('/torneos');
     revalidatePath('/tournaments'); // Legacy redirect
     revalidatePath(`/tournaments/${newTournament.id}`); // Public detail page
-    if (seoSlug) revalidatePath(`/torneos/${seoSlug}`)
+    if (newTournament.seo_slug) revalidatePath(`/torneos/${newTournament.seo_slug}`)
 
     console.log('[createTournamentAction] Tournament created successfully:', newTournament);
 
