@@ -37,6 +37,7 @@ import {
   getTournamentInscriptionPendingState,
   shouldRequireInscriptionValidation,
 } from '@/lib/services/registration/inscription-validation';
+import { buildTournamentSlugBase, makeUniqueTournamentSlug } from '@/lib/tournaments/seo-slug';
 
 
 // Sistema unificado de puntos para TODO el torneo
@@ -618,9 +619,48 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
 
     // 3. Prepare data for insertion (remove club_id and extra_club_ids from formData to avoid conflicts)
     const { club_id: _, extra_club_ids: __, ...cleanFormData } = formData;
+    let seoSlug: string | null = null
+    if (organization_id) {
+      const { data: clubForSlug, error: clubForSlugError } = await supabase
+        .from('clubes')
+        .select('name')
+        .eq('id', club_id)
+        .maybeSingle()
+
+      if (clubForSlugError) {
+        console.warn('[createTournamentAction] Could not load club for SEO slug:', clubForSlugError.message)
+      }
+
+      const baseSlug = buildTournamentSlugBase({
+        name: formData.name,
+        type: formData.type,
+        gender: formData.gender,
+        categoryName: normalizedCategoryName,
+        categoryConfig: formData.category_config ?? null,
+        clubName: clubForSlug?.name ?? null,
+        startDate: formData.start_date,
+      })
+
+      if (baseSlug) {
+        const { data: existingSlugs, error: existingSlugsError } = await supabase
+          .from('tournaments')
+          .select('seo_slug')
+          .eq('organization_id', organization_id)
+          .not('seo_slug', 'is', null)
+
+        if (existingSlugsError) {
+          console.warn('[createTournamentAction] Could not check SEO slug collisions:', existingSlugsError.message)
+        } else {
+          const takenSlugs = new Set((existingSlugs || []).map((tournament) => tournament.seo_slug).filter(Boolean))
+          seoSlug = makeUniqueTournamentSlug(baseSlug, (slug) => takenSlugs.has(slug))
+        }
+      }
+    }
+
     const tournamentToInsert = {
       ...cleanFormData,
       category_name: normalizedCategoryName,
+      seo_slug: seoSlug,
       club_id: club_id,
       status: 'NOT_STARTED', // Default status
       uses_new_system: true, // Nuevos torneos usan el sistema nuevo por defecto
@@ -697,6 +737,7 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
     revalidatePath(`/my-tournaments/${newTournament.id}`); // For potential direct navigation or future use
     revalidatePath('/tournaments'); // Public listing if exists
     revalidatePath(`/tournaments/${newTournament.id}`); // Public detail page
+    if (seoSlug) revalidatePath(`/torneos/${seoSlug}`)
 
     console.log('[createTournamentAction] Tournament created successfully:', newTournament);
 

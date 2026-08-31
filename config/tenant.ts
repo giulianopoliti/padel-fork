@@ -87,8 +87,8 @@ const tenantBranding: Record<TenantBranding["key"], TenantBranding> = {
       ctaSecondary: "Ver clubes",
     },
     features: {
-      publicRanking: false,
-      showRankingInNav: false,
+      publicRanking: true,
+      showRankingInNav: true,
       showTransferProofHighlights: false,
       playerPanelVariant: "padel-fv",
     },

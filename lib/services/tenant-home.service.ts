@@ -14,14 +14,6 @@ import {
   type TournamentGenderFilter,
 } from "@/lib/tournaments/gender-filtering"
 
-export interface TenantClub {
-  id: string
-  name: string
-  address: string | null
-  courts: number | null
-  cover_image_url: string | null
-}
-
 export interface TenantRankingPlayer {
   id: string
   first_name: string | null
@@ -40,9 +32,16 @@ export interface TenantHomeData {
     description: string | null
     logo_url: string | null
   } | null
-  tournaments: PublicTournamentSummary[]
-  clubs: TenantClub[]
+  upcomingTournaments: PublicTournamentSummary[]
+  inProgressTournaments: PublicTournamentSummary[]
   ranking: TenantRankingPlayer[]
+}
+
+interface TenantTournamentSummaryOptions {
+  genderFilter?: TournamentGenderFilter | null
+  priorityGender?: string | null
+  statuses: string[]
+  tournamentType?: "LONG" | "AMERICAN"
 }
 
 interface TenantUpcomingTournamentSummaryOptions {
@@ -51,18 +50,13 @@ interface TenantUpcomingTournamentSummaryOptions {
   statusMode?: "upcoming" | "active"
 }
 
-export async function getTenantUpcomingTournamentSummaries(
+export async function getTenantTournamentSummaries(
   limit: number = 12,
-  options: TenantUpcomingTournamentSummaryOptions = {},
+  options: TenantTournamentSummaryOptions,
 ): Promise<PublicTournamentSummary[]> {
   const supabase = await createClient()
   const organization = await getTenantOrganization()
   const explicitGenderFilter = isTournamentGenderFilter(options.genderFilter) ? options.genderFilter : null
-  const statusMode = options.statusMode || "upcoming"
-  const dbStatuses =
-    statusMode === "active"
-      ? ["NOT_STARTED", "IN_PROGRESS", "ZONE_PHASE", "BRACKET_PHASE"]
-      : ["NOT_STARTED"]
   const shouldPrioritizeByGender =
     !explicitGenderFilter && Boolean(getTournamentGenderPriority(options.priorityGender))
 
@@ -96,9 +90,13 @@ export async function getTenantUpcomingTournamentSummaries(
       clubes(id, name, address, formatted_address, google_place_id, latitude, longitude, maps_url)
     `)
     .eq("organization_id", organization.id)
-    .in("status", dbStatuses)
+    .in("status", options.statuses)
     .neq("is_draft", true)
-    .order(statusMode === "active" ? "created_at" : "start_date", { ascending: statusMode !== "active" })
+    .order("start_date", { ascending: true })
+
+  if (options.tournamentType) {
+    query = query.eq("type", options.tournamentType)
+  }
 
   if (explicitGenderFilter) {
     query = query.eq("gender", explicitGenderFilter)
@@ -172,41 +170,76 @@ export async function getTenantUpcomingTournamentSummaries(
   })
 }
 
-export async function getTenantHomeData(): Promise<TenantHomeData> {
+// Kept for player panels, which intentionally retain their broader active-tournament view.
+export async function getTenantUpcomingTournamentSummaries(
+  limit: number = 12,
+  options: TenantUpcomingTournamentSummaryOptions = {},
+): Promise<PublicTournamentSummary[]> {
+  const statuses = options.statusMode === "active"
+    ? ["NOT_STARTED", "IN_PROGRESS", "ZONE_PHASE", "BRACKET_PHASE"]
+    : ["NOT_STARTED"]
+
+  return getTenantTournamentSummaries(limit, {
+    genderFilter: options.genderFilter,
+    priorityGender: options.priorityGender,
+    statuses,
+  })
+}
+
+async function getTenantHomeRanking(limit: number = 5): Promise<TenantRankingPlayer[]> {
   const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("players")
+    .select("id, first_name, last_name, score, category_name, profile_image_url, clubes(name)")
+    .eq("gender", "MALE")
+    .or("es_prueba.eq.false,es_prueba.is.null")
+    .not("score", "is", null)
+    .order("score", { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error("Error fetching tenant home ranking:", error)
+    return []
+  }
+
+  return (data || []).map((player: any) => ({
+    id: player.id,
+    first_name: player.first_name,
+    last_name: player.last_name,
+    score: player.score,
+    category_name: player.category_name,
+    club_name: player.clubes?.name || null,
+    profile_image_url: player.profile_image_url,
+  }))
+}
+
+export async function getTenantHomeData(): Promise<TenantHomeData> {
   const branding = getTenantBranding()
   const organization = await getTenantOrganization()
 
   if (!organization) {
     return {
       organization: null,
-      tournaments: [],
-      clubs: [],
+      upcomingTournaments: [],
+      inProgressTournaments: [],
       ranking: [],
     }
   }
 
-  const [tournaments, clubsResult] = await Promise.all([
-    getTenantUpcomingTournamentSummaries(12, {
-      statusMode: branding.key === "padel-fv" ? "active" : "upcoming",
-    }),
-    supabase
-      .from("organization_clubs")
-      .select("clubes(id, name, address, courts, cover_image_url)")
-      .eq("organizacion_id", organization.id)
-      .limit(6),
-  ])
+  const upcomingOptions: TenantTournamentSummaryOptions = branding.key === "padel-elite"
+    ? { statuses: ["NOT_STARTED"], tournamentType: "AMERICAN" }
+    : { statuses: ["NOT_STARTED", "ZONE_PHASE"] }
 
-  const clubs = (clubsResult.data || [])
-    .map((item: any) => item.clubes)
-    .filter(Boolean)
-    .map((club: any) => ({
-      id: club.id,
-      name: club.name,
-      address: club.address,
-      courts: club.courts,
-      cover_image_url: club.cover_image_url,
-    }))
+  const inProgressOptions: TenantTournamentSummaryOptions = branding.key === "padel-elite"
+    ? { statuses: ["ZONE_PHASE", "IN_PROGRESS", "BRACKET_PHASE"], tournamentType: "AMERICAN" }
+    : { statuses: ["IN_PROGRESS", "BRACKET_PHASE"] }
+
+  const [upcomingTournaments, inProgressTournaments, ranking] = await Promise.all([
+    getTenantTournamentSummaries(12, upcomingOptions),
+    getTenantTournamentSummaries(12, inProgressOptions),
+    getTenantHomeRanking(),
+  ])
 
   return {
     organization: {
@@ -216,8 +249,8 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
       description: organization.description,
       logo_url: organization.logo_url,
     },
-    tournaments,
-    clubs,
-    ranking: [],
+    upcomingTournaments,
+    inProgressTournaments,
+    ranking,
   }
 }

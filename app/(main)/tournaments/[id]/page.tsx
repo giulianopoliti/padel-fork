@@ -14,6 +14,8 @@ import LongTournamentView from './components/LongTournamentView';
 import { getLongPlayerOverview } from '@/lib/services/long-player-overview';
 import { normalizeTournamentOperationalSettings } from '@/lib/services/tournament-operational-settings';
 import { getTenantBranding } from '@/config/tenant';
+import type { Metadata } from 'next';
+import { getPublicTournamentById } from '@/lib/services/public-tournament.service';
 
 interface TournamentPageProps {
   params: Promise<{ id: string }>;
@@ -148,7 +150,23 @@ const serializeTournamentForClient = (
  */
 export default async function TournamentPage({ params }: TournamentPageProps) {
   const resolvedParams = await params;
-  const tournamentId = resolvedParams.id;
+  return <TournamentPageById tournamentId={resolvedParams.id} />
+}
+
+export async function generateMetadata({ params }: TournamentPageProps): Promise<Metadata> {
+  const { id } = await params
+  const tournament = await getPublicTournamentById(id)
+
+  if (!tournament?.seo_slug) return {}
+
+  return {
+    alternates: {
+      canonical: `/torneos/${tournament.seo_slug}`,
+    },
+  }
+}
+
+export async function TournamentPageById({ tournamentId }: { tournamentId: string }) {
   const branding = getTenantBranding();
 
   // ========================================
