@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Trophy, Calendar, MapPin, ChevronRight, Building2 } from "lucide-react"
 import { getStorageUrl } from "@/utils/storage-url"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
+import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 
 // Types
 interface Tournament {
   id: string
+  seoSlug?: string | null
   name: string
   startDate: string | null
   endDate?: string | null
@@ -278,7 +280,7 @@ export default function TournamentCard({
             className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-md hover:shadow-lg transition-all duration-300"
             asChild
           >
-            <Link href={`/tournaments/${tournament.id}`}>
+            <Link href={getPublicTournamentHref(tournament)}>
               Ver Torneo
               <ChevronRight className="ml-2 h-4 w-4" />
             </Link>

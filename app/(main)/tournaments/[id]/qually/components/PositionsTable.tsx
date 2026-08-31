@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -34,9 +35,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Award, Ban, Loader2, Medal, MoreHorizontal, RotateCcw, Trophy } from 'lucide-react';
+import { Award, Ban, ExternalLink, Loader2, Medal, MoreHorizontal, RotateCcw, Trophy } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/database.types';
+import { getTenantBranding } from '@/config/tenant';
 
 type Tournament = Database['public']['Tables']['tournaments']['Row'];
 
@@ -126,7 +128,8 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
   const { toast } = useToast();
 
   const canUpdateDisqualifications = canManageTournament && tournament.status === 'ZONE_PHASE';
-  const columnsCount = 7 + (canUpdateDisqualifications ? 1 : 0);
+  const showPublicResults = getTenantBranding().key === 'padel-fv';
+  const columnsCount = 7 + (showPublicResults ? 1 : 0) + (canUpdateDisqualifications ? 1 : 0);
   const disqualificationsByCouple = React.useMemo(() => {
     return new Map(activeDisqualifications.map((disqualification) => [disqualification.couple_id, disqualification]));
   }, [activeDisqualifications]);
@@ -324,6 +327,14 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
                 <div className="min-w-0 space-y-1">
                   <PlayerNameLine player={zonePosition.couples.players_player1} fallback="Jugador 1" />
                   <PlayerNameLine player={zonePosition.couples.players_player2} fallback="Jugador 2" />
+                  {showPublicResults && (
+                    <Link
+                      href={`/tournaments/${tournament.id}/resultados/${zonePosition.couple_id}`}
+                      className="inline-flex text-[10px] font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Ver resultados
+                    </Link>
+                  )}
                   {(isCurrentCouple || isDisqualified) && (
                     <div className="flex flex-wrap gap-1 pt-0.5">
                       {isCurrentCouple && <Badge variant="outline" className="h-4 border-primary/30 px-1 text-[9px] leading-none text-primary">Tu pareja</Badge>}
@@ -353,6 +364,9 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
               <TableHead className="w-[70px] text-center font-semibold text-slate-700">PP</TableHead>
               <TableHead className="w-[80px] text-center font-semibold text-slate-700">DS</TableHead>
               <TableHead className="w-[80px] text-center font-semibold text-slate-700">DG</TableHead>
+              {showPublicResults && (
+                <TableHead className="w-[170px] text-right font-semibold text-slate-700">Resultados</TableHead>
+              )}
               {canUpdateDisqualifications && (
                 <TableHead className="w-[130px] text-right font-semibold text-slate-700">Accion</TableHead>
               )}
@@ -413,6 +427,16 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
                     <TableCell className="text-center">
                       <DiffBadge value={zonePosition.games_difference} />
                     </TableCell>
+                    {showPublicResults && (
+                      <TableCell className="text-right">
+                        <Button asChild type="button" variant="outline" size="sm" className="gap-1.5">
+                          <Link href={`/tournaments/${tournament.id}/resultados/${zonePosition.couple_id}`}>
+                            Ver resultados
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    )}
                     {canUpdateDisqualifications && (
                       <TableCell className="text-right">
                         <DropdownMenu>

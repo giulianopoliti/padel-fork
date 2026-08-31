@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,10 +12,12 @@ import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
 import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
 import { shouldTreatTournamentRegistrationAsPublic } from "@/lib/tournaments/tenant-registration-policy"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
+import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import { CalendarDays, Clock3, MapPin, Navigation, Tag, Trophy } from "lucide-react"
 
 export interface PublicTournamentSummary {
   id: string
+  seoSlug?: string | null
   name: string
   status: string
   category?: string | null
@@ -54,7 +57,6 @@ interface PublicTournamentCardsProps {
   tournaments: PublicTournamentSummary[]
   emptyTitle: string
   emptyDescription: string
-  showParticipantStats?: boolean
 }
 
 const typeLabel = {
@@ -164,12 +166,11 @@ export function PublicTournamentCards({
   tournaments,
   emptyTitle,
   emptyDescription,
-  showParticipantStats = false,
 }: PublicTournamentCardsProps) {
+  const router = useRouter()
   const branding = getTenantBranding()
   const isElite = branding.key === "padel-elite"
   const allowActivePhaseRegistration = branding.key === "padel-fv"
-
   const emptyStateClassName = isElite
     ? "tpe-shell rounded-[2rem] px-5 py-10 text-center text-white sm:px-6 sm:py-12"
     : "rounded-3xl border border-dashed border-white/20 bg-white/5 px-5 py-10 text-center shadow-sm backdrop-blur-sm sm:px-6 sm:py-12"
@@ -213,12 +214,6 @@ export function PublicTournamentCards({
   const detailsButtonClassName = isElite
     ? "h-9 rounded-full border-white/24 bg-white/8 text-xs font-bold uppercase tracking-[0.14em] text-white hover:bg-white/14 hover:text-white sm:h-10"
     : "h-9 border-white/20 bg-white/5 text-sm font-semibold text-white hover:bg-white/10 sm:h-10 sm:text-base"
-  const statsPanelClassName = isElite
-    ? "rounded-xl border border-white/20 bg-[rgba(16,25,50,0.86)] px-3 py-2"
-    : "rounded-xl bg-white/5 px-3 py-2"
-  const progressTrackClassName = isElite ? "bg-white/10" : "bg-white/10"
-  const progressFillClassName = isElite ? "bg-[var(--tpe-lime)]" : "bg-court-500"
-
   if (tournaments.length === 0) {
     return (
       <div className={emptyStateClassName}>
@@ -245,11 +240,6 @@ export function PublicTournamentCards({
               latitude: tournament.club?.latitude,
               longitude: tournament.club?.longitude,
             })
-        const canShowParticipantStats =
-          showParticipantStats &&
-          Boolean(tournament.enablePublicInscriptions) &&
-          typeof tournament.maxParticipants === "number" &&
-          tournament.maxParticipants > 0
         const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
           tenantKey: branding.key,
           tournamentType: tournament.type,
@@ -267,10 +257,6 @@ export function PublicTournamentCards({
         const registrationBadgeClassName = canRegister
           ? "rounded-full border border-emerald-200/90 bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_0_18px_rgba(16,185,129,0.28)]"
           : "rounded-full border border-white/[0.15] bg-white/[0.08] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80"
-        const currentParticipants = tournament.currentParticipants || 0
-        const progressWidth = canShowParticipantStats
-          ? `${Math.min((currentParticipants / tournament.maxParticipants!) * 100, 100)}%`
-          : "0%"
         const isLongTournament = tournament.type === "LONG"
         const shouldShowTime = !isLongTournament
         const timeLabel = shouldShowTime
@@ -278,7 +264,22 @@ export function PublicTournamentCards({
           : null
 
         return (
-          <Card key={tournament.id} className={cardClassName}>
+          <Card
+            key={tournament.id}
+            className={`${cardClassName} cursor-pointer`}
+            role="link"
+            tabIndex={0}
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest("a, button, input, select, textarea")) return
+              router.push(getPublicTournamentHref(tournament))
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault()
+                router.push(getPublicTournamentHref(tournament))
+              }
+            }}
+          >
             <CardContent className="p-3 sm:p-4">
               <div className="flex flex-col gap-3 sm:gap-3.5 lg:flex-row lg:items-stretch lg:justify-between">
                 <div className="min-w-0 flex-1 space-y-3">
@@ -414,19 +415,6 @@ export function PublicTournamentCards({
                     </div>
                   ) : null}
 
-                  {canShowParticipantStats ? (
-                    <div className={statsPanelClassName}>
-                      <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.12em] text-white/88">
-                        <span>Inscriptos</span>
-                        <span>
-                          {currentParticipants}/{tournament.maxParticipants}
-                        </span>
-                      </div>
-                      <div className={`mt-2 h-1.5 overflow-hidden rounded-full ${progressTrackClassName}`}>
-                        <div className={`h-full rounded-full ${progressFillClassName}`} style={{ width: progressWidth }} />
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
 
                 <div className="flex w-full flex-col justify-end gap-2 lg:w-52 lg:items-center">
@@ -450,7 +438,7 @@ export function PublicTournamentCards({
                     </div>
                   ) : null}
                   <Button asChild variant="outline" className={`${detailsButtonClassName} lg:max-w-[220px]`}>
-                    <Link href={`/tournaments/${tournament.id}`}>Ver detalles</Link>
+                    <Link href={getPublicTournamentHref(tournament)}>Ver detalles</Link>
                   </Button>
                 </div>
               </div>

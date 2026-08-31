@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
+import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 
 // Weekly Winners Carousel Component
 export default function WeeklyWinnersCarousel({ weeklyWinners }: { weeklyWinners: any[] }) {
@@ -37,7 +38,7 @@ export default function WeeklyWinnersCarousel({ weeklyWinners }: { weeklyWinners
         {currentItems.map((tournament: any) => (
           <Link
             key={tournament.id}
-            href={`/tournaments/${tournament.id}`}
+            href={getPublicTournamentHref(tournament)}
             className="block group"
           >
             <Card className="group border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 overflow-hidden bg-white cursor-pointer">
@@ -162,4 +163,4 @@ export default function WeeklyWinnersCarousel({ weeklyWinners }: { weeklyWinners
       )}
     </div>
   )
-} 
+}

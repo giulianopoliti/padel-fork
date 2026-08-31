@@ -111,3 +111,11 @@ This is a **Padel Tournament Management System** built with Next.js 15, React 19
 - Implements comprehensive match validation and result tracking
 - Real-time updates through Supabase subscriptions for live tournament data
 - Mobile-responsive design optimized for tournament organizers and players
+
+## Remote Supabase selection (mandatory)
+
+This repository is the shared codebase for two separate organizers and two separate remote Supabase projects. Never use an MCP named only `supabase` or `supabase-develop`, and never use the historical Padel Para Todos project (`vulusxqgknaejdxnhiex`) for remote database work.
+
+- `supabase-fv` is Padel FV (`bfmaqrythlwbfjuqumom`) and is the default remote destination for work in this `padel-fv` workspace or requests about `padelfv.com`/FV.
+- `supabase-elite` is TPE Padel / Padel Elite (`lzowflvgnspjdbvdxliy`) and is the destination for requests explicitly about TPE, Elite, or `tpepadel.com`.
+- For a request that does not name a tenant, infer it from the route, domain, current workspace and affected configuration. In this workspace default to FV. Before any remote mutation, state the selected tenant and project ref in the commentary update.

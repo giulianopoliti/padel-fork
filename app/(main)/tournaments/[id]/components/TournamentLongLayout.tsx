@@ -22,6 +22,7 @@ import {
   Home,
   ListChecks,
   Settings,
+  Table2,
   Trophy,
   Users,
 } from 'lucide-react'
@@ -46,6 +47,7 @@ const getMobileNavIcon = (href: string) => {
   if (href === '/schedules') return CalendarCheck2
   if (href === '/match-scheduling' || href === '/zone-matches') return Clock3
   if (href === '/qually') return BarChart3
+  if (href === '/resultados') return Table2
   return Trophy
 }
 
@@ -53,6 +55,8 @@ const getMobileNavLabel = (title: string) => {
   switch (title) {
     case 'Tablas de posiciones':
       return 'Tablas'
+    case 'Resultados':
+      return 'Resultados'
     case 'Fechas y Horarios':
       return 'Horarios'
     case 'Encuentros de qually':

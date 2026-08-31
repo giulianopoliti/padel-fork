@@ -25,7 +25,9 @@
     "clone-tournament-local": "tsx scripts/clone_tournament_to_local.mjs",
     "auto-register-top-players": "tsx scripts/auto_register_top_players.ts",
     "auto-register-top-couples": "tsx scripts/auto_register_top_players.ts",
-    "billing:backfill": "tsx scripts/backfill-billing.ts"
+    "billing:backfill": "tsx scripts/backfill-billing.ts",
+    "seo:slugs:preview": "tsx scripts/backfill-tournament-seo-slugs.ts",
+    "seo:slugs:apply": "tsx scripts/backfill-tournament-seo-slugs.ts --apply --confirm=BACKFILL_SEO_SLUGS"
   },
   "dependencies": {
     "@ai-sdk/google": "3.0.108",

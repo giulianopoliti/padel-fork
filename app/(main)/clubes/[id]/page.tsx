@@ -270,7 +270,6 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
                   tournaments={club.upcomingTournaments || []}
                   emptyTitle="Sin torneos publicados"
                   emptyDescription="Cuando este club publique nuevas fechas, van a aparecer acá automáticamente."
-                  showParticipantStats
                 />
               </div>
             </section>

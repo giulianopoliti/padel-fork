@@ -24,6 +24,24 @@ export interface TenantRankingPlayer {
   profile_image_url: string | null
 }
 
+export interface TenantRecentWinner {
+  id: string
+  seoSlug: string | null
+  tournamentName: string
+  category: string | null
+  clubName: string | null
+  endDate: string
+  winnerImageUrl: string | null
+  player1: {
+    name: string
+    profileImageUrl: string | null
+  }
+  player2: {
+    name: string
+    profileImageUrl: string | null
+  }
+}
+
 export interface TenantHomeData {
   organization: {
     id: string
@@ -35,6 +53,7 @@ export interface TenantHomeData {
   upcomingTournaments: PublicTournamentSummary[]
   inProgressTournaments: PublicTournamentSummary[]
   ranking: TenantRankingPlayer[]
+  recentWinners: TenantRecentWinner[]
 }
 
 interface TenantTournamentSummaryOptions {
@@ -68,6 +87,7 @@ export async function getTenantTournamentSummaries(
     .from("tournaments")
     .select(`
       id,
+      seo_slug,
       name,
       status,
       category_name,
@@ -131,6 +151,7 @@ export async function getTenantTournamentSummaries(
 
     return {
       id: tournament.id,
+      seoSlug: tournament.seo_slug || null,
       name: tournament.name,
       status: tournament.status,
       category: categoryDisplay,
@@ -214,6 +235,90 @@ async function getTenantHomeRanking(limit: number = 5): Promise<TenantRankingPla
   }))
 }
 
+async function getTenantRecentWinners(organizationId: string): Promise<TenantRecentWinner[]> {
+  const supabase = await createClient()
+  const now = new Date()
+  const thirtyDaysAgo = new Date(now)
+  thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30)
+
+  const { data: tournaments, error: tournamentsError } = await supabase
+    .from("tournaments")
+    .select(`
+      id,
+      seo_slug,
+      name,
+      end_date,
+      category_name,
+      category_config,
+      winner_id,
+      winner_image_url,
+      clubes(name)
+    `)
+    .eq("organization_id", organizationId)
+    .in("status", ["FINISHED", "FINISHED_POINTS_PENDING", "FINISHED_POINTS_CALCULATED"])
+    .neq("is_draft", true)
+    .not("winner_id", "is", null)
+    .gte("end_date", thirtyDaysAgo.toISOString())
+    .lte("end_date", now.toISOString())
+    .order("end_date", { ascending: false })
+
+  if (tournamentsError) {
+    console.error("Error fetching tenant recent winners:", tournamentsError)
+    return []
+  }
+
+  const winnerIds = (tournaments || [])
+    .map((tournament: any) => tournament.winner_id)
+    .filter((winnerId: string | null): winnerId is string => Boolean(winnerId))
+
+  if (winnerIds.length === 0) {
+    return []
+  }
+
+  const { data: couples, error: couplesError } = await supabase
+    .from("couples")
+    .select(`
+      id,
+      player1:players!couples_player1_id_fkey(id, first_name, last_name, profile_image_url),
+      player2:players!couples_player2_id_fkey(id, first_name, last_name, profile_image_url)
+    `)
+    .in("id", winnerIds)
+
+  if (couplesError) {
+    console.error("Error fetching recent winner couples:", couplesError)
+    return []
+  }
+
+  const coupleById = new Map((couples || []).map((couple: any) => [couple.id, couple]))
+
+  return (tournaments || []).flatMap((tournament: any): TenantRecentWinner[] => {
+    const couple = coupleById.get(tournament.winner_id)
+    if (!couple || !tournament.end_date) return []
+
+    const player1 = Array.isArray(couple.player1) ? couple.player1[0] : couple.player1
+    const player2 = Array.isArray(couple.player2) ? couple.player2[0] : couple.player2
+    const club = Array.isArray(tournament.clubes) ? tournament.clubes[0] : tournament.clubes
+
+    return [{
+      id: tournament.id,
+      seoSlug: tournament.seo_slug || null,
+      tournamentName: tournament.name || "Torneo",
+      category: getTournamentCategoryDisplay(tournament),
+      clubName: club?.name || null,
+      endDate: tournament.end_date,
+      winnerImageUrl: tournament.winner_image_url || null,
+      player1: {
+        name: [player1?.first_name, player1?.last_name].filter(Boolean).join(" ") || "Jugador/a",
+        profileImageUrl: player1?.profile_image_url || null,
+      },
+      player2: {
+        name: [player2?.first_name, player2?.last_name].filter(Boolean).join(" ") || "Jugador/a",
+        profileImageUrl: player2?.profile_image_url || null,
+      },
+    }]
+  })
+}
+
 export async function getTenantHomeData(): Promise<TenantHomeData> {
   const branding = getTenantBranding()
   const organization = await getTenantOrganization()
@@ -224,6 +329,7 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
       upcomingTournaments: [],
       inProgressTournaments: [],
       ranking: [],
+      recentWinners: [],
     }
   }
 
@@ -235,10 +341,11 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
     ? { statuses: ["ZONE_PHASE", "IN_PROGRESS", "BRACKET_PHASE"], tournamentType: "AMERICAN" }
     : { statuses: ["IN_PROGRESS", "BRACKET_PHASE"] }
 
-  const [upcomingTournaments, inProgressTournaments, ranking] = await Promise.all([
+  const [upcomingTournaments, inProgressTournaments, ranking, recentWinners] = await Promise.all([
     getTenantTournamentSummaries(12, upcomingOptions),
     getTenantTournamentSummaries(12, inProgressOptions),
     getTenantHomeRanking(),
+    branding.key === "padel-fv" ? getTenantRecentWinners(organization.id) : Promise.resolve([]),
   ])
 
   return {
@@ -252,5 +359,6 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
     upcomingTournaments,
     inProgressTournaments,
     ranking,
+    recentWinners,
   }
 }

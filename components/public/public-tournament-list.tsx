@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { CalendarDays, ChevronRight, Clock3, MapPin, Ticket } from "lucide-react"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +12,7 @@ import type { PublicTournamentSummary } from "@/types/public-tournament"
 import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
 import { shouldTreatTournamentRegistrationAsPublic } from "@/lib/tournaments/tenant-registration-policy"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
+import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
 import { Navigation } from "lucide-react"
 
@@ -85,6 +89,7 @@ export default function PublicTournamentList({
   showRegistration = false,
 }: PublicTournamentListProps) {
   const branding = getTenantBranding()
+  const router = useRouter()
   const allowActivePhaseRegistration = branding.key === "padel-fv"
 
   if (tournaments.length === 0) {
@@ -107,6 +112,7 @@ export default function PublicTournamentList({
 
       <div className="p-4 sm:p-6">
         {tournaments.map((tournament) => {
+          const tournamentHref = getPublicTournamentHref(tournament)
           const statusLabel = statusLabels[tournament.status] || tournament.status
           const hideVenue = Boolean(tournament.hideVenue)
           const venueName = tournament.club?.name || tournament.club?.address || null
@@ -143,8 +149,20 @@ export default function PublicTournamentList({
           return (
             <article
               key={tournament.id}
-              className="grid gap-5 border-b px-1 py-5 text-white last:border-b-0 sm:px-2 lg:grid-cols-[minmax(0,180px)_minmax(0,1fr)_220px]"
+              className="grid cursor-pointer gap-5 border-b px-1 py-5 text-white last:border-b-0 sm:px-2 lg:grid-cols-[minmax(0,180px)_minmax(0,1fr)_220px]"
               style={{ borderColor: "rgba(255,255,255,0.18)" }}
+              role="link"
+              tabIndex={0}
+              onClick={(event) => {
+                if ((event.target as HTMLElement).closest("a, button, input, select, textarea")) return
+                router.push(tournamentHref)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  router.push(tournamentHref)
+                }
+              }}
             >
               <div className="space-y-2">
                 <p className="text-[2rem] font-black uppercase leading-none text-[var(--tpe-lime)] sm:text-[2.5rem]">
@@ -245,7 +263,7 @@ export default function PublicTournamentList({
                   variant="outline"
                   className="w-full rounded-full border-white/20 bg-white/5 text-sm font-bold uppercase tracking-[0.14em] text-white hover:bg-white/10 hover:text-white"
                 >
-                  <Link href={`/tournaments/${tournament.id}`}>
+                  <Link href={tournamentHref}>
                     Ver detalles
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Link>

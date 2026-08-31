@@ -671,6 +671,7 @@ export const getUser = async (): Promise<User | null> => {
       .from("tournaments")
       .select(`
         id,
+        seo_slug,
         name,
         start_date,
         end_date,
@@ -692,28 +693,6 @@ export const getUser = async (): Promise<User | null> => {
       console.error(`Error fetching tournaments for club ${clubId}:`, tournamentsError);
     }
 
-    // Get current participants count for each tournament
-    let tournamentsWithParticipants = [];
-    if (tournaments && tournaments.length > 0) {
-      for (const tournament of tournaments) {
-        const { data: inscriptions, error: inscriptionsError } = await supabase
-          .from("inscriptions")
-          .select("id")
-          .eq("tournament_id", tournament.id);
-
-        if (inscriptionsError) {
-          console.error(`Error fetching inscriptions for tournament ${tournament.id}:`, inscriptionsError);
-        }
-
-        const currentParticipants = inscriptions ? inscriptions.length : 0;
-
-        tournamentsWithParticipants.push({
-          ...tournament,
-          currentParticipants
-        });
-      }
-    }
-
     return {
       ...club,
       services: services?.map((s: any) => s.services).filter(Boolean) || [],
@@ -727,12 +706,13 @@ export const getUser = async (): Promise<User | null> => {
           : "Usuario anónimo",
         date: new Date().toISOString() // Placeholder since no date in reviews table
       })) || [],
-      upcomingTournaments: tournamentsWithParticipants.map(tournament => {
+      upcomingTournaments: (tournaments || []).map(tournament => {
         const hasStartDate = Boolean(tournament.start_date);
         const hasEndDate = Boolean(tournament.end_date);
 
         return {
           id: tournament.id,
+          seoSlug: tournament.seo_slug || null,
           name: tournament.name || `Torneo ${tournament.category_name}`,
           date: hasStartDate
             ? hasEndDate
@@ -747,9 +727,6 @@ export const getUser = async (): Promise<User | null> => {
           status: tournament.status,
           enablePublicInscriptions: Boolean(tournament.enable_public_inscriptions),
           showFewSlotsAlert: tournament.show_few_slots_alert !== false,
-          maxParticipants: tournament.max_participants,
-          currentParticipants: tournament.currentParticipants || 0,
-          registrations: `${tournament.currentParticipants || 0}/${tournament.max_participants || 0}`,
           startDate: tournament.start_date || null,
           endDate: tournament.end_date || null,
           club: {

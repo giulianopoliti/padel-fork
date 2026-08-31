@@ -4,6 +4,7 @@ import React from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { getTenantBranding } from '@/config/tenant'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -19,7 +20,8 @@ import {
   ChevronRight,
   EyeOff,
   Home,
-  BarChart3
+  BarChart3,
+  Table2
 } from 'lucide-react'
 
 interface TournamentLongSidebarProps {
@@ -65,6 +67,7 @@ export const getLongNavigationItems = (
 ) => {
   const isPlayer = userRole === 'PLAYER'
   const isTournamentActive = tournamentStatus !== 'NOT_STARTED' && tournamentStatus !== 'CANCELED'
+  const shouldShowResults = getTenantBranding().key === 'padel-fv'
 
   if (userRole === 'PUBLIC') {
     const publicItems: NavigationItem[] = [
@@ -83,6 +86,13 @@ export const getLongNavigationItems = (
         showForEliminated: true,
         requiresParticipantVisibility: true
       },
+      ...(shouldShowResults ? [{
+        title: 'Resultados',
+        href: '/resultados',
+        icon: Table2,
+        description: 'Matriz de resultados por zona',
+        showForEliminated: true
+      }] : []),
       {
         title: 'Llave',
         href: '/bracket',
@@ -123,6 +133,13 @@ export const getLongNavigationItems = (
         showForEliminated: true,
         requiresParticipantVisibility: true
       },
+      ...(shouldShowResults ? [{
+        title: 'Resultados',
+        href: '/resultados',
+        icon: Table2,
+        description: 'Matriz de resultados por zona',
+        showForEliminated: true
+      }] : []),
       {
         title: 'Llave',
         href: '/bracket',
@@ -171,6 +188,13 @@ export const getLongNavigationItems = (
       showForEliminated: true,
       requiresParticipantVisibility: true
     },
+    ...(shouldShowResults ? [{
+      title: 'Resultados',
+      href: '/resultados',
+      icon: Table2,
+      description: 'Matriz de resultados por zona',
+      showForEliminated: true
+    }] : []),
     {
       title: 'Llave',
       href: '/bracket',

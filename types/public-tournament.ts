@@ -2,6 +2,7 @@ import type { Gender } from "@/types"
 
 export interface PublicTournamentSummary {
   id: string
+  seoSlug?: string | null
   name: string
   status: string
   type?: "LONG" | "AMERICAN" | string | null

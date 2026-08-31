@@ -192,7 +192,7 @@ export async function getWeeklyWinners() {
         // Get tournaments finished in the last 7 days with winner information
         const { data: tournaments, error } = await supabase
             .from('tournaments')
-            .select('id, name, winner_image_url, end_date, winner_id')
+            .select('id, seo_slug, name, winner_image_url, end_date, winner_id')
             .in('status', ['FINISHED', 'FINISHED_POINTS_CALCULATED'])
             .not('winner_id', 'is', null)
             .not('winner_image_url', 'is', null)
@@ -224,6 +224,7 @@ export async function getWeeklyWinners() {
                 // Create plain object for serialization
                 return {
                     id: tournament.id,
+                    seoSlug: tournament.seo_slug || null,
                     tournamentName: tournament.name,
                     winnerImageUrl: tournament.winner_image_url,
                     endDate: tournament.end_date,
@@ -311,6 +312,7 @@ export async function getUpcomingTournamentsForHome(limit: number = 3) {
             .from("tournaments")
             .select(`
                 id,
+                seo_slug,
                 name,
                 created_at,
                 start_date,
@@ -370,6 +372,7 @@ export async function getUpcomingTournamentsForHome(limit: number = 3) {
 
             return {
                 id: rawTournament.id,
+                seoSlug: rawTournament.seo_slug || null,
                 name: rawTournament.name,
                 hideVenue,
                 club: rawTournament.club && !hideVenue ? {
@@ -471,6 +474,7 @@ export async function getTournamentsOptimized({
             .from("tournaments")
             .select(`
                 id,
+                seo_slug,
                 name,
                 created_at,
                 start_date,
@@ -584,6 +588,7 @@ export async function getTournamentsOptimized({
 
             return {
                 id: rawTournament.id,
+                seoSlug: rawTournament.seo_slug || null,
                 name: rawTournament.name,
                 hideVenue,
                 club: rawTournament.club && !hideVenue ? {

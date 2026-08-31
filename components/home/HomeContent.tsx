@@ -7,11 +7,12 @@ import { getTenantBranding } from "@/config/tenant"
 import { getTenantHomeData, type TenantRankingPlayer } from "@/lib/services/tenant-home.service"
 import { HomeTournamentTabs } from "@/components/tournaments/home-tournament-tabs"
 import PublicTournamentList from "@/components/public/public-tournament-list"
+import { RecentWinnersSection } from "@/components/home/RecentWinnersSection"
 import type { PublicTournamentSummary } from "@/types/public-tournament"
 
 export async function HomeContent() {
   const branding = getTenantBranding()
-  const { organization, upcomingTournaments, inProgressTournaments, ranking } = await getTenantHomeData()
+  const { organization, upcomingTournaments, inProgressTournaments, ranking, recentWinners } = await getTenantHomeData()
 
   if (branding.home.variant === "padel-elite") {
     return <PadelEliteHomeContent branding={branding} upcomingTournaments={upcomingTournaments} inProgressTournaments={inProgressTournaments} ranking={ranking} />
@@ -57,7 +58,8 @@ export async function HomeContent() {
         </div>
       </section>
 
-      <HomeRanking ranking={ranking} dark />
+      <RecentWinnersSection winners={recentWinners} />
+      {branding.features.publicRanking && <HomeRanking ranking={ranking} dark />}
       <HomeFooter organizationName={organization?.name || branding.siteName} branding={branding} dark />
     </div>
   )
