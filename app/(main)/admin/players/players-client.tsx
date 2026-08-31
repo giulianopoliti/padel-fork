@@ -398,8 +398,8 @@ export const PlayersClient = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="male">Masculino</SelectItem>
-                    <SelectItem value="female">Femenino</SelectItem>
+                    <SelectItem value="male">Caballeros</SelectItem>
+                    <SelectItem value="female">Damas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

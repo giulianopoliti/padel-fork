@@ -36,7 +36,7 @@ const statusLabels: Record<string, string> = {
 const genderLabels: Partial<Record<Gender, string>> = {
   [Gender.MALE]: "Caballeros",
   [Gender.FEMALE]: "Damas",
-  [Gender.MIXED]: "Mixtos",
+  [Gender.MIXED]: "Mixto",
 }
 
 const capitalizeWords = (value: string) => value.replace(/\b\w/g, (char) => char.toUpperCase())

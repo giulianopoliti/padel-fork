@@ -26,15 +26,30 @@ export default async function SettingsInscripcionesPage({
     <div className="space-y-6">
       <SettingsSectionHeader
         eyebrow="Inscripciones"
-        title="Acceso y cobro"
-        description="Define como entra la gente al torneo y como vas a organizar los pagos."
+        title="Inscripciones, privacidad y pagos"
+        description="Controla por separado quién puede registrar una pareja, qué información se muestra y cómo gestionás los cobros."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+          <p className="text-sm font-semibold text-slate-950">1. ¿Se pueden registrar nuevas parejas?</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Se define con el estado de las inscripciones y el cupo disponible.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+          <p className="text-sm font-semibold text-slate-950">2. ¿Se ve el listado de inscriptos?</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Podés ocultar nombres y cantidad de parejas sin cerrar las inscripciones.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
         <SettingsShellCard
           icon={<Users className="h-5 w-5 text-blue-600" />}
-          title="Control de inscripciones"
-          description="Abre o cierra nuevas inscripciones segun la etapa del torneo."
+          title="Disponibilidad para registrarse"
+          description="Definí si se pueden registrar nuevas parejas. Este control no modifica la visibilidad del listado."
         >
           <RegistrationControlForm
             tournamentId={tournament.id}
@@ -46,13 +61,13 @@ export default async function SettingsInscripcionesPage({
 
         <SettingsShellCard
           icon={<Eye className="h-5 w-5 text-amber-600" />}
-          title="Vista publica y herramientas de pago"
-          description="Configura privacidad, seguimiento manual y transferencia con comprobante."
+          title="Visibilidad, gestión y pagos"
+          description="Configurá qué ven los jugadores, cómo se validan las inscripciones y las opciones de cobro."
         >
           <InscriptionAutomationForm
             tournamentId={tournament.id}
             initialValidateInscriptions={tournament.validate_inscriptions ?? false}
-            initialEnablePublicInscriptions={tournament.enable_public_inscriptions ?? true}
+            initialShowPublicInscriptions={tournament.show_public_inscriptions ?? true}
             initialShowFewSlotsAlert={tournament.show_few_slots_alert ?? true}
             initialEnablePaymentCheckboxes={tournament.enable_payment_checkboxes ?? false}
             initialEnableTransferProof={tournament.enable_transfer_proof ?? false}

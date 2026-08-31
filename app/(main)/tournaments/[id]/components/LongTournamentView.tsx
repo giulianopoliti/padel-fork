@@ -13,6 +13,7 @@ import type { TournamentPublicInfo } from '@/lib/tournaments/public-tournament-d
 import { Gender } from '@/types';
 import { createClient } from '@/utils/supabase/client';
 import type { LongPlayerOverview } from '@/lib/services/long-player-overview.shared';
+import type { AccessLevel } from '@/utils/tournament-permissions';
 
 interface Tournament {
   id: string;
@@ -23,6 +24,7 @@ interface Tournament {
   price?: string | number | null;
   enable_transfer_proof?: boolean;
   enable_public_inscriptions?: boolean;
+  show_public_inscriptions?: boolean;
   registration_locked?: boolean | null;
   bracket_status?: string | null;
   transfer_alias?: string | null;
@@ -52,6 +54,7 @@ interface LongTournamentViewProps {
   tournament: Tournament;
   publicInfo: TournamentPublicInfo;
   playerOverview: LongPlayerOverview | null;
+  accessLevel: AccessLevel;
 }
 
 /**
@@ -66,13 +69,20 @@ const LongTournamentView: React.FC<LongTournamentViewProps> = ({
   tournament,
   publicInfo,
   playerOverview,
+  accessLevel,
 }) => {
   const { userDetails } = useUser();
   const [stats, setStats] = useState<TournamentStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (playerOverview) return;
+    const canViewInscriptions =
+      accessLevel === 'FULL_MANAGEMENT' || Boolean(tournament.show_public_inscriptions)
+
+    if (playerOverview || !canViewInscriptions) {
+      setLoading(false)
+      return
+    }
 
     const fetchStats = async () => {
       const supabase = createClient();
@@ -100,7 +110,7 @@ const LongTournamentView: React.FC<LongTournamentViewProps> = ({
     };
 
     fetchStats();
-  }, [playerOverview, tournament.status, tournamentId]);
+  }, [accessLevel, playerOverview, tournament.show_public_inscriptions, tournament.status, tournamentId]);
 
   if (playerOverview) {
     return (

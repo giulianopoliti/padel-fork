@@ -61,9 +61,18 @@ export default function AmericanTournamentOverview({
   const [individualInscriptions, setIndividualInscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const canViewInscriptions =
+    accessLevel === 'FULL_MANAGEMENT' || Boolean(tournament.show_public_inscriptions)
 
   // Cargar inscripciones (necesarias para todas las vistas)
   useEffect(() => {
+    if (!canViewInscriptions) {
+      setCoupleInscriptions([])
+      setIndividualInscriptions([])
+      setLoading(false)
+      return
+    }
+
     const fetchInscriptions = async () => {
       try {
         setLoading(true);
@@ -136,7 +145,7 @@ export default function AmericanTournamentOverview({
     };
 
     fetchInscriptions();
-  }, [tournamentId]);
+  }, [canViewInscriptions, tournamentId]);
 
   // ========================================
   // LOADING STATE
@@ -206,6 +215,7 @@ export default function AmericanTournamentOverview({
           price: tournament.price ?? null,
           start_date: tournament.start_date ?? null,
           enable_public_inscriptions: tournament.enable_public_inscriptions ?? false,
+          show_public_inscriptions: tournament.show_public_inscriptions ?? false,
           registration_locked: tournament.registration_locked ?? null,
           bracket_status: tournament.bracket_status ?? null,
           is_full: tournament.is_full ?? false,

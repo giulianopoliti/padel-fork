@@ -3,6 +3,7 @@ import { CalendarDays, ChevronRight, MapPin, Users } from "lucide-react"
 import type { InscribedTournament } from "@/app/api/panel/actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { getTournamentGenderLabel } from "@/lib/tournaments/gender-label"
 import { formatDateLabel } from "./panel-formatters"
 
 interface PlayerInscribedTournamentsSectionProps {
@@ -67,7 +68,7 @@ export default function PlayerInscribedTournamentsSection({
                 </p>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/72">{tournament.name}</p>
                 <Badge className="w-fit border-0 bg-[var(--tpe-night-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[var(--tpe-paper)]">
-                  {tournament.gender || "Abierto"}
+                  {getTournamentGenderLabel(tournament.gender)}
                 </Badge>
               </div>
 

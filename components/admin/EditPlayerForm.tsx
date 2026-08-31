@@ -152,8 +152,8 @@ export const EditPlayerForm = ({ player, onDataChange, categories = [] }: EditPl
                 <SelectValue placeholder="Seleccionar género" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="male">Masculino</SelectItem>
-                <SelectItem value="female">Femenino</SelectItem>
+                <SelectItem value="male">Caballeros</SelectItem>
+                <SelectItem value="female">Damas</SelectItem>
                 <SelectItem value="other">Otro</SelectItem>
               </SelectContent>
             </Select>

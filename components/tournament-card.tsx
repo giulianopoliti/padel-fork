@@ -235,7 +235,7 @@ export default function TournamentCard({
             <div className="flex items-start gap-2">
               <Trophy className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
               <span className="line-clamp-2 flex-1">
-                {tournament.category || tournament.category_name} - {tournament.gender === 'MALE' ? 'Masculino' : tournament.gender === 'FEMALE' ? 'Femenino' : 'Mixto'}
+                {tournament.category || tournament.category_name} - {tournament.gender === 'MALE' ? 'Caballeros' : tournament.gender === 'FEMALE' ? 'Damas' : 'Mixto'}
               </span>
             </div>
           )}

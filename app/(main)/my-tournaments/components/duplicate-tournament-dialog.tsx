@@ -384,8 +384,8 @@ export function DuplicateTournamentDialog({
                     <SelectValue placeholder="Selecciona genero" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MALE">Masculino</SelectItem>
-                    <SelectItem value="FEMALE">Femenino</SelectItem>
+                    <SelectItem value="MALE">Caballeros</SelectItem>
+                    <SelectItem value="FEMALE">Damas</SelectItem>
                     <SelectItem value="MIXED">Mixto</SelectItem>
                   </SelectContent>
                 </Select>

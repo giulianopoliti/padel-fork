@@ -24,7 +24,7 @@ export const getTournamentSettingsData = cache(async (tournamentId: string) => {
       status,
       registration_locked,
       bracket_status,
-      enable_public_inscriptions,
+      show_public_inscriptions,
       validate_inscriptions,
       show_few_slots_alert,
       enable_payment_checkboxes,
@@ -145,7 +145,7 @@ export const getTournamentSettingsData = cache(async (tournamentId: string) => {
   const isAmericanTournament = tournament.type === 'AMERICANO' || tournament.type === 'AMERICAN'
   const showLegacyQualifying = !isAmericanTournament && shouldUseLegacyQualifying(tournament as any)
   const tournamentTypeLabel = isAmericanTournament ? 'Americano' : 'Largo'
-  const publicInscriptionsLabel = tournament.enable_public_inscriptions ? 'Publicas' : 'Privadas'
+  const publicInscriptionsLabel = tournament.show_public_inscriptions ? 'Publicas' : 'Privadas'
   const publicationLabel = tournament.is_draft ? 'Borrador' : 'Publicado'
   const resolvedFormat = TournamentFormatResolver.getResolvedFormat({
     type: tournament.type,

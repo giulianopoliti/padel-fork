@@ -114,8 +114,8 @@ const formatTime = (dateString: string) =>
 
 const getGenderLabel = (gender: string) => {
   const labels: Record<string, string> = {
-    MALE: "Masculino",
-    FEMALE: "Femenino",
+    MALE: "Caballeros",
+    FEMALE: "Damas",
     MIXED: "Mixto",
     SHEMALE: "Mixto",
   }

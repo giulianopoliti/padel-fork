@@ -1,7 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest } from 'next/server';
-import { getTenantBranding } from '@/config/tenant';
-import { shouldTreatTournamentRegistrationAsPublic } from '@/lib/tournaments/tenant-registration-policy';
 import { checkTournamentAccess } from '@/utils/tournament-permissions';
 import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
 import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
@@ -92,7 +90,7 @@ export async function GET(
         status,
         registration_locked,
         bracket_status,
-        enable_public_inscriptions,
+        show_public_inscriptions,
         enable_payment_checkboxes,
         enable_transfer_proof,
         transfer_alias,
@@ -117,15 +115,8 @@ export async function GET(
 
     const { data: { user } } = await supabase.auth.getUser();
     const accessCheck = await checkTournamentAccess(user?.id || null, tournamentId);
-    const branding = getTenantBranding();
-    const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
-      tenantKey: branding.key,
-      tournamentType: tournament.type,
-      enablePublicInscriptions: tournament.enable_public_inscriptions,
-    });
-
     if (!canViewTournamentInscriptionsPage({
-      enablePublicInscriptions: enablePublicRegistration,
+      enablePublicInscriptions: tournament.show_public_inscriptions,
       accessLevel: accessCheck.accessLevel,
     })) {
       return Response.json(
@@ -275,7 +266,7 @@ export async function GET(
         status: tournament.status,
         registration_locked: tournament.registration_locked,
         bracket_status: tournament.bracket_status,
-        enable_public_inscriptions: tournament.enable_public_inscriptions,
+        show_public_inscriptions: tournament.show_public_inscriptions,
         enable_payment_checkboxes: tournament.enable_payment_checkboxes,
         enable_transfer_proof: tournament.enable_transfer_proof,
         transfer_alias: tournament.transfer_alias,

@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/use-toast"
 interface InscriptionAutomationFormProps {
   tournamentId: string
   initialValidateInscriptions: boolean
-  initialEnablePublicInscriptions: boolean
+  initialShowPublicInscriptions: boolean
   initialShowFewSlotsAlert: boolean
   initialEnablePaymentCheckboxes: boolean
   initialEnableTransferProof: boolean
@@ -25,7 +25,7 @@ type SaveState = "idle" | "saving" | "saved" | "error"
 
 interface PersistPatch {
   validate_inscriptions?: boolean
-  enable_public_inscriptions?: boolean
+  show_public_inscriptions?: boolean
   show_few_slots_alert?: boolean
   enable_payment_checkboxes?: boolean
   enable_transfer_proof?: boolean
@@ -85,10 +85,30 @@ function SettingCard({
   )
 }
 
+function SettingGroup({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-4" aria-label={title}>
+      <div className="border-b border-slate-200 pb-3">
+        <h2 className="text-sm font-semibold text-slate-950">{title}</h2>
+        <p className="mt-1 text-sm text-slate-600">{description}</p>
+      </div>
+      {children}
+    </section>
+  )
+}
+
 export default function InscriptionAutomationForm({
   tournamentId,
   initialValidateInscriptions,
-  initialEnablePublicInscriptions,
+  initialShowPublicInscriptions,
   initialShowFewSlotsAlert,
   initialEnablePaymentCheckboxes,
   initialEnableTransferProof,
@@ -97,7 +117,7 @@ export default function InscriptionAutomationForm({
   initialTransferAmount,
 }: InscriptionAutomationFormProps) {
   const [validateInscriptions, setValidateInscriptions] = useState(initialValidateInscriptions)
-  const [enablePublicInscriptions, setEnablePublicInscriptions] = useState(initialEnablePublicInscriptions)
+  const [showPublicInscriptions, setShowPublicInscriptions] = useState(initialShowPublicInscriptions)
   const [showFewSlotsAlert, setShowFewSlotsAlert] = useState(initialShowFewSlotsAlert)
   const [enablePaymentCheckboxes, setEnablePaymentCheckboxes] = useState(initialEnablePaymentCheckboxes)
   const [enableTransferProof, setEnableTransferProof] = useState(initialEnableTransferProof)
@@ -169,18 +189,18 @@ export default function InscriptionAutomationForm({
   }
 
   const handlePublicToggle = async (checked: boolean) => {
-    setEnablePublicInscriptions(checked)
+    setShowPublicInscriptions(checked)
 
     const result = await persistSettings(
-      { enable_public_inscriptions: checked },
+      { show_public_inscriptions: checked },
       {
         onStart: () => setPublicStatus("saving"),
         onSuccess: () => setPublicStatus("saved"),
         onError: (message) => {
           setPublicStatus("error")
-          setEnablePublicInscriptions((current) => !current)
+          setShowPublicInscriptions((current) => !current)
           toast({
-            title: "No se pudo actualizar la vista publica",
+            title: "No se pudo actualizar la visibilidad de inscriptos",
             description: message,
             variant: "destructive",
           })
@@ -190,10 +210,10 @@ export default function InscriptionAutomationForm({
 
     if (result.success) {
       toast({
-        title: checked ? "Vista publica habilitada" : "Vista publica privada",
+        title: checked ? "Lista pública habilitada" : "Lista de inscriptos privada",
         description: checked
-          ? "La pagina /inscriptions vuelve a estar visible."
-          : "La pagina /inscriptions queda reservada para gestion interna.",
+          ? "Jugadores y visitantes pueden volver a ver el listado de inscriptos."
+          : "Las parejas pueden seguir inscribiéndose, pero el listado queda reservado para gestión interna.",
       })
     }
   }
@@ -414,159 +434,187 @@ export default function InscriptionAutomationForm({
   }, [enableTransferProof, parsedTransferAmount, transferAlias, transferAmount, tournamentId])
 
   return (
-    <div className="space-y-5">
-      <SettingCard
-        icon={<ShieldCheck className="h-4 w-4 text-emerald-600" />}
-        title="Validar inscripciones"
-        description="Decide si las inscripciones realizadas por jugadores requieren aprobacion del organizador."
-        status={validationStatus}
+    <div className="space-y-8">
+      <SettingGroup
+        title="Lo que ven los jugadores"
+        description="Elegí si el listado es público y si se muestra el aviso de pocos cupos."
       >
-        <div className="flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={validateInscriptions ? "default" : "secondary"}
-                className={validateInscriptions ? "bg-emerald-600 hover:bg-emerald-600" : ""}
-              >
-                {validateInscriptions ? "Requiere aprobacion" : "Inscripcion directa"}
-              </Badge>
-              <span className="text-sm font-medium text-slate-900">
-                {validateInscriptions
-                  ? "El organizador valida cada nueva inscripcion"
-                  : "Los jugadores quedan inscriptos automaticamente"}
-              </span>
+        <Alert className="border-blue-200 bg-blue-50/70">
+          <Eye className="h-4 w-4 text-blue-700" />
+          <AlertDescription className="text-blue-950">
+            <strong>La privacidad no cierra las inscripciones.</strong> Mientras estén abiertas y haya cupo, las parejas pueden seguir registrándose aunque el listado permanezca privado.
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-5">
+          <SettingCard
+            icon={<Eye className="h-4 w-4 text-blue-600" />}
+            title="Visibilidad de inscriptos"
+            description="Definí si jugadores y visitantes pueden ver la cantidad y el listado de parejas."
+            status={publicStatus}
+          >
+            <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant={showPublicInscriptions ? "default" : "secondary"} className={showPublicInscriptions ? "bg-blue-600 hover:bg-blue-600" : ""}>
+                    {showPublicInscriptions ? "Visible para todos" : "Solo organizadores"}
+                  </Badge>
+                  <span className="text-sm font-medium text-slate-900">
+                    {showPublicInscriptions
+                      ? "Se muestran nombres y cantidad de parejas"
+                      : "Los nombres y la cantidad quedan privados"}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  El organizador siempre conserva el acceso completo para gestionar las inscripciones.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Label htmlFor="public-inscriptions" className="text-sm font-medium">
+                  Mostrar lista públicamente
+                </Label>
+                <Switch
+                  id="public-inscriptions"
+                  checked={showPublicInscriptions}
+                  onCheckedChange={handlePublicToggle}
+                  disabled={publicStatus === "saving"}
+                />
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Al desactivarla, las inscripciones pendientes actuales se aprueban automaticamente.
-            </p>
-          </div>
+          </SettingCard>
 
-          <div className="flex items-center gap-3">
-            <Label htmlFor="validate-inscriptions" className="text-sm font-medium">
-              Validar inscripciones
-            </Label>
-            <Switch
-              id="validate-inscriptions"
-              checked={validateInscriptions}
-              onCheckedChange={handleValidationToggle}
-              disabled={validationStatus === "saving"}
-            />
-          </div>
+          <SettingCard
+            icon={<AlertTriangle className="h-4 w-4 text-red-600" />}
+            title="Aviso de pocos cupos"
+            description="Mostrá una alerta cuando queden dos lugares o menos, sin revelar el total de inscriptos."
+            status={fewSlotsStatus}
+          >
+            <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={showFewSlotsAlert ? "default" : "secondary"}
+                    className={showFewSlotsAlert ? "bg-red-600 hover:bg-red-600" : ""}
+                  >
+                    {showFewSlotsAlert ? "Visible" : "Oculto"}
+                  </Badge>
+                  <span className="text-sm font-medium text-slate-900">
+                    {showFewSlotsAlert ? "Los jugadores verán la alerta" : "No se mostrará la alerta"}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Este aviso funciona aunque la lista de inscriptos sea privada.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Label htmlFor="few-slots-alert" className="text-sm font-medium">
+                  Mostrar pocos cupos
+                </Label>
+                <Switch
+                  id="few-slots-alert"
+                  checked={showFewSlotsAlert}
+                  onCheckedChange={handleFewSlotsToggle}
+                  disabled={fewSlotsStatus === "saving"}
+                />
+              </div>
+            </div>
+          </SettingCard>
         </div>
-      </SettingCard>
+      </SettingGroup>
 
-      <SettingCard
-        icon={<Mail className="h-4 w-4 text-sky-600" />}
-        title="Mensajes automaticos"
-        description="Controla si este torneo envia avisos por inscripcion, aprobacion, cancelacion y partidos programados."
-        status={messagesStatus}
+      <SettingGroup
+        title="Gestión de inscripciones"
+        description="Definí cómo se confirman las nuevas parejas y qué avisos recibe cada jugador."
       >
-        <div className="flex flex-col gap-4 rounded-xl border border-sky-200 bg-sky-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={messagesEnabled ? "default" : "secondary"}
-                className={messagesEnabled ? "bg-sky-600 hover:bg-sky-600" : ""}
-              >
-                {messagesEnabled ? "Activos" : "Apagados"}
-              </Badge>
-              <span className="text-sm font-medium text-slate-900">
-                {messagesEnabled ? "El torneo envia mensajes automaticos" : "El torneo no envia mensajes automaticos"}
-              </span>
+        <div className="space-y-5">
+          <SettingCard
+            icon={<ShieldCheck className="h-4 w-4 text-emerald-600" />}
+            title="Validar inscripciones"
+            description="Decide si las inscripciones realizadas por jugadores requieren aprobacion del organizador."
+            status={validationStatus}
+          >
+            <div className="flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={validateInscriptions ? "default" : "secondary"}
+                    className={validateInscriptions ? "bg-emerald-600 hover:bg-emerald-600" : ""}
+                  >
+                    {validateInscriptions ? "Requiere aprobacion" : "Inscripcion directa"}
+                  </Badge>
+                  <span className="text-sm font-medium text-slate-900">
+                    {validateInscriptions
+                      ? "El organizador valida cada nueva inscripcion"
+                      : "Los jugadores quedan inscriptos automaticamente"}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Al desactivarla, las inscripciones pendientes actuales se aprueban automaticamente.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Label htmlFor="validate-inscriptions" className="text-sm font-medium">
+                  Validar inscripciones
+                </Label>
+                <Switch
+                  id="validate-inscriptions"
+                  checked={validateInscriptions}
+                  onCheckedChange={handleValidationToggle}
+                  disabled={validationStatus === "saving"}
+                />
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Por ahora se envian por email. La configuracion queda preparada para sumar WhatsApp mas adelante.
-            </p>
-          </div>
+          </SettingCard>
 
-          <div className="flex items-center gap-3">
-            <Label htmlFor="messages-enabled" className="text-sm font-medium">
-              Enviar mensajes automaticos
-            </Label>
-            <Switch
-              id="messages-enabled"
-              checked={messagesEnabled}
-              onCheckedChange={handleMessagesToggle}
-              disabled={messagesStatus === "saving"}
-            />
-          </div>
+          <SettingCard
+            icon={<Mail className="h-4 w-4 text-sky-600" />}
+            title="Mensajes automaticos"
+            description="Controla si este torneo envia avisos por inscripcion, aprobacion, cancelacion y partidos programados."
+            status={messagesStatus}
+          >
+            <div className="flex flex-col gap-4 rounded-xl border border-sky-200 bg-sky-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={messagesEnabled ? "default" : "secondary"}
+                    className={messagesEnabled ? "bg-sky-600 hover:bg-sky-600" : ""}
+                  >
+                    {messagesEnabled ? "Activos" : "Apagados"}
+                  </Badge>
+                  <span className="text-sm font-medium text-slate-900">
+                    {messagesEnabled ? "El torneo envia mensajes automaticos" : "El torneo no envia mensajes automaticos"}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Por ahora se envian por email. La configuracion queda preparada para sumar WhatsApp mas adelante.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Label htmlFor="messages-enabled" className="text-sm font-medium">
+                  Enviar mensajes automaticos
+                </Label>
+                <Switch
+                  id="messages-enabled"
+                  checked={messagesEnabled}
+                  onCheckedChange={handleMessagesToggle}
+                  disabled={messagesStatus === "saving"}
+                />
+              </div>
+            </div>
+          </SettingCard>
         </div>
-      </SettingCard>
+      </SettingGroup>
 
-      <SettingCard
-        icon={<Eye className="h-4 w-4 text-blue-600" />}
-        title="Vista publica de inscripciones"
-        description="Controla si la pagina /inscriptions se muestra a jugadores y visitantes."
-        status={publicStatus}
+      <SettingGroup
+        title="Cobros"
+        description="Organizá el seguimiento interno y, si corresponde, el pago por transferencia."
       >
-        <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant={enablePublicInscriptions ? "default" : "secondary"} className={enablePublicInscriptions ? "bg-blue-600 hover:bg-blue-600" : ""}>
-                {enablePublicInscriptions ? "Publica" : "Privada"}
-              </Badge>
-              <span className="text-sm font-medium text-slate-900">
-                {enablePublicInscriptions ? "La vista esta visible" : "La vista queda oculta al publico"}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Si la apagas, el organizador sigue pudiendo gestionar inscripciones desde su panel.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Label htmlFor="public-inscriptions" className="text-sm font-medium">
-              Permitir acceso publico
-            </Label>
-            <Switch
-              id="public-inscriptions"
-              checked={enablePublicInscriptions}
-              onCheckedChange={handlePublicToggle}
-              disabled={publicStatus === "saving"}
-            />
-          </div>
-        </div>
-      </SettingCard>
-
-      <SettingCard
-        icon={<AlertTriangle className="h-4 w-4 text-red-600" />}
-        title="Aviso de pocos cupos"
-        description="Muestra una alerta roja cuando quedan dos lugares o menos, sin revelar el total de inscriptos."
-        status={fewSlotsStatus}
-      >
-        <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={showFewSlotsAlert ? "default" : "secondary"}
-                className={showFewSlotsAlert ? "bg-red-600 hover:bg-red-600" : ""}
-              >
-                {showFewSlotsAlert ? "Visible" : "Oculto"}
-              </Badge>
-              <span className="text-sm font-medium text-slate-900">
-                {showFewSlotsAlert ? "Los jugadores veran la alerta" : "No se mostrara la alerta"}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Este ajuste es independiente de la vista publica y viene activado por defecto.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Label htmlFor="few-slots-alert" className="text-sm font-medium">
-              Mostrar pocos cupos
-            </Label>
-            <Switch
-              id="few-slots-alert"
-              checked={showFewSlotsAlert}
-              onCheckedChange={handleFewSlotsToggle}
-              disabled={fewSlotsStatus === "saving"}
-            />
-          </div>
-        </div>
-      </SettingCard>
-
-      <SettingCard
+        <div className="space-y-5">
+          <SettingCard
         icon={<Receipt className="h-4 w-4 text-emerald-600" />}
         title="Organizacion del cobro"
         description="Herramientas internas para que el organizador siga pagos dentro del panel."
@@ -600,9 +648,9 @@ export default function InscriptionAutomationForm({
             />
           </div>
         </div>
-      </SettingCard>
+          </SettingCard>
 
-      <SettingCard
+          <SettingCard
         icon={<Landmark className="h-4 w-4 text-amber-600" />}
         title="Transferencia con comprobante"
         description="Los jugadores veran alias, importe y podran adjuntar comprobante desde el popup de inscripcion."
@@ -685,7 +733,9 @@ export default function InscriptionAutomationForm({
             </Alert>
           )}
         </div>
-      </SettingCard>
+          </SettingCard>
+        </div>
+      </SettingGroup>
     </div>
   )
 }

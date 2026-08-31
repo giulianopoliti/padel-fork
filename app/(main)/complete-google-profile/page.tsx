@@ -326,8 +326,8 @@ export default function CompleteGoogleProfilePage() {
                         className="w-full border border-slate-200 focus:border-slate-500 focus:ring-1 focus:ring-slate-500 rounded-xl h-12 text-base px-3 bg-white text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       >
                         <option value="">Seleccionar...</option>
-                        <option value="MALE">Masculino</option>
-                        <option value="FEMALE">Femenino</option>
+                        <option value="MALE">Caballeros</option>
+                        <option value="FEMALE">Damas</option>
                       </select>
                     </div>
 

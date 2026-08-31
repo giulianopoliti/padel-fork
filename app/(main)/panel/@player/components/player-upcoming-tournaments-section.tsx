@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Gender } from "@/types"
 import { isTournamentGenderFilter } from "@/lib/tournaments/gender-filtering"
+import { getTournamentGenderLabel } from "@/lib/tournaments/gender-label"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
 import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
 import { formatDateLabel, formatPrice, formatTimeLabel } from "./panel-formatters"
@@ -92,8 +93,8 @@ export default function PlayerUpcomingTournamentsSection({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los generos</SelectItem>
-                  <SelectItem value="MALE">Masculino</SelectItem>
-                  <SelectItem value="FEMALE">Femenino</SelectItem>
+                  <SelectItem value="MALE">Caballeros</SelectItem>
+                  <SelectItem value="FEMALE">Damas</SelectItem>
                   <SelectItem value="MIXED">Mixto</SelectItem>
                 </SelectContent>
               </Select>
@@ -139,7 +140,7 @@ export default function PlayerUpcomingTournamentsSection({
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/72">{tournament.name}</p>
                 <div className="flex flex-wrap gap-2">
                   <Badge className="w-fit border-0 bg-[var(--tpe-night-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[var(--tpe-paper)]">
-                    {tournament.gender || "Abierto"}
+                    {getTournamentGenderLabel(tournament.gender)}
                   </Badge>
                   {tournament.is_inscribed ? (
                     <Badge className="rounded-full border-0 bg-[var(--tpe-lime)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--tpe-night)]">
@@ -215,7 +216,7 @@ export default function PlayerUpcomingTournamentsSection({
                   <Badge className="tpe-chip rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em]">
                     {statusLabel}
                   </Badge>
-                  {tournament.enable_public_inscriptions && typeof tournament.max_participants === "number" ? (
+                  {tournament.show_public_inscriptions && typeof tournament.max_participants === "number" ? (
                     <Badge className="rounded-full border border-white/15 bg-white/6 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/90">
                       <Users className="mr-1 h-3.5 w-3.5" />
                       {tournament.current_inscriptions}/{tournament.max_participants} parejas

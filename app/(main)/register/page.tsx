@@ -391,8 +391,8 @@ export default function RegisterPage() {
                           <SelectValue placeholder="Seleccionar" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="MALE">Masculino</SelectItem>
-                          <SelectItem value="FEMALE">Femenino</SelectItem>
+                          <SelectItem value="MALE">Caballeros</SelectItem>
+                          <SelectItem value="FEMALE">Damas</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

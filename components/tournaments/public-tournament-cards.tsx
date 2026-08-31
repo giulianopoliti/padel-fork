@@ -29,6 +29,7 @@ export interface PublicTournamentSummary {
   price?: number | string | null
   award?: string | null
   enablePublicInscriptions?: boolean
+  showPublicInscriptions?: boolean
   registrationLocked?: boolean | null
   bracketStatus?: string | null
   currentParticipants?: number
@@ -65,8 +66,8 @@ const typeLabel = {
 }
 
 const genderLabel = {
-  MALE: "Masculino",
-  FEMALE: "Femenino",
+  MALE: "Caballeros",
+  FEMALE: "Damas",
   MIXED: "Mixto",
 }
 

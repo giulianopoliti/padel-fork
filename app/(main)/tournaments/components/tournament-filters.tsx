@@ -131,8 +131,8 @@ export default function TournamentFilters({ categories, clubs }: TournamentFilte
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los generos</SelectItem>
-                <SelectItem value="MALE">Masculino</SelectItem>
-                <SelectItem value="FEMALE">Femenino</SelectItem>
+                <SelectItem value="MALE">Caballeros</SelectItem>
+                <SelectItem value="FEMALE">Damas</SelectItem>
                 <SelectItem value="MIXED">Mixto</SelectItem>
               </SelectContent>
             </Select>

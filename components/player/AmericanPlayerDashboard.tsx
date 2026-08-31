@@ -34,6 +34,7 @@ interface AmericanPlayerDashboardProps {
     price?: string | number | null
     start_date?: string | null
     enable_public_inscriptions?: boolean
+    show_public_inscriptions?: boolean
     registration_locked?: boolean | null
     bracket_status?: string | null
     is_full?: boolean
@@ -114,7 +115,7 @@ export default function AmericanPlayerDashboard({
   const finishedMatches = [...playerData.zoneMatches, ...playerData.bracketMatches].filter(
     match => match.status === 'FINISHED'
   ).length
-  const canShowParticipantStats = Boolean(tournament.enable_public_inscriptions)
+  const canShowParticipantStats = Boolean(tournament.show_public_inscriptions)
 
   return (
     <div className="min-h-screen bg-slate-50">

@@ -88,9 +88,9 @@ export default function InitiateTournamentButton({
   const getGenderLabel = (gender?: string) => {
     switch (gender) {
       case "MALE":
-        return "Masculino";
+        return "Caballeros";
       case "FEMALE":
-        return "Femenino";
+        return "Damas";
       case "MIXED":
         return "Mixto";
       default:

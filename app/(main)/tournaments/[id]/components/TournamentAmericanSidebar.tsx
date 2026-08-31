@@ -26,6 +26,7 @@ interface TournamentAmericanSidebarProps {
     category?: string
     status?: string
     enable_public_inscriptions?: boolean | null
+    show_public_inscriptions?: boolean | null
     registration_locked?: boolean | null
     is_draft?: boolean
   }
@@ -132,7 +133,7 @@ export default function TournamentAmericanSidebar({
     hasActivePlayerInscription
   const canAccessInscriptions =
     hasManagePermission ||
-    (Boolean(tournament.enable_public_inscriptions) && !tournament.registration_locked)
+    Boolean(tournament.show_public_inscriptions)
 
   const navigationItems = getAmericanNavigationItems(
     userRole,

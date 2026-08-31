@@ -30,6 +30,7 @@ interface TournamentLongSidebarProps {
     name: string
     category?: string
     enable_public_inscriptions?: boolean | null
+    show_public_inscriptions?: boolean | null
     registration_locked?: boolean | null
     is_draft?: boolean
     status?: string
@@ -261,8 +262,7 @@ export default function TournamentLongSidebar({
     hasActivePlayerInscription
   const canAccessInscriptions =
     hasManagePermission ||
-    hasActivePlayerInscription ||
-    (Boolean(tournament.enable_public_inscriptions) && !tournament.registration_locked)
+    Boolean(tournament.show_public_inscriptions)
 
   const navigationItems = getLongNavigationItems(
     shouldUsePublicNavigation ? 'PUBLIC' : userRole,

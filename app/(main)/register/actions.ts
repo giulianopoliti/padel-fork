@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient, createClientServiceRole } from "@/utils/supabase/server"
 import { revalidatePath } from 'next/cache'
@@ -835,7 +835,7 @@ export async function register(formData: FormData): Promise<RegisterResult> {
       }
 
       if (!rawGender || !['MALE', 'FEMALE'].includes(rawGender)) {
-        return { error: 'Debes seleccionar género Masculino o Femenino.', success: false }
+        return { error: 'Debes seleccionar género Caballeros o Damas.', success: false }
       }
 
       if (normalizedDni.dni) {

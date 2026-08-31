@@ -1653,8 +1653,8 @@ export default function TournamentCreateForm() {
                                   <SelectValue placeholder="Selecciona genero" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="MALE">Masculino</SelectItem>
-                                  <SelectItem value="FEMALE">Femenino</SelectItem>
+                                  <SelectItem value="MALE">Caballeros</SelectItem>
+                                  <SelectItem value="FEMALE">Damas</SelectItem>
                                   <SelectItem value="MIXED">Mixto</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -2029,7 +2029,7 @@ export default function TournamentCreateForm() {
                         <div className="rounded-xl border border-slate-200 bg-white p-4">
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Categoria y genero</p>
                           <p className="mt-2 font-medium text-slate-900">
-                            {categoryPreview?.label || 'Sin categoria'} · {watchedValues.gender === 'MALE' ? 'Masculino' : watchedValues.gender === 'FEMALE' ? 'Femenino' : 'Mixto'}
+                            {categoryPreview?.label || 'Sin categoria'} · {watchedValues.gender === 'MALE' ? 'Caballeros' : watchedValues.gender === 'FEMALE' ? 'Damas' : 'Mixto'}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">
                             {categoryPreview ? `${categoryPreview.initialScore} pts iniciales` : 'Sin preview de puntaje'}

@@ -4,7 +4,7 @@
  * Handles both old tournaments and new simplified flow
  */
 
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createClientServiceRole } from '@/utils/supabase/server';
 import {
   buildTournamentCapacitySummary,
   getTournamentCoupleCount,
@@ -42,7 +42,7 @@ export class TournamentValidationService {
    * Intelligently chooses between new system and legacy system
    */
   static async validateCoupleRegistration(tournamentId: string): Promise<RegistrationValidationResult> {
-    const supabase = await createClient();
+    const supabase = await createClientServiceRole();
     
     try {
       // Get tournament with all relevant fields

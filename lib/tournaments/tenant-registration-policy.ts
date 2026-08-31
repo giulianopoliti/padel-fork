@@ -8,10 +8,12 @@ interface TournamentTenantRegistrationPolicyInput {
 
 export const shouldTreatTournamentRegistrationAsPublic = ({
   tenantKey,
-  tournamentType,
   enablePublicInscriptions,
 }: TournamentTenantRegistrationPolicyInput) => {
-  if (tenantKey === 'padel-elite' && tournamentType === 'AMERICAN') {
+  // In TPE, organizers may hide the roster without closing registration.
+  // Registration availability is still governed by status, capacity and the
+  // manual registration lock.
+  if (tenantKey === 'padel-elite') {
     return true
   }
 

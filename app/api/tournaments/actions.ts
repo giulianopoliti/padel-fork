@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
+import { getTenantBranding } from '@/config/tenant';
 import { revalidatePath } from 'next/cache';
 import { linkTournamentClubs } from '@/lib/services/tournaments/club-links';
 import { getUser } from '@/app/api/users';
@@ -674,6 +675,8 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
       status: 'NOT_STARTED', // Default status
       uses_new_system: true, // Nuevos torneos usan el sistema nuevo por defecto
       organization_id: organization_id,
+      // TPE registrations stay available, but its roster starts private.
+      show_public_inscriptions: getTenantBranding().key !== 'padel-elite',
       // Ensure date fields are correctly formatted if they come as strings
       start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
       end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,

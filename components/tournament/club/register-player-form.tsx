@@ -468,9 +468,9 @@ export default function RegisterPlayerForm({
                           value={Gender.MALE}
                           disabled={tournamentGender === Gender.FEMALE}
                         >
-                          Masculino
+                          Caballeros
                         </SelectItem>
-                        <SelectItem value={Gender.FEMALE}>Femenino</SelectItem>
+                        <SelectItem value={Gender.FEMALE}>Damas</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

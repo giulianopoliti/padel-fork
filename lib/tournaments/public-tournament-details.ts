@@ -96,8 +96,8 @@ export const getTournamentStatusLabel = (status: string | null) => {
 }
 
 const getGenderLabel = (gender: string | null) => {
-  if (gender === 'MALE') return 'Masculino'
-  if (gender === 'FEMALE') return 'Femenino'
+  if (gender === 'MALE') return 'Caballeros'
+  if (gender === 'FEMALE') return 'Damas'
   if (gender === 'MIXED') return 'Mixto'
   return 'Sin género'
 }

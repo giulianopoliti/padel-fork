@@ -14,6 +14,7 @@ import { validateMixedPairGender } from '@/lib/services/tournament-category-conf
 import { normalizePlayerDni } from '@/lib/utils/player-dni'
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity'
 import { shouldRequireInscriptionValidation } from './inscription-validation'
+import { createClientServiceRole } from '@/utils/supabase/server'
 import type {
   RegisterCoupleRequest,
   RegisterNewPlayersRequest,
@@ -542,9 +543,10 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
     player1Id: string,
     player2Id: string,
     tournamentId: string,
-    supabase: any
+    _supabase: any
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      const supabase = await createClientServiceRole()
       const { data: existingInscriptions } = await supabase
         .from('inscriptions')
         .select(`

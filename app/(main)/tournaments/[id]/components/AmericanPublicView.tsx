@@ -51,7 +51,7 @@ export default function AmericanPublicView({
     couples: coupleInscriptions.length,
     players: individualInscriptions.length,
   };
-  const canShowParticipantStats = Boolean(tournament.enable_public_inscriptions);
+  const canShowParticipantStats = Boolean(tournament.show_public_inscriptions);
 
   const isCanceled = tournament.status === "CANCELED";
   const isAuthenticated = !!metadata.userRole;

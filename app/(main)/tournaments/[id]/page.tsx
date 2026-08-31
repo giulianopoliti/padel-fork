@@ -1,5 +1,5 @@
 import React from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createClientServiceRole } from '@/utils/supabase/server';
 import { notFound } from 'next/navigation';
 import { mapTournamentToPublicInfo } from '@/lib/tournaments/public-tournament-details';
 import { getTournamentCategoryDisplay } from '@/lib/services/tournament-category-config';
@@ -46,6 +46,7 @@ interface ClientTournament {
   club_id: string | null;
   organization_id: string | null;
   enable_public_inscriptions: boolean;
+  show_public_inscriptions: boolean;
   registration_locked: boolean | null;
   bracket_status: string | null;
   format_type: string | null;
@@ -104,6 +105,7 @@ const serializeTournamentForClient = (
   club_id: tournament.club_id ?? null,
   organization_id: tournament.organization_id ?? null,
   enable_public_inscriptions: Boolean(tournament.enable_public_inscriptions),
+  show_public_inscriptions: Boolean(tournament.show_public_inscriptions),
   registration_locked: tournament.registration_locked ?? null,
   bracket_status: tournament.bracket_status ?? null,
   format_type: tournament.format_type ?? null,
@@ -207,7 +209,8 @@ export async function TournamentPageById({ tournamentId }: { tournamentId: strin
     notFound();
   }
 
-  const currentCouples = await getTournamentCoupleCount(supabase, tournamentId)
+  const capacitySupabase = await createClientServiceRole()
+  const currentCouples = await getTournamentCoupleCount(capacitySupabase, tournamentId)
   const capacity = buildTournamentCapacitySummary(tournament.max_participants ?? null, currentCouples)
   const { data: rankingConfig } = await supabase
     .from('tournament_ranking_config')
@@ -227,7 +230,16 @@ export async function TournamentPageById({ tournamentId }: { tournamentId: strin
 
   // ✅ Sistema V2: Una sola llamada, soporte GUEST, type-safe
   const access = await checkTournamentAccess(user?.id || null, tournamentId);
-  const clientTournament = ensureSerializable(serializeTournamentForClient(tournament, capacity));
+  const canViewPublicInscriptions =
+    access.accessLevel === 'FULL_MANAGEMENT' || Boolean(tournament.show_public_inscriptions)
+  const clientCapacity = canViewPublicInscriptions
+    ? capacity
+    : {
+        ...capacity,
+        remainingSlots: null,
+        hasFewSlots: false,
+      }
+  const clientTournament = ensureSerializable(serializeTournamentForClient(tournament, clientCapacity));
   const clientAccess = {
     accessLevel: access.accessLevel,
     permissions: [...access.permissions],
@@ -255,6 +267,7 @@ export async function TournamentPageById({ tournamentId }: { tournamentId: strin
         tournament={clientTournament}
         publicInfo={publicInfo}
         playerOverview={playerOverview ? ensureSerializable(playerOverview) : null}
+        accessLevel={clientAccess.accessLevel}
       />
     );
   }

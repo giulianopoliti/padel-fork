@@ -242,9 +242,9 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="MALE" disabled={tournamentGender === "FEMALE"}>
-                      Masculino
+                      Caballeros
                     </SelectItem>
-                    <SelectItem value="FEMALE">Femenino</SelectItem>
+                    <SelectItem value="FEMALE">Damas</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

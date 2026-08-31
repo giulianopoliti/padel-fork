@@ -113,8 +113,8 @@ export default function PlayerFvUpcomingTournamentsSection({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los generos</SelectItem>
-                  <SelectItem value="MALE">Masculino</SelectItem>
-                  <SelectItem value="FEMALE">Femenino</SelectItem>
+                  <SelectItem value="MALE">Caballeros</SelectItem>
+                  <SelectItem value="FEMALE">Damas</SelectItem>
                   <SelectItem value="MIXED">Mixto</SelectItem>
                 </SelectContent>
               </Select>
@@ -198,7 +198,7 @@ export default function PlayerFvUpcomingTournamentsSection({
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {tournament.enable_public_inscriptions && typeof tournament.max_participants === "number" ? (
+                    {tournament.show_public_inscriptions && typeof tournament.max_participants === "number" ? (
                       <Badge variant="outline" className="border-white/15 text-slate-200">
                         <Users className="mr-1 h-3.5 w-3.5" />
                         {tournament.current_inscriptions}/{tournament.max_participants} parejas

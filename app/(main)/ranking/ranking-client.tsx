@@ -301,7 +301,7 @@ export default function RankingClient({
           <div className="flex items-center gap-2">
             <Trophy className="h-6 w-6 text-amber-500" />
             <h1 className="text-2xl font-bold">
-              {currentGender === 'female' ? 'Ranking Femenino' : 'Ranking Masculino'}
+              {currentGender === 'female' ? 'Ranking Damas' : 'Ranking Caballeros'}
             </h1>
           </div>
           <Button
@@ -310,10 +310,10 @@ export default function RankingClient({
             onClick={handleGenderToggle}
             className="flex items-center gap-2"
             disabled={isLoading || isSearching}
-            aria-label={`Cambiar a ranking ${currentGender === 'male' ? 'femenino' : 'masculino'}`}
+            aria-label={`Cambiar a ranking ${currentGender === 'male' ? 'damas' : 'caballeros'}`}
           >
             <ArrowRight className="h-4 w-4" />
-            {currentGender === 'male' ? 'Ver Ranking Femenino' : 'Ver Ranking Masculino'}
+            {currentGender === 'male' ? 'Ver Ranking Damas' : 'Ver Ranking Caballeros'}
           </Button>
         </div>
 

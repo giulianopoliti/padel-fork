@@ -134,12 +134,12 @@ export default function RegistrationControlForm({
         <div className="flex items-center justify-between p-4 border rounded-lg">
           <div className="space-y-1">
             <Label htmlFor="registration-toggle" className="text-sm font-medium">
-              Control Manual de Inscripciones
+              Permitir nuevas inscripciones
             </Label>
             <p className="text-sm text-muted-foreground">
               {registrationLocked
-                ? "Las inscripciones están cerradas. Los usuarios no pueden inscribirse."
-                : "Las inscripciones están abiertas. Los usuarios pueden inscribirse normalmente."
+                ? "Las inscripciones están cerradas. No se pueden registrar nuevas parejas."
+                : "Las inscripciones están abiertas. Se pueden registrar nuevas parejas mientras haya cupo."
               }
             </p>
           </div>

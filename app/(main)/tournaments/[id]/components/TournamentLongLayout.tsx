@@ -115,6 +115,7 @@ const fetcher = async (tournamentId: string) => {
       status,
       is_draft,
       enable_public_inscriptions,
+      show_public_inscriptions,
       registration_locked,
       organization_id,
       organizaciones:organization_id(name, logo_url, slug),
@@ -277,7 +278,7 @@ function TournamentLongLayout({ children, tournamentIdOverride }: TournamentLong
     hasActivePlayerInscription
   const canAccessInscriptions =
     hasManagePermission ||
-    (Boolean(tournament.enable_public_inscriptions) && !tournament.registration_locked)
+    Boolean(tournament.show_public_inscriptions)
   const sidebarNavigationItems = isLongTournament
     ? getLongNavigationItems(
         shouldUsePublicNavigation ? 'PUBLIC' : userDetails?.role,
@@ -315,6 +316,7 @@ function TournamentLongLayout({ children, tournamentIdOverride }: TournamentLong
       category: tournament.category_name,
       status: tournament.status,
       enable_public_inscriptions: tournament.enable_public_inscriptions,
+      show_public_inscriptions: tournament.show_public_inscriptions,
       registration_locked: tournament.registration_locked,
       is_draft: tournament.is_draft ?? false,
     },
