@@ -84,6 +84,12 @@ const config = {
         },
       },
       borderRadius: {
+        "control-sm": "var(--radius-control-sm)",
+        control: "var(--radius-control)",
+        surface: "var(--radius-surface)",
+        elevated: "var(--radius-elevated)",
+        display: "var(--radius-display)",
+        pill: "var(--radius-pill)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",

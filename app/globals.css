@@ -32,7 +32,16 @@
     --input: 214 28% 87%;
     --ring: 220 49% 25%;
 
+    /* Geometry tokens: keep shape decisions independent from tenant colors/themes. */
     --radius: 0.5rem;
+    --radius-control-sm: 0.25rem;
+    --radius-control: 0.375rem;
+    --radius-surface: 0.5rem;
+    --radius-elevated: 0.75rem;
+    --radius-display: 1rem;
+    --radius-pill: 9999px;
+    --border-width-default: 1px;
+    --border-width-strong: 2px;
   }
 
   .dark {
@@ -63,6 +72,42 @@
     --border: 219 30% 24%;
     --input: 219 30% 24%;
     --ring: 68 95% 45%;
+  }
+}
+
+@layer components {
+  /* Semantic shape classes for the gradual migration. Circular and pill-shaped
+     elements intentionally remain explicit (`rounded-full`) at call sites. */
+  .ui-control-sm {
+    @apply rounded-control-sm;
+  }
+
+  .ui-control {
+    @apply rounded-control;
+  }
+
+  .ui-surface {
+    @apply rounded-surface;
+  }
+
+  .ui-elevated {
+    @apply rounded-elevated;
+  }
+
+  .ui-display {
+    @apply rounded-display;
+  }
+
+  .ui-pill {
+    @apply rounded-pill;
+  }
+
+  .ui-border {
+    border-width: var(--border-width-default);
+  }
+
+  .ui-border-strong {
+    border-width: var(--border-width-strong);
   }
 }
 
