@@ -103,7 +103,7 @@ export default function DeleteFechaAlert({
               <p>¿Estás seguro de que quieres eliminar esta fecha?</p>
 
               {/* Fecha Info */}
-              <div className="p-3 bg-slate-50 rounded-lg space-y-2">
+              <div className="p-3 bg-slate-50 rounded-surface space-y-2">
                 <div className="flex items-center gap-2">
                   <h4 className="font-medium">{fecha.name}</h4>
                   {getStatusBadge(fecha.status)}

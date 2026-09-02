@@ -160,13 +160,13 @@ export default function ClubPlayersClient({ club, players, totalScore, isOwner }
       </div>
 
       {/* Header Section */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div className="bg-white rounded-elevated border border-gray-200 shadow-sm">
         <div className="p-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {/* Left side: Club info */}
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-6">
-                <div className="bg-slate-100 p-3 rounded-xl">
+                <div className="bg-slate-100 p-3 rounded-elevated">
                   <Users className="h-7 w-7 text-slate-600" />
                 </div>
                 <div>
@@ -181,7 +181,7 @@ export default function ClubPlayersClient({ club, players, totalScore, isOwner }
               {/* Stats */}
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <div className="bg-blue-100 p-2 rounded-lg">
+                  <div className="bg-blue-100 p-2 rounded-surface">
                     <Users className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
@@ -190,7 +190,7 @@ export default function ClubPlayersClient({ club, players, totalScore, isOwner }
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="bg-emerald-100 p-2 rounded-lg">
+                  <div className="bg-emerald-100 p-2 rounded-surface">
                     <BarChart3 className="h-4 w-4 text-emerald-600" />
                   </div>
                   <div>
@@ -200,7 +200,7 @@ export default function ClubPlayersClient({ club, players, totalScore, isOwner }
                 </div>
                 {players.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <div className="bg-amber-100 p-2 rounded-lg">
+                    <div className="bg-amber-100 p-2 rounded-surface">
                       <Trophy className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
@@ -219,7 +219,7 @@ export default function ClubPlayersClient({ club, players, totalScore, isOwner }
               <div className="flex-shrink-0">
                 <Button
                   asChild
-                  className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl shadow-sm"
+                  className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-elevated shadow-sm"
                 >
                   <Link href={`/clubes/${club.id}/players`} className="flex items-center gap-2">
                     <Settings className="h-5 w-5" />
@@ -233,7 +233,7 @@ export default function ClubPlayersClient({ club, players, totalScore, isOwner }
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <div className="bg-white rounded-elevated border border-gray-200 shadow-sm p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />

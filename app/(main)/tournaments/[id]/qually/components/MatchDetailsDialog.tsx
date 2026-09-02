@@ -97,7 +97,7 @@ const MatchDetailsDialog: React.FC<MatchDetailsDialogProps> = ({
 
         <div className="space-y-4">
           {/* Marcador estilo deportivo - Todo en filas */}
-          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200 overflow-hidden">
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-surface border-2 border-slate-200 overflow-hidden">
             {/* Header con labels */}
             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2 bg-slate-100 border-b border-slate-300">
               <div className="text-xs font-semibold text-slate-600 uppercase">Pareja</div>

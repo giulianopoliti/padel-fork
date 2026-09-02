@@ -246,14 +246,14 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="rounded-display border border-white/10 bg-white/5 p-5">
               <p className="text-sm leading-6 text-slate-200">
                 Los campos marcados con <span className="font-semibold text-court-300">*</span> son obligatorios:
                 nombre, apellido, genero, correo electronico y contrasena.
               </p>
             </div>
 
-            <Alert className="rounded-2xl border-white/10 bg-white/5 text-white">
+            <Alert className="rounded-display border-white/10 bg-white/5 text-white">
               <CheckCircle className="h-4 w-4" />
               <AlertDescription className="text-sm leading-6 text-slate-200">
                 Si ya jugaste antes y cargas tu DNI, vamos a intentar vincular tu nueva cuenta con ese perfil existente.
@@ -265,7 +265,7 @@ export default function RegisterPage() {
             <Card className="overflow-hidden rounded-[2rem] border border-white/10 bg-brand-900/70 shadow-2xl backdrop-blur-sm">
               <div className="h-2 bg-gradient-to-r from-court-400 via-court-500 to-court-300" />
               <CardHeader className="space-y-3 px-8 pt-8 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-display bg-white/5">
                   <BrandLogo variant="navbar" surface="dark" className="h-10 w-auto" />
                 </div>
                 <div>
@@ -289,7 +289,7 @@ export default function RegisterPage() {
                         value={formData.firstName}
                         onChange={handleInputChange}
                         required
-                        className="h-12 rounded-xl border-white/10 bg-white/5 text-white"
+                        className="h-12 rounded-elevated border-white/10 bg-white/5 text-white"
                       />
                     </div>
                     <div className="space-y-2">
@@ -302,7 +302,7 @@ export default function RegisterPage() {
                         value={formData.lastName}
                         onChange={handleInputChange}
                         required
-                        className="h-12 rounded-xl border-white/10 bg-white/5 text-white"
+                        className="h-12 rounded-elevated border-white/10 bg-white/5 text-white"
                       />
                     </div>
                   </div>
@@ -319,7 +319,7 @@ export default function RegisterPage() {
                       onChange={handleInputChange}
                       autoComplete="email"
                       required
-                      className="h-12 rounded-xl border-white/10 bg-white/5 text-white"
+                      className="h-12 rounded-elevated border-white/10 bg-white/5 text-white"
                     />
                   </div>
 
@@ -337,7 +337,7 @@ export default function RegisterPage() {
                         autoComplete="new-password"
                         required
                         minLength={6}
-                        className="h-12 rounded-xl border-white/10 bg-white/5 pr-12 text-white"
+                        className="h-12 rounded-elevated border-white/10 bg-white/5 pr-12 text-white"
                       />
                       <button
                         type="button"
@@ -363,7 +363,7 @@ export default function RegisterPage() {
                         }}
                         inputMode="numeric"
                         maxLength={8}
-                        className="h-12 rounded-xl border-white/10 bg-white/5 text-white"
+                        className="h-12 rounded-elevated border-white/10 bg-white/5 text-white"
                         placeholder="Solo numeros"
                       />
                     </div>
@@ -375,7 +375,7 @@ export default function RegisterPage() {
                         type="tel"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className="h-12 rounded-xl border-white/10 bg-white/5 text-white"
+                        className="h-12 rounded-elevated border-white/10 bg-white/5 text-white"
                         placeholder="+54 9 11 12345678"
                       />
                     </div>
@@ -387,7 +387,7 @@ export default function RegisterPage() {
                         Genero <span className="text-court-300">*</span>
                       </Label>
                       <Select value={formData.gender} onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value }))}>
-                        <SelectTrigger className="h-12 rounded-xl border-white/10 bg-white/5 text-white">
+                        <SelectTrigger className="h-12 rounded-elevated border-white/10 bg-white/5 text-white">
                           <SelectValue placeholder="Seleccionar" />
                         </SelectTrigger>
                         <SelectContent>
@@ -404,7 +404,7 @@ export default function RegisterPage() {
                         type="date"
                         value={formData.dateOfBirth}
                         onChange={handleInputChange}
-                        className="h-12 rounded-xl border-white/10 bg-white/5 text-white"
+                        className="h-12 rounded-elevated border-white/10 bg-white/5 text-white"
                       />
                     </div>
                   </div>
@@ -412,7 +412,7 @@ export default function RegisterPage() {
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="h-12 w-full rounded-xl bg-court-500 text-base font-semibold text-brand-900 hover:bg-court-400"
+                    className="h-12 w-full rounded-elevated bg-court-500 text-base font-semibold text-brand-900 hover:bg-court-400"
                   >
                     {isSubmitting ? (
                       <span className="inline-flex items-center gap-2">
@@ -437,7 +437,7 @@ export default function RegisterPage() {
                     variant="outline"
                     onClick={handleGoogleLogin}
                     disabled={isSubmitting}
-                    className="h-12 w-full rounded-xl border-white/10 bg-white/5 text-base font-medium text-white hover:bg-white/10"
+                    className="h-12 w-full rounded-elevated border-white/10 bg-white/5 text-base font-medium text-white hover:bg-white/10"
                   >
                     <svg
                       aria-hidden="true"

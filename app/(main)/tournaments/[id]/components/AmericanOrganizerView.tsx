@@ -130,17 +130,17 @@ export default function AmericanOrganizerView({
 
             {/* Quick Stats - Versión Completa */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                 <div className="text-3xl font-bold">{stats.couples}</div>
                 <div className="text-blue-100 text-sm mt-1">Parejas</div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                 <div className="text-3xl font-bold">{stats.players}</div>
                 <div className="text-blue-100 text-sm mt-1">Jugadores</div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                 <div className="text-3xl font-bold">
                   {isActive ? (
                     <CheckCircle2 className="h-8 w-8 mx-auto" />
@@ -153,7 +153,7 @@ export default function AmericanOrganizerView({
                 </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                 <div className="text-3xl font-bold">
                   <Calendar className="h-8 w-8 mx-auto" />
                 </div>
@@ -162,7 +162,7 @@ export default function AmericanOrganizerView({
                 </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                 <div className="text-3xl font-bold">
                   <Clock className="h-8 w-8 mx-auto" />
                 </div>
@@ -175,7 +175,7 @@ export default function AmericanOrganizerView({
             {/* Mensaje de Cancelación */}
             {isCanceled && (
               <div className="mt-8 max-w-md mx-auto">
-                <div className="bg-red-100/20 border border-red-300/30 rounded-lg p-4 backdrop-blur-sm">
+                <div className="bg-red-100/20 border border-red-300/30 rounded-surface p-4 backdrop-blur-sm">
                   <div className="flex items-center justify-center gap-2 text-red-100">
                     <XCircle className="h-5 w-5" />
                     <p className="font-medium">Este torneo ha sido cancelado</p>
@@ -268,7 +268,7 @@ export default function AmericanOrganizerView({
 
               {/* Nota informativa - Solo si NO está iniciado */}
               {!isActive && (
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-surface">
                   <p className="text-sm text-blue-800 mb-3">
                     <strong>Nota:</strong> Una vez iniciado el torneo, podrás acceder
                     a las secciones de Zonas, Partidos y Llaves desde la sidebar lateral.
@@ -291,7 +291,7 @@ export default function AmericanOrganizerView({
 
               {/* Info adicional si está activo */}
               {isActive && (
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-surface">
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
                     <div>

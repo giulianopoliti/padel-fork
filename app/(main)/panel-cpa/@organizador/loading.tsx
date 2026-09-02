@@ -8,7 +8,7 @@ export default function OrganizadorLoading() {
       {/* Header Skeleton */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-12 w-12 rounded-lg" />
+          <Skeleton className="h-12 w-12 rounded-surface" />
           <div className="space-y-2">
             <Skeleton className="h-7 w-32" />
             <Skeleton className="h-4 w-48" />
@@ -43,7 +43,7 @@ export default function OrganizadorLoading() {
                   {/* Metrics Grid */}
                   <div className="grid grid-cols-3 gap-4">
                     {[1, 2, 3].map((j) => (
-                      <div key={j} className="flex flex-col items-center p-3 bg-muted/50 rounded-lg">
+                      <div key={j} className="flex flex-col items-center p-3 bg-muted/50 rounded-surface">
                         <Skeleton className="h-5 w-5 mb-2" />
                         <Skeleton className="h-7 w-12 mb-1" />
                         <Skeleton className="h-3 w-16" />
@@ -72,7 +72,7 @@ export default function OrganizadorLoading() {
       <div>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Skeleton className="h-12 w-12 rounded-lg" />
+            <Skeleton className="h-12 w-12 rounded-surface" />
             <div className="space-y-2">
               <Skeleton className="h-7 w-40" />
               <Skeleton className="h-4 w-64" />

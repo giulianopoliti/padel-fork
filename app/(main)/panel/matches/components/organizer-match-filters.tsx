@@ -82,7 +82,7 @@ const OrganizerMatchFilters: React.FC<OrganizerMatchFiltersProps> = ({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+    <div className="space-y-4 rounded-surface border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-slate-600" />
@@ -107,7 +107,7 @@ const OrganizerMatchFilters: React.FC<OrganizerMatchFiltersProps> = ({
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="space-y-3 rounded-surface border border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <CalendarRange className="h-4 w-4 text-slate-500" />
             Desde
@@ -140,7 +140,7 @@ const OrganizerMatchFilters: React.FC<OrganizerMatchFiltersProps> = ({
           </div>
         </div>
 
-        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="space-y-3 rounded-surface border border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <CalendarRange className="h-4 w-4 text-slate-500" />
             Hasta
@@ -173,7 +173,7 @@ const OrganizerMatchFilters: React.FC<OrganizerMatchFiltersProps> = ({
           </div>
         </div>
 
-        <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="space-y-2 rounded-surface border border-slate-200 bg-white p-4">
           <Label className="text-xs text-slate-700">Estado</Label>
           <Select value={filters.selectedStatus} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-full">
@@ -190,7 +190,7 @@ const OrganizerMatchFilters: React.FC<OrganizerMatchFiltersProps> = ({
           </Select>
         </div>
 
-        <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="space-y-2 rounded-surface border border-slate-200 bg-white p-4">
           <Label className="text-xs text-slate-700">Club</Label>
           <Select value={filters.selectedClubId} onValueChange={handleClubChange}>
             <SelectTrigger className="w-full">
@@ -211,7 +211,7 @@ const OrganizerMatchFilters: React.FC<OrganizerMatchFiltersProps> = ({
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
+      <div className="rounded-surface border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
         El rango nace en el dia completo de hoy y podes ajustarlo libremente por fecha y horario.
       </div>
 

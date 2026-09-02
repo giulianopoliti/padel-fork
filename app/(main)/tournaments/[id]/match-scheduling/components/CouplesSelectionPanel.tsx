@@ -177,7 +177,7 @@ const CouplesSelectionPanel: React.FC<CouplesSelectionPanelProps> = ({
         
         {/* Selection Status */}
         {selectedCouples.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-surface p-3 mt-2">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-blue-900">

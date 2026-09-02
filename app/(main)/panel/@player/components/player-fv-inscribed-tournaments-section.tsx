@@ -182,7 +182,7 @@ function InfoBlock({
   value: string
 }) {
   return (
-    <div className="rounded-2xl bg-white/5 px-3 py-3">
+    <div className="rounded-display bg-white/5 px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5">{icon}</div>
         <div>

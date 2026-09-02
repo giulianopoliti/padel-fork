@@ -34,7 +34,7 @@ export default async function ClubesPage() {
         {/* Header Section */}
         <div className="text-center mb-16">
           <div className="flex justify-center mb-6">
-            <div className="bg-gradient-to-r from-slate-600 to-slate-800 w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl">
+            <div className="bg-gradient-to-r from-slate-600 to-slate-800 w-20 h-20 rounded-display flex items-center justify-center shadow-xl">
               <Building2 className="h-10 w-10 text-white" />
             </div>
           </div>

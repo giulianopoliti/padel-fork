@@ -38,7 +38,7 @@ export default async function ClubDashboard() {
             <p className="text-gray-600">Gestiona y organiza tus torneos de pádel.</p>
             <Button
               asChild
-              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl shadow-sm w-full"
+              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-elevated shadow-sm w-full"
             >
               <Link href="/my-tournaments" className="flex items-center justify-center gap-2">
                 <Trophy className="h-5 w-5" />
@@ -56,7 +56,7 @@ export default async function ClubDashboard() {
             <p className="text-gray-600">Actualiza la información y configuración de tu club.</p>
             <Button
               asChild
-              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl shadow-sm w-full"
+              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-elevated shadow-sm w-full"
             >
               <Link href="/edit-profile" className="flex items-center justify-center gap-2">
                 <Settings className="h-5 w-5" />
@@ -74,7 +74,7 @@ export default async function ClubDashboard() {
             <p className="text-gray-600">Consulta los jugadores registrados en tu club.</p>
             <Button
               asChild
-              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl shadow-sm w-full"
+              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-elevated shadow-sm w-full"
             >
               <Link 
                 href={clubId ? `/clubes/${clubId}/players` : "/club/players"} 

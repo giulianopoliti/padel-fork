@@ -352,7 +352,7 @@ export default function OrganizerMatchesClient({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-surface border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-700">
               {currentIncludePast
                 ? "Mostrando tambien partidos historicos dentro del rango elegido."
@@ -373,7 +373,7 @@ export default function OrganizerMatchesClient({
           />
 
           {matches.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
+            <div className="rounded-surface border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
               <Trophy className="mx-auto mb-4 h-10 w-10 text-slate-400" />
               <h2 className="text-lg font-semibold text-slate-900">No hay partidos para esos filtros</h2>
               <p className="mt-2 text-sm text-slate-600">

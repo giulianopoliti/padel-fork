@@ -19,7 +19,7 @@ function TournamentLoading() {
             <Skeleton className="h-10 w-3/4 mx-auto" />
             <Skeleton className="h-6 w-1/2 mx-auto" />
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+          <div className="bg-white rounded-surface shadow-sm border border-gray-200 p-6 space-y-4">
             <Skeleton className="h-8 w-1/3" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Skeleton className="h-24 w-full" />

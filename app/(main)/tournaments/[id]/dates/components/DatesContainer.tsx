@@ -68,7 +68,7 @@ export default function DatesContainer({
 
             {/* Title */}
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-green-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-green-100 p-2 lg:p-3 rounded-elevated">
                 <Calendar className="h-5 w-5 lg:h-6 lg:w-6 text-green-600" />
               </div>
               <div className="flex-1 min-w-0">
@@ -98,7 +98,7 @@ export default function DatesContainer({
         <div className="max-w-7xl mx-auto">
           
           {/* Info Banner */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-surface p-4 mb-6">
             <div className="flex items-start gap-3">
               <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>

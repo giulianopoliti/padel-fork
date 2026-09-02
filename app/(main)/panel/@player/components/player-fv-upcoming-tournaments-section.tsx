@@ -227,7 +227,7 @@ export default function PlayerFvUpcomingTournamentsSection({
                       fullWidth
                     />
                   ) : (
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+                    <div className="rounded-display border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
                       <p className="font-medium text-white">
                         {tournament.is_inscribed
                           ? "Ya estas anotado."
@@ -297,7 +297,7 @@ function InfoBlock({
   value: string
 }) {
   return (
-    <div className="rounded-2xl bg-white/5 px-3 py-3">
+    <div className="rounded-display bg-white/5 px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5">{icon}</div>
         <div>

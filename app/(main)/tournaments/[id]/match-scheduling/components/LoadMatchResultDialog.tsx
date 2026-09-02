@@ -493,7 +493,7 @@ const LoadMatchResultDialog: React.FC<LoadMatchResultDialogProps> = ({
 
           {/* Result Summary */}
           {validSets.length >= 2 && (
-            <div className="text-center py-2 bg-slate-50 rounded-lg">
+            <div className="text-center py-2 bg-slate-50 rounded-surface">
               <div className="text-sm text-slate-600">
                 Sets: <span className="font-medium text-blue-600">{couple1Sets}</span> - <span className="font-medium text-blue-600">{couple2Sets}</span>
               </div>

@@ -174,7 +174,7 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
 
             {/* Page Title */}
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-blue-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-blue-100 p-2 lg:p-3 rounded-elevated">
                 <Users className="h-5 w-5 lg:h-6 lg:w-6 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">
@@ -215,7 +215,7 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
       <div className="container mx-auto px-4">
         <div className="max-w-7xl mx-auto">
           {!isLoggedIn && (
-            <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="mt-6 rounded-surface border border-amber-200 bg-amber-50 p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600" />
@@ -244,7 +244,7 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
             </div>
           )}
 
-          <div className="bg-white rounded-lg shadow-sm mt-6">
+          <div className="bg-white rounded-surface shadow-sm mt-6">
             
             <Tabs defaultValue="couples" className="w-full">
               <TabsList className="grid w-full grid-cols-2">

@@ -177,7 +177,7 @@ export default function TournamentsInfoPage() {
                       </ul>
                     </div>
                     
-                    <div className="bg-gray-50 p-3 rounded-md">
+                    <div className="bg-gray-50 p-3 rounded-control">
                       <p className="text-xs text-gray-600">
                         <strong>Ideal para:</strong> {tournament.ideal}
                       </p>

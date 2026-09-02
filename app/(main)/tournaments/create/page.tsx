@@ -55,14 +55,14 @@ function UnauthorizedPage() {
                 </p>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-blue-200/60 bg-blue-50/80 p-4">
+                  <div className="rounded-surface border border-blue-200/60 bg-blue-50/80 p-4">
                     <h3 className="mb-2 font-medium text-blue-900">Club</h3>
                     <p className="text-sm leading-relaxed text-blue-700">
                       Si tienes un club de padel, puedes registrarte como club para crear torneos en tus instalaciones.
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-emerald-200/60 bg-emerald-50/80 p-4">
+                  <div className="rounded-surface border border-emerald-200/60 bg-emerald-50/80 p-4">
                     <h3 className="mb-2 font-medium text-emerald-900">Organizador</h3>
                     <p className="text-sm leading-relaxed text-emerald-700">
                       Los organizadores pueden crear torneos en multiples clubes asociados a su organizacion.

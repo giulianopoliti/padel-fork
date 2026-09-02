@@ -227,7 +227,7 @@ const MatchSchedulingContainer: React.FC<MatchSchedulingContainerProps> = ({
 
             {/* Tournament Title */}
             <div className="flex items-start gap-3 lg:gap-4 mb-6">
-              <div className="bg-orange-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-orange-100 p-2 lg:p-3 rounded-elevated">
                 <Trophy className="h-5 w-5 lg:h-6 lg:w-6 text-orange-600" />
               </div>
               <div className="flex-1 min-w-0">
@@ -414,7 +414,7 @@ const MatchSchedulingContainer: React.FC<MatchSchedulingContainerProps> = ({
           )}
 
           {/* Success Info Banner */}
-          <div className="mt-8 bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="mt-8 bg-green-50 border border-green-200 rounded-surface p-4">
             <div className="flex items-start gap-3">
               <Trophy className="h-5 w-5 text-green-600 mt-0.5" />
               <div>

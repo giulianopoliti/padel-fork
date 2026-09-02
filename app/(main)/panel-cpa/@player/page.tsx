@@ -123,7 +123,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {/* MI PERFIL */}
         <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="pb-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-t-lg">
+          <CardHeader className="pb-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-t-surface">
             <CardTitle className="flex items-center text-white text-lg font-bold">
               <User className="mr-3 h-6 w-6" />
               Mi Perfil
@@ -171,7 +171,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
             </div>
 
             <Link href="/edit-profile" className="block">
-              <Button className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+              <Button className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 rounded-surface shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
                 <Edit className="mr-2 h-5 w-5" />
                 Editar Perfil
               </Button>
@@ -181,7 +181,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
 
         {/* MI RANKING */}
         <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="pb-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-t-lg">
+          <CardHeader className="pb-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-t-surface">
             <CardTitle className="flex items-center text-white text-lg font-bold">
               <Trophy className="mr-3 h-6 w-6" />
               Mi Ranking
@@ -190,7 +190,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
           <CardContent className="space-y-6 p-6">
             {playerData?.score && playerData.score > 0 && playerRanking ? (
               <>
-                <div className="text-center bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-xl border border-yellow-200">
+                <div className="text-center bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-elevated border border-yellow-200">
                   <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-orange-600">
                     #{playerRanking.position}
                   </div>
@@ -215,7 +215,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
                 </div>
               </>
             ) : (
-              <div className="text-center py-8 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+              <div className="text-center py-8 bg-gradient-to-br from-gray-50 to-gray-100 rounded-elevated border border-gray-200">
                 <Trophy className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                 <p className="text-gray-600 text-sm font-medium">
                   Juega un torneo para aparecer en el ranking
@@ -226,7 +226,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
             <Link href="/ranking" className="block">
               <Button 
                 variant="outline" 
-                className="w-full border-2 border-yellow-400 text-yellow-700 hover:bg-gradient-to-r hover:from-yellow-400 hover:to-orange-400 hover:text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+                className="w-full border-2 border-yellow-400 text-yellow-700 hover:bg-gradient-to-r hover:from-yellow-400 hover:to-orange-400 hover:text-white font-semibold py-3 rounded-surface shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
               >
                 <Trophy className="mr-2 h-5 w-5" />
                 Ver Ranking Completo
@@ -237,7 +237,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
 
         {/* MIS PRÓXIMOS PARTIDOS */}
         <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="pb-4 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-t-lg">
+          <CardHeader className="pb-4 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-t-surface">
             <CardTitle className="flex items-center text-white text-lg font-bold">
               <Swords className="mr-3 h-6 w-6" />
               {nextMatches && nextMatches.length > 1 ? 'Mis Próximos Partidos' : 'Mi Próximo Partido'}
@@ -252,7 +252,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
             {nextMatches && nextMatches.length > 0 ? (
               <div className="space-y-4">
                 {nextMatches.map((match, index) => (
-                  <div key={match.match_id} className="bg-gradient-to-br from-red-50 to-pink-50 border border-red-200 rounded-xl p-6">
+                  <div key={match.match_id} className="bg-gradient-to-br from-red-50 to-pink-50 border border-red-200 rounded-elevated p-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-2">
@@ -340,7 +340,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
                       </div>
                       
                       <Link href={`/tournaments/${match.tournament_id}`} className="block mt-4">
-                        <Button className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-semibold py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                        <Button className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-semibold py-2 rounded-surface shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
                           <Trophy className="mr-2 h-4 w-4" />
                           Ver Torneo
                         </Button>
@@ -362,7 +362,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl border border-red-200">
+              <div className="text-center py-8 bg-gradient-to-br from-red-50 to-pink-50 rounded-elevated border border-red-200">
                 <Swords className="mx-auto h-16 w-16 text-red-300 mb-4" />
                 <p className="text-gray-700 text-sm font-medium mb-2">
                   No tenés partidos pendientes
@@ -377,7 +377,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
 
         {/* PRÓXIMOS TORNEOS */}
         <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="pb-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-lg">
+          <CardHeader className="pb-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-surface">
             <CardTitle className="flex items-center text-white text-lg font-bold">
               <Calendar className="mr-3 h-6 w-6" />
               Próximos Torneos
@@ -389,7 +389,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
                 {upcomingTournaments.map((tournament) => {
                   return (
                     <Link key={tournament.id} href={`/tournaments/${tournament.id}`} className="block">
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-all duration-300 hover:scale-102 cursor-pointer hover:bg-gradient-to-r hover:from-blue-100 hover:to-purple-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-elevated p-4 hover:shadow-md transition-all duration-300 hover:scale-102 cursor-pointer hover:bg-gradient-to-r hover:from-blue-100 hover:to-purple-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-medium text-gray-900 text-sm">{tournament.name}</h4>
                           {tournament.is_inscribed && (
@@ -436,7 +436,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
                 })}
               </div>
                          ) : (
-               <div className="text-center py-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+               <div className="text-center py-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-elevated border border-blue-200">
                  <Calendar className="mx-auto h-16 w-16 text-blue-300 mb-4" />
                  <p className="text-gray-700 text-sm font-medium mb-2">
                    No hay torneos próximos disponibles
@@ -448,7 +448,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
              )}
 
             <Link href="/torneos" className="block">
-              <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+              <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-surface shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
                 <Users className="mr-2 h-5 w-5" />
                 Buscar Torneos
               </Button>

@@ -73,7 +73,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
               <img
                 src={playerData.profileImage || "/placeholder.svg?height=128&width=128"}
                 alt={playerData.name}
-                className="w-32 h-32 rounded-lg object-cover shadow-sm border border-gray-200"
+                className="w-32 h-32 rounded-surface object-cover shadow-sm border border-gray-200"
               />
               <Badge
                 className={`absolute -top-3 -right-3 ${
@@ -136,7 +136,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
               
               {/* Player Description */}
               {playerData.description && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="mt-4 p-4 bg-blue-50 rounded-surface border border-blue-200">
                   <div className="flex items-start gap-2">
                     <MessageCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                     <p className="text-gray-700 text-sm italic leading-relaxed">
@@ -157,7 +157,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
               {/* Weekly Points Card */}
               <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-green-600 text-white p-2 rounded-lg">
+                  <div className="bg-green-600 text-white p-2 rounded-surface">
                     <Zap className="h-5 w-5" />
                   </div>
                   <h3 className="font-semibold text-gray-800">Esta Semana</h3>
@@ -177,7 +177,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
 
               <Card className="p-6 bg-white border-gray-200 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-blue-600 text-white p-2 rounded-lg">
+                  <div className="bg-blue-600 text-white p-2 rounded-surface">
                     <Trophy className="h-5 w-5" />
                   </div>
                   <h3 className="font-semibold text-gray-800">Torneos</h3>
@@ -204,7 +204,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
 
               <Card className="p-6 bg-white border-gray-200 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-blue-600 text-white p-2 rounded-lg">
+                  <div className="bg-blue-600 text-white p-2 rounded-surface">
                     <Activity className="h-5 w-5" />
                   </div>
                   <h3 className="font-semibold text-gray-800">Rendimiento</h3>
@@ -300,7 +300,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
                     key={index}
                     src={image || "/placeholder.svg"}
                     alt={`Galería ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg"
+                    className="w-full h-24 object-cover rounded-surface"
                   />
                 ))}
               </div>

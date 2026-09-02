@@ -300,7 +300,7 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-card md:hidden">
+      <div className="overflow-hidden rounded-elevated border border-slate-200 bg-card md:hidden">
         <div className="grid grid-cols-[1.75rem_minmax(7.5rem,1fr)_repeat(5,minmax(1.75rem,2rem))] items-center gap-1 bg-slate-950 px-2 py-2 text-[10px] font-bold uppercase tracking-wide text-white">
           <span className="text-center">#</span>
           <span>Pareja</span>
@@ -353,7 +353,7 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
         </div>
       </div>
 
-      <div className="hidden overflow-hidden rounded-lg border border-slate-200 shadow-sm md:block">
+      <div className="hidden overflow-hidden rounded-surface border border-slate-200 shadow-sm md:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-50 hover:to-slate-100">
@@ -490,7 +490,7 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
         </Table>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 rounded-surface border border-slate-200 bg-slate-50 p-3 text-xs md:grid-cols-5">
         <div className="text-slate-700">
           <strong className="text-slate-900">PJ:</strong> Partidos Jugados
         </div>
@@ -528,7 +528,7 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <div className={pendingIsRevert ? 'rounded-lg border border-slate-200 bg-slate-50 p-3' : 'rounded-lg border border-red-200 bg-red-50 p-3'}>
+                <div className={pendingIsRevert ? 'rounded-surface border border-slate-200 bg-slate-50 p-3' : 'rounded-surface border border-red-200 bg-red-50 p-3'}>
                   <p className={pendingIsRevert ? 'font-medium text-slate-800' : 'font-medium text-red-800'}>
                     {pendingIsRevert
                       ? `La pareja ${pendingCoupleName} volvera a quedar habilitada.`
@@ -628,7 +628,7 @@ const TableStat = ({
   value: number;
   signed?: boolean;
 }) => (
-  <span className={`justify-self-center rounded-md px-1 py-1 text-center text-[11px] font-bold leading-none ${signed ? getDiffClassName(value) : 'text-slate-800'}`}>
+  <span className={`justify-self-center rounded-control px-1 py-1 text-center text-[11px] font-bold leading-none ${signed ? getDiffClassName(value) : 'text-slate-800'}`}>
     {signed ? formatSignedValue(value) : value}
   </span>
 );

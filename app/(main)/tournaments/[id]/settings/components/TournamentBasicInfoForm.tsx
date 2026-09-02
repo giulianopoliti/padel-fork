@@ -412,7 +412,7 @@ export default function TournamentBasicInfoForm({
         </div>
       </div>
 
-      <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+      <div className="flex items-start gap-3 rounded-surface border border-slate-200 bg-slate-50/70 p-4">
         <Checkbox
           id="hide-venue"
           checked={hideVenue}

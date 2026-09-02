@@ -204,7 +204,7 @@ function TimeSlotCard({ timeSlot, totalCouples }: TimeSlotCardProps) {
               {availableCouples.map((availability: any) => (
                 <div
                   key={availability.couple_id}
-                  className="rounded-md border border-green-100 bg-green-50 p-3"
+                  className="rounded-control border border-green-100 bg-green-50 p-3"
                 >
                   <div className="mb-2 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-500" />

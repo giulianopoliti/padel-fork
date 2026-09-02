@@ -300,7 +300,7 @@ export default function TournamentLongSidebar({
       )}>
         <div className="flex items-start gap-3">
           <div className={cn(
-            "flex-shrink-0 rounded-lg border p-2 transition-all duration-300",
+            "flex-shrink-0 rounded-surface border p-2 transition-all duration-300",
             isEliminated
               ? "border-red-200 bg-red-50 text-red-600"
               : "border-border bg-muted/60 text-primary"
@@ -357,7 +357,7 @@ export default function TournamentLongSidebar({
                         href={`/tournaments/${tournament.id}${item.href}`}
                         onClick={handleLinkClick}
                         className={cn(
-                          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                          "group flex items-center gap-3 rounded-surface px-3 py-2.5 text-sm transition-colors",
                           "active:scale-[0.98]",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           isActive && [

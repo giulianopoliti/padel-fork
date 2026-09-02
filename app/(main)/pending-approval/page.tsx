@@ -62,7 +62,7 @@ export default function PendingApprovalPage() {
 
             <CardContent className="space-y-6">
               {/* Process Steps */}
-              <div className="bg-slate-50 rounded-lg p-6">
+              <div className="bg-slate-50 rounded-surface p-6">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-green-600" />
                   Proceso de Aprobación
@@ -101,7 +101,7 @@ export default function PendingApprovalPage() {
               </div>
 
               {/* What's Next */}
-              <div className="bg-blue-50 rounded-lg p-6">
+              <div className="bg-blue-50 rounded-surface p-6">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-blue-600" />
                   ¿Qué sigue?
@@ -135,7 +135,7 @@ export default function PendingApprovalPage() {
               </div>
 
               {/* Contact Information */}
-              <div className="bg-slate-50 rounded-lg p-6">
+              <div className="bg-slate-50 rounded-surface p-6">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-slate-600" />
                   ¿Necesitas ayuda o tienes consultas?
@@ -167,7 +167,7 @@ export default function PendingApprovalPage() {
               </div>
 
               {/* Features Available After Approval */}
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg p-6">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-surface p-6">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                   <Users className="w-5 h-5 text-slate-600" />
                   Qué queda habilitado después

@@ -75,7 +75,7 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
           <p className="text-slate-600">Todos los horarios disponibles en una sola matriz</p>
         </div>
 
-        <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-2 rounded-surface border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-900">Carga manual de disponibilidad</p>
             <p className="text-sm text-slate-600">

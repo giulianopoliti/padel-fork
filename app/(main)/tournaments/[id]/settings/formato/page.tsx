@@ -48,17 +48,17 @@ export default async function SettingsFormatoPage({ params }: SettingsFormatoPag
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-display border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Base</p>
           <p className="mt-2 text-lg font-semibold text-slate-950">{baseTypeLabel}</p>
           <p className="mt-1 text-sm text-slate-600">{zoneModeLabel}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-display border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Preset</p>
           <p className="mt-2 text-lg font-semibold text-slate-950">{resolvedFormat.display.name}</p>
           <p className="mt-1 text-sm text-slate-600">{resolvedFormat.display.description}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-display border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Llave</p>
           <p className="mt-2 text-lg font-semibold text-slate-950">{bracketModeLabel}</p>
           <div className="mt-2 flex flex-wrap gap-2">

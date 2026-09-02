@@ -27,7 +27,7 @@ export const CategoryInfoCard: React.FC<CategoryInfoCardProps> = ({ categories }
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {categories.map(category => (
-            <div key={category.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div key={category.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-surface">
               <div>
                 <h4 className="font-medium text-gray-900">{category.name}</h4>
                 <p className="text-sm text-gray-600">

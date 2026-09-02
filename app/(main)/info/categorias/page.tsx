@@ -216,7 +216,7 @@ export default function CategoriasInfoPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="bg-gray-50 p-4 rounded-md">
+                  <div className="bg-gray-50 p-4 rounded-control">
                     <h4 className="font-semibold text-gray-900 mb-2">Escenario:</h4>
                     <p className="text-sm text-gray-600 mb-3">
                       Jugador A (800 pts) vs Jugador B (1200 pts)

@@ -377,7 +377,7 @@ function ZoneMatchCard({ match, tournamentId }: ZoneMatchCardProps) {
       <CardContent className="space-y-4">
         {/* Players */}
         <div className="space-y-3">
-          <div className={`p-3 rounded-lg ${
+          <div className={`p-3 rounded-surface ${
             match.winner_id === match.couple1_id
               ? 'bg-green-50 border border-green-200'
               : 'bg-gray-50'
@@ -412,7 +412,7 @@ function ZoneMatchCard({ match, tournamentId }: ZoneMatchCardProps) {
             </span>
           </div>
 
-          <div className={`p-3 rounded-lg ${
+          <div className={`p-3 rounded-surface ${
             match.winner_id === match.couple2_id
               ? 'bg-green-50 border border-green-200'
               : 'bg-gray-50'
@@ -444,7 +444,7 @@ function ZoneMatchCard({ match, tournamentId }: ZoneMatchCardProps) {
 
         {/* Schedule Info */}
         {hasSchedule && (
-          <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-surface border border-blue-200">
             <Clock className="h-4 w-4 text-blue-600 mt-0.5" />
             <div className="text-sm">
               <div className="font-medium text-blue-900">

@@ -91,7 +91,7 @@ export default function TournamentMobileBottomNav({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "flex min-h-14 flex-col items-center justify-center gap-1 rounded-elevated px-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent/20 hover:text-foreground"
               )}
             >
@@ -104,7 +104,7 @@ export default function TournamentMobileBottomNav({
           <button
             type="button"
             onClick={onMore}
-            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-elevated px-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Abrir menu completo del torneo"
           >
             <Menu className="h-5 w-5" />

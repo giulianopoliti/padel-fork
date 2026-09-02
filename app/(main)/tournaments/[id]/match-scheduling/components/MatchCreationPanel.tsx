@@ -145,7 +145,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
       <Card className="bg-white border-gray-200 shadow-sm hover:shadow-lg transition-shadow">
         <CardHeader className="pb-4">
           <CardTitle className="text-slate-900 flex items-center gap-2">
-            <div className="bg-purple-100 p-2 rounded-lg">
+            <div className="bg-purple-100 p-2 rounded-surface">
               <Users className="w-5 h-5 text-purple-600" />
             </div>
             Crear Partido
@@ -154,7 +154,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
         <CardContent>
           {/* Drop Zone */}
           <div
-            className="border-2 border-dashed border-blue-300 bg-blue-50/30 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center mb-4 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
+            className="border-2 border-dashed border-blue-300 bg-blue-50/30 rounded-surface p-4 min-h-[120px] flex flex-col items-center justify-center mb-4 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
             onDragOver={(e) => {
               e.preventDefault()
               e.stopPropagation()
@@ -191,7 +191,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
             {selectedCouples.map((couple) => (
               <div
                 key={couple.id}
-                className="bg-blue-100 border border-blue-200 rounded-lg p-3 mb-2 w-full flex items-center justify-between shadow-sm"
+                className="bg-blue-100 border border-blue-200 rounded-surface p-3 mb-2 w-full flex items-center justify-between shadow-sm"
               >
                 <span className="text-slate-900 text-sm font-medium">
                   {getCoupleDisplayName(couple)}
@@ -211,14 +211,14 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
 
           {/* Error Display */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-surface flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
               <p className="text-red-700 text-sm">{typeof error === 'string' ? error : JSON.stringify(error)}</p>
             </div>
           )}
 
           {warning && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-surface flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
               <p className="text-amber-700 text-sm">{warning}</p>
             </div>
@@ -229,7 +229,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
             <form onSubmit={handleSubmit} className="space-y-4 border-t border-gray-200 pt-4">
 
               {/* Info message about optional fields */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-surface p-3">
                 <div className="flex items-start gap-2">
                   <Clock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="text-blue-800 text-xs">
@@ -368,7 +368,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
         <Card className="bg-white border-gray-200 shadow-sm hover:shadow-lg transition-shadow">
           <CardHeader className="pb-4">
             <CardTitle className="text-slate-900 flex items-center gap-2">
-              <div className="bg-orange-100 p-2 rounded-lg">
+              <div className="bg-orange-100 p-2 rounded-surface">
                 <MapPin className="w-5 h-5 text-orange-600" />
               </div>
               Últimos Partidos ({createdMatches.length})
@@ -379,7 +379,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
               {createdMatches.slice(-3).map((match) => (
                 <div
                   key={match.id}
-                  className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2 hover:shadow-sm transition-shadow"
+                  className="bg-gray-50 border border-gray-200 rounded-surface p-3 space-y-2 hover:shadow-sm transition-shadow"
                 >
                   <div className="flex items-center justify-between">
                     <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200">
@@ -406,7 +406,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
                       {match.couple2?.player2?.first_name} {match.couple2?.player2?.last_name}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-md w-fit">
+                  <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-control w-fit">
                     <Clock className="w-3 h-3" />
                     {match.scheduled_start_time?.slice(0, 5)} - {match.scheduled_end_time?.slice(0, 5)}
                   </div>

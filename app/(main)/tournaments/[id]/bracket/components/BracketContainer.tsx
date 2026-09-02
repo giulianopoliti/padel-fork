@@ -52,7 +52,7 @@ function BracketInstructionsSection({
         <Collapsible
           open={isOpen}
           onOpenChange={setIsOpen}
-          className="rounded-lg border border-slate-200 bg-white shadow-sm"
+          className="rounded-surface border border-slate-200 bg-white shadow-sm"
         >
           <CollapsibleTrigger asChild>
             <button

@@ -93,7 +93,7 @@ const ZonesView: React.FC<ZonesViewProps> = ({
 
             {/* Page Title */}
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-orange-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-orange-100 p-2 lg:p-3 rounded-elevated">
                 <ListChecks className="h-5 w-5 lg:h-6 lg:w-6 text-orange-600" />
               </div>
               <div className="flex-1 min-w-0">

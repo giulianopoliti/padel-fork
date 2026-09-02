@@ -30,7 +30,7 @@ import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
 const ClubGallery = ({ images }: { images: string[] }) => (
   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
     {images.map((image, index) => (
-      <div key={index} className="aspect-square overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+      <div key={index} className="aspect-square overflow-hidden rounded-display border border-white/10 bg-white/5">
         <img
           src={image || "/placeholder.svg"}
           alt={`Imagen ${index + 1}`}
@@ -106,14 +106,14 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
     ? "rounded-full border-0 bg-[var(--tpe-lime)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--tpe-night)]"
     : "border-0 bg-court-500 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-900"
   const infoCardClassName = isElite
-    ? "rounded-2xl border border-slate-200 bg-white p-4"
-    : "rounded-2xl border border-white/10 bg-white/5 p-4"
+    ? "rounded-display border border-slate-200 bg-white p-4"
+    : "rounded-display border border-white/10 bg-white/5 p-4"
   const reviewCardClassName = isElite
-    ? "rounded-2xl border border-slate-200 bg-white p-5"
-    : "rounded-2xl border border-white/10 bg-white/5 p-5"
+    ? "rounded-display border border-slate-200 bg-white p-5"
+    : "rounded-display border border-white/10 bg-white/5 p-5"
   const playerCardClassName = isElite
-    ? "rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-md"
-    : "rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-court-500/40 hover:bg-white/10"
+    ? "rounded-display border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-md"
+    : "rounded-display border border-white/10 bg-white/5 p-4 transition hover:border-court-500/40 hover:bg-white/10"
 
   return (
     <div className={pageClassName}>
@@ -149,8 +149,8 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
                   <div
                     className={
                       isElite
-                        ? "flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/70 text-[var(--tpe-night)] shadow-sm backdrop-blur"
-                        : "flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-court-300 backdrop-blur"
+                        ? "flex h-16 w-16 items-center justify-center rounded-display border border-slate-200/80 bg-white/70 text-[var(--tpe-night)] shadow-sm backdrop-blur"
+                        : "flex h-16 w-16 items-center justify-center rounded-display border border-white/10 bg-white/10 text-court-300 backdrop-blur"
                     }
                   >
                     <ImageIcon className="h-7 w-7" />

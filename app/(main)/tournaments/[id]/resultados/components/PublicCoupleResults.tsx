@@ -31,7 +31,7 @@ const CoupleProfile = ({ player, index }: { player: PublicLongPlayer | null; ind
   const name = getPlayerName(player, `Jugador ${index + 1}`)
 
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-card p-3 sm:p-4">
+    <div className="flex min-w-0 items-center gap-3 rounded-elevated border border-slate-200 bg-card p-3 sm:p-4">
       <Avatar className="h-14 w-14 shrink-0 border-2 border-slate-100 sm:h-16 sm:w-16">
         <AvatarImage src={player?.profileImageUrl || undefined} alt={name} className="object-cover" />
         <AvatarFallback className={index === 0 ? "bg-primary/10 text-primary" : "bg-slate-200 text-slate-700"}>
@@ -88,7 +88,7 @@ const MatchCard = ({
   const isWinner = match.winnerId === coupleId
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-card p-4 shadow-sm">
+    <article className="rounded-elevated border border-slate-200 bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{getRoundLabel(match.round)}</p>
@@ -106,13 +106,13 @@ const MatchCard = ({
       </div>
 
       {isFinished(match) ? (
-        <div className="mt-4 rounded-lg bg-slate-50 p-3">
+        <div className="mt-4 rounded-surface bg-slate-50 p-3">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sets</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{summary}</p>
           {setScores.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {setScores.map((score, index) => (
-                <span key={`${match.id}-${index}`} className="rounded-md border border-slate-200 bg-card px-2 py-1 text-xs font-semibold text-slate-700">
+                <span key={`${match.id}-${index}`} className="rounded-control border border-slate-200 bg-card px-2 py-1 text-xs font-semibold text-slate-700">
                   S{index + 1} {score}
                 </span>
               ))}
@@ -150,7 +150,7 @@ export default function PublicCoupleResults({
           {sectionMatches.map((match) => <MatchCard key={match.id} match={match} coupleId={couple.id} couples={couples} />)}
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed border-slate-300 bg-card p-5 text-sm text-muted-foreground">
+        <p className="rounded-elevated border border-dashed border-slate-300 bg-card p-5 text-sm text-muted-foreground">
           No hay partidos para mostrar en esta fase.
         </p>
       )}

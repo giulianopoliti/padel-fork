@@ -150,7 +150,7 @@ export default function DeleteTimeSlotAlert({
               <p>¿Estás seguro de que quieres eliminar este horario?</p>
 
               {/* Time Slot Info */}
-              <div className="p-3 bg-slate-50 rounded-lg space-y-3">
+              <div className="p-3 bg-slate-50 rounded-surface space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium flex items-center gap-2">
                     <Clock className="h-4 w-4" />

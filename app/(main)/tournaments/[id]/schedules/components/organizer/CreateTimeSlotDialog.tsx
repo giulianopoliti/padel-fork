@@ -223,7 +223,7 @@ export default function CreateTimeSlotDialog({
               )}
             />
 
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-surface">
               <div className="flex items-start gap-2">
                 <Clock className="h-4 w-4 text-blue-600 mt-0.5" />
                 <div className="text-sm text-blue-800">

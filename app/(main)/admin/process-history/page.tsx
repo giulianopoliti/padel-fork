@@ -26,7 +26,7 @@ export default function ProcessHistoryPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-2xl">
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white rounded-surface shadow-md p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">
           Procesar Historial de Torneos
         </h1>
@@ -48,7 +48,7 @@ export default function ProcessHistoryPage() {
         <button
           onClick={handleProcessHistory}
           disabled={isProcessing}
-          className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+          className={`w-full py-3 px-4 rounded-surface font-medium transition-colors ${
             isProcessing
               ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
               : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -58,7 +58,7 @@ export default function ProcessHistoryPage() {
         </button>
 
         {result && (
-          <div className={`mt-6 p-4 rounded-lg ${
+          <div className={`mt-6 p-4 rounded-surface ${
             result.success 
               ? 'bg-green-50 border border-green-200' 
               : 'bg-red-50 border border-red-200'

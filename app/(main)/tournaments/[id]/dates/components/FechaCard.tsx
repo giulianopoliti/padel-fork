@@ -34,7 +34,7 @@ export default function FechaCard({ fecha, tournamentId, onUpdate }: FechaCardPr
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="bg-green-100 p-2 rounded-lg">
+            <div className="bg-green-100 p-2 rounded-surface">
               <Calendar className="h-5 w-5 text-green-600" />
             </div>
             <div>

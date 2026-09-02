@@ -31,13 +31,13 @@ export default async function SettingsInscripcionesPage({
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+        <div className="rounded-display border border-blue-200 bg-blue-50/70 p-4">
           <p className="text-sm font-semibold text-slate-950">1. ¿Se pueden registrar nuevas parejas?</p>
           <p className="mt-1 text-sm text-slate-600">
             Se define con el estado de las inscripciones y el cupo disponible.
           </p>
         </div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+        <div className="rounded-display border border-amber-200 bg-amber-50/70 p-4">
           <p className="text-sm font-semibold text-slate-950">2. ¿Se ve el listado de inscriptos?</p>
           <p className="mt-1 text-sm text-slate-600">
             Podés ocultar nombres y cantidad de parejas sin cerrar las inscripciones.

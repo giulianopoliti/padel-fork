@@ -118,7 +118,7 @@ export default function ScheduleMatchModal({
         <div className="space-y-6">
 
           {/* Información del match */}
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-surface p-4">
             <div className="flex items-center gap-2 mb-3">
               <Users className="h-4 w-4 text-slate-600" />
               <span className="text-sm font-medium text-slate-700">

@@ -61,7 +61,7 @@ export default async function SettingsLayout({
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="rounded-xl bg-red-100 p-3">
+              <div className="rounded-elevated bg-red-100 p-3">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
               <div className="min-w-0 flex-1">

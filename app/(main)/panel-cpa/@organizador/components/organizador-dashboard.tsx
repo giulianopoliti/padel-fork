@@ -88,10 +88,10 @@ export default function OrganizadorDashboard({
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <section aria-labelledby="matches-heading">
-        <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-sky-50 p-6 shadow-sm">
+        <div className="rounded-display border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-sky-50 p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
-              <div className="rounded-xl bg-amber-100 p-3">
+              <div className="rounded-elevated bg-amber-100 p-3">
                 <CalendarDays className="h-6 w-6 text-amber-700" aria-hidden="true" />
               </div>
               <div>
@@ -117,7 +117,7 @@ export default function OrganizadorDashboard({
       <section aria-labelledby="tournaments-heading">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/20">
+            <div className="p-2 rounded-surface bg-amber-100 dark:bg-amber-900/20">
               <Trophy className="h-6 w-6 text-amber-600 dark:text-amber-500" aria-hidden="true" />
             </div>
             <div>
@@ -138,7 +138,7 @@ export default function OrganizadorDashboard({
         </div>
 
         {tournaments.length === 0 ? (
-          <div className="text-center py-16 bg-muted/50 rounded-lg border-2 border-dashed">
+          <div className="text-center py-16 bg-muted/50 rounded-surface border-2 border-dashed">
             <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center mb-4">
               <Trophy className="h-8 w-8 text-amber-600 dark:text-amber-500" aria-hidden="true" />
             </div>
@@ -171,7 +171,7 @@ export default function OrganizadorDashboard({
       <section aria-labelledby="players-heading">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+            <div className="p-2 rounded-surface bg-blue-100 dark:bg-blue-900/20">
               <Users className="h-6 w-6 text-blue-600 dark:text-blue-500" aria-hidden="true" />
             </div>
             <div>

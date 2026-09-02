@@ -7,8 +7,8 @@ export function ScheduleMatrixSkeleton() {
     <div className="space-y-6">
       {/* Header skeleton */}
       <div className="flex justify-between items-center">
-        <Skeleton className="h-9 w-56 rounded-lg" />
-        <Skeleton className="h-11 w-36 rounded-lg" />
+        <Skeleton className="h-9 w-56 rounded-surface" />
+        <Skeleton className="h-11 w-36 rounded-surface" />
       </div>
 
       {/* Time slots skeletons */}
@@ -17,19 +17,19 @@ export function ScheduleMatrixSkeleton() {
           <CardHeader className="pb-4">
             <div className="flex justify-between items-start gap-4">
               <div className="space-y-3 flex-1">
-                <Skeleton className="h-7 w-72 rounded-lg" />
-                <Skeleton className="h-5 w-48 rounded-lg" />
+                <Skeleton className="h-7 w-72 rounded-surface" />
+                <Skeleton className="h-5 w-48 rounded-surface" />
               </div>
-              <Skeleton className="h-20 w-32 rounded-xl" />
+              <Skeleton className="h-20 w-32 rounded-elevated" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <Skeleton className="h-4 w-full rounded-lg" />
-              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-4 w-full rounded-surface" />
+              <Skeleton className="h-16 w-full rounded-elevated" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {Array.from({ length: 2 }).map((_, j) => (
-                  <Skeleton key={j} className="h-14 w-full rounded-lg" />
+                  <Skeleton key={j} className="h-14 w-full rounded-surface" />
                 ))}
               </div>
             </div>
@@ -48,18 +48,18 @@ export function PlayerAvailabilitySkeleton() {
       <Card className="border-l-4 border-l-blue-600 shadow-md">
         <CardContent className="p-6">
           <div className="flex items-start gap-5">
-            <Skeleton className="h-16 w-16 rounded-2xl" />
+            <Skeleton className="h-16 w-16 rounded-display" />
             <div className="flex-1 space-y-3">
-              <Skeleton className="h-8 w-64 rounded-lg" />
-              <Skeleton className="h-20 w-full rounded-xl" />
-              <Skeleton className="h-5 w-96 rounded-lg" />
+              <Skeleton className="h-8 w-64 rounded-surface" />
+              <Skeleton className="h-20 w-full rounded-elevated" />
+              <Skeleton className="h-5 w-96 rounded-surface" />
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Instructions skeleton */}
-      <Skeleton className="h-16 w-full rounded-lg" />
+      <Skeleton className="h-16 w-full rounded-surface" />
 
       {/* Time slots with switches skeleton */}
       {Array.from({ length: 3 }).map((_, i) => (
@@ -67,15 +67,15 @@ export function PlayerAvailabilitySkeleton() {
           <CardHeader className="pb-4">
             <div className="flex justify-between items-start gap-4">
               <div className="space-y-3 flex-1">
-                <Skeleton className="h-7 w-72 rounded-lg" />
-                <Skeleton className="h-5 w-48 rounded-lg" />
+                <Skeleton className="h-7 w-72 rounded-surface" />
+                <Skeleton className="h-5 w-48 rounded-surface" />
               </div>
-              <Skeleton className="h-20 w-32 rounded-xl" />
+              <Skeleton className="h-20 w-32 rounded-elevated" />
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-12 w-40 rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-elevated" />
+            <Skeleton className="h-12 w-40 rounded-surface" />
           </CardContent>
         </Card>
       ))}
@@ -108,10 +108,10 @@ export function PageLoadingState() {
           <Card className="border-2 shadow-md">
             <CardContent className="p-6">
               <div className="flex items-start gap-4 mb-4">
-                <Skeleton className="h-16 w-16 rounded-2xl" />
+                <Skeleton className="h-16 w-16 rounded-display" />
                 <div className="flex-1 space-y-3">
-                  <Skeleton className="h-10 w-96 rounded-lg" />
-                  <Skeleton className="h-6 w-64 rounded-lg" />
+                  <Skeleton className="h-10 w-96 rounded-surface" />
+                  <Skeleton className="h-6 w-64 rounded-surface" />
                 </div>
               </div>
             </CardContent>
@@ -120,8 +120,8 @@ export function PageLoadingState() {
           {/* Fecha selector skeleton */}
           <Card className="border-2 shadow-sm">
             <CardContent className="p-5">
-              <Skeleton className="h-5 w-32 mb-3 rounded-lg" />
-              <Skeleton className="h-11 w-80 rounded-lg" />
+              <Skeleton className="h-5 w-32 mb-3 rounded-surface" />
+              <Skeleton className="h-11 w-80 rounded-surface" />
             </CardContent>
           </Card>
 

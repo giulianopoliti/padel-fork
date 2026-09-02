@@ -34,7 +34,7 @@ export default function TpeRegistrationRestrictionsPanel({ players }: { players:
         </div>
         <div className="relative w-full sm:w-72"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar jugador" /></div>
       </div>
-      <div className="overflow-hidden rounded-xl border bg-white">
+      <div className="overflow-hidden rounded-elevated border bg-white">
         {visiblePlayers.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No hay bajas tardías ni jugadores bloqueados.</p> : visiblePlayers.map((player) => (
           <div key={player.id} className="flex flex-col gap-3 border-b p-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
             <div><p className="font-semibold">{player.first_name} {player.last_name}</p><p className="text-sm text-muted-foreground">{player.lateWithdrawalCount} baja{player.lateWithdrawalCount === 1 ? "" : "s"} tardía{player.lateWithdrawalCount === 1 ? "" : "s"}</p></div>

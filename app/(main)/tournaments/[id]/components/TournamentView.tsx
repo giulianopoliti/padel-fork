@@ -57,7 +57,7 @@ const TournamentView: React.FC = () => {
         }
         // Club que no es dueño → solo lectura (igual que público) + aviso
         const banner = (
-          <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+          <div className="mb-4 rounded-surface border border-yellow-200 bg-yellow-50 p-4">
             <p className="text-sm text-yellow-800">
               Este torneo pertenece a otro club, por lo que sólo puedes visualizar la información.
             </p>
@@ -75,7 +75,7 @@ const TournamentView: React.FC = () => {
         }
         // Organizador sin permisos → solo lectura + aviso
         const organizerBanner = (
-          <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+          <div className="mb-4 rounded-surface border border-yellow-200 bg-yellow-50 p-4">
             <p className="text-sm text-yellow-800">
               No tienes acceso de gestión a este torneo. Contacta al administrador de tu organización.
             </p>
@@ -120,7 +120,7 @@ const TournamentViewSkeleton: React.FC = () => {
             
             {/* Title skeleton */}
             <div className="flex items-start gap-4">
-              <Skeleton className="h-12 w-12 rounded-xl" />
+              <Skeleton className="h-12 w-12 rounded-elevated" />
               <div className="flex-1">
                 <Skeleton className="h-8 w-64 mb-2" />
                 <div className="flex gap-4">

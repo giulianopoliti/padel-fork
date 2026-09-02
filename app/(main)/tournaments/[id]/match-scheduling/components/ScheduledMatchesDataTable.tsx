@@ -116,7 +116,7 @@ const ScheduledMatchesDataTable: React.FC<ScheduledMatchesDataTableProps> = ({
     <Card className="bg-white border-gray-200 shadow-lg">
       <CardHeader className="pb-4 border-b border-gray-200">
         <CardTitle className="text-gray-900 flex items-center gap-2">
-          <div className="bg-blue-100 p-2 rounded-lg">
+          <div className="bg-blue-100 p-2 rounded-surface">
             <MapPin className="w-5 h-5 text-blue-600" />
           </div>
           <span>Partidos Programados</span>
@@ -148,7 +148,7 @@ const ScheduledMatchesDataTable: React.FC<ScheduledMatchesDataTableProps> = ({
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-b-lg">
+          <div className="overflow-hidden rounded-b-surface">
             <Table>
               <TableHeader className="bg-gray-50 border-b border-gray-200">
                 {table.getHeaderGroups().map((headerGroup) => (

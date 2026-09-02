@@ -311,7 +311,7 @@ export default function EditFechaDialog({
             )}
 
             {/* Fecha Info */}
-            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-surface">
               <Badge variant="outline" className="text-xs">
                 Fecha #{fecha.fecha_number}
               </Badge>
@@ -488,7 +488,7 @@ export default function EditFechaDialog({
                       value={field.value}
                       onChange={field.onChange}
                       disabled={isSubmitting || roundsLoading}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-control focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {roundsLoading ? (
                         <option value="">Cargando rondas disponibles...</option>
@@ -541,7 +541,7 @@ export default function EditFechaDialog({
                         value={field.value}
                         onChange={field.onChange}
                         disabled={isSubmitting}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-control focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="GOLD">Copa de Oro</option>
                         <option value="SILVER">Copa de Plata</option>

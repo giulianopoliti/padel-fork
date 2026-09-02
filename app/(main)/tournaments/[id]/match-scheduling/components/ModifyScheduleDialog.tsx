@@ -190,7 +190,7 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
 
         <div className="space-y-6">
           {/* Match Info */}
-          <div className="bg-slate-50 p-3 rounded-lg">
+          <div className="bg-slate-50 p-3 rounded-surface">
             <div className="text-center text-sm text-slate-600 mb-2">Partido</div>
             <div className="text-center">
               <div className="font-semibold text-slate-900 text-sm">
@@ -333,7 +333,7 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
 
           {/* Error Display */}
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-surface flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-red-700 text-sm">{error}</p>
             </div>

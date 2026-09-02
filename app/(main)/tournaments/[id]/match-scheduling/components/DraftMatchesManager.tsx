@@ -363,7 +363,7 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
               {draftMatches.map((match) => (
                 <div
                   key={match.id}
-                  className={`border rounded-lg p-4 transition-all ${
+                  className={`border rounded-surface p-4 transition-all ${
                     selectedMatches.has(match.id)
                       ? 'border-amber-400 bg-amber-100 shadow-md'
                       : 'border-amber-200 bg-white hover:bg-amber-50'

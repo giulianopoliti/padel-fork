@@ -113,7 +113,7 @@ export default async function AdminDashboard() {
                   <CardTitle className="text-sm font-medium text-slate-700">
                     {card.title}
                   </CardTitle>
-                  <div className={`${card.bgColor} p-2 rounded-lg`}>
+                  <div className={`${card.bgColor} p-2 rounded-surface`}>
                     <Icon className={`h-5 w-5 ${card.iconColor}`} />
                   </div>
                 </CardHeader>
@@ -141,7 +141,7 @@ export default async function AdminDashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <a
               href="/admin/users"
-              className="flex items-center space-x-3 rounded-lg border border-slate-200 p-4 transition-colors hover:bg-slate-50"
+              className="flex items-center space-x-3 rounded-surface border border-slate-200 p-4 transition-colors hover:bg-slate-50"
             >
               <Users className="h-5 w-5 text-blue-600" />
               <div>
@@ -152,7 +152,7 @@ export default async function AdminDashboard() {
 
             <a
               href="/admin/players"
-              className="flex items-center space-x-3 rounded-lg border border-slate-200 p-4 transition-colors hover:bg-slate-50"
+              className="flex items-center space-x-3 rounded-surface border border-slate-200 p-4 transition-colors hover:bg-slate-50"
             >
               <UserCircle className="h-5 w-5 text-green-600" />
               <div>
@@ -163,7 +163,7 @@ export default async function AdminDashboard() {
 
             <a
               href="/admin/tournaments"
-              className="flex items-center space-x-3 rounded-lg border border-slate-200 p-4 transition-colors hover:bg-slate-50"
+              className="flex items-center space-x-3 rounded-surface border border-slate-200 p-4 transition-colors hover:bg-slate-50"
             >
               <Trophy className="h-5 w-5 text-yellow-600" />
               <div>

@@ -148,13 +148,13 @@ export default function TournamentsLayout({
     : "max-w-3xl text-lg text-slate-200"
   const filterPanelClassName = isElite
     ? "mb-8 space-y-6 rounded-[2rem] border border-white/60 bg-white/70 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur"
-    : "mb-10 space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-sm"
+    : "mb-10 space-y-6 rounded-display-lg border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur-sm"
   const inputClassName = isElite
     ? "rounded-full border-slate-200 bg-white pl-10 text-[var(--tpe-night)] placeholder:text-slate-400 focus:border-[var(--tpe-night)] focus:ring-[var(--tpe-night)]/20"
     : "border-white/10 bg-white/5 pl-10 text-white placeholder:text-slate-400 focus:border-court-500/50 focus:ring-court-500/20"
   const typeSwitcherClassName = isElite
     ? "grid w-full max-w-md grid-cols-2 rounded-full border border-slate-200 bg-white p-1"
-    : "grid w-full max-w-md grid-cols-2 rounded-2xl border border-white/10 bg-white/5 p-1"
+    : "grid w-full max-w-md grid-cols-2 rounded-display border border-white/10 bg-white/5 p-1"
   const activeTypeClassName = isElite
     ? "bg-[var(--tpe-night)] text-[var(--tpe-paper)] shadow-sm"
     : "bg-court-500 text-brand-900 shadow-sm"
@@ -163,7 +163,7 @@ export default function TournamentsLayout({
     : "text-slate-300 hover:text-white"
   const contentShellClassName = isElite
     ? "tpe-shell overflow-hidden rounded-[2rem]"
-    : "overflow-hidden rounded-3xl border border-white/10 bg-[#1b2d52]/76 shadow-sm backdrop-blur-sm"
+    : "overflow-hidden rounded-display-lg border border-white/10 bg-[#1b2d52]/76 shadow-sm backdrop-blur-sm"
   const statusBarClassName = isElite
     ? "tpe-banner border-b-4 border-[var(--tpe-forest)] p-2"
     : "border-b border-white/10 bg-white/[0.04] p-2"
@@ -251,7 +251,7 @@ export default function TournamentsLayout({
                   <Link
                     key={tab.href}
                     href={tab.href}
-                    className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold transition-colors ${
+                    className={`flex min-h-12 items-center justify-center gap-2 rounded-display px-3 py-3 text-sm font-semibold transition-colors ${
                       tab.active ? activeStatusClassName : inactiveStatusClassName
                     }`}
                   >

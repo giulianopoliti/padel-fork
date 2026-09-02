@@ -391,9 +391,9 @@ function LongScheduleViewContent({
     <div className="space-y-6">
 
       {/* Header informativo */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6">
+      <div className="bg-white rounded-surface border border-slate-200 p-6">
         <div className="flex items-start gap-4">
-          <div className="bg-blue-100 p-2 rounded-lg">
+          <div className="bg-blue-100 p-2 rounded-surface">
             <Calendar className="h-5 w-5 text-blue-600" />
           </div>
           <div className="flex-1">
@@ -535,7 +535,7 @@ function LongScheduleViewContent({
 
             {/* Indicador de operaciones pendientes */}
             {dragState.pendingOperations.length > 0 && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-surface">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                   <span className="text-sm text-blue-800 font-medium">

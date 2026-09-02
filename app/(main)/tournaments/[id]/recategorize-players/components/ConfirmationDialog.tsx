@@ -96,7 +96,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
 
           {/* Estadísticas */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+            <div className="bg-green-50 p-3 rounded-surface border border-green-200">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-600" />
                 <span className="text-sm font-medium text-green-800">Aumentos</span>
@@ -104,7 +104,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
               <p className="text-2xl font-bold text-green-900">{scoreIncreases}</p>
             </div>
             
-            <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+            <div className="bg-red-50 p-3 rounded-surface border border-red-200">
               <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-red-600" />
                 <span className="text-sm font-medium text-red-800">Disminuciones</span>
@@ -112,7 +112,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
               <p className="text-2xl font-bold text-red-900">{scoreDecreases}</p>
             </div>
             
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div className="bg-gray-50 p-3 rounded-surface border border-gray-200">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-800">Sin cambio</span>
               </div>
@@ -123,12 +123,12 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           {/* Lista de cambios */}
           <div>
             <h3 className="font-medium text-gray-900 mb-3">Detalles de cambios:</h3>
-            <ScrollArea className="h-64 border rounded-lg">
+            <ScrollArea className="h-64 border rounded-surface">
               <div className="p-4 space-y-3">
                 {pendingChanges.map((change) => (
                   <div 
                     key={change.player.id} 
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-surface"
                   >
                     <div className="flex-1">
                       <div className="font-medium text-gray-900">

@@ -107,7 +107,7 @@ export default function OrganizerScheduleView({
 
             {/* Title */}
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-gradient-to-br from-blue-100 to-green-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-gradient-to-br from-blue-100 to-green-100 p-2 lg:p-3 rounded-elevated">
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
                   <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-green-600" />

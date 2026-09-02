@@ -14,7 +14,7 @@ export default function TournamentTermsPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:py-16">
-      <article className="rounded-2xl border bg-white p-6 shadow-sm sm:p-10">
+      <article className="rounded-display border bg-white p-6 shadow-sm sm:p-10">
         <p className="text-sm font-medium text-muted-foreground">
           TPE Padel · versión {TPE_TERMS_VERSION}
         </p>

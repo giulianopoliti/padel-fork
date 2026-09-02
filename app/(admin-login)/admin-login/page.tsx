@@ -125,12 +125,12 @@ export default function AdminLoginPage() {
 
         <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center">
           <div className="w-full max-w-md">
-            <Card className={`border-0 shadow-2xl rounded-3xl overflow-hidden bg-white/80 backdrop-blur-sm transition-opacity duration-200 ${isSubmitting ? 'opacity-70' : ''}`}>
+            <Card className={`border-0 shadow-2xl rounded-display-lg overflow-hidden bg-white/80 backdrop-blur-sm transition-opacity duration-200 ${isSubmitting ? 'opacity-70' : ''}`}>
               <div className="h-2 bg-gradient-to-r from-red-600 to-red-800"></div>
 
               <CardHeader className="pt-8 pb-6 text-center">
                 <div className="flex justify-center mb-6">
-                  <div className="bg-gradient-to-r from-red-600 to-red-800 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg">
+                  <div className="bg-gradient-to-r from-red-600 to-red-800 w-16 h-16 rounded-display flex items-center justify-center shadow-lg">
                     <Shield className="text-white h-8 w-8" />
                   </div>
                 </div>
@@ -155,7 +155,7 @@ export default function AdminLoginPage() {
                       placeholder="admin@tenant.com"
                       required
                       disabled={isSubmitting}
-                      className="border-slate-200 focus:border-red-500 focus:ring-red-500 rounded-xl h-12 text-base disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
+                      className="border-slate-200 focus:border-red-500 focus:ring-red-500 rounded-elevated h-12 text-base disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
                     />
                   </div>
 
@@ -172,7 +172,7 @@ export default function AdminLoginPage() {
                         onChange={handleInputChange}
                         required
                         disabled={isSubmitting}
-                        className="border-slate-200 focus:border-red-500 focus:ring-red-500 rounded-xl h-12 text-base pr-12 disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
+                        className="border-slate-200 focus:border-red-500 focus:ring-red-500 rounded-elevated h-12 text-base pr-12 disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
                       />
                       <button
                         type="button"
@@ -187,7 +187,7 @@ export default function AdminLoginPage() {
 
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-red-700 to-red-900 hover:from-red-800 hover:to-red-950 text-white rounded-xl h-12 text-base font-medium shadow-lg disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden group"
+                    className="w-full bg-gradient-to-r from-red-700 to-red-900 hover:from-red-800 hover:to-red-950 text-white rounded-elevated h-12 text-base font-medium shadow-lg disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200 relative overflow-hidden group"
                     disabled={isSubmitting}
                   >
                     <span className={`inline-flex items-center transition-opacity duration-200 ${isSubmitting ? 'opacity-0' : 'opacity-100'}`}>

@@ -20,7 +20,7 @@ export default function NotFound() {
         
         <div className="pt-8">
           <Link href="/">
-            <Button className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-6 text-lg rounded-xl shadow-sm">
+            <Button className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-6 text-lg rounded-elevated shadow-sm">
               <Home className="mr-2 h-5 w-5" />
               Volver al inicio
             </Button>

@@ -114,7 +114,7 @@ export default function RoundSelector({
         <Label className="text-xs font-medium">
           Tipo de Ronda {required && '*'}
         </Label>
-        <div className="flex items-center gap-2 p-3 border rounded-md bg-gray-50">
+        <div className="flex items-center gap-2 p-3 border rounded-control bg-gray-50">
           <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
           <span className="text-sm text-gray-600">Cargando rondas disponibles...</span>
         </div>
@@ -128,7 +128,7 @@ export default function RoundSelector({
         <Label className="text-xs font-medium">
           Tipo de Ronda {required && '*'}
         </Label>
-        <div className="p-3 border rounded-md bg-red-50 border-red-200">
+        <div className="p-3 border rounded-control bg-red-50 border-red-200">
           <p className="text-sm text-red-600">
             {error || 'No hay rondas disponibles'}
           </p>
@@ -187,7 +187,7 @@ export default function RoundSelector({
 
       {/* Info sobre la ronda seleccionada */}
       {value && (
-        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-control">
           <div className="flex items-center gap-2">
             {(() => {
               const Icon = getRoundIcon(value)

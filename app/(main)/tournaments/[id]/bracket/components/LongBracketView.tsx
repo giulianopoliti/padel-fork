@@ -204,7 +204,7 @@ export default function LongBracketView({ tournamentId, onMatchUpdate }: LongBra
   }
 
   const bracketHeader = tournament && isGoldSilverFormat ? (
-    <div className="rounded-lg border border-slate-200 bg-white p-1.5">
+    <div className="rounded-surface border border-slate-200 bg-white p-1.5">
       <div className="grid grid-cols-2 gap-1.5">
         <Button
           type="button"
@@ -386,7 +386,7 @@ export default function LongBracketView({ tournamentId, onMatchUpdate }: LongBra
         />
       )}
 
-      <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="min-w-0 max-w-full overflow-hidden rounded-surface border border-slate-200 bg-white">
         <BracketDragDropProvider key={activeBracketKey}>
           <ImprovedBracketRenderer
             key={activeBracketKey}
@@ -408,9 +408,9 @@ export default function LongBracketView({ tournamentId, onMatchUpdate }: LongBra
 function LongBracketSkeleton() {
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-surface border border-slate-200 bg-white p-4">
         <div className="flex items-start gap-3">
-          <Skeleton className="h-8 w-8 rounded-lg" />
+          <Skeleton className="h-8 w-8 rounded-surface" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-5 w-48" />
             <Skeleton className="h-4 w-96 max-w-full" />
@@ -430,7 +430,7 @@ function LongBracketSkeleton() {
 function LongBracketContentSkeleton() {
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-surface border border-slate-200 bg-white p-4">
         <div className="space-y-2">
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-4 w-80 max-w-full" />

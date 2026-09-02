@@ -69,10 +69,10 @@ function SettingCard({
   status: SaveState
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
+    <div className="space-y-4 rounded-display border bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-xl bg-slate-100 p-2 text-slate-700">{icon}</div>
+          <div className="mt-0.5 rounded-elevated bg-slate-100 p-2 text-slate-700">{icon}</div>
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-slate-900">{title}</h3>
             <p className="text-sm text-muted-foreground">{description}</p>
@@ -453,7 +453,7 @@ export default function InscriptionAutomationForm({
             description="Definí si jugadores y visitantes pueden ver la cantidad y el listado de parejas."
             status={publicStatus}
           >
-            <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 rounded-elevated border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge variant={showPublicInscriptions ? "default" : "secondary"} className={showPublicInscriptions ? "bg-blue-600 hover:bg-blue-600" : ""}>
@@ -490,7 +490,7 @@ export default function InscriptionAutomationForm({
             description="Mostrá una alerta cuando queden dos lugares o menos, sin revelar el total de inscriptos."
             status={fewSlotsStatus}
           >
-            <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 rounded-elevated border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge
@@ -535,7 +535,7 @@ export default function InscriptionAutomationForm({
             description="Decide si las inscripciones realizadas por jugadores requieren aprobacion del organizador."
             status={validationStatus}
           >
-            <div className="flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 rounded-elevated border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge
@@ -575,7 +575,7 @@ export default function InscriptionAutomationForm({
             description="Controla si este torneo envia avisos por inscripcion, aprobacion, cancelacion y partidos programados."
             status={messagesStatus}
           >
-            <div className="flex flex-col gap-4 rounded-xl border border-sky-200 bg-sky-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 rounded-elevated border border-sky-200 bg-sky-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge
@@ -620,7 +620,7 @@ export default function InscriptionAutomationForm({
         description="Herramientas internas para que el organizador siga pagos dentro del panel."
         status={checkboxStatus}
       >
-        <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-elevated border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge
@@ -656,7 +656,7 @@ export default function InscriptionAutomationForm({
         description="Los jugadores veran alias, importe y podran adjuntar comprobante desde el popup de inscripcion."
         status={transferToggleStatus === "saving" ? "saving" : transferFieldsStatus === "error" ? "error" : transferToggleStatus === "saved" || transferFieldsStatus === "saved" ? "saved" : "idle"}
       >
-        <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+        <div className="space-y-4 rounded-elevated border border-amber-200 bg-amber-50/60 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -686,7 +686,7 @@ export default function InscriptionAutomationForm({
             </div>
           </div>
 
-          <div className="grid gap-4 rounded-xl border bg-white p-4 md:grid-cols-2">
+          <div className="grid gap-4 rounded-elevated border bg-white p-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="transfer-alias">Alias</Label>
               <Input

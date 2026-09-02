@@ -98,7 +98,7 @@ export default function FechaSelector({
             onClick={() => handleFechaChange(fecha.id)}
             disabled={isPending}
             aria-pressed={fecha.id === selectedFechaId}
-            className={`min-h-12 shrink-0 rounded-2xl border px-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`min-h-12 shrink-0 rounded-display border px-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               fecha.id === selectedFechaId
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border bg-card text-foreground'
@@ -264,7 +264,7 @@ export default function FechaSelector({
                 <Separator />
 
                 {selectedFecha.description && (
-                  <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
+                  <div className="rounded-surface border border-primary/15 bg-primary/5 p-3">
                     <p className="text-sm text-slate-700 font-medium">
                       {selectedFecha.description}
                     </p>
@@ -272,13 +272,13 @@ export default function FechaSelector({
                 )}
 
                 <div className="flex flex-wrap gap-4 text-sm">
-                  <div className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-lg">
+                  <div className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-surface">
                     <Calendar className="h-4 w-4 text-slate-600" />
                     <span className="font-medium text-slate-700">Fecha {selectedFecha.fecha_number}</span>
                   </div>
 
                   {(selectedFecha.start_date || selectedFecha.end_date) && (
-                    <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">
+                    <div className="flex items-center gap-2 rounded-surface bg-primary/10 px-3 py-2">
                       <Clock className="h-4 w-4 text-primary" />
                       <span className="font-medium text-primary">
                         {selectedFecha.start_date && selectedFecha.end_date ? (
@@ -293,7 +293,7 @@ export default function FechaSelector({
                   )}
 
                   {selectedFecha.max_matches_per_couple && (
-                    <div className="flex items-center bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 px-3 py-2 rounded-lg border border-orange-200">
+                    <div className="flex items-center bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 px-3 py-2 rounded-surface border border-orange-200">
                       <span className="text-xs font-bold">
                         Máx. {selectedFecha.max_matches_per_couple} partidos por pareja
                       </span>

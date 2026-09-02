@@ -111,7 +111,7 @@ const MatchResultIcon: React.FC<MatchResultIconProps> = ({
         <HoverCardTrigger asChild>
           <button
             onClick={() => setDialogOpen(true)}
-            className={`w-10 h-10 rounded-md flex items-center justify-center transition-all duration-200 cursor-pointer ${getBgColor()} border border-transparent hover:border-slate-300 active:scale-95`}
+            className={`w-10 h-10 rounded-control flex items-center justify-center transition-all duration-200 cursor-pointer ${getBgColor()} border border-transparent hover:border-slate-300 active:scale-95`}
             aria-label={`Ver detalles del partido: ${getResultText()}`}
           >
             {getIcon()}

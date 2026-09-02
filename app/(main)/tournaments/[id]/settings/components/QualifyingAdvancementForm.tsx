@@ -53,7 +53,7 @@ export default function QualifyingAdvancementForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-6">
         {/* Toggle principal */}
-        <div className="flex items-start space-x-3 p-4 border rounded-lg bg-background">
+        <div className="flex items-start space-x-3 p-4 border rounded-surface bg-background">
           <Checkbox
             id="enable-advancement-limit"
             checked={enabled}
@@ -90,7 +90,7 @@ export default function QualifyingAdvancementForm({
                 />
                 <span className="text-sm text-muted-foreground">parejas</span>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-surface p-3">
                 <p className="text-xs text-amber-800 leading-relaxed">
                   <strong>Importante:</strong> Solo las {couplesAdvance || 'N'} parejas mejor posicionadas 
                   en la clasificatoria avanzarán a la llave de eliminación directa. 

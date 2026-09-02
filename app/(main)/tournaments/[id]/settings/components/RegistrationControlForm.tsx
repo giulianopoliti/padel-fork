@@ -94,7 +94,7 @@ export default function RegistrationControlForm({
     <div className="space-y-6">
       {/* Current Status Display */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 border rounded-lg">
+        <div className="p-4 border rounded-surface">
           <div className="flex items-center gap-2 mb-2">
             <Users className="h-4 w-4 text-blue-600" />
             <span className="font-medium">Estado de Inscripciones</span>
@@ -114,7 +114,7 @@ export default function RegistrationControlForm({
           </div>
         </div>
 
-        <div className="p-4 border rounded-lg">
+        <div className="p-4 border rounded-surface">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-orange-600" />
             <span className="font-medium">Estado de la Llave</span>
@@ -131,7 +131,7 @@ export default function RegistrationControlForm({
 
       {/* Registration Control */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between p-4 border rounded-lg">
+        <div className="flex items-center justify-between p-4 border rounded-surface">
           <div className="space-y-1">
             <Label htmlFor="registration-toggle" className="text-sm font-medium">
               Permitir nuevas inscripciones

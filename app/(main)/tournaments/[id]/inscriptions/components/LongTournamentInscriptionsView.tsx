@@ -90,7 +90,7 @@ const LongTournamentInscriptionsView: React.FC<LongTournamentInscriptionsViewPro
 
             {/* Page Title */}
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-blue-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-blue-100 p-2 lg:p-3 rounded-elevated">
                 <Users className="h-5 w-5 lg:h-6 lg:w-6 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">
@@ -118,7 +118,7 @@ const LongTournamentInscriptionsView: React.FC<LongTournamentInscriptionsViewPro
       {/* Main Content - Reutiliza componente americano */}
       <div className="container mx-auto px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow-sm mt-6">
+          <div className="bg-white rounded-surface shadow-sm mt-6">
             {/* 
               🔄 REUTILIZACIÓN COMPLETA 
               Usar TournamentCouplesTab tal como está en el americano

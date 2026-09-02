@@ -28,7 +28,7 @@ export const InscribedTournamentsCard = ({ inscribedTournaments }: InscribedTour
 
   return (
     <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm flex flex-col">
-      <CardHeader className="pb-4 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-lg">
+      <CardHeader className="pb-4 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-surface">
         <CardTitle className="flex items-center text-white text-lg font-bold">
           <Trophy className="mr-3 h-6 w-6" />
           Mis Torneos Inscritos
@@ -41,7 +41,7 @@ export const InscribedTournamentsCard = ({ inscribedTournaments }: InscribedTour
               const tournament = inscription.tournament
               return (
                 <Link key={tournament.id} href={`/tournaments/${tournament.id}`} className="block">
-                  <div className="bg-gradient-to-br from-green-50 to-teal-50 border border-green-200 rounded-xl p-4 hover:shadow-md transition-all duration-300 hover:scale-102 cursor-pointer">
+                  <div className="bg-gradient-to-br from-green-50 to-teal-50 border border-green-200 rounded-elevated p-4 hover:shadow-md transition-all duration-300 hover:scale-102 cursor-pointer">
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-gray-900 text-sm">{tournament.name}</h4>
                       <Badge
@@ -89,7 +89,7 @@ export const InscribedTournamentsCard = ({ inscribedTournaments }: InscribedTour
 
         <div className="mt-6">
           <Button
-            className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+            className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white font-semibold py-3 rounded-surface shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
             onClick={(e) => e.preventDefault()}
           >
             <Trophy className="mr-2 h-5 w-5" />

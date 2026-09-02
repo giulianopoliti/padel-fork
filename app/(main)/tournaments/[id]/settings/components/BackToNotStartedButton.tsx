@@ -152,7 +152,7 @@ export default function BackToNotStartedButton({ tournamentId }: BackToNotStarte
               <p>Esta acción eliminará <strong>permanentemente</strong> todos los datos del torneo:</p>
               
               {previewData && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-3 space-y-1">
+                <div className="bg-red-50 border border-red-200 rounded-control p-3 space-y-1">
                   <h4 className="font-medium text-red-900">Datos a eliminar:</h4>
                   <div className="text-sm text-red-800 space-y-1">
                     {previewData.zonesCount > 0 && (

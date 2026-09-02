@@ -58,7 +58,7 @@ export default async function SchedulesPage({
 
             {/* Title */}
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-blue-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-blue-100 p-2 lg:p-3 rounded-elevated">
                 <AlertTriangle className="h-5 w-5 lg:h-6 lg:w-6 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">

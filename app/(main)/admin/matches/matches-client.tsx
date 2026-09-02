@@ -159,7 +159,7 @@ export const MatchesClient = ({ matches }: MatchesClientProps) => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
-                  <div className="bg-slate-50 p-3 rounded-lg space-y-2">
+                  <div className="bg-slate-50 p-3 rounded-surface space-y-2">
                     <div>
                       <div className="text-xs text-slate-500 mb-1">Pareja 1</div>
                       <div className="font-medium text-sm">{formatCoupleNameShort(match.couple1)}</div>

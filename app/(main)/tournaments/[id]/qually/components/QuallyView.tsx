@@ -42,7 +42,7 @@ export default function QuallyView({ tournament, coupleInscriptions, canManageTo
     <div className="min-h-screen bg-background/70">
       <header className="border-b border-border/70 bg-card/90 px-4 py-4 backdrop-blur sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-2.5 text-primary"><BarChart3 className="h-5 w-5" /></div>
+          <div className="rounded-elevated bg-primary/10 p-2.5 text-primary"><BarChart3 className="h-5 w-5" /></div>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-bold sm:text-2xl">Tablas de posiciones</h1>
             <p className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm"><Trophy className="h-3.5 w-3.5" />{tournament.name}<span>·</span><Users className="h-3.5 w-3.5" />{coupleInscriptions.length} parejas</p>

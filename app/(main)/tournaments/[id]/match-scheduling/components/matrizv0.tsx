@@ -147,7 +147,7 @@ export default function OrganizadorTorneos() {
             <Card className="bg-white border-gray-200 shadow-sm hover:shadow-lg transition-shadow">
               <CardHeader className="pb-4">
                 <CardTitle className="text-slate-900 flex items-center gap-2">
-                  <div className="bg-blue-100 p-2 rounded-lg">
+                  <div className="bg-blue-100 p-2 rounded-surface">
                     <Clock className="w-5 h-5 text-blue-600" />
                   </div>
                   Disponibilidad de Parejas
@@ -180,7 +180,7 @@ export default function OrganizadorTorneos() {
                                 {pareja.jugador1} / {pareja.jugador2}
                               </div>
                               {pareja.notas && (
-                                <div className="flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-md w-fit">
+                                <div className="flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-control w-fit">
                                   <Info className="w-3 h-3" />
                                   {pareja.notas}
                                 </div>
@@ -212,7 +212,7 @@ export default function OrganizadorTorneos() {
             <Card className="bg-white border-gray-200 shadow-sm hover:shadow-lg transition-shadow">
               <CardHeader className="pb-4">
                 <CardTitle className="text-slate-900 flex items-center gap-2">
-                  <div className="bg-purple-100 p-2 rounded-lg">
+                  <div className="bg-purple-100 p-2 rounded-surface">
                     <Users className="w-5 h-5 text-purple-600" />
                   </div>
                   Crear Partido
@@ -220,7 +220,7 @@ export default function OrganizadorTorneos() {
               </CardHeader>
               <CardContent>
                 <div
-                  className="border-2 border-dashed border-blue-300 bg-blue-50/30 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center mb-4 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
+                  className="border-2 border-dashed border-blue-300 bg-blue-50/30 rounded-surface p-4 min-h-[120px] flex flex-col items-center justify-center mb-4 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                 >
@@ -234,7 +234,7 @@ export default function OrganizadorTorneos() {
                   {parejasSeleccionadas.map((pareja) => (
                     <div
                       key={pareja.id}
-                      className="bg-blue-100 border border-blue-200 rounded-lg p-3 mb-2 w-full flex items-center justify-between shadow-sm"
+                      className="bg-blue-100 border border-blue-200 rounded-surface p-3 mb-2 w-full flex items-center justify-between shadow-sm"
                     >
                       <span className="text-slate-900 text-sm font-medium">
                         {pareja.jugador1} / {pareja.jugador2}
@@ -305,7 +305,7 @@ export default function OrganizadorTorneos() {
             <Card className="bg-white border-gray-200 shadow-sm hover:shadow-lg transition-shadow">
               <CardHeader className="pb-4">
                 <CardTitle className="text-slate-900 flex items-center gap-2">
-                  <div className="bg-orange-100 p-2 rounded-lg">
+                  <div className="bg-orange-100 p-2 rounded-surface">
                     <MapPin className="w-5 h-5 text-orange-600" />
                   </div>
                   Partidos Programados ({partidos.length})
@@ -322,7 +322,7 @@ export default function OrganizadorTorneos() {
                     partidos.map((partido) => (
                       <div
                         key={partido.id}
-                        className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-sm transition-shadow"
+                        className="bg-gray-50 border border-gray-200 rounded-surface p-4 space-y-3 hover:shadow-sm transition-shadow"
                       >
                         <div className="flex items-center justify-between">
                           <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200">{partido.cancha}</Badge>
@@ -344,7 +344,7 @@ export default function OrganizadorTorneos() {
                             {partido.pareja2.jugador1} / {partido.pareja2.jugador2}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-md w-fit">
+                        <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-control w-fit">
                           <Clock className="w-3 h-3" />
                           {partido.horaInicio} - {partido.horaFin}
                         </div>

@@ -14,7 +14,7 @@ import { RestoreTournamentButton } from "./components/restore-tournament-button"
 function TournamentsLoading() {
   return (
     <div className="space-y-8">
-      <div className="bg-white rounded-xl border border-gray-200 p-8">
+      <div className="bg-white rounded-elevated border border-gray-200 p-8">
         <div className="flex justify-between items-center">
           <div className="space-y-3">
             <Skeleton className="h-8 w-64" />
@@ -92,13 +92,13 @@ export default async function MyTournamentsPage() {
         <Suspense fallback={<TournamentsLoading />}>
           <div className="max-w-7xl mx-auto space-y-8">
             {/* Header Section */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white rounded-elevated border border-gray-200 shadow-sm">
               <div className="p-8">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                   {/* Left side: Title and Description */}
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="bg-slate-100 p-3 rounded-xl">
+                      <div className="bg-slate-100 p-3 rounded-elevated">
                         <Trophy className="h-7 w-7 text-slate-600" />
                       </div>
                       <div>
@@ -110,7 +110,7 @@ export default async function MyTournamentsPage() {
                     {/* Stats */}
                     <div className="flex items-center gap-6 mt-6">
                       <div className="flex items-center gap-2">
-                        <div className="bg-blue-100 p-2 rounded-lg">
+                        <div className="bg-blue-100 p-2 rounded-surface">
                           <BarChart3 className="h-4 w-4 text-blue-600" />
                         </div>
                         <div>
@@ -119,7 +119,7 @@ export default async function MyTournamentsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="bg-emerald-100 p-2 rounded-lg">
+                        <div className="bg-emerald-100 p-2 rounded-surface">
                           <TrendingUp className="h-4 w-4 text-emerald-600" />
                         </div>
                         <div>
@@ -134,7 +134,7 @@ export default async function MyTournamentsPage() {
                   <div className="flex-shrink-0">
                     <Button
                       asChild
-                      className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl shadow-sm"
+                      className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-elevated shadow-sm"
                     >
                       <Link href="/tournaments/create" className="flex items-center gap-2">
                         <Plus className="h-5 w-5" />
@@ -192,7 +192,7 @@ export default async function MyTournamentsPage() {
                     />
                   ))
                 ) : (
-                  <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                  <div className="bg-white rounded-surface border border-gray-200 p-12 text-center">
                     <Calendar className="h-12 w-12 text-blue-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay torneos programados</h3>
                     <p className="text-gray-500 mb-6">Crea un nuevo torneo para empezar a gestionar inscripciones y partidos</p>
@@ -217,7 +217,7 @@ export default async function MyTournamentsPage() {
                     />
                   ))
                 ) : (
-                  <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                  <div className="bg-white rounded-surface border border-gray-200 p-12 text-center">
                     <Target className="h-12 w-12 text-cyan-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay torneos en fase de zonas</h3>
                     <p className="text-gray-500">Los torneos en fase de zonas aparecerán aquí</p>
@@ -236,7 +236,7 @@ export default async function MyTournamentsPage() {
                     />
                   ))
                 ) : (
-                  <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                  <div className="bg-white rounded-surface border border-gray-200 p-12 text-center">
                     <Trophy className="h-12 w-12 text-purple-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay torneos en fase de llaves</h3>
                     <p className="text-gray-500">Los torneos en fase eliminatoria aparecerán aquí</p>
@@ -255,7 +255,7 @@ export default async function MyTournamentsPage() {
                     />
                   ))
                 ) : (
-                  <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                  <div className="bg-white rounded-surface border border-gray-200 p-12 text-center">
                     <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay torneos finalizados</h3>
                     <p className="text-gray-500">Los torneos completados aparecerán aquí</p>
@@ -274,7 +274,7 @@ export default async function MyTournamentsPage() {
                     />
                   ))
                 ) : (
-                  <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                  <div className="bg-white rounded-surface border border-gray-200 p-12 text-center">
                     <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay torneos cancelados</h3>
                     <p className="text-gray-500">Los torneos cancelados aparecerán aquí</p>

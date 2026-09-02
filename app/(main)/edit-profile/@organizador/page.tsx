@@ -430,7 +430,7 @@ export default function EditOrganizadorProfilePage() {
               {activeSection !== "clubs" && activeSection !== "gallery" ? (
                 <form action={formAction} className="max-w-3xl space-y-6">
                   {organizadorProfileData?.role && <input type="hidden" name="role" defaultValue={organizadorProfileData.role} />}
-                  <div className="bg-white rounded-lg border border-gray-200 p-6">{renderActiveSection()}</div>
+                  <div className="bg-white rounded-surface border border-gray-200 p-6">{renderActiveSection()}</div>
 
                   <div className="sticky bottom-0 pt-6 pb-4 -mx-4 px-4 bg-gradient-to-t from-white via-white to-transparent">
                     <Button
@@ -444,7 +444,7 @@ export default function EditOrganizadorProfilePage() {
                 </form>
               ) : (
                 <div className="max-w-3xl space-y-6">
-                  <div className="bg-white rounded-lg border border-gray-200 p-6">{renderActiveSection()}</div>
+                  <div className="bg-white rounded-surface border border-gray-200 p-6">{renderActiveSection()}</div>
                 </div>
               )}
             </div>

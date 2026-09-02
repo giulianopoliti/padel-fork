@@ -297,7 +297,7 @@ export default function ImportInscriptionsExcelDialog({
         )}
 
         {candidate ? (
-          <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
+          <div className="rounded-control border border-slate-200 bg-slate-50 p-2">
             <p className="text-xs font-medium text-slate-700">
               Posibles coincidencias:
             </p>
@@ -316,7 +316,7 @@ export default function ImportInscriptionsExcelDialog({
               </SelectContent>
             </Select>
             {decision.action === "use" && decision.playerId && getSelectedCandidate(row, slot)?.alreadyInscribed && (
-              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+              <div className="mt-2 rounded-control border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
                 {getSelectedCandidate(row, slot)?.inscriptionLabel || "Ya inscripto"}.
                 Esta fila no se volvera a inscribir si confirmas usando este jugador.
               </div>
@@ -356,7 +356,7 @@ export default function ImportInscriptionsExcelDialog({
         </DialogHeader>
 
         <div className="grid gap-4">
-          <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+          <div className="rounded-control border border-blue-200 bg-blue-50 p-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1 text-sm text-blue-950">
                 <p className="font-medium">Formato esperado</p>
@@ -414,7 +414,7 @@ export default function ImportInscriptionsExcelDialog({
           )}
 
           {rows.length > 0 && (
-            <ScrollArea className="h-[48vh] rounded-md border">
+            <ScrollArea className="h-[48vh] rounded-control border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -464,7 +464,7 @@ export default function ImportInscriptionsExcelDialog({
           )}
 
           {importResult?.summary.errors ? (
-            <ScrollArea className="max-h-32 rounded-md border p-3">
+            <ScrollArea className="max-h-32 rounded-control border p-3">
               <div className="space-y-2">
                 {importResult.results.filter((result) => result.status === "error").map((result) => (
                   <p key={result.rowId} className="text-sm text-red-700">

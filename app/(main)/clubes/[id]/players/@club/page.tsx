@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 function ClubPlayersLoading() {
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
-      <div className="bg-white rounded-xl border border-gray-200 p-8">
+      <div className="bg-white rounded-elevated border border-gray-200 p-8">
         <div className="flex justify-between items-center">
           <div className="space-y-3">
             <Skeleton className="h-8 w-64" />
@@ -19,7 +19,7 @@ function ClubPlayersLoading() {
       </div>
       <div className="grid grid-cols-1 gap-4">
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-gray-200 p-6">
+          <div key={i} className="bg-white rounded-elevated border border-gray-200 p-6">
             <div className="flex items-center gap-4">
               <Skeleton className="h-12 w-12 rounded-full" />
               <div className="space-y-2 flex-1">

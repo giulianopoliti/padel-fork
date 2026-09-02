@@ -39,7 +39,7 @@ export function SettingsShellCard({
     <Card className={`border-slate-200 shadow-sm ${className}`}>
       <CardHeader className="pb-4">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-xl bg-slate-100 p-2 text-slate-700">{icon}</div>
+          <div className="mt-0.5 rounded-elevated bg-slate-100 p-2 text-slate-700">{icon}</div>
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-lg text-slate-950">{title}</CardTitle>
@@ -64,7 +64,7 @@ export function SettingsMetricCard({
   helper: string
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/20 px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-display border border-white/10 bg-slate-950/20 px-4 py-3 backdrop-blur-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-100/70">{label}</p>

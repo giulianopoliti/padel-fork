@@ -162,7 +162,7 @@ export default function PlayersSectionClient({
       {/* Tabla con loading overlay */}
       <div className="relative">
         {isSearching && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-surface">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         )}

@@ -155,7 +155,7 @@ export default function RoundSelector({
 
       {/* Indicador de ronda actual */}
       {selectedRound !== 'all' && (
-        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1">
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-surface px-3 py-1">
           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           <span className="text-sm text-blue-800 font-medium">
             {ROUND_CONFIG[selectedRound as Round]?.displayName || selectedRound}

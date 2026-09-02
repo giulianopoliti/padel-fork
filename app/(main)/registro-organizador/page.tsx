@@ -118,13 +118,13 @@ export default function OrganizerRegisterPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
+              <div className="rounded-display border border-slate-200 bg-slate-50/80 p-5">
                 <p className="text-sm font-medium text-slate-900">Qué hace este flujo</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   Crea el usuario con rol <strong>ORGANIZADOR</strong>, la fila en <strong>organizaciones</strong> con <strong>is_active = false</strong> y su vínculo en <strong>organization_members</strong> también inactivo.
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
+              <div className="rounded-display border border-slate-200 bg-slate-50/80 p-5">
                 <p className="text-sm font-medium text-slate-900">Qué hacés después</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   Entrás a admin, revisás la organización nueva y activás tanto la organización como el miembro para habilitar el acceso al panel.
@@ -135,7 +135,7 @@ export default function OrganizerRegisterPage() {
 
           <Card className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
             <CardHeader className="space-y-2 border-b border-slate-100 px-8 py-7">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-display bg-slate-900 text-white">
                 <Building2 className="h-6 w-6" />
               </div>
               <CardTitle className="text-2xl text-slate-950">Registrar organización</CardTitle>

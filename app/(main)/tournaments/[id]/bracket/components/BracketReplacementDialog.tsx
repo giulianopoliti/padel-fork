@@ -196,7 +196,7 @@ export default function BracketReplacementDialog({
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
           {availableKeys.length > 1 && (
-            <div className="rounded-lg border border-slate-200 bg-white p-1.5">
+            <div className="rounded-surface border border-slate-200 bg-white p-1.5">
               <div className="grid grid-cols-2 gap-1.5">
                 {availableKeys.map((key) => (
                   <Button
@@ -230,7 +230,7 @@ export default function BracketReplacementDialog({
           )}
 
           {loading ? (
-            <div className="flex min-h-80 items-center justify-center rounded-lg border border-slate-200">
+            <div className="flex min-h-80 items-center justify-center rounded-surface border border-slate-200">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Cargando parejas...
             </div>
@@ -244,7 +244,7 @@ export default function BracketReplacementDialog({
                   </p>
                 </div>
 
-                <div className="max-h-[48vh] overflow-auto rounded-lg border border-slate-200 lg:max-h-[440px]">
+                <div className="max-h-[48vh] overflow-auto rounded-surface border border-slate-200 lg:max-h-[440px]">
                   <Table className="min-w-[620px]">
                     <TableHeader className="sticky top-0 z-10 bg-white">
                       <TableRow>
@@ -283,14 +283,14 @@ export default function BracketReplacementDialog({
               </div>
 
               <div className="space-y-4">
-                <section className="space-y-2 rounded-lg border border-slate-200 p-3">
+                <section className="space-y-2 rounded-surface border border-slate-200 p-3">
                   <h3 className="text-sm font-semibold text-slate-900">Fuera de esta llave</h3>
                   <p className="text-xs text-slate-500">
                     Puede venir de eliminadas, de otra copa o de cualquier pareja del torneo.
                   </p>
                   <div className="max-h-64 space-y-2 overflow-auto lg:max-h-60">
                     {data.incomingCandidates.length === 0 ? (
-                      <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-500">
+                      <p className="rounded-control bg-slate-50 p-3 text-sm text-slate-500">
                         No hay parejas disponibles para ingresar.
                       </p>
                     ) : data.incomingCandidates.map((row) => (
@@ -299,7 +299,7 @@ export default function BracketReplacementDialog({
                         type="button"
                         disabled={submitting}
                         onClick={() => setIncomingCoupleId(row.coupleId)}
-                        className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                        className={`w-full rounded-control border px-3 py-2 text-left text-sm transition-colors ${
                           incomingCoupleId === row.coupleId
                             ? 'border-green-500 bg-green-50 text-green-900'
                             : 'border-slate-200 bg-white hover:bg-slate-50'
@@ -317,7 +317,7 @@ export default function BracketReplacementDialog({
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                <section className="rounded-surface border border-slate-200 bg-slate-50 p-3 text-sm">
                   <h3 className="mb-2 font-semibold text-slate-900">Resumen</h3>
                   <div className="space-y-1 text-slate-700">
                     <p><span className="font-medium">Sale:</span> {outgoing?.name || 'Sin seleccionar'}</p>

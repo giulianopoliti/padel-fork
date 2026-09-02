@@ -35,7 +35,7 @@ export default function PlayerScheduleView({ tournamentId, fechas, initialFechaI
     <div className="min-h-screen bg-background/70">
       <header className="border-b border-border/70 bg-card/90 px-4 py-4 backdrop-blur sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-2 text-primary"><CalendarCheck2 className="h-5 w-5" /></div>
+          <div className="rounded-elevated bg-primary/10 p-2 text-primary"><CalendarCheck2 className="h-5 w-5" /></div>
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold sm:text-2xl">Cargar disponibilidad</h1>
             <p className="truncate text-xs text-muted-foreground sm:text-sm">{tournamentName}{clubName ? ` · ${clubName}` : ''}</p>

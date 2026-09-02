@@ -191,7 +191,7 @@ const LongTournamentView: React.FC<LongTournamentViewProps> = ({
     <div className="p-6 space-y-6">
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-lg">
+          <div className="bg-blue-100 p-2 rounded-surface">
             <Trophy className="h-6 w-6 text-blue-600" />
           </div>
           <div>

@@ -167,7 +167,7 @@ export default function TournamentAmericanSidebar({
         collapsed && !mobile ? "p-3" : "p-4 space-y-4"
       )}>
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 rounded-lg border border-border bg-muted/60 p-2 text-primary">
+          <div className="flex-shrink-0 rounded-surface border border-border bg-muted/60 p-2 text-primary">
             <TrophyIcon className={cn(
               "transition-all duration-300",
               collapsed && !mobile ? "h-5 w-5" : "h-5 w-5"
@@ -218,7 +218,7 @@ export default function TournamentAmericanSidebar({
                         href={`/tournaments/${tournament.id}${item.href}`}
                         onClick={handleLinkClick}
                         className={cn(
-                          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                          "group flex items-center gap-3 rounded-surface px-3 py-2.5 text-sm transition-colors",
                           "active:scale-[0.98]",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           isActive && [

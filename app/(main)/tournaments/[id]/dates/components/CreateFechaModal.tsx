@@ -162,7 +162,7 @@ export default function CreateFechaModal({
                 bracket_key: e.target.value === 'ZONE' ? 'MAIN' : prev.bracket_key
               }))}
               disabled={loading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-control focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ZONE">Tabla de posiciones (Zona)</option>
               <option value="32VOS">32vos de Final</option>
@@ -185,7 +185,7 @@ export default function CreateFechaModal({
                   bracket_key: e.target.value as 'MAIN' | 'GOLD' | 'SILVER'
                 }))}
                 disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-control focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="MAIN">Principal</option>
                 <option value="GOLD">Copa de Oro</option>

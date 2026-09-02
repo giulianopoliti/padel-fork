@@ -155,7 +155,7 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
     <div className="space-y-4">
       <Card className="border-primary/20 shadow-sm">
         <CardContent className="flex items-start gap-3 p-4 sm:p-5">
-          <div className="rounded-xl bg-primary p-3 text-primary-foreground"><Users className="h-5 w-5" /></div>
+          <div className="rounded-elevated bg-primary p-3 text-primary-foreground"><Users className="h-5 w-5" /></div>
           <div className="min-w-0">
             <h2 className="text-lg font-bold">Horarios de tu pareja</h2>
             <p className="truncate font-semibold text-primary">{coupleInfo?.player1_name} / {coupleInfo?.player2_name}</p>
@@ -174,7 +174,7 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
       )}
 
       <Accordion type="single" collapsible>
-        <AccordionItem value="instructions" className="rounded-xl border bg-card px-4">
+        <AccordionItem value="instructions" className="rounded-elevated border bg-card px-4">
           <AccordionTrigger className="hover:no-underline"><span className="flex items-center gap-2 text-sm font-semibold"><Info className="h-4 w-4 text-primary" />Como responder</span></AccordionTrigger>
           <AccordionContent className="space-y-2 text-sm text-muted-foreground">
             <p>Marca Disponible solo cuando ambos integrantes puedan jugar.</p>
@@ -260,7 +260,7 @@ const FreeDateRequestCard = ({ timeSlot, onPreferenceChange, saving, disabled }:
       <Card className={requested ? 'border-amber-400 bg-amber-50/80' : 'border-border bg-card'}>
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex items-start gap-3">
-            <div className={requested ? 'rounded-xl bg-amber-500 p-3 text-white' : 'rounded-xl bg-muted p-3 text-muted-foreground'}>
+            <div className={requested ? 'rounded-elevated bg-amber-500 p-3 text-white' : 'rounded-elevated bg-muted p-3 text-muted-foreground'}>
               <CalendarX2 className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -360,21 +360,21 @@ const TimeSlotAvailabilityCard = ({ timeSlot, onAvailabilityChange, saving, disa
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><span className="rounded-lg bg-primary/10 p-2 text-primary"><CalendarDays className="h-4 w-4" /></span>{formatDateWithWeekday(timeSlot.date)}</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><span className="rounded-surface bg-primary/10 p-2 text-primary"><CalendarDays className="h-4 w-4" /></span>{formatDateWithWeekday(timeSlot.date)}</CardTitle>
             <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Clock className="h-4 w-4" />{timeSlot.start_time.slice(0, 5)} - {timeSlot.end_time.slice(0, 5)}</p>
           </div>
           <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusClass}`}>{availability === true ? 'Disponible' : availability === false ? 'No disponible' : 'Sin responder'}</span>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {timeSlot.description && <p className="rounded-xl bg-muted/70 p-3 text-sm text-muted-foreground">{timeSlot.description}</p>}
+        {timeSlot.description && <p className="rounded-elevated bg-muted/70 p-3 text-sm text-muted-foreground">{timeSlot.description}</p>}
         <div className="grid grid-cols-2 gap-2" role="group" aria-label={`Disponibilidad para ${formatDateWithWeekday(timeSlot.date)}`}>
           <Button type="button" variant="outline" disabled={saving || disabled} onClick={() => void handleSelect(true)} aria-pressed={availability === true} className={`min-h-12 gap-2 ${availability === true ? 'border-emerald-500 bg-emerald-50 text-emerald-800 hover:bg-emerald-100' : ''}`}><Check className="h-4 w-4" />Disponible</Button>
           <Button type="button" variant="outline" disabled={saving || disabled} onClick={() => void handleSelect(false)} aria-pressed={availability === false} className={`min-h-12 gap-2 ${availability === false ? 'border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100' : ''}`}><X className="h-4 w-4" />No disponible</Button>
         </div>
         {availability !== null && (
           <Accordion type="single" collapsible>
-            <AccordionItem value="notes" className="rounded-xl border px-3">
+            <AccordionItem value="notes" className="rounded-elevated border px-3">
               <AccordionTrigger className="py-3 text-sm hover:no-underline">Nota opcional</AccordionTrigger>
               <AccordionContent><Textarea value={notes} onChange={event => setNotes(event.target.value)} onBlur={() => void handleNotesBlur()} disabled={saving || disabled} maxLength={200} rows={2} placeholder="Ej: podemos a partir de las 19" /></AccordionContent>
             </AccordionItem>

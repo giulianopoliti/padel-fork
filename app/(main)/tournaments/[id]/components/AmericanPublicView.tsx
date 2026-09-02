@@ -131,13 +131,13 @@ export default function AmericanPublicView({
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
               {canShowParticipantStats ? (
                 <>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                     <Users className="h-8 w-8 mx-auto mb-2" />
                     <div className="text-3xl font-bold">{stats.couples}</div>
                     <div className="text-blue-100 text-sm mt-1">Parejas inscriptas</div>
                   </div>
 
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                     <Trophy className="h-8 w-8 mx-auto mb-2" />
                     <div className="text-3xl font-bold">{stats.players}</div>
                     <div className="text-blue-100 text-sm mt-1">Jugadores</div>
@@ -145,13 +145,13 @@ export default function AmericanPublicView({
                 </>
               ) : (
                 <>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                     <Trophy className="h-8 w-8 mx-auto mb-2" />
                     <div className="text-lg font-bold mt-1">{publicInfo.typeLabel}</div>
                     <div className="text-blue-100 text-sm mt-1">Formato</div>
                   </div>
 
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                     <Users className="h-8 w-8 mx-auto mb-2" />
                     <div className="text-lg font-bold mt-1">
                       {publicInfo.category || publicInfo.genderLabel}
@@ -163,7 +163,7 @@ export default function AmericanPublicView({
                 </>
               )}
 
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 col-span-2 md:col-span-1">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4 col-span-2 md:col-span-1">
                 <Calendar className="h-8 w-8 mx-auto mb-2" />
                 <div className="text-lg font-bold mt-1">
                   {publicInfo.startDateLabel || "Fecha por definir"}
@@ -176,7 +176,7 @@ export default function AmericanPublicView({
 
             {isCanceled && (
               <div className="mt-8 max-w-md mx-auto">
-                <div className="bg-red-100/20 border border-red-300/30 rounded-lg p-4 backdrop-blur-sm">
+                <div className="bg-red-100/20 border border-red-300/30 rounded-surface p-4 backdrop-blur-sm">
                   <div className="flex items-center justify-center gap-2 text-red-100">
                     <XCircle className="h-5 w-5" />
                     <p className="font-medium">Este torneo ha sido cancelado</p>
@@ -194,7 +194,7 @@ export default function AmericanPublicView({
             )}
 
             {isInscribed && !isCanceled ? (
-              <div className="mx-auto mt-8 max-w-md rounded-lg border border-emerald-200/70 bg-emerald-600/90 p-4 text-white shadow-lg backdrop-blur-sm">
+              <div className="mx-auto mt-8 max-w-md rounded-surface border border-emerald-200/70 bg-emerald-600/90 p-4 text-white shadow-lg backdrop-blur-sm">
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
                   <p className="text-base font-semibold">
@@ -213,7 +213,7 @@ export default function AmericanPublicView({
 
             {isFull && !isCanceled ? (
               <div className="mt-8 max-w-md mx-auto">
-                <div className="rounded-lg border border-red-200/70 bg-red-600/90 p-4 text-white shadow-[0_0_28px_rgba(220,38,38,0.45)] backdrop-blur-sm">
+                <div className="rounded-surface border border-red-200/70 bg-red-600/90 p-4 text-white shadow-[0_0_28px_rgba(220,38,38,0.45)] backdrop-blur-sm">
                   <p className="text-base font-semibold">Cupo completo</p>
                   <p className="mt-2 text-sm text-red-50">Ya no se aceptan nuevas inscripciones para este torneo.</p>
                 </div>

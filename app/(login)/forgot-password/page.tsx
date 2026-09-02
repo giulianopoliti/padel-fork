@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-slate-300">
                 Revisa tu bandeja de entrada en:
               </p>
-              <p className="rounded-lg bg-brand-50 px-3 py-2 font-semibold text-brand-900">
+              <p className="rounded-surface bg-brand-50 px-3 py-2 font-semibold text-brand-900">
                 {email}
               </p>
             </div>
@@ -166,7 +166,7 @@ export default function ForgotPasswordPage() {
             </div>
             
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-surface p-3">
                 {error}
               </div>
             )}

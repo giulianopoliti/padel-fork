@@ -509,7 +509,7 @@ export function DuplicateTournamentDialog({
             </div>
 
             {clubs.length > 1 && (
-              <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+              <div className="space-y-3 rounded-surface border border-slate-200 p-4">
                 <div>
                   <p className="text-sm font-medium text-slate-900">Sedes adicionales</p>
                   <p className="text-xs text-slate-500">

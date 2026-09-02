@@ -245,7 +245,7 @@ export const OrganizationsClient = ({
               organizations.map((org) => (
                 <div
                   key={org.id}
-                  className="border rounded-lg overflow-hidden"
+                  className="border rounded-surface overflow-hidden"
                 >
                   {/* Organization Row */}
                   <div className="flex items-center gap-3 p-4 bg-white hover:bg-slate-50">
@@ -470,7 +470,7 @@ export const OrganizationsClient = ({
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleTabChange(org.id, "members")}
-                        className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                        className={`flex-1 px-3 py-2 text-xs font-medium rounded-surface transition-colors ${
                           (activeTab[org.id] || "members") === "members"
                             ? "bg-red-100 text-red-700"
                             : "bg-slate-100 text-slate-600"
@@ -480,7 +480,7 @@ export const OrganizationsClient = ({
                       </button>
                       <button
                         onClick={() => handleTabChange(org.id, "clubs")}
-                        className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                        className={`flex-1 px-3 py-2 text-xs font-medium rounded-surface transition-colors ${
                           activeTab[org.id] === "clubs"
                             ? "bg-red-100 text-red-700"
                             : "bg-slate-100 text-slate-600"
@@ -490,7 +490,7 @@ export const OrganizationsClient = ({
                       </button>
                     </div>
                     {/* Tab Content */}
-                    <div className="bg-slate-50 rounded-lg p-3">
+                    <div className="bg-slate-50 rounded-surface p-3">
                       {(activeTab[org.id] || "members") === "members" ? (
                         <>
                           {loadingMembers === org.id ? (

@@ -55,7 +55,7 @@ export default async function OrganizerMatchesPage({ searchParams }: OrganizerMa
   if (orgError || !orgMember) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <div className="mx-auto max-w-md rounded-lg border bg-card p-8 text-center shadow-sm">
+        <div className="mx-auto max-w-md rounded-surface border bg-card p-8 text-center shadow-sm">
           <h1 className="text-2xl font-bold">No tenés organización asignada</h1>
           <p className="mt-3 text-sm text-muted-foreground">
             Necesitás una organización activa para consultar la agenda consolidada de partidos.

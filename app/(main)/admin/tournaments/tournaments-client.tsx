@@ -239,7 +239,7 @@ export const TournamentsClient = ({ tournaments: initialTournaments }: Tournamen
                         </div>
                         {/* Actions Menu Dropdown */}
                         {actionsMenuOpen === tournament.id && (
-                          <div className="absolute right-0 mt-2 w-64 bg-white border rounded-lg shadow-lg p-2 z-10">
+                          <div className="absolute right-0 mt-2 w-64 bg-white border rounded-surface shadow-lg p-2 z-10">
                             <TournamentActionsMenu
                               tournamentId={tournament.id}
                               tournamentName={tournament.name}
@@ -334,7 +334,7 @@ export const TournamentsClient = ({ tournaments: initialTournaments }: Tournamen
                 </div>
                 {/* Actions Menu Dropdown for Mobile */}
                 {actionsMenuOpen === tournament.id && (
-                  <div className="mt-2 border rounded-lg p-2 bg-slate-50">
+                  <div className="mt-2 border rounded-surface p-2 bg-slate-50">
                     <TournamentActionsMenu
                       tournamentId={tournament.id}
                       tournamentName={tournament.name}

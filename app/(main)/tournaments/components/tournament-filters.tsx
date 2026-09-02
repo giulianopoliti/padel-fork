@@ -70,7 +70,7 @@ export default function TournamentFilters({ categories, clubs }: TournamentFilte
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-2xl border border-gray-200 px-3 py-2 transition-colors hover:bg-gray-50">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-display border border-gray-200 px-3 py-2 transition-colors hover:bg-gray-50">
         <Filter className="h-4 w-4 text-gray-500" />
         <span className="font-medium text-gray-700">
           Filtros

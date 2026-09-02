@@ -207,7 +207,7 @@ export default function BackFromBracketButton({
               </p>
 
               {previewData && (
-                <div className="space-y-1 rounded-md border border-orange-200 bg-orange-50 p-3">
+                <div className="space-y-1 rounded-control border border-orange-200 bg-orange-50 p-3">
                   <h4 className="font-medium text-orange-900">Datos a eliminar:</h4>
                   <div className="space-y-1 text-sm text-orange-800">
                     {previewData.seedsCount > 0 && (
@@ -231,7 +231,7 @@ export default function BackFromBracketButton({
               )}
 
               {hasFinishedMatches && (
-                <div className="space-y-1 rounded-md border-2 border-red-300 bg-red-100 p-3">
+                <div className="space-y-1 rounded-control border-2 border-red-300 bg-red-100 p-3">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
                     <div>
@@ -247,7 +247,7 @@ export default function BackFromBracketButton({
                 </div>
               )}
 
-              <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+              <div className="rounded-control border border-blue-200 bg-blue-50 p-3">
                 <p className="text-sm text-blue-800">
                   Los datos de zona se mantendran intactos. Podras regenerar la llave cuando estes
                   listo.

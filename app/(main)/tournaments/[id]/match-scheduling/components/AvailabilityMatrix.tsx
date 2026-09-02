@@ -146,7 +146,7 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
     <Card className="bg-white border-gray-200 shadow-sm hover:shadow-lg transition-shadow">
       <CardHeader className="pb-4">
         <CardTitle className="text-slate-900 flex items-center gap-2">
-          <div className="bg-blue-100 p-2 rounded-lg">
+          <div className="bg-blue-100 p-2 rounded-surface">
             <Clock className="w-5 h-5 text-blue-600" />
           </div>
           Matriz de Disponibilidad
@@ -155,15 +155,15 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
           Arrastra las parejas para seleccionarlas o haz clic para alternar selección
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <div className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-300 rounded-lg">
+          <div className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-300 rounded-surface">
             <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
             <span className="text-sm font-medium text-yellow-800">Partido en borrador</span>
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-300 rounded-lg">
+          <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-300 rounded-surface">
             <div className="w-3 h-3 bg-red-400 rounded-full"></div>
             <span className="text-sm font-medium text-red-800">Partido programado / finalizado</span>
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-300 rounded-lg">
+          <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-300 rounded-surface">
             <CalendarX className="w-3 h-3 text-red-600" />
             <span className="text-sm font-medium text-red-800">FECHA LIBRE</span>
           </div>

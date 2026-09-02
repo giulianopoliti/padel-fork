@@ -33,7 +33,7 @@ export function ErrorState({ title, description, action, variant = 'error' }: Er
     <div className="flex items-center justify-center min-h-[400px] p-4">
       <Card className="w-full max-w-md shadow-lg border-2">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 shadow-md">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-display bg-gradient-to-br from-red-100 to-red-200 shadow-md">
             <Icon className="h-8 w-8 text-red-600" />
           </div>
           <CardTitle className="text-xl font-bold">{title}</CardTitle>
@@ -83,7 +83,7 @@ export function NotInscribedError() {
     <div className="flex items-center justify-center min-h-[400px] p-4">
       <Card className="w-full max-w-md shadow-lg border-2">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-orange-200 shadow-md">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-display bg-gradient-to-br from-orange-100 to-orange-200 shadow-md">
             <UserX className="h-8 w-8 text-orange-600" />
           </div>
           <CardTitle className="text-xl font-bold">No Inscrito</CardTitle>
@@ -106,7 +106,7 @@ export function EliminatedCoupleError() {
     <div className="flex items-center justify-center min-h-[400px] p-4">
       <Card className="w-full max-w-md shadow-lg border-2">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 shadow-md">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-display bg-gradient-to-br from-red-100 to-red-200 shadow-md">
             <XCircle className="h-8 w-8 text-red-600" />
           </div>
           <CardTitle className="text-xl font-bold">Pareja Eliminada</CardTitle>
@@ -129,7 +129,7 @@ export function NotOrganizerError() {
     <div className="flex items-center justify-center min-h-[400px] p-4">
       <Card className="w-full max-w-md shadow-lg border-2">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 shadow-md">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-display bg-gradient-to-br from-blue-100 to-blue-200 shadow-md">
             <Lock className="h-8 w-8 text-blue-600" />
           </div>
           <CardTitle className="text-xl font-bold">Solo Organizadores</CardTitle>

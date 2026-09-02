@@ -105,7 +105,7 @@ function EliminatedPlayerSchedulesView({
             </div>
 
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-red-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-red-100 p-2 lg:p-3 rounded-elevated">
                 <Trophy className="h-5 w-5 lg:h-6 lg:w-6 text-red-600" />
               </div>
               <div className="flex-1 min-w-0">
@@ -134,7 +134,7 @@ function EliminatedPlayerSchedulesView({
             </AlertDescription>
           </Alert>
 
-          <div className="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+          <div className="mt-6 bg-white rounded-surface border border-gray-200 p-6">
             <div className="text-center">
               <Trophy className="h-12 w-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">

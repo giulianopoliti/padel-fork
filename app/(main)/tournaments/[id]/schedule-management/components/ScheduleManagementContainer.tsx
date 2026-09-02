@@ -114,7 +114,7 @@ export default function ScheduleManagementContainer({
 
             {/* Title */}
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-gradient-to-br from-blue-100 to-green-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-gradient-to-br from-blue-100 to-green-100 p-2 lg:p-3 rounded-elevated">
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
                   <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-green-600" />
@@ -143,7 +143,7 @@ export default function ScheduleManagementContainer({
       {/* Main Content - Resizable Panels */}
       <div className="container mx-auto px-4 py-6">
         <div className="max-w-7xl mx-auto h-[calc(100vh-240px)]">
-          <ResizablePanelGroup direction="horizontal" className="rounded-lg border bg-white">
+          <ResizablePanelGroup direction="horizontal" className="rounded-surface border bg-white">
 
             {/* Left Sidebar: Fecha Navigation */}
             <ResizablePanel defaultSize={30} minSize={25} maxSize={40}>

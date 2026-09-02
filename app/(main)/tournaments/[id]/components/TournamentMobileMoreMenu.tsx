@@ -37,7 +37,7 @@ export default function TournamentMobileMoreMenu({
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg border px-3 py-3 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-surface border px-3 py-3 text-sm font-medium transition-colors",
                     active
                       ? "border-primary/20 bg-primary/10 text-primary"
                       : "border-transparent text-muted-foreground hover:border-border hover:bg-muted/70 hover:text-foreground"

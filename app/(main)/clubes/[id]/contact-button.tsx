@@ -46,7 +46,7 @@ const ContactButton = ({ club }: ContactButtonProps) => {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button className="w-full bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white rounded-xl shadow-lg">
+        <Button className="w-full bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white rounded-elevated shadow-lg">
           <Phone className="h-4 w-4 mr-2" />
           Contactar
           <ChevronDown className="h-4 w-4 ml-2" />

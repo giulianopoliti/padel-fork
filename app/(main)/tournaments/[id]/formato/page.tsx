@@ -39,9 +39,9 @@ export default async function TournamentFormatPage({ params }: FormatPageProps) 
           <ArrowLeft className="h-4 w-4" />
           Volver al torneo
         </Link>
-        <header className="rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
+        <header className="rounded-display border bg-card p-6 shadow-sm sm:p-8">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-primary/10 p-3 text-primary"><BookOpen className="h-6 w-6" /></div>
+            <div className="rounded-elevated bg-primary/10 p-3 text-primary"><BookOpen className="h-6 w-6" /></div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Formato de juego</p>
               <h1 className="mt-1 text-2xl font-bold text-foreground sm:text-3xl">{tournament.name}</h1>
@@ -72,7 +72,7 @@ export default async function TournamentFormatPage({ params }: FormatPageProps) 
           </GuideCard>
         </section>
 
-        <section className="rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
+        <section className="rounded-display border bg-card p-6 shadow-sm sm:p-8">
           <h2 className="flex items-center gap-2 text-xl font-semibold"><GitFork className="h-5 w-5 text-primary" /> Desarrollo</h2>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
             <li className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />Los resultados se reflejan en la tabla de posiciones según el reglamento del torneo.</li>
@@ -89,5 +89,5 @@ export default async function TournamentFormatPage({ params }: FormatPageProps) 
 }
 
 function GuideCard({ icon: Icon, title, children }: { icon: typeof Trophy; title: string; children: ReactNode }) {
-  return <div className="rounded-2xl border bg-card p-5 shadow-sm"><Icon className="h-5 w-5 text-primary" /><h2 className="mt-3 font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{children}</p></div>
+  return <div className="rounded-display border bg-card p-5 shadow-sm"><Icon className="h-5 w-5 text-primary" /><h2 className="mt-3 font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{children}</p></div>
 }

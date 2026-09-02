@@ -162,7 +162,7 @@ export default function TournamentCard({ tournament, priority = false }: Tournam
       <HoverCardTrigger asChild>
         <Link
           href={`/tournaments/${tournament.id}`}
-          className="block rounded-lg group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="block rounded-surface group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           aria-label={`Ver detalles del torneo ${tournament.name}, estado: ${statusConfig.label}`}
         >
           <Card className={`overflow-hidden border-l-4 transition-all duration-200 hover:shadow-lg ${statusConfig.accent}`}>
@@ -247,17 +247,17 @@ export default function TournamentCard({ tournament, priority = false }: Tournam
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="flex flex-col items-center rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                    <div className="flex flex-col items-center rounded-surface bg-blue-50 p-3 dark:bg-blue-900/20">
                       <Users className="mb-1 h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
                       <span className="text-2xl font-bold">{tournament.inscriptions}</span>
                       <span className="text-xs text-muted-foreground">inscriptos</span>
                     </div>
-                    <div className="flex flex-col items-center rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+                    <div className="flex flex-col items-center rounded-surface bg-green-50 p-3 dark:bg-green-900/20">
                       <Zap className="mb-1 h-5 w-5 text-green-600 dark:text-green-400" aria-hidden="true" />
                       <span className="text-2xl font-bold">{tournament.matchesFinished}</span>
                       <span className="text-xs text-muted-foreground">finalizados</span>
                     </div>
-                    <div className="flex flex-col items-center rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+                    <div className="flex flex-col items-center rounded-surface bg-amber-50 p-3 dark:bg-amber-900/20">
                       <Calendar className="mb-1 h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                       <span className="text-2xl font-bold">{tournament.matchesPending}</span>
                       <span className="text-xs text-muted-foreground">programados</span>

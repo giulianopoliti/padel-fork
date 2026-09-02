@@ -193,7 +193,7 @@ const ResultsMatrix: React.FC<ResultsMatrixProps> = ({
     <TooltipProvider>
       <div className="space-y-4">
         {/* Format Info */}
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-surface p-4 border border-purple-200">
           <p className="text-sm text-slate-700">
             <strong className="text-purple-700">Formato:</strong>{' '}
             {isSingleSetFormat ? 'Un set por partido' : 'Mejor de 3 sets por partido'}
@@ -202,7 +202,7 @@ const ResultsMatrix: React.FC<ResultsMatrixProps> = ({
         </div>
 
         {/* Results Matrix - Compact Design with Fixed Column */}
-        <div className="w-full rounded-lg border border-slate-200 overflow-hidden">
+        <div className="w-full rounded-surface border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200">
             {/* Header */}
@@ -287,7 +287,7 @@ const ResultsMatrix: React.FC<ResultsMatrixProps> = ({
                         className="px-1 py-2 text-center border-r border-slate-100 w-[50px]"
                       >
                         {rowCouple.id === colCouple.id ? (
-                          <div className="flex items-center justify-center w-10 h-10 bg-slate-100 rounded-md mx-auto">
+                          <div className="flex items-center justify-center w-10 h-10 bg-slate-100 rounded-control mx-auto">
                             <span className="text-slate-300 text-lg font-bold">-</span>
                           </div>
                         ) : (
@@ -310,7 +310,7 @@ const ResultsMatrix: React.FC<ResultsMatrixProps> = ({
       </div>
 
       {/* Legend */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-slate-50 rounded-lg p-4 border border-slate-200">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-slate-50 rounded-surface p-4 border border-slate-200">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 bg-emerald-50 border-2 border-emerald-200 rounded flex items-center justify-center">
             <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>

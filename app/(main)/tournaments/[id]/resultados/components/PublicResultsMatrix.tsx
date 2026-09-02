@@ -41,7 +41,7 @@ const CoupleLabel = ({
   return (
     <Link
       href={`/tournaments/${tournamentId}/resultados/${couple.id}`}
-      className="flex min-w-0 items-center gap-2 rounded-md text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex min-w-0 items-center gap-2 rounded-control text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex -space-x-2">
         {[couple.player1, couple.player2].map((player, index) => (
@@ -95,7 +95,7 @@ const MatchCell = ({ match, viewingCoupleId }: { match?: PublicLongMatch; viewin
 
   return (
     <div
-      className={`rounded-md px-1.5 py-1 text-center text-[10px] font-bold leading-tight sm:text-xs ${
+      className={`rounded-control px-1.5 py-1 text-center text-[10px] font-bold leading-tight sm:text-xs ${
         isWinner ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
       }`}
       title={setScores.length ? `Sets: ${summary}. Games: ${setScores.join(", ")}` : `Sets: ${summary}`}
@@ -111,7 +111,7 @@ export default function PublicResultsMatrix({ results, tournamentId }: PublicRes
 
   if (zonesWithCouples.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-card p-10 text-center text-sm text-muted-foreground">
+      <div className="rounded-elevated border border-dashed border-slate-300 bg-card p-10 text-center text-sm text-muted-foreground">
         Todavía no hay parejas ubicadas en las zonas.
       </div>
     )
@@ -120,7 +120,7 @@ export default function PublicResultsMatrix({ results, tournamentId }: PublicRes
   return (
     <div className="space-y-8">
       {zonesWithCouples.map((zone) => (
-        <section key={zone.id} className="overflow-hidden rounded-xl border border-slate-200 bg-card shadow-sm">
+        <section key={zone.id} className="overflow-hidden rounded-elevated border border-slate-200 bg-card shadow-sm">
           <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
             <div className="flex items-center gap-2">
               <Trophy className="h-4 w-4 text-primary" />

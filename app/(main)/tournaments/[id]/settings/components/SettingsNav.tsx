@@ -58,7 +58,7 @@ function NavContent({
 }: SettingsNavProps & { pathname: string; onNavigate?: () => void }) {
   return (
     <div className="space-y-4">
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="space-y-3 rounded-display border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-2 text-slate-900">
           <Settings2 className="h-4 w-4 text-blue-600" />
           <p className="text-sm font-semibold">Configuracion</p>
@@ -71,7 +71,7 @@ function NavContent({
         </div>
       </div>
 
-      <nav className="space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+      <nav className="space-y-1 rounded-display border border-slate-200 bg-white p-2 shadow-sm">
         {navItems.map((item) => {
           const href = `/tournaments/${tournamentId}/settings/${item.segment}`
           const isActive = pathname === href || pathname.startsWith(`${href}/`)
@@ -83,7 +83,7 @@ function NavContent({
               href={href}
               onClick={onNavigate}
               className={cn(
-                'block rounded-xl border px-3 py-3 transition-colors',
+                'block rounded-elevated border px-3 py-3 transition-colors',
                 isActive
                   ? 'border-blue-200 bg-blue-50 text-blue-900'
                   : 'border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50'
@@ -93,7 +93,7 @@ function NavContent({
               <div className="flex items-start gap-3">
                 <div
                   className={cn(
-                    'rounded-lg p-2',
+                    'rounded-surface p-2',
                     isActive ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                   )}
                 >

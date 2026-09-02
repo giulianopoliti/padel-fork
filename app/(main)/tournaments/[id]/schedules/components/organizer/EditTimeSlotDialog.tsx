@@ -164,7 +164,7 @@ export default function EditTimeSlotDialog({
               </Alert>
             )}
 
-            <div className="p-3 bg-slate-50 rounded-lg">
+            <div className="p-3 bg-slate-50 rounded-surface">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium text-sm">
                   {formatTime(timeSlot.start_time)} - {formatTime(timeSlot.end_time)}
