@@ -5,10 +5,10 @@ export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   alternates: {
-    canonical: "/torneos",
+    canonical: "/torneos/proximos",
   },
 }
 
-export default async function TorneosPage(props: PublicTournamentsPageProps) {
-  return <PublicTournamentsPage {...props} />
+export default async function UpcomingPublicTournamentsPage(props: PublicTournamentsPageProps) {
+  return <PublicTournamentsPage {...props} status="upcoming" />
 }

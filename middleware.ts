@@ -1,5 +1,29 @@
-import { type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
+import { getTenantCanonicalSiteUrl } from '@/config/tenant'
 import { updateSession } from '@/utils/supabase/middleware'
+
+const tenantDomainPattern = /^(?:www\.)?(?:padelfv\.com|tpepadel\.com)$/i
+
+const getCanonicalHost = () => new URL(getTenantCanonicalSiteUrl()).host
+
+const getCanonicalRedirect = (request: NextRequest) => {
+  const requestHost =
+    request.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
+    request.headers.get('host') ||
+    request.nextUrl.host
+  const canonicalHost = getCanonicalHost()
+
+  if (!tenantDomainPattern.test(requestHost) || requestHost === canonicalHost) {
+    return null
+  }
+
+  const destination = request.nextUrl.clone()
+  destination.protocol = 'https:'
+  destination.host = canonicalHost
+  destination.port = ''
+
+  return NextResponse.redirect(destination, 308)
+}
 
 export async function middleware(request: NextRequest) {
   // Skip middleware for static files and API routes that don't need auth
@@ -14,6 +38,11 @@ export async function middleware(request: NextRequest) {
     path === '/favicon.ico'
   ) {
     return;
+  }
+
+  const canonicalRedirect = getCanonicalRedirect(request)
+  if (canonicalRedirect) {
+    return canonicalRedirect
   }
 
   return await updateSession(request)

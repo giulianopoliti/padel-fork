@@ -158,6 +158,11 @@ const tenantBranding: Record<TenantBranding["key"], TenantBranding> = {
   },
 }
 
+const canonicalSiteUrls: Record<TenantBranding["key"], string> = {
+  "padel-fv": "https://www.padelfv.com",
+  "padel-elite": "https://www.tpepadel.com",
+}
+
 export function getTenantBranding(): TenantBranding {
   const tenantKey = process.env.NEXT_PUBLIC_TENANT_KEY as TenantBranding["key"] | undefined
 
@@ -170,6 +175,16 @@ export function getTenantBranding(): TenantBranding {
 
 export function getDefaultPublicTournamentType(): "LONG" | "AMERICAN" {
   return getTenantBranding().tournaments.defaultPublicType
+}
+
+/**
+ * Canonical public origin for metadata, robots and sitemaps.
+ *
+ * Deployment previews can keep using NEXT_PUBLIC_SITE_URL for application
+ * links, while search engines always receive the production www origin.
+ */
+export function getTenantCanonicalSiteUrl(): string {
+  return canonicalSiteUrls[getTenantBranding().key]
 }
 
 export const TENANT_CONFIG = getTenantBranding()

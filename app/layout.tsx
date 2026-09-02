@@ -1,11 +1,12 @@
 import "./globals.css"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
-import { getTenantBranding } from "@/config/tenant"
+import { getTenantBranding, getTenantCanonicalSiteUrl } from "@/config/tenant"
 
 const branding = getTenantBranding()
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getTenantCanonicalSiteUrl()),
   title: {
     default: branding.seo.title,
     template: `%s | ${branding.shortName}`,

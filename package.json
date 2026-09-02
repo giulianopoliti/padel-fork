@@ -27,7 +27,8 @@
     "auto-register-top-couples": "tsx scripts/auto_register_top_players.ts",
     "billing:backfill": "tsx scripts/backfill-billing.ts",
     "seo:slugs:preview": "tsx scripts/backfill-tournament-seo-slugs.ts",
-    "seo:slugs:apply": "tsx scripts/backfill-tournament-seo-slugs.ts --apply --confirm=BACKFILL_SEO_SLUGS"
+    "seo:slugs:apply": "tsx scripts/backfill-tournament-seo-slugs.ts --apply --confirm=BACKFILL_SEO_SLUGS",
+    "seo:baseline": "node scripts/seo-phase-0-baseline.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "3.0.108",

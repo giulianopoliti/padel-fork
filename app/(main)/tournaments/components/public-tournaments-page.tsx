@@ -14,9 +14,34 @@ export interface PublicTournamentsPageProps {
     search?: string
     type?: string
   }>
+  status?: PublicTournamentListStatus
 }
 
-export default async function PublicTournamentsPage({ searchParams }: PublicTournamentsPageProps) {
+export type PublicTournamentListStatus = "active" | "upcoming" | "in-progress" | "past"
+
+const statusContent: Record<PublicTournamentListStatus, { title: string; description: (siteName: string) => string }> = {
+  active: {
+    title: "Torneos activos",
+    description: (siteName) => `Torneos en curso y proximas fechas de ${siteName}, con inscripciones abiertas o cerradas en un mismo lugar.`,
+  },
+  upcoming: {
+    title: "Proximos torneos",
+    description: (siteName) => `Las proximas fechas de ${siteName}, ordenadas para que veas rapido categoria, horario, club e inscripcion.`,
+  },
+  "in-progress": {
+    title: "Torneos en curso",
+    description: (siteName) => `Seguimiento simple de los torneos que ya estan en juego dentro de ${siteName}.`,
+  },
+  past: {
+    title: "Torneos finalizados",
+    description: (siteName) => `Historial de ${siteName} con la misma lectura simple y clara del resto del sitio.`,
+  },
+}
+
+export default async function PublicTournamentsPage({
+  searchParams,
+  status: requestedStatus,
+}: PublicTournamentsPageProps) {
   const params = await searchParams
   const page = Number(params.page) || 1
   const categoryFilter = params.category
@@ -27,7 +52,8 @@ export default async function PublicTournamentsPage({ searchParams }: PublicTour
   const defaultType = getDefaultPublicTournamentType()
   const type = params.type === "AMERICAN" || params.type === "LONG" ? params.type : defaultType
   const isElite = branding.key === "padel-elite"
-  const status = isElite ? "upcoming" : "active"
+  const status = requestedStatus ?? (isElite ? "upcoming" : "active")
+  const content = statusContent[status]
 
   const [tournamentsData, categories, clubs] = await Promise.all([
     getTournamentsOptimized({
@@ -50,12 +76,8 @@ export default async function PublicTournamentsPage({ searchParams }: PublicTour
 
   return (
     <TournamentsLayout
-      title={isElite ? "Proximos torneos" : "Torneos activos"}
-      description={
-        isElite
-          ? `Las proximas fechas de ${branding.siteName}, ordenadas para que veas rapido categoria, horario, club e inscripcion.`
-          : `Torneos en curso y proximas fechas de ${branding.siteName}, con inscripciones abiertas o cerradas en un mismo lugar.`
-      }
+      title={content.title}
+      description={content.description(branding.siteName)}
       currentType={type}
       categories={categories}
       clubs={clubs}
