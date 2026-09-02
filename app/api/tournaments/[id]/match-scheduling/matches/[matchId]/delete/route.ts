@@ -3,6 +3,7 @@ import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import { revalidatePath } from 'next/cache'
 import { revertActiveBracketDisqualificationsForMatches } from '@/lib/services/tournament-disqualifications'
+import { updateZonePositionsForTournament } from '@/lib/services/ranking'
 
 interface RouteParams {
   params: {
@@ -52,7 +53,7 @@ export async function DELETE(
     
     const { data: match, error: matchError } = await supabase
       .from('matches')
-      .select('id, tournament_id, status, couple1_id, couple2_id')
+      .select('id, tournament_id, zone_id, status, winner_id, result_couple1, result_couple2, couple1_id, couple2_id')
       .eq('id', matchId)
       .eq('tournament_id', tournamentId)
       .single()
@@ -176,15 +177,39 @@ export async function DELETE(
       )
     }
 
+    const hadResult = match.status === 'FINISHED'
+      || match.winner_id !== null
+      || match.result_couple1 !== null
+      || match.result_couple2 !== null
+
+    let positionsRecalculated = false
+    let positionRecalculationError: string | undefined
+
+    if (hadResult && match.zone_id) {
+      const positionUpdate = await updateZonePositionsForTournament(tournamentId, match.zone_id)
+      positionsRecalculated = positionUpdate.success
+      positionRecalculationError = positionUpdate.error
+
+      if (!positionUpdate.success) {
+        console.error('[DELETE match-scheduling] Failed to recalculate zone positions:', positionUpdate.error)
+      }
+    }
+
     // Revalidate paths to clear cache
     revalidatePath(`/tournaments/${tournamentId}/match-scheduling`)
     revalidatePath(`/tournaments/${tournamentId}`)
+    revalidatePath(`/tournaments/${tournamentId}/qually`)
+    revalidatePath(`/tournaments/${tournamentId}/resultados`)
     
     console.log(`[DELETE match-scheduling] Match ${matchId} successfully deleted with all relations`)
 
     return NextResponse.json({
       success: true,
-      message: 'Partido eliminado exitosamente'
+      message: positionsRecalculated
+        ? 'Partido eliminado y posiciones recalculadas exitosamente'
+        : 'Partido eliminado exitosamente',
+      positionsRecalculated,
+      positionRecalculationError
     })
 
   } catch (error) {
