@@ -137,7 +137,7 @@ const InlineScoreEditor = ({
   return (
     <div className="space-y-2">
       {isEditingFinishedMatch && (
-        <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+        <div className="bg-amber-50 border border-amber-200 p-3 rounded-surface">
           <div className="flex items-center gap-2 text-amber-800">
             <div className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center">
               <span className="text-white text-xs font-bold">!</span>
@@ -148,7 +148,7 @@ const InlineScoreEditor = ({
           </div>
         </div>
       )}
-      <div className="flex items-center gap-3 bg-blue-50 p-3 rounded-lg border-2 border-blue-200">
+      <div className="flex items-center gap-3 bg-blue-50 p-3 rounded-surface border-2 border-blue-200">
         <div className="flex items-center gap-2">
           <Input
             type="number"
@@ -214,7 +214,7 @@ const InlineScoreEditor = ({
       
       {/* Indicador de ganador */}
       {validation.isValid && validation.winner && (
-        <div className="bg-green-50 border border-green-200 p-2 rounded-lg">
+        <div className="bg-green-50 border border-green-200 p-2 rounded-surface">
           <div className="flex items-center gap-2 text-green-800 text-sm">
             <CheckCircle className="h-4 w-4" />
             <span>
@@ -486,7 +486,7 @@ export default function ExistingMatchesSection({
 
   if (error) {
     return (
-      <div className="bg-red-50 text-red-700 p-6 rounded-lg border border-red-200">
+      <div className="bg-red-50 text-red-700 p-6 rounded-surface border border-red-200">
         <div className="font-semibold mb-1">Error al cargar partidos</div>
         <div className="text-sm">{error}</div>
       </div>
@@ -641,7 +641,7 @@ export default function ExistingMatchesSection({
                         />
                       ) : (
                         <div 
-                          className={`flex items-center justify-center gap-2 rounded-md transition-colors ${
+                          className={`flex items-center justify-center gap-2 rounded-control transition-colors ${
                             isOwner 
                               ? 'cursor-pointer hover:bg-blue-50 border-2 border-dashed border-transparent hover:border-blue-300 px-3 py-2' 
                               : 'px-3 py-2'
@@ -748,7 +748,7 @@ export default function ExistingMatchesSection({
       {/* Modal para cambiar cancha */}
       {changingCourtMatchId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+          <div className="bg-white p-6 rounded-surface shadow-lg max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">Cambiar Cancha</h3>
             <p className="text-sm text-gray-600 mb-4">
               Selecciona la nueva cancha para este partido:

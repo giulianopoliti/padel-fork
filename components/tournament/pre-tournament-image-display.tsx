@@ -23,7 +23,7 @@ export default function PreTournamentImageDisplay({
       <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardTitle className="text-xl font-semibold text-slate-900 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg">
+            <div className="bg-blue-100 p-2 rounded-surface">
               <Image className="h-5 w-5 text-blue-600" />
             </div>
             Imagen del Torneo
@@ -53,12 +53,12 @@ export default function PreTournamentImageDisplay({
               <img
                 src={preTournamentImageUrl}
                 alt={`Imagen del torneo ${tournamentName}`}
-                className="w-full max-h-96 object-cover rounded-lg shadow-md"
+                className="w-full max-h-96 object-cover rounded-surface shadow-md"
               />
             </div>
           </div>
           
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-surface p-4">
             <div className="flex items-center">
               <div className="bg-emerald-100 p-1 rounded-full mr-3">
                 <Image className="h-4 w-4 text-emerald-600" />

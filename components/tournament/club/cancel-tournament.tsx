@@ -129,7 +129,7 @@ export default function CancelTournamentButton({
         variant="destructive"
         size="lg"
         onClick={() => setIsModalOpen(true)}
-        className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg"
+        className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-surface shadow-lg"
       >
         <Ban className="h-5 w-5 mr-2" />
         Cancelar Torneo
@@ -157,7 +157,7 @@ export default function CancelTournamentButton({
 
           <div className="py-4 space-y-4">
             <div className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="bg-red-50 border border-red-200 rounded-surface p-3">
                 <p className="text-red-800 font-medium">
                   ¿Estás seguro de que quieres cancelar este torneo?
                 </p>
@@ -171,7 +171,7 @@ export default function CancelTournamentButton({
                 </ul>
               </div>
 
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <div className="bg-gray-50 border border-gray-200 rounded-surface p-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Escribe "CANCELAR" para confirmar:
                 </label>
@@ -179,14 +179,14 @@ export default function CancelTournamentButton({
                   type="text"
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-control shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Escribe CANCELAR"
                 />
               </div>
             </div>
 
             {/* Tournament Info Compacto */}
-            <div className="border border-gray-200 rounded-lg p-3 space-y-2 text-sm">
+            <div className="border border-gray-200 rounded-surface p-3 space-y-2 text-sm">
               <div className="font-medium text-gray-900">{tournament.name}</div>
               <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
                 <div className="flex items-center gap-1">

@@ -81,7 +81,7 @@ export default function StartMatchDialog({
         </DialogHeader>
 
         {matchInfo && (
-          <div className="bg-slate-50 p-4 rounded-lg border">
+          <div className="bg-slate-50 p-4 rounded-surface border">
             <h4 className="font-medium text-slate-900 mb-2">Información del Partido</h4>
             <div className="space-y-1 text-sm text-slate-600">
               <p><strong>Pareja 1:</strong> {matchInfo.couple1 || "Por definir"}</p>

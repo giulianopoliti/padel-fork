@@ -934,7 +934,7 @@ export default function TournamentCreateForm() {
                     <div
                       key={step.id}
                       className={cn(
-                        'rounded-xl border px-4 py-3 transition-colors',
+                        'rounded-elevated border px-4 py-3 transition-colors',
                         isActive && 'border-slate-900 bg-slate-900 text-white shadow-sm',
                         isCompleted && 'border-emerald-200 bg-emerald-50 text-emerald-900',
                         !isActive && !isCompleted && 'border-slate-200 bg-white text-slate-600'
@@ -1023,7 +1023,7 @@ export default function TournamentCreateForm() {
                         )}
                       />
 
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-1">
+                      <div className="rounded-elevated border border-slate-200 bg-slate-50 p-4 md:col-span-1">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Categoria visible</p>
                         <p className="mt-2 text-base font-medium text-slate-900">
                           {categoryPreview?.label || 'Configura el modo para generar la etiqueta'}
@@ -1062,7 +1062,7 @@ export default function TournamentCreateForm() {
                                   <label
                                     key={option.value}
                                     className={cn(
-                                      'flex cursor-pointer rounded-xl border p-4 transition-all',
+                                      'flex cursor-pointer rounded-elevated border p-4 transition-all',
                                       isSelected
                                         ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
                                         : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -1203,7 +1203,7 @@ export default function TournamentCreateForm() {
                       />
                     )}
 
-                    <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 rounded-elevated border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
                       <div>
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Puntaje inicial</p>
                         <p className="mt-2 text-xl font-medium text-slate-900">
@@ -1268,7 +1268,7 @@ export default function TournamentCreateForm() {
                                   <label
                                     key={type}
                                     className={cn(
-                                      'flex cursor-pointer rounded-xl border p-4 transition-all sm:p-5',
+                                      'flex cursor-pointer rounded-elevated border p-4 transition-all sm:p-5',
                                       isSelected
                                         ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
                                         : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -1324,7 +1324,7 @@ export default function TournamentCreateForm() {
                                         type="button"
                                         onClick={() => handleAmericanMultiZoneAlgorithmChange(option.id, field.onChange)}
                                         className={cn(
-                                          'rounded-xl border p-4 text-left transition-all sm:p-5',
+                                          'rounded-elevated border p-4 text-left transition-all sm:p-5',
                                           isSelected
                                             ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
                                             : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -1381,7 +1381,7 @@ export default function TournamentCreateForm() {
                                             type="button"
                                             onClick={() => field.onChange(preset.presetId)}
                                             className={cn(
-                                              'rounded-xl border p-4 text-left transition-all sm:p-5',
+                                              'rounded-elevated border p-4 text-left transition-all sm:p-5',
                                               isSelected
                                                 ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
                                                 : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -1431,7 +1431,7 @@ export default function TournamentCreateForm() {
                                       type="button"
                                       onClick={() => field.onChange(preset.presetId)}
                                       className={cn(
-                                        'rounded-xl border p-4 text-left transition-all sm:p-5',
+                                        'rounded-elevated border p-4 text-left transition-all sm:p-5',
                                         isSelected
                                           ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
                                           : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -1510,7 +1510,7 @@ export default function TournamentCreateForm() {
                     )}
 
                     {selectedPreset && (
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                      <div className="rounded-elevated border border-slate-200 bg-slate-50 p-4 sm:p-5">
                         <div className="flex items-start gap-3">
                           <Info className="mt-0.5 h-5 w-5 text-slate-700" />
                           <div className="space-y-3">
@@ -1730,7 +1730,7 @@ export default function TournamentCreateForm() {
                                     role="combobox"
                                     aria-expanded="false"
                                     aria-label="Seleccionar clubes adicionales"
-                                    className="inline-flex h-11 w-full items-center justify-between rounded-md border border-slate-200/80 bg-white px-3 py-2 text-left text-sm text-slate-700 ring-offset-background focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+                                    className="inline-flex h-11 w-full items-center justify-between rounded-control border border-slate-200/80 bg-white px-3 py-2 text-left text-sm text-slate-700 ring-offset-background focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
                                   >
                                     <span className="truncate">
                                       {extraClubIds.length === 0
@@ -1781,7 +1781,7 @@ export default function TournamentCreateForm() {
                                       type="button"
                                       aria-label={`Quitar ${club.name}`}
                                       onClick={() => handleToggleExtraClub(club.id)}
-                                      className="rounded-sm text-slate-500 hover:bg-slate-100"
+                                      className="rounded-control-sm text-slate-500 hover:bg-slate-100"
                                     >
                                       <X className="h-3.5 w-3.5" />
                                     </button>
@@ -1812,7 +1812,7 @@ export default function TournamentCreateForm() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6 p-4 sm:space-y-8 sm:p-6">
-                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 sm:p-5">
+                    <div className="rounded-elevated border border-blue-200 bg-blue-50 p-4 sm:p-5">
                       <div className="flex items-start gap-3">
                         <Info className="mt-0.5 h-5 w-5 text-blue-700" />
                         <div>
@@ -2011,22 +2011,22 @@ export default function TournamentCreateForm() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-5 p-4 sm:p-6">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="rounded-elevated border border-slate-200 bg-slate-50 p-4">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Torneo</p>
                         <p className="mt-2 text-base font-medium text-slate-900 sm:text-lg">{watchedValues.name || 'Sin nombre todavia'}</p>
                         <p className="mt-1 text-sm text-slate-600">{watchedValues.description?.trim() || 'Sin descripcion'}</p>
                       </div>
 
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                        <div className="rounded-elevated border border-slate-200 bg-white p-4">
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Tipo</p>
                           <p className="mt-2 font-medium text-slate-900">{TYPE_COPY[selectedType].title}</p>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                        <div className="rounded-elevated border border-slate-200 bg-white p-4">
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Formato</p>
                           <p className="mt-2 font-medium text-slate-900">{selectedPreset?.display.name || 'Sin definir'}</p>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                        <div className="rounded-elevated border border-slate-200 bg-white p-4">
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Categoria y genero</p>
                           <p className="mt-2 font-medium text-slate-900">
                             {categoryPreview?.label || 'Sin categoria'} · {watchedValues.gender === 'MALE' ? 'Caballeros' : watchedValues.gender === 'FEMALE' ? 'Damas' : 'Mixto'}
@@ -2035,7 +2035,7 @@ export default function TournamentCreateForm() {
                             {categoryPreview ? `${categoryPreview.initialScore} pts iniciales` : 'Sin preview de puntaje'}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                        <div className="rounded-elevated border border-slate-200 bg-white p-4">
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Club principal</p>
                           <p className="mt-2 font-medium text-slate-900">{selectedClub?.name || 'Sin definir'}</p>
                         </div>

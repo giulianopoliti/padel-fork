@@ -33,7 +33,7 @@ export function ProfileSidebar({ activeSection, onSectionChange }: ProfileSideba
           <button
             key={item.id}
             onClick={() => onSectionChange(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-surface text-sm font-medium transition-colors
               ${
                 activeSection === item.id
                   ? "text-blue-700 bg-blue-100 border border-blue-200"

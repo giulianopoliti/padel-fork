@@ -1071,7 +1071,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
 
   if (error) {
     return (
-      <div className="bg-red-50 text-red-700 p-6 rounded-lg border border-red-200 text-center">
+      <div className="bg-red-50 text-red-700 p-6 rounded-surface border border-red-200 text-center">
         <div className="font-semibold mb-1">Error al cargar llaves</div>
         <div className="text-sm">{error}</div>
       </div>
@@ -1112,7 +1112,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
               return (
                 <div 
                   key={placeholder.matchId} 
-                  className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-white border border-slate-200 rounded-surface p-4 shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">
@@ -1293,7 +1293,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
 
           {/* 🎆 NUEVO: Indicador de regeneración necesaria */}
           {needsRegeneration && matches.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
+            <div className="bg-amber-50 border border-amber-200 rounded-surface p-4 mb-6 text-left">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-2 w-2 bg-amber-500 rounded-full animate-pulse"></div>
                 <h4 className="font-medium text-amber-800">Bracket Desactualizado</h4>
@@ -1322,7 +1322,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
 
           {/* Estado de las zonas */}
           {zonesReady && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 text-left">
+            <div className="bg-white border border-gray-200 rounded-surface p-6 mb-6 text-left">
               <div className="flex items-center gap-3 mb-4">
                 <Users className="h-5 w-5 text-blue-600" />
                 <h4 className="font-medium text-gray-900">Estado de las Zonas</h4>
@@ -1340,7 +1340,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
               </div>
 
               {zonesReady.totalCouples && zonesReady.totalCouples > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-control p-4">
                   <div className="text-sm text-blue-800">
                     <strong>{zonesReady.totalCouples} parejas</strong> participarán en el bracket eliminatorio
                   </div>
@@ -1358,7 +1358,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
           )}
 
           {/* Algoritmos disponibles */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8 text-left">
+          <div className="bg-gray-50 border border-gray-200 rounded-surface p-6 mb-8 text-left">
             <div className="flex items-center gap-3 mb-4">
               <Settings className="h-5 w-5 text-gray-600" />
               <h4 className="font-medium text-gray-900">Algoritmos de Bracket Disponibles</h4>
@@ -1400,7 +1400,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
             <Button
               onClick={handleGenerateBracket}
               disabled={!zonesReady?.ready || isGeneratingBracket}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg shadow-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-surface shadow-sm"
               size="lg"
             >
               {isGeneratingBracket ? (
@@ -1419,7 +1419,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
             <Button
               onClick={handleGenerateSerpentineBracket}
               disabled={!zonesReady?.ready || isGeneratingBracket}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg shadow-sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-surface shadow-sm"
               size="lg"
             >
               {isGeneratingBracket ? (
@@ -1527,7 +1527,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
                 zIndex: 2,
               }}
             >
-              <div className="bg-slate-900 text-white rounded-lg py-3 px-4 shadow-sm">
+              <div className="bg-slate-900 text-white rounded-surface py-3 px-4 shadow-sm">
                 <h3 className="text-sm font-semibold">{roundTranslation[round] || round}</h3>
               </div>
             </div>
@@ -1552,7 +1552,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
                 }}
               >
                 <div
-                  className={`bg-white rounded-lg shadow-md h-full transition-all hover:shadow-lg border-2 ${
+                  className={`bg-white rounded-surface shadow-md h-full transition-all hover:shadow-lg border-2 ${
                     isCompleted ? "border-slate-300" : "border-gray-200"
                   } overflow-visible`}
                 >
@@ -1664,7 +1664,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
         <div className="flex justify-center p-6 border-t border-gray-200 bg-white">
           <Button
             onClick={handleAdvanceToNextStage}
-            className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3 rounded-lg shadow-sm"
+            className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3 rounded-surface shadow-sm"
             disabled={isAdvancing || isTournamentFinished}
           >
             {isAdvancing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Trophy className="mr-2 h-5 w-5" />}
@@ -1701,7 +1701,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
                   {/* Pareja 1 */}
-                  <div className={`space-y-4 p-6 rounded-lg border-2 ${
+                  <div className={`space-y-4 p-6 rounded-surface border-2 ${
                     selectedMatchForDetails.status === "FINISHED" && selectedMatchForDetails.winner_id === selectedMatchForDetails.couple1_id
                       ? "border-emerald-500 bg-emerald-50"
                       : "border-gray-200 bg-white"
@@ -1712,7 +1712,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
                     {selectedMatchForDetails.couple1?.player1_id && playerDetails[selectedMatchForDetails.couple1.player1_id] && (
                       <Link 
                         href={`/ranking/${selectedMatchForDetails.couple1.player1_id}`}
-                        className="block hover:bg-gray-50 p-3 rounded-lg transition-colors border border-gray-100"
+                        className="block hover:bg-gray-50 p-3 rounded-surface transition-colors border border-gray-100"
                       >
                         <div className="flex items-center gap-3">
                           <Avatar className="h-12 w-12">
@@ -1743,7 +1743,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
                     {selectedMatchForDetails.couple1?.player2_id && playerDetails[selectedMatchForDetails.couple1.player2_id] && (
                       <Link 
                         href={`/ranking/${selectedMatchForDetails.couple1.player2_id}`}
-                        className="block hover:bg-gray-50 p-3 rounded-lg transition-colors border border-gray-100"
+                        className="block hover:bg-gray-50 p-3 rounded-surface transition-colors border border-gray-100"
                       >
                         <div className="flex items-center gap-3">
                           <Avatar className="h-12 w-12">
@@ -1779,7 +1779,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
                   </div>
                   
                   {/* Pareja 2 */}
-                  <div className={`space-y-4 p-6 rounded-lg border-2 ${
+                  <div className={`space-y-4 p-6 rounded-surface border-2 ${
                     selectedMatchForDetails.status === "FINISHED" && selectedMatchForDetails.winner_id === selectedMatchForDetails.couple2_id
                       ? "border-emerald-500 bg-emerald-50"
                       : "border-gray-200 bg-white"
@@ -1790,7 +1790,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
                     {selectedMatchForDetails.couple2?.player1_id && playerDetails[selectedMatchForDetails.couple2.player1_id] && (
                       <Link 
                         href={`/ranking/${selectedMatchForDetails.couple2.player1_id}`}
-                        className="block hover:bg-gray-50 p-3 rounded-lg transition-colors border border-gray-100"
+                        className="block hover:bg-gray-50 p-3 rounded-surface transition-colors border border-gray-100"
                       >
                         <div className="flex items-center gap-3">
                           <Avatar className="h-12 w-12">
@@ -1821,7 +1821,7 @@ export default function TournamentBracketVisualization({ tournamentId, isOwner =
                     {selectedMatchForDetails.couple2?.player2_id && playerDetails[selectedMatchForDetails.couple2.player2_id] && (
                       <Link 
                         href={`/ranking/${selectedMatchForDetails.couple2.player2_id}`}
-                        className="block hover:bg-gray-50 p-3 rounded-lg transition-colors border border-gray-100"
+                        className="block hover:bg-gray-50 p-3 rounded-surface transition-colors border border-gray-100"
                       >
                         <div className="flex items-center gap-3">
                           <Avatar className="h-12 w-12">

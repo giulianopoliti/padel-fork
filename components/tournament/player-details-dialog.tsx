@@ -297,7 +297,7 @@ export default function PlayerDetailsDialog({
                     </p>
                   </div>
                 ) : (
-                  <div className="min-h-10 rounded-md border bg-muted px-3 py-2 text-sm flex items-center">
+                  <div className="min-h-10 rounded-control border bg-muted px-3 py-2 text-sm flex items-center">
                     <PlayerDniDisplay dni={player.dni} dniIsTemporary={player.dni_is_temporary} />
                   </div>
                 )}
@@ -349,7 +349,7 @@ export default function PlayerDetailsDialog({
 
               {/* Mensaje de solo lectura si no puede editar */}
               {canView && !canEdit && (
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-control p-3">
                   <p className="text-xs text-amber-800 flex items-center gap-2">
                     <Lock className="h-4 w-4" />
                     Este jugador no pertenece a tu club/organización. Solo puedes ver datos básicos.

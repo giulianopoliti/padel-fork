@@ -99,7 +99,7 @@ export default function OrganizationTournamentsSection({
       </div>
 
       {/* Filters Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+      <div className="bg-white rounded-surface shadow-sm border border-gray-200 p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Status Filter */}
           <div className="flex-1">

@@ -20,12 +20,12 @@ export function OrganizersSkeleton() {
         {/* PREMIUM CARDS SKELETON - 3 cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
           {[...Array(3)].map((_, i) => (
-            <div key={`premium-${i}`} className="bg-white/95 backdrop-blur-sm rounded-lg overflow-hidden shadow-xl animate-pulse">
+            <div key={`premium-${i}`} className="bg-white/95 backdrop-blur-sm rounded-surface overflow-hidden shadow-xl animate-pulse">
               {/* Cover Image Placeholder */}
               <div className="h-48 bg-gradient-to-br from-slate-300 to-blue-300 relative">
                 {/* Logo Placeholder - Centered */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="w-24 h-24 rounded-xl bg-white/70 shadow-2xl border-3 border-white" />
+                  <div className="w-24 h-24 rounded-elevated bg-white/70 shadow-2xl border-3 border-white" />
                 </div>
                 {/* Premium Badge Placeholder */}
                 <div className="absolute top-3 right-3">
@@ -40,17 +40,17 @@ export function OrganizersSkeleton() {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-surface p-3 border border-blue-200">
                     <div className="h-4 w-4 bg-blue-300 rounded-full mx-auto mb-1.5 animate-pulse" />
                     <div className="h-6 bg-blue-300 rounded w-8 mx-auto mb-1 animate-pulse" />
                     <div className="h-2 bg-blue-300 rounded w-12 mx-auto animate-pulse" />
                   </div>
-                  <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg p-3 border border-cyan-200">
+                  <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-surface p-3 border border-cyan-200">
                     <div className="h-4 w-4 bg-cyan-300 rounded-full mx-auto mb-1.5 animate-pulse" />
                     <div className="h-6 bg-cyan-300 rounded w-8 mx-auto mb-1 animate-pulse" />
                     <div className="h-2 bg-cyan-300 rounded w-12 mx-auto animate-pulse" />
                   </div>
-                  <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-lg p-3 border border-sky-200">
+                  <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-surface p-3 border border-sky-200">
                     <div className="h-4 w-4 bg-sky-300 rounded-full mx-auto mb-1.5 animate-pulse" />
                     <div className="h-6 bg-sky-300 rounded w-8 mx-auto mb-1 animate-pulse" />
                     <div className="h-2 bg-sky-300 rounded w-12 mx-auto animate-pulse" />
@@ -79,11 +79,11 @@ export function OrganizersSkeleton() {
         {/* NON-PREMIUM CARDS SKELETON - 6 cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
           {[...Array(6)].map((_, i) => (
-            <div key={`non-premium-${i}`} className="bg-white rounded-lg shadow-md h-[140px] animate-pulse">
+            <div key={`non-premium-${i}`} className="bg-white rounded-surface shadow-md h-[140px] animate-pulse">
               <div className="h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-100 to-slate-200">
                 {/* Logo Placeholder */}
                 <div className="relative mb-3">
-                  <div className="w-16 h-16 rounded-lg bg-slate-300" />
+                  <div className="w-16 h-16 rounded-surface bg-slate-300" />
                   {/* Badge Placeholder */}
                   <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-400 rounded-full" />
                 </div>

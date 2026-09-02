@@ -62,7 +62,7 @@ export async function OrganizersSection() {
                     <div className="relative z-10 p-5 flex items-center justify-center h-full min-h-[200px]">
                       <div className="relative">
                         {org.logoUrl ? (
-                          <div className="w-24 h-24 rounded-xl bg-white shadow-xl border-3 border-white overflow-hidden ring-2 ring-blue-400/40">
+                          <div className="w-24 h-24 rounded-elevated bg-white shadow-xl border-3 border-white overflow-hidden ring-2 ring-blue-400/40">
                             <Image
                               src={getStorageUrl(org.logoUrl) || "/placeholder.svg"}
                               alt={`${org.name} - Logo`}
@@ -73,7 +73,7 @@ export async function OrganizersSection() {
                             />
                           </div>
                         ) : (
-                          <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-xl border-3 border-white flex items-center justify-center ring-2 ring-blue-400/40">
+                          <div className="w-24 h-24 rounded-elevated bg-gradient-to-br from-blue-600 to-cyan-600 shadow-xl border-3 border-white flex items-center justify-center ring-2 ring-blue-400/40">
                             <Building2 className="h-12 w-12 text-white" />
                           </div>
                         )}
@@ -143,7 +143,7 @@ export async function OrganizersSection() {
                     {/* Stats Grid - More compact */}
                     <div className="grid grid-cols-3 gap-3 mb-4">
                       {/* Clubs Count */}
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-surface p-3 border border-blue-200">
                         <div className="flex items-center justify-center mb-1.5">
                           <Network className="h-4 w-4 text-blue-600" />
                         </div>
@@ -154,7 +154,7 @@ export async function OrganizersSection() {
                       </div>
 
                       {/* Tournaments Count */}
-                      <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg p-3 border border-cyan-200">
+                      <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-surface p-3 border border-cyan-200">
                         <div className="flex items-center justify-center mb-1.5">
                           <Trophy className="h-4 w-4 text-cyan-600" />
                         </div>
@@ -165,7 +165,7 @@ export async function OrganizersSection() {
                       </div>
 
                       {/* Players Count (calculated from clubs) */}
-                      <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-lg p-3 border border-sky-200">
+                      <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-surface p-3 border border-sky-200">
                         <div className="flex items-center justify-center mb-1.5">
                           <Users className="h-4 w-4 text-sky-600" />
                         </div>
@@ -178,7 +178,7 @@ export async function OrganizersSection() {
 
                     {/* Featured Club Section */}
                     {org.featuredClub && (
-                      <div className="mb-4 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-md border border-amber-200">
+                      <div className="mb-4 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-control border border-amber-200">
                         <div className="flex items-center gap-1.5 mb-2">
                           <Star className="h-3.5 w-3.5 text-amber-600 fill-amber-500" />
                           <h4 className="font-semibold text-sm text-amber-900">Club Destacado</h4>

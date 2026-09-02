@@ -26,7 +26,7 @@ export default function CouplePreview({ coupleState, onClearPlayer }: CouplePrev
     
     if (player.type === 'none') {
       return (
-        <div className="flex items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+        <div className="flex items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-surface bg-gray-50">
           <div className="text-center">
             <User className="h-6 w-6 mx-auto text-gray-400 mb-1" />
             <p className="text-sm text-gray-500">Jugador {playerNumber}</p>
@@ -39,7 +39,7 @@ export default function CouplePreview({ coupleState, onClearPlayer }: CouplePrev
     if (player.type === 'existing' && player.existingPlayer) {
       const playerData = player.existingPlayer
       return (
-        <div className="relative bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="relative bg-green-50 border border-green-200 rounded-surface p-4">
           <Button
             variant="ghost"
             size="sm"
@@ -79,7 +79,7 @@ export default function CouplePreview({ coupleState, onClearPlayer }: CouplePrev
     if (player.type === 'new' && player.newPlayerData) {
       const playerData = player.newPlayerData
       return (
-        <div className="relative bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="relative bg-blue-50 border border-blue-200 rounded-surface p-4">
           <Button
             variant="ghost"
             size="sm"
@@ -146,7 +146,7 @@ export default function CouplePreview({ coupleState, onClearPlayer }: CouplePrev
         </div>
 
         {isComplete && (
-          <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-surface">
             <div className="flex items-center gap-2 text-emerald-800">
               <CheckCircle className="h-4 w-4" />
               <span className="text-sm font-medium">

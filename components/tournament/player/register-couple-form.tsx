@@ -727,7 +727,7 @@ export default function RegisterCoupleForm({
     if (!requireTermsAcceptance) return null
 
     return (
-      <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-slate-700">
+      <label className="flex cursor-pointer items-start gap-2 rounded-display border border-blue-100 bg-blue-50/70 p-4 text-sm text-slate-700">
         <Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked === true)} />
         <span>
           Leí y acepto los <Link href={TPE_TERMS_PATH} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">Términos y Condiciones</Link>.
@@ -737,9 +737,9 @@ export default function RegisterCoupleForm({
   }
 
   const renderTransferProofStep = (stepLabel: string, inputId: string, companionName?: string | null) => (
-    <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4">
+    <div className="space-y-3 rounded-display border border-emerald-200 bg-emerald-50/80 p-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-elevated bg-emerald-600 text-white shadow-sm">
           <CreditCard className="h-5 w-5" />
         </div>
         <div className="space-y-1">
@@ -752,20 +752,20 @@ export default function RegisterCoupleForm({
       </div>
 
       {companionName && (
-        <div className="rounded-xl border border-emerald-200 bg-white/90 px-3 py-2">
+        <div className="rounded-elevated border border-emerald-200 bg-white/90 px-3 py-2">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Pareja seleccionada</p>
           <p className="mt-1 text-sm font-semibold text-slate-900">{companionName}</p>
         </div>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-white/80 bg-white p-3 shadow-sm">
+        <div className="rounded-elevated border border-white/80 bg-white p-3 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Alias</p>
           <p className="mt-1 break-all text-base font-semibold text-slate-900">
             {transferAlias || "No disponible"}
           </p>
         </div>
-        <div className="rounded-xl border border-white/80 bg-white p-3 shadow-sm">
+        <div className="rounded-elevated border border-white/80 bg-white p-3 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Importe</p>
           <p className="mt-1 text-base font-semibold text-slate-900">
             {formatTransferAmount(transferAmount)}
@@ -804,7 +804,7 @@ export default function RegisterCoupleForm({
 
         <label
           htmlFor={inputId}
-          className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed bg-white px-4 py-4 text-left transition-colors ${
+          className={`flex cursor-pointer items-center gap-3 rounded-display border-2 border-dashed bg-white px-4 py-4 text-left transition-colors ${
             paymentProofError
               ? "border-red-400 bg-red-50"
               : "border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50"
@@ -843,7 +843,7 @@ export default function RegisterCoupleForm({
     return (
       <div
         ref={phoneFormRef}
-        className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-4"
+        className="mt-4 rounded-surface border border-amber-200 bg-amber-50 p-4 space-y-4"
       >
         <Alert className="border-amber-300 bg-amber-100">
           <Phone className="h-4 w-4 text-amber-600" />
@@ -946,8 +946,8 @@ export default function RegisterCoupleForm({
   return (
     <Card className="w-full border-0 bg-transparent shadow-none">
       <CardContent className="space-y-4 p-0">
-        <div className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
+        <div className="flex items-start gap-3 rounded-display border border-blue-100 bg-blue-50/70 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-elevated bg-white text-blue-600 shadow-sm">
             <Users className="h-5 w-5" />
           </div>
           <div>
@@ -1015,7 +1015,7 @@ export default function RegisterCoupleForm({
                   searchResults.map((player) => (
                     <div 
                       key={player.id} 
-                      className={`rounded-2xl border p-3 cursor-pointer transition-colors ${
+                      className={`rounded-display border p-3 cursor-pointer transition-colors ${
                         selectedCompanionId === player.id 
                           ? 'border-blue-500 bg-blue-50 shadow-sm' 
                           : 'border-gray-200 hover:border-gray-300 hover:bg-slate-50'
@@ -1063,7 +1063,7 @@ export default function RegisterCoupleForm({
                 )}
 
                 {!transferProofEnabled && (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="rounded-display border border-emerald-200 bg-emerald-50 p-3">
                     <p className="text-sm font-medium text-emerald-800">
                       La pareja ya está lista para registrarse.
                     </p>

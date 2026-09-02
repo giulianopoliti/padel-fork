@@ -24,7 +24,7 @@ export default function ClubInstructors({ instructors }: ClubInstructorsProps) {
   const [hoveredInstructor, setHoveredInstructor] = useState<string | null>(null)
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-slate-100 p-6 mb-8">
+    <div className="bg-white rounded-elevated shadow-md border border-slate-100 p-6 mb-8">
       <h2 className="text-xl font-bold text-slate-800 mb-6">Profesores y entrenadores</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -34,7 +34,7 @@ export default function ClubInstructors({ instructors }: ClubInstructorsProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
-            className="border border-slate-100 rounded-xl overflow-hidden hover:shadow-md transition-all duration-300"
+            className="border border-slate-100 rounded-elevated overflow-hidden hover:shadow-md transition-all duration-300"
             onMouseEnter={() => setHoveredInstructor(instructor.id)}
             onMouseLeave={() => setHoveredInstructor(null)}
           >

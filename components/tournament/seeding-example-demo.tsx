@@ -98,7 +98,7 @@ export default function SeedingExampleDemo({ totalCouples = 21 }: SeedingExample
           <h4 className="font-medium text-gray-900 mb-3">📋 Paso 1: Datos por Zona</h4>
           <div className="grid grid-cols-3 gap-4">
             {exampleZones.map(zone => (
-              <div key={zone.name} className="border rounded-lg p-3">
+              <div key={zone.name} className="border rounded-surface p-3">
                 <h5 className="font-medium mb-2">Zona {zone.name}</h5>
                 <div className="space-y-1">
                   {zone.couples.map(couple => (
@@ -147,7 +147,7 @@ export default function SeedingExampleDemo({ totalCouples = 21 }: SeedingExample
           <h4 className="font-medium text-gray-900 mb-3">⚔️ Paso 3: Emparejamiento del Bracket</h4>
           <div className="space-y-2">
             {sampleMatches.map(match => (
-              <div key={match.match} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={match.match} className="flex items-center justify-between p-3 bg-gray-50 rounded-surface">
                 <div className="text-sm">
                   <span className="font-medium">Match {match.match}:</span> {match.p1} vs {match.p2}
                 </div>
@@ -163,7 +163,7 @@ export default function SeedingExampleDemo({ totalCouples = 21 }: SeedingExample
         </div>
 
         {/* Resumen */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-surface p-4">
           <h4 className="font-medium text-blue-800 mb-2">✅ Resultado Final</h4>
           <ul className="text-sm text-blue-700 space-y-1">
             <li>• Los mejores clasificados enfrentan BYEs o rivales débiles</li>

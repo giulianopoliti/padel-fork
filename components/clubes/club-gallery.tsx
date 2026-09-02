@@ -35,7 +35,7 @@ export default function ClubGallery({ images }: ClubGalleryProps) {
         {images.map((image, index) => (
           <div
             key={index}
-            className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+            className="relative aspect-square rounded-surface overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
             onClick={() => openLightbox(index)}
           >
             <img src={image || "/placeholder.svg"} alt={`Imagen ${index + 1}`} className="w-full h-full object-cover" />

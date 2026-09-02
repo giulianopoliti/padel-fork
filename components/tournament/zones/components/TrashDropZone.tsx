@@ -55,7 +55,7 @@ export function TrashDropZone({ onDrop, onDragEnter, onDragLeave, isEditMode, is
     <div className="mt-6 mb-4">
       <div
         className={cn(
-          "relative border-2 border-dashed rounded-lg p-6 transition-all duration-200 min-h-24",
+          "relative border-2 border-dashed rounded-surface p-6 transition-all duration-200 min-h-24",
           "flex flex-col items-center justify-center space-y-2",
           isDragging
             ? isHovering
@@ -126,7 +126,7 @@ export function TrashDropZone({ onDrop, onDragEnter, onDragLeave, isEditMode, is
 
         {/* Visual feedback overlay */}
         {isHovering && canDrop && (
-          <div className="absolute inset-0 bg-red-100/20 rounded-lg pointer-events-none" />
+          <div className="absolute inset-0 bg-red-100/20 rounded-surface pointer-events-none" />
         )}
       </div>
     </div>

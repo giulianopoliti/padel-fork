@@ -162,7 +162,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
                       key={link.path}
                       href={link.path}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-base transition-all duration-200 ${
+                      className={`flex items-center space-x-3 px-4 py-3 rounded-elevated text-base transition-all duration-200 ${
                         isActive ? activeMobileClassName : inactiveMobileClassName
                       }`}
                     >

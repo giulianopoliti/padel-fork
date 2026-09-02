@@ -302,7 +302,7 @@ export default function UnifiedMatchesInterface({
             </CardHeader>
             {!collapsedSections.creation && (
               <CardContent className="pt-0">
-                <div className="bg-slate-50 rounded-lg p-4">
+                <div className="bg-slate-50 rounded-surface p-4">
                   {useEnhancedCreation ? (
                     <EnhancedMatchCreation
                       tournamentId={tournamentId}
@@ -352,7 +352,7 @@ export default function UnifiedMatchesInterface({
             </CardHeader>
             {!collapsedSections.management && (
               <CardContent className="pt-0">
-                <div className="bg-slate-50 rounded-lg p-4 max-h-[800px] overflow-y-auto">
+                <div className="bg-slate-50 rounded-surface p-4 max-h-[800px] overflow-y-auto">
                   <ExistingMatchesSection
                     tournamentId={tournamentId}
                     isOwner={isOwner}
@@ -385,7 +385,7 @@ export default function UnifiedMatchesInterface({
             
             {/* Staging Status */}
             {useEnhancedCreation && stagingMatches.length > 0 && (
-              <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <div className="mt-3 p-3 bg-amber-50 rounded-surface border border-amber-200">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-amber-500" />
                   <span className="text-sm font-medium text-amber-800">

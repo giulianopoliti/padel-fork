@@ -375,7 +375,7 @@ export default function ZoneMatchDialog({
           {!hasMatch && (
             <div className="space-y-4">
               {/* Couple names */}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-surface p-4">
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-900">
                     {couple1.player1_name} / {couple1.player2_name}
@@ -420,7 +420,7 @@ export default function ZoneMatchDialog({
               {/* Show result (finished, not editing) */}
               {isFinished && !isEditing && (
                 <div className="space-y-4">
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <div className="bg-slate-50 border border-slate-200 rounded-surface p-4">
                     <div className="space-y-3">
                       {/* Couple 1 with result */}
                       <div className="flex items-center justify-between">
@@ -455,7 +455,7 @@ export default function ZoneMatchDialog({
                   </div>
 
                   {/* Winner display */}
-                  <div className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 rounded-lg p-3">
+                  <div className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 rounded-surface p-3">
                     <Trophy className="h-5 w-5" />
                     <span className="text-sm font-medium">
                       Ganador: {existingMatch.result_couple1 > existingMatch.result_couple2
@@ -557,7 +557,7 @@ export default function ZoneMatchDialog({
 
                   {/* Result Summary */}
                   {couple1Score && couple2Score && (
-                    <div className="text-center py-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="text-center py-3 bg-slate-50 rounded-surface border border-slate-200">
                       {isValid ? (
                         <div className="space-y-2">
                           <div className="flex items-center justify-center gap-2 text-green-600">

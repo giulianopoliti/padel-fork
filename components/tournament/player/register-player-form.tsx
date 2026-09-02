@@ -231,7 +231,7 @@ export default function RegisterPlayerForm({ tournamentId, tournament, onComplet
       </CardHeader>
 
       <CardContent>
-        <div className="mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="mb-6 p-3 bg-gray-50 rounded-surface border border-gray-200">
           <div className="flex items-center text-sm text-gray-600 mb-1">
             <User className="h-4 w-4 mr-1" />
             Registrandose como:
@@ -264,7 +264,7 @@ export default function RegisterPlayerForm({ tournamentId, tournament, onComplet
           </div>
 
           {requireTermsAcceptance && (
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <label className="flex cursor-pointer items-start gap-2 rounded-surface border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
               <Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked === true)} />
               <span>
                 Leí y acepto los <Link href={TPE_TERMS_PATH} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">Términos y Condiciones</Link>.

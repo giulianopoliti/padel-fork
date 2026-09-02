@@ -447,7 +447,7 @@ export function CoupleRow({
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <div className={isDisqualified ? 'rounded-lg border border-slate-200 bg-slate-50 p-3' : 'rounded-lg border border-red-200 bg-red-50 p-3'}>
+                <div className={isDisqualified ? 'rounded-surface border border-slate-200 bg-slate-50 p-3' : 'rounded-surface border border-red-200 bg-red-50 p-3'}>
                   <p className={isDisqualified ? 'font-medium text-slate-800' : 'font-medium text-red-800'}>
                     {isDisqualified
                       ? `La pareja ${couple.player1Name} / ${couple.player2Name} volvera a quedar habilitada.`

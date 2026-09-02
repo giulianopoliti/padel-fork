@@ -166,7 +166,7 @@ export function DraggableCoupleSlot({
 
     // Imagen de drag personalizada
     const dragImage = document.createElement('div')
-    dragImage.className = 'bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2'
+    dragImage.className = 'bg-blue-600 text-white px-3 py-2 rounded-surface shadow-lg text-sm font-medium flex items-center gap-2'
     dragImage.innerHTML = `
       <span>👥</span>
       <span>${couple.player1_details?.first_name} ${couple.player1_details?.last_name || 'P1'} & ${couple.player2_details?.first_name} ${couple.player2_details?.last_name || 'P2'}</span>
@@ -279,7 +279,7 @@ export function DraggableCoupleSlot({
 
   const slotClasses = cn(
     // Base styles
-    'relative transition-all duration-200 rounded-lg border-2',
+    'relative transition-all duration-200 rounded-surface border-2',
     compact ? 'p-1.5 min-h-[2.5rem]' : 'p-3 min-h-[4rem]',
     
     // Estado normal

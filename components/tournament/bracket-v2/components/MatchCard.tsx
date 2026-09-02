@@ -431,7 +431,7 @@ export function MatchCard({
   
   // Calcular clases CSS basadas en estado
   const cardClasses = cn(
-    'match-card bg-white border rounded-lg shadow-sm transition-all duration-200',
+    'match-card bg-white border rounded-surface shadow-sm transition-all duration-200',
     'min-h-[120px] p-4',
     {
       // Estados base

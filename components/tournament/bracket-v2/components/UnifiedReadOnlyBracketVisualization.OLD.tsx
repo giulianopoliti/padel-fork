@@ -291,7 +291,7 @@ export default function UnifiedReadOnlyBracketVisualization({
     <div className="space-y-6">
       {/* Header informativo (solo para vista pública) */}
       {isPublicView && (
-        <div className="bg-gradient-to-r from-slate-700 to-slate-600 text-white rounded-lg p-6 shadow-md">
+        <div className="bg-gradient-to-r from-slate-700 to-slate-600 text-white rounded-surface p-6 shadow-md">
           <div className="flex items-center justify-center gap-3 mb-2">
             <Trophy className="h-6 w-6" />
             <h2 className="text-xl font-bold">Bracket del Torneo</h2>
@@ -386,7 +386,7 @@ export default function UnifiedReadOnlyBracketVisualization({
 
       {/* Footer informativo con diseño moderno */}
       <div className="mt-12 pt-6 border-t-2 border-slate-200">
-        <div className="bg-gradient-to-r from-slate-50 via-blue-50 to-slate-50 rounded-xl p-6 text-center">
+        <div className="bg-gradient-to-r from-slate-50 via-blue-50 to-slate-50 rounded-elevated p-6 text-center">
           {hasPoints ? (
             <div className="flex items-center justify-center gap-3 text-slate-700">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">

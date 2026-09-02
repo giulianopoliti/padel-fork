@@ -336,7 +336,7 @@ export default function ReadOnlyBracketVisualization({
   // Error state
   if (error) {
     return (
-      <div className="bg-red-50 text-red-700 p-6 rounded-lg border border-red-200 text-center">
+      <div className="bg-red-50 text-red-700 p-6 rounded-surface border border-red-200 text-center">
         <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
         <div className="font-semibold mb-1">Error al cargar bracket</div>
         <div className="text-sm">{error}</div>
@@ -360,7 +360,7 @@ export default function ReadOnlyBracketVisualization({
   }
 
   return (
-    <div className={cn('bg-white rounded-lg', className)}>
+    <div className={cn('bg-white rounded-surface', className)}>
 
       
       {/* Round Tabs */}

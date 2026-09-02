@@ -483,7 +483,7 @@ export function ImprovedBracketRenderer({
         className={cn(
           'relative transition-all duration-200',
           variant === 'tree' ? 'w-full' : 'w-full max-w-full',
-          hasChanges && 'ring-2 ring-blue-300 ring-opacity-60 rounded-xl'
+          hasChanges && 'ring-2 ring-blue-300 ring-opacity-60 rounded-elevated'
         )}
         style={containerStyle}
       >
@@ -635,7 +635,7 @@ export function ImprovedBracketRenderer({
         </div>
 
         {dragState.pendingOperations.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+          <div className="flex flex-wrap items-center gap-2 rounded-surface border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
             <div className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
             <span className="font-medium">
               {dragState.pendingOperations.length} intercambio(s) pendiente(s)
@@ -651,7 +651,7 @@ export function ImprovedBracketRenderer({
 
   if (roundGroups.length === 0) {
     return (
-      <div className={cn('rounded-lg border bg-slate-50', className)}>
+      <div className={cn('rounded-surface border bg-slate-50', className)}>
         {renderControls()}
         <div className="px-6 py-16 text-center">
           <div className="text-lg text-slate-500">No hay partidos para mostrar</div>
@@ -662,7 +662,7 @@ export function ImprovedBracketRenderer({
   }
 
   return (
-    <div className={cn('min-w-0 max-w-full overflow-hidden rounded-lg border bg-slate-50', className)}>
+    <div className={cn('min-w-0 max-w-full overflow-hidden rounded-surface border bg-slate-50', className)}>
       {renderControls()}
 
       <div className="lg:hidden">
@@ -735,7 +735,7 @@ export function ImprovedBracketRenderer({
                     width: column.width
                   }}
                 >
-                  <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
+                  <div className="rounded-elevated border border-slate-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Ronda</p>

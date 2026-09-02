@@ -473,7 +473,7 @@ export default function EnhancedBracketDemo() {
 
         {/* Control de navegación */}
         <div className="flex justify-center mb-8">
-          <div className="bg-white rounded-lg p-1 shadow-sm border border-slate-200 flex flex-col sm:flex-row w-full sm:w-auto">
+          <div className="bg-white rounded-surface p-1 shadow-sm border border-slate-200 flex flex-col sm:flex-row w-full sm:w-auto">
             <Button
               onClick={() => switchView("bracket")}
               variant={currentView === "bracket" ? "default" : "ghost"}
@@ -564,7 +564,7 @@ export default function EnhancedBracketDemo() {
 
           {/* Vista del Bracket */}
           {currentView === "bracket" && (
-            <div className="bg-white rounded-lg p-3 sm:p-6 shadow-sm border border-slate-200">
+            <div className="bg-white rounded-surface p-3 sm:p-6 shadow-sm border border-slate-200">
               <div className="text-center mb-6">
                 <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Bracket Eliminatorio</h3>
                 <p className="text-slate-600 text-sm">Seguí el progreso del torneo en tiempo real</p>
@@ -579,7 +579,7 @@ export default function EnhancedBracketDemo() {
               <div className="flex justify-center overflow-x-auto">
                 <div
                   ref={bracketRef}
-                  className="tournament-bracket bg-slate-50 rounded-lg border border-slate-200 p-2 sm:p-4 min-w-fit"
+                  className="tournament-bracket bg-slate-50 rounded-surface border border-slate-200 p-2 sm:p-4 min-w-fit"
                   style={{ width: Math.max(totalWidthForLayout + 40, 320), height: calculatedTotalHeightForLayout }}
                 >
                   <div
@@ -622,7 +622,7 @@ export default function EnhancedBracketDemo() {
                           zIndex: 2,
                         }}
                       >
-                        <div className="bg-slate-900 text-white rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 shadow-sm">
+                        <div className="bg-slate-900 text-white rounded-surface py-1.5 sm:py-2 px-2 sm:px-3 shadow-sm">
                           <h3 className="text-xs font-semibold">{roundTranslation[round] || round}</h3>
                         </div>
                       </div>
@@ -650,7 +650,7 @@ export default function EnhancedBracketDemo() {
                           }}
                         >
                           <div
-                            className={`bg-white rounded-lg shadow-md h-full transition-all hover:shadow-lg border-2 ${
+                            className={`bg-white rounded-surface shadow-md h-full transition-all hover:shadow-lg border-2 ${
                               isCompleted ? "border-slate-300" : "border-slate-200"
                             } overflow-hidden`}
                           >

@@ -186,7 +186,7 @@ function HomeFooter({ organizationName, branding, dark = false }: { organization
 
 function SetupEmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-3xl border border-dashed border-white/20 bg-white/5 px-6 py-12 text-center shadow-sm backdrop-blur-sm">
+    <div className="rounded-display-lg border border-dashed border-white/20 bg-white/5 px-6 py-12 text-center shadow-sm backdrop-blur-sm">
       <h3 className="text-xl font-bold text-white">{title}</h3>
       <p className="mx-auto mt-3 max-w-2xl text-slate-300">{description}</p>
     </div>

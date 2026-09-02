@@ -15,7 +15,7 @@ function createToastElement(message: string, type: 'success' | 'error' | 'warnin
   const toast = document.createElement('div')
   
   const baseClasses = [
-    'fixed', 'top-4', 'right-4', 'z-50', 'p-4', 'rounded-lg', 'shadow-lg',
+    'fixed', 'top-4', 'right-4', 'z-50', 'p-4', 'rounded-surface', 'shadow-lg',
     'max-w-sm', 'text-sm', 'font-medium', 'animate-in', 'slide-in-from-right',
     'transition-all', 'duration-300'
   ]

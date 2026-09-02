@@ -51,7 +51,7 @@ const CouplePositionRow: React.FC<CouplePositionRowProps> = ({ couple, index }) 
   const hasCalculatedPosition = couple.position !== undefined
   
   return (
-    <div className="couple-position-row border rounded-lg p-3 bg-white hover:bg-gray-50 transition-colors">
+    <div className="couple-position-row border rounded-surface p-3 bg-white hover:bg-gray-50 transition-colors">
       <div 
         className="flex items-center justify-between cursor-pointer"
         onClick={() => setShowDetails(!showDetails)}

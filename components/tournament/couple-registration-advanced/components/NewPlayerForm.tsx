@@ -280,7 +280,7 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
             </DialogHeader>
 
             <div className="py-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-surface p-4 space-y-3">
                 <h4 className="font-semibold text-blue-900">Datos del jugador encontrado:</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">

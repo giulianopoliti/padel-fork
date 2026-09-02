@@ -81,7 +81,7 @@ export async function OrganizersSectionRedesign() {
                       {/* Centered Logo */}
                       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                         {org.logoUrl ? (
-                          <div className="w-24 h-24 rounded-xl bg-white shadow-2xl border-3 border-white overflow-hidden ring-4 ring-blue-400/50">
+                          <div className="w-24 h-24 rounded-elevated bg-white shadow-2xl border-3 border-white overflow-hidden ring-4 ring-blue-400/50">
                             <Image
                               src={getStorageUrl(org.logoUrl) || "/placeholder.svg"}
                               alt={`${org.name} - Logo`}
@@ -92,7 +92,7 @@ export async function OrganizersSectionRedesign() {
                             />
                           </div>
                         ) : (
-                          <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-2xl border-3 border-white flex items-center justify-center ring-4 ring-blue-400/50">
+                          <div className="w-24 h-24 rounded-elevated bg-gradient-to-br from-blue-600 to-cyan-600 shadow-2xl border-3 border-white flex items-center justify-center ring-4 ring-blue-400/50">
                             <Building2 className="h-12 w-12 text-white" />
                           </div>
                         )}
@@ -116,17 +116,17 @@ export async function OrganizersSectionRedesign() {
 
                       {/* Stats - Grid */}
                       <div className="grid grid-cols-3 gap-3 mb-4">
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 text-center border border-blue-200">
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-surface p-3 text-center border border-blue-200">
                           <Network className="h-4 w-4 text-blue-600 mx-auto mb-1.5" />
                           <div className="text-2xl font-bold text-blue-900">{org.clubCount}</div>
                           <div className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Clubes</div>
                         </div>
-                        <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg p-3 text-center border border-cyan-200">
+                        <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-surface p-3 text-center border border-cyan-200">
                           <Trophy className="h-4 w-4 text-cyan-600 mx-auto mb-1.5" />
                           <div className="text-2xl font-bold text-cyan-900">{org.tournamentCount}</div>
                           <div className="text-[10px] font-semibold text-cyan-600 uppercase tracking-wide">Torneos</div>
                         </div>
-                        <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-lg p-3 text-center border border-sky-200">
+                        <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-surface p-3 text-center border border-sky-200">
                           <Users className="h-4 w-4 text-sky-600 mx-auto mb-1.5" />
                           <div className="text-2xl font-bold text-sky-900">{org.clubCount * 20}+</div>
                           <div className="text-[10px] font-semibold text-sky-600 uppercase tracking-wide">Jugadores</div>
@@ -182,7 +182,7 @@ export async function OrganizersSectionRedesign() {
                         {/* Logo - Primary focus */}
                         <div className="relative mb-3 flex-shrink-0">
                           {org.logoUrl ? (
-                            <div className="w-16 h-16 rounded-lg bg-white shadow-md border-2 border-slate-200 overflow-hidden group-hover:border-blue-400 transition-colors">
+                            <div className="w-16 h-16 rounded-surface bg-white shadow-md border-2 border-slate-200 overflow-hidden group-hover:border-blue-400 transition-colors">
                               <Image
                                 src={getStorageUrl(org.logoUrl)}
                                 alt={org.name || "Organización"}
@@ -193,7 +193,7 @@ export async function OrganizersSectionRedesign() {
                               />
                             </div>
                           ) : (
-                            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-slate-300 to-slate-400 shadow-md border-2 border-slate-200 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-surface bg-gradient-to-br from-slate-300 to-slate-400 shadow-md border-2 border-slate-200 flex items-center justify-center">
                               <Building2 className="h-8 w-8 text-white" />
                             </div>
                           )}

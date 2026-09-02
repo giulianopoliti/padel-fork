@@ -140,7 +140,7 @@ export default function EnhancedMatchCard({
         'group relative overflow-hidden transition-all duration-300',
         'border border-blue-200/50 bg-white/60 backdrop-blur-sm',
         'hover:shadow-2xl hover:border-blue-300/60',
-        'rounded-lg',
+        'rounded-surface',
         config.card,
         className
       )}
@@ -217,7 +217,7 @@ export default function EnhancedMatchCard({
           {/* Couple 1 */}
           <div
             className={cn(
-              'relative flex items-center justify-between py-2 px-3 rounded-lg transition-all duration-200',
+              'relative flex items-center justify-between py-2 px-3 rounded-surface transition-all duration-200',
               isWinner1
                 ? 'bg-blue-50/80 border-l-4 border-l-blue-600'
                 : 'bg-slate-50/80 hover:bg-slate-100/80'
@@ -298,7 +298,7 @@ export default function EnhancedMatchCard({
           {/* Couple 2 */}
           <div
             className={cn(
-              'relative flex items-center justify-between py-2 px-3 rounded-lg transition-all duration-200',
+              'relative flex items-center justify-between py-2 px-3 rounded-surface transition-all duration-200',
               isWinner2
                 ? 'bg-blue-50/80 border-l-4 border-l-blue-600'
                 : 'bg-slate-50/80 hover:bg-slate-100/80'

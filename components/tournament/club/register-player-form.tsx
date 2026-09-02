@@ -324,7 +324,7 @@ export default function RegisterPlayerForm({
         </Form>
 
         {searchResults.length > 0 && (
-          <div className="border rounded-md overflow-hidden">
+          <div className="border rounded-control overflow-hidden">
             <div className="bg-slate-50 px-4 py-2 border-b">
               <h3 className="font-medium text-slate-700">Resultados de busqueda</h3>
             </div>
@@ -361,7 +361,7 @@ export default function RegisterPlayerForm({
         {selectedPlayer && (
           <div className="mt-4 pt-4 border-t">
             <h3 className="font-medium text-slate-700 mb-2">Jugador seleccionado</h3>
-            <div className="bg-violet-50 border border-violet-100 rounded-md p-4">
+            <div className="bg-violet-50 border border-violet-100 rounded-control p-4">
               <p className="font-medium text-violet-700">
                 {selectedPlayer.first_name} {selectedPlayer.last_name}
               </p>
@@ -507,7 +507,7 @@ export default function RegisterPlayerForm({
             </DialogHeader>
 
             <div className="py-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-surface p-4 space-y-3">
                 <h4 className="font-semibold text-blue-900">Datos del jugador encontrado:</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">

@@ -292,7 +292,7 @@ export const CompactBracketRenderer = memo(function CompactBracketRenderer({
     return (
       <div key={column.round} className="flex-shrink-0 min-w-[280px] max-w-[320px] relative">
         {/* Header de la columna - STICKY */}
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 pb-3 mb-4 rounded-lg">
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 pb-3 mb-4 rounded-surface">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
               {column.displayName}
@@ -445,7 +445,7 @@ export const CompactBracketRenderer = memo(function CompactBracketRenderer({
   // ============================================================================
 
   return (
-    <div className={cn('bg-gray-50 rounded-lg border', className)}>
+    <div className={cn('bg-gray-50 rounded-surface border', className)}>
       {/* Controles superiores compactos */}
       {renderCompactControls()}
 

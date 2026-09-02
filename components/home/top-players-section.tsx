@@ -110,26 +110,26 @@ export default function TopPlayersSection() {
         return (
           <div className="relative">
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
-            <div className="bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-600 w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl">
+            <div className="bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-600 w-12 h-12 rounded-display flex items-center justify-center shadow-xl">
               <Crown className="h-6 w-6 text-white drop-shadow-sm" />
             </div>
           </div>
         )
       case 1:
         return (
-          <div className="bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500 w-10 h-10 rounded-elevated flex items-center justify-center shadow-lg">
             <Medal className="h-5 w-5 text-white" />
           </div>
         )
       case 2:
         return (
-          <div className="bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 w-9 h-9 rounded-lg flex items-center justify-center shadow-md">
+          <div className="bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 w-9 h-9 rounded-surface flex items-center justify-center shadow-md">
             <Medal className="h-4 w-4 text-white" />
           </div>
         )
       default:
         return (
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm border border-gray-300">
+          <div className="w-8 h-8 rounded-surface bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm border border-gray-300">
             {index + 1}
           </div>
         )
@@ -189,19 +189,19 @@ export default function TopPlayersSection() {
         <div className="max-w-6xl mx-auto">
           <Tabs
             defaultValue="individual"
-            className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden"
+            className="bg-white rounded-display-lg shadow-xl border border-gray-200 overflow-hidden"
           >
             <TabsList className="w-full border-b border-gray-200 bg-gray-50 p-2">
               <TabsTrigger
                 value="individual"
-                className="flex-1 py-4 px-6 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-2xl transition-all duration-300"
+                className="flex-1 py-4 px-6 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-display transition-all duration-300"
               >
                 <Trophy className="mr-3 h-5 w-5" />
                 <span className="font-semibold">Ranking Individual</span>
               </TabsTrigger>
               <TabsTrigger
                 value="pairs"
-                className="flex-1 py-4 px-6 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-2xl transition-all duration-300"
+                className="flex-1 py-4 px-6 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-display transition-all duration-300"
               >
                 <Shield className="mr-3 h-5 w-5" />
                 <span className="font-semibold">Ranking de Parejas</span>
@@ -231,7 +231,7 @@ export default function TopPlayersSection() {
                             <img
                               src={player.avatar || "/placeholder.svg"}
                               alt={`${player.firstName} ${player.lastName}`}
-                              className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-lg"
+                              className="w-16 h-16 rounded-display object-cover border-2 border-white shadow-lg"
                             />
                             {index < 3 && (
                               <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center">
@@ -266,7 +266,7 @@ export default function TopPlayersSection() {
                         <Badge className={`${getCategoryColor(player.category, 'gradient')} text-white shadow-md`}>{player.category}</Badge>
 
                         <div className="text-center">
-                          <div className="bg-blue-600 text-white font-black text-lg rounded-2xl w-16 h-16 flex items-center justify-center shadow-lg">
+                          <div className="bg-blue-600 text-white font-black text-lg rounded-display w-16 h-16 flex items-center justify-center shadow-lg">
                             {player.score}
                           </div>
                           <div className="mt-2 flex justify-center">{getTrendIcon(player.trend)}</div>
@@ -281,7 +281,7 @@ export default function TopPlayersSection() {
                 <Button
                   asChild
                   variant="outline"
-                  className="border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 rounded-xl px-6 py-3"
+                  className="border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 rounded-elevated px-6 py-3"
                 >
                   <Link href="/ranking" className="flex items-center">
                     <Zap className="mr-2 h-4 w-4" />

@@ -289,7 +289,7 @@ export default function PlayerTournamentClient({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Imagen del torneo */}
         <div className="lg:col-span-1">
-          <div className="relative h-64 lg:h-80 rounded-lg overflow-hidden shadow-sm border border-gray-200">
+          <div className="relative h-64 lg:h-80 rounded-surface overflow-hidden shadow-sm border border-gray-200">
             <img
               src={tournament.club?.image || "/placeholder.svg?height=300&width=400"}
               alt={tournament.name}
@@ -504,7 +504,7 @@ export default function PlayerTournamentClient({
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-4">
               {/* Mensaje de confirmación */}
-              <div className="flex items-center bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200">
+              <div className="flex items-center bg-green-50 text-green-700 px-4 py-2 rounded-surface border border-green-200">
                 <Trophy className="mr-2 h-5 w-5" />
                 <span className="font-medium">Ya estás registrado en este torneo</span>
               </div>
@@ -558,7 +558,7 @@ export default function PlayerTournamentClient({
       )}
 
       {/* Tabs para diferentes secciones */}
-      <Tabs defaultValue="players" className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <Tabs defaultValue="players" className="bg-white rounded-surface shadow-sm border border-gray-200 overflow-hidden">
         <TabsList className="w-full border-b border-gray-200 bg-gray-50 p-1">
           <TabsTrigger
             value="players"

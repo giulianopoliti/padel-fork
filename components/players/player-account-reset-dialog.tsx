@@ -109,7 +109,7 @@ export default function PlayerAccountResetDialog({
             </AlertDescription>
           </Alert>
 
-          <div className="rounded-lg border p-4 text-sm">
+          <div className="rounded-surface border p-4 text-sm">
             <div className="font-semibold">
               {player.first_name} {player.last_name}
             </div>

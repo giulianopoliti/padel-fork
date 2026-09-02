@@ -48,7 +48,7 @@ export function PersonalDataSection({ defaultValues }: PersonalDataSectionProps)
     <Card className="bg-white border border-gray-200 shadow-sm">
       <CardHeader className="border-b border-gray-100 p-4 md:p-6">
         <div className="flex items-center space-x-3">
-          <div className="bg-blue-100 p-2 rounded-lg">
+          <div className="bg-blue-100 p-2 rounded-surface">
             <User className="h-5 w-5 text-blue-600" />
           </div>
           <div>
@@ -94,7 +94,7 @@ export function PersonalDataSection({ defaultValues }: PersonalDataSectionProps)
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 onChange={handleAvatarChange}
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 file:mr-2 md:file:mr-4 file:py-2 file:px-3 md:file:px-4 file:rounded-lg file:border-0 file:text-xs md:file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 file:mr-2 md:file:mr-4 file:py-2 file:px-3 md:file:px-4 file:rounded-surface file:border-0 file:text-xs md:file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
               <p className="text-xs text-gray-500">JPEG, JPG, PNG, WEBP (sin límite de tamaño)</p>
             </div>
@@ -178,13 +178,13 @@ export function PersonalDataSection({ defaultValues }: PersonalDataSectionProps)
         <div className="space-y-3">
           <Label className="text-sm font-medium text-gray-700">Género (No se puede cambiar)</Label>
           <RadioGroup name="gender" value={defaultValues.gender} className="flex flex-col space-y-2" disabled>
-            <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-surface border border-gray-200">
               <RadioGroupItem value="MALE" id="gender-male" className="text-blue-600 border-gray-300" disabled />
               <Label htmlFor="gender-male" className="text-gray-600">
                 Caballeros
               </Label>
             </div>
-            <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-surface border border-gray-200">
               <RadioGroupItem value="FEMALE" id="gender-female" className="text-blue-600 border-gray-300" disabled />
               <Label htmlFor="gender-female" className="text-gray-600">
                 Damas

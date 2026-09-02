@@ -59,7 +59,7 @@ export default function PlayerSelector({
     if (playerSelection.type === 'existing' && playerSelection.existingPlayer) {
       const player = playerSelection.existingPlayer
       return (
-        <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-surface">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
               <User className="h-5 w-5 text-green-600" />
@@ -93,7 +93,7 @@ export default function PlayerSelector({
     if (playerSelection.type === 'new' && playerSelection.newPlayerData) {
       const player = playerSelection.newPlayerData
       return (
-        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-surface">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <UserPlus className="h-5 w-5 text-blue-600" />

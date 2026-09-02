@@ -122,7 +122,7 @@ export default function LateRegistrationSection({
         </div>
         
         {tournamentStatus === "ZONE_PHASE" && (
-          <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+          <div className="mt-3 p-3 bg-blue-100 rounded-surface">
             <p className="text-xs text-blue-800">
               ℹ️ <strong>Inscripción durante fase de zonas:</strong> Las nuevas parejas se agregarán 
               al pool de no asignados. Podrás moverlas a zonas mientras no hayan jugado partidos.

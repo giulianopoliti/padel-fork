@@ -8,7 +8,7 @@ export function RankingSkeleton() {
         </div>
 
         <div className="max-w-4xl mx-auto">
-          <div className="border border-slate-200 shadow-lg rounded-lg overflow-hidden">
+          <div className="border border-slate-200 shadow-lg rounded-surface overflow-hidden">
             <div className="bg-slate-900 text-white p-4">
               <div className="h-6 bg-slate-700 rounded w-1/3 animate-pulse" />
             </div>

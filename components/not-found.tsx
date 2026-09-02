@@ -11,7 +11,7 @@ interface TournamentNotFoundProps {
 export default function TournamentNotFound({ onBackToTournaments }: TournamentNotFoundProps) {
   return (
     <div className="flex items-center justify-center min-h-[50vh]">
-      <Card className="max-w-md w-full bg-white rounded-lg shadow-sm border border-slate-100">
+      <Card className="max-w-md w-full bg-white rounded-surface shadow-sm border border-slate-100">
         <CardHeader className="text-center">
           <div className="mx-auto bg-teal-50 w-16 h-16 rounded-full flex items-center justify-center mb-4 border border-teal-100">
             <Trophy className="h-8 w-8 text-teal-600" />

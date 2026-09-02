@@ -22,7 +22,7 @@ export function ClubServicesSection({ allServices, clubServices, defaultValues }
           {allServices.map((service) => (
             <div
               key={service.id}
-              className={`flex items-center space-x-3 p-3 md:p-4 rounded-lg border transition-all duration-200 ${
+              className={`flex items-center space-x-3 p-3 md:p-4 rounded-surface border transition-all duration-200 ${
                 clubServices.includes(service.id)
                   ? "bg-blue-50 border-blue-200"
                   : "bg-white border-gray-200 hover:bg-gray-50"
@@ -51,12 +51,12 @@ export function ClubServicesSection({ allServices, clubServices, defaultValues }
           ))}
         </div>
       ) : (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+        <div className="bg-gray-50 border border-gray-200 rounded-surface p-6 text-center">
           <p className="text-gray-500">No hay servicios disponibles para seleccionar. Contacta al administrador.</p>
         </div>
       )}
 
-      <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+      <div className="p-4 rounded-surface bg-blue-50 border border-blue-200">
         <div className="flex items-start gap-3">
           <Info className="h-5 w-5 text-blue-600 mt-0.5" />
           <div>

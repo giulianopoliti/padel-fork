@@ -131,7 +131,7 @@ export const PasswordChangeForm = () => {
       }}
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
+        <div className="flex h-8 w-8 items-center justify-center rounded-surface bg-blue-100">
           <KeyRound className="h-4 w-4 text-blue-600" />
         </div>
         <h4 className="text-lg font-medium text-gray-900">Cambiar contraseña</h4>
@@ -166,7 +166,7 @@ export const PasswordChangeForm = () => {
       ))}
 
       {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div role="alert" className="rounded-surface border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
         </div>
       )}

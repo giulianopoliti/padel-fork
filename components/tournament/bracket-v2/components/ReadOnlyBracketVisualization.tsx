@@ -289,13 +289,13 @@ export default function ReadOnlyBracketVisualization({
     return (
       <div className="space-y-6">
         {isGoldSilverFormat && (
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="rounded-surface border border-slate-200 bg-white p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-slate-600">Visualizando</p>
                 <p className="text-base font-semibold text-slate-900">{getBracketLabelByKey(activeBracketKey)}</p>
               </div>
-              <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-1">
+              <div className="flex items-center gap-2 rounded-surface border border-slate-200 p-1">
                 <Button
                   type="button"
                   size="sm"
@@ -335,13 +335,13 @@ export default function ReadOnlyBracketVisualization({
   return (
     <div className="space-y-6">
       {isGoldSilverFormat && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="rounded-surface border border-slate-200 bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-slate-600">Visualizando</p>
               <p className="text-base font-semibold text-slate-900">{getBracketLabelByKey(activeBracketKey)}</p>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-1">
+            <div className="flex items-center gap-2 rounded-surface border border-slate-200 p-1">
               <Button
                 type="button"
                 size="sm"
@@ -426,7 +426,7 @@ export default function ReadOnlyBracketVisualization({
 
       {/* Footer informativo con diseño moderno */}
       <div className="mt-12 pt-6 border-t-2 border-slate-200">
-        <div className="bg-gradient-to-r from-slate-50 via-blue-50 to-slate-50 rounded-xl p-6 text-center">
+        <div className="bg-gradient-to-r from-slate-50 via-blue-50 to-slate-50 rounded-elevated p-6 text-center">
           {hasPoints ? (
             <div className="flex items-center justify-center gap-3 text-slate-700">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">

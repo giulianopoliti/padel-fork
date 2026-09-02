@@ -125,7 +125,7 @@ export const PlayerUserLinkComponent = ({
 
       {/* Usuario actual vinculado */}
       {currentUserId ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+        <div className="bg-blue-50 border border-blue-200 rounded-surface p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-blue-900">Usuario Vinculado</p>
@@ -164,7 +164,7 @@ export const PlayerUserLinkComponent = ({
 
           {/* Resultados de búsqueda */}
           {searchQuery.length >= 2 && (
-            <div className="border rounded-lg max-h-64 overflow-y-auto">
+            <div className="border rounded-surface max-h-64 overflow-y-auto">
               {isSearching ? (
                 <div className="p-4 text-center text-slate-500">
                   Buscando...

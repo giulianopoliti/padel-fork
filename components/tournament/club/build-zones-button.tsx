@@ -186,7 +186,7 @@ export default function BuildZonesButton({
 
                 {/* Preview de distribución de zonas */}
                 {zonesDistribution && (
-                  <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="bg-blue-50 p-4 rounded-surface">
                     <div className="flex items-center gap-2 mb-3">
                       <Target className="h-5 w-5 text-blue-600" />
                       <h4 className="font-medium text-blue-900">Distribución de zonas</h4>
@@ -226,12 +226,12 @@ export default function BuildZonesButton({
             <CardContent className="pt-6">
               <h4 className="font-medium text-gray-900 mb-4">Inscripciones actuales</h4>
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-center p-4 bg-blue-50 rounded-surface">
                   <div className="text-2xl font-bold text-blue-600">{couplesCount}</div>
                   <div className="text-sm text-blue-800">Parejas</div>
                   <div className="text-xs text-blue-600 mt-1">{couplesCount * 2} jugadores</div>
                 </div>
-                <div className={`text-center p-4 rounded-lg ${playersCount > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                <div className={`text-center p-4 rounded-surface ${playersCount > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
                   <div className={`text-2xl font-bold ${playersCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {playersCount}
                   </div>
@@ -249,7 +249,7 @@ export default function BuildZonesButton({
 
               {/* Advertencia si hay jugadores sin emparejar */}
               {playersCount > 0 && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-control">
                   <div className="flex items-center gap-2 text-red-800">
                     <AlertTriangle className="h-5 w-5" />
                     <p className="font-medium">No se pueden crear las zonas</p>
@@ -263,7 +263,7 @@ export default function BuildZonesButton({
 
               {/* Advertencia si no hay suficientes parejas */}
               {couplesCount < 6 && playersCount === 0 && (
-                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-control">
                   <div className="flex items-center gap-2 text-amber-800">
                     <AlertTriangle className="h-5 w-5" />
                     <p className="font-medium">Parejas insuficientes</p>
@@ -277,7 +277,7 @@ export default function BuildZonesButton({
 
               {/* Mensaje de confirmación cuando todo está listo */}
               {canBuildZones && (
-                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-control">
                   <div className="flex items-center gap-2 text-green-800">
                     <CheckCircle className="h-4 w-4" />
                     <p className="text-sm font-medium">
@@ -294,7 +294,7 @@ export default function BuildZonesButton({
           </Card>
 
           {/* Información sobre el algoritmo */}
-          <div className="p-4 bg-purple-50 border border-purple-200 rounded-md">
+          <div className="p-4 bg-purple-50 border border-purple-200 rounded-control">
             <div className="flex items-center gap-2 text-purple-800 mb-2">
               <Shuffle className="h-5 w-5" />
               <p className="font-medium">¿Qué es el algoritmo serpentino?</p>
@@ -307,7 +307,7 @@ export default function BuildZonesButton({
           </div>
 
           {/* Advertencia importante */}
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-control">
             <div className="flex items-center gap-2 text-amber-800">
               <AlertTriangle className="h-5 w-5" />
               <p className="font-medium">¡Importante!</p>

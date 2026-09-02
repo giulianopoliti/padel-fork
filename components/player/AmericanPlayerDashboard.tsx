@@ -131,7 +131,7 @@ export default function AmericanPlayerDashboard({
             )}
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                 <div className="text-3xl font-bold">
                   {canShowParticipantStats ? playerData.totalCouplesInTournament : tournament.publicInfo?.typeLabel || 'Torneo'}
                 </div>
@@ -139,11 +139,11 @@ export default function AmericanPlayerDashboard({
                   {canShowParticipantStats ? 'Parejas Inscriptas' : 'Formato'}
                 </div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                 <div className="text-3xl font-bold">{totalMatches}</div>
                 <div className="text-blue-100 text-sm mt-1">Mis Partidos</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-surface p-4">
                 <div className="text-3xl font-bold">{finishedMatches}</div>
                 <div className="text-blue-100 text-sm mt-1">Completados</div>
               </div>
@@ -354,7 +354,7 @@ function AmericanMatchHistory({
               return (
                 <div
                   key={match.id}
-                  className={`p-4 rounded-lg border ${
+                  className={`p-4 rounded-surface border ${
                     didWin
                       ? 'bg-green-50 border-green-200'
                       : 'bg-red-50 border-red-200'

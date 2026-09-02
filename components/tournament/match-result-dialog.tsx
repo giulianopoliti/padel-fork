@@ -124,7 +124,7 @@ export default function MatchResultDialog({ isOpen, onClose, match, onSave }: Ma
         <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Información del partido */}
-            <div className="bg-white rounded-lg p-4 border border-emerald-200 shadow-sm">
+            <div className="bg-white rounded-surface p-4 border border-emerald-200 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="h-5 w-5 text-emerald-600" />
                 <span className="font-medium text-emerald-700">Enfrentamiento</span>
@@ -137,7 +137,7 @@ export default function MatchResultDialog({ isOpen, onClose, match, onSave }: Ma
             {/* Inputs de resultado con diseño mejorado */}
             <div className="space-y-4">
               {/* Pareja 1 */}
-              <div className="bg-white rounded-lg border-2 border-slate-200 p-4 transition-all hover:border-emerald-300 focus-within:border-emerald-400">
+              <div className="bg-white rounded-surface border-2 border-slate-200 p-4 transition-all hover:border-emerald-300 focus-within:border-emerald-400">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="text-sm font-medium text-slate-700 mb-2">Pareja 1</div>
@@ -152,7 +152,7 @@ export default function MatchResultDialog({ isOpen, onClose, match, onSave }: Ma
                       max="7"
                       value={result_couple1}
                       onChange={(e) => setResult_couple1(e.target.value)}
-                      className={`w-20 h-14 text-2xl font-bold text-center bg-white text-slate-900 border-2 rounded-md shadow-sm ${
+                      className={`w-20 h-14 text-2xl font-bold text-center bg-white text-slate-900 border-2 rounded-control shadow-sm ${
                         validation.isValid 
                           ? 'border-green-400 focus:border-green-500 focus:ring-green-500' 
                           : validation.errorMessage 
@@ -173,7 +173,7 @@ export default function MatchResultDialog({ isOpen, onClose, match, onSave }: Ma
               </div>
 
               {/* Pareja 2 */}
-              <div className="bg-white rounded-lg border-2 border-slate-200 p-4 transition-all hover:border-emerald-300 focus-within:border-emerald-400">
+              <div className="bg-white rounded-surface border-2 border-slate-200 p-4 transition-all hover:border-emerald-300 focus-within:border-emerald-400">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="text-sm font-medium text-slate-700 mb-2">Pareja 2</div>
@@ -188,7 +188,7 @@ export default function MatchResultDialog({ isOpen, onClose, match, onSave }: Ma
                       max="7"
                       value={result_couple2}
                       onChange={(e) => setResult_couple2(e.target.value)}
-                      className={`w-20 h-14 text-2xl font-bold text-center bg-white text-slate-900 border-2 rounded-md shadow-sm ${
+                      className={`w-20 h-14 text-2xl font-bold text-center bg-white text-slate-900 border-2 rounded-control shadow-sm ${
                         validation.isValid 
                           ? 'border-green-400 focus:border-green-500 focus:ring-green-500' 
                           : validation.errorMessage 
@@ -204,7 +204,7 @@ export default function MatchResultDialog({ isOpen, onClose, match, onSave }: Ma
 
             {/* Preview del ganador */}
             {validation.isValid && validation.winner && (
-              <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+              <div className="bg-emerald-50 rounded-surface p-4 border border-emerald-200">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle className="h-4 w-4 text-emerald-600" />
                   <span className="font-medium text-emerald-700">Ganador</span>
@@ -220,7 +220,7 @@ export default function MatchResultDialog({ isOpen, onClose, match, onSave }: Ma
 
             {/* Error de validación */}
             {validation.errorMessage && (
-              <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+              <div className="bg-red-50 rounded-surface p-4 border border-red-200">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertCircle className="h-4 w-4 text-red-600" />
                   <span className="font-medium text-red-700">Resultado inválido</span>

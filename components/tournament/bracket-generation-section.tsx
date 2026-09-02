@@ -157,7 +157,7 @@ export default function BracketGenerationSection({
     <Card className={`${currentState.borderColor} ${currentState.bgColor} border-2`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${currentState.bgColor} ${currentState.borderColor} border`}>
+          <div className={`p-2 rounded-surface ${currentState.bgColor} ${currentState.borderColor} border`}>
             <StateIcon className={`h-5 w-5 ${currentState.color}`} />
           </div>
           <div className="flex-1">
@@ -195,7 +195,7 @@ export default function BracketGenerationSection({
 
         {/* NUEVO: Información sobre placeholders generados */}
         {placeholderInfo && (
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <div className="bg-blue-50 rounded-surface p-4 border border-blue-200">
             <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
               🔄 Bracket con Placeholders Generado
             </h4>

@@ -168,7 +168,7 @@ function TournamentZonesMatrixInternal({
     // Find the main content container (the one with overflow-y-auto)
     const findMainContainer = () => {
       // Try specific selector first, then fallback to more general
-      let container = document.querySelector('.flex-1.bg-white.lg\\:rounded-tl-xl.shadow-sm.lg\\:ml-2.h-full.overflow-y-auto.overflow-x-hidden') as HTMLDivElement
+      let container = document.querySelector('.flex-1.bg-white.lg\\:rounded-tl-elevated.shadow-sm.lg\\:ml-2.h-full.overflow-y-auto.overflow-x-hidden') as HTMLDivElement
       
       // Fallback: find any element with overflow-y-auto that contains our component
       if (!container) {
@@ -664,7 +664,7 @@ function TournamentZonesMatrixInternal({
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+        <div className="text-center py-12 bg-slate-50 rounded-surface border-2 border-dashed border-slate-200">
           <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <BarChart3 className="h-8 w-8 text-slate-400" />
           </div>
@@ -704,7 +704,7 @@ function TournamentZonesMatrixInternal({
       {/* Global Loading Overlay */}
       {mutationLoading && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 shadow-xl flex items-center gap-3">
+          <div className="bg-white rounded-surface p-6 shadow-xl flex items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
             <span className="font-medium">Guardando cambios...</span>
           </div>

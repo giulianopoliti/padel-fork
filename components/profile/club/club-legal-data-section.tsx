@@ -67,7 +67,7 @@ export function ClubLegalDataSection({ defaultValues }: ClubLegalDataSectionProp
         </div>
       </div>
 
-      <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200">
+      <div className="mt-6 p-4 rounded-surface bg-blue-50 border border-blue-200">
         <div className="flex items-start gap-3">
           <Info className="h-5 w-5 text-blue-600 mt-0.5" />
           <div>

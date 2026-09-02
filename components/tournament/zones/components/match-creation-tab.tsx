@@ -207,7 +207,7 @@ export default function MatchCreationTab({ tournamentId, isOwner = true }: Tourn
               {/* Couple 1 Drop Zone */}
               <div
                 className={`
-                  border-2 border-dashed rounded-lg p-6 text-center
+                  border-2 border-dashed rounded-surface p-6 text-center
                   ${matchCouples[0] ? "border-green-400 bg-green-50" : "border-gray-300 bg-gray-50"}
                 `}
                 onDragOver={handleDragOver}
@@ -228,7 +228,7 @@ export default function MatchCreationTab({ tournamentId, isOwner = true }: Tourn
               {/* Couple 2 Drop Zone */}
               <div
                 className={`
-                  border-2 border-dashed rounded-lg p-6 text-center
+                  border-2 border-dashed rounded-surface p-6 text-center
                   ${matchCouples[1] ? "border-green-400 bg-green-50" : "border-gray-300 bg-gray-50"}
                 `}
                 onDragOver={handleDragOver}
@@ -340,7 +340,7 @@ export default function MatchCreationTab({ tournamentId, isOwner = true }: Tourn
           <Card className="border-gray-200 shadow-sm">
             <CardHeader className="bg-slate-50 border-b border-slate-200">
               <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-3">
-                <div className="bg-slate-200 p-2 rounded-lg">
+                <div className="bg-slate-200 p-2 rounded-surface">
                   <Users className="h-5 w-5 text-slate-600" />
                 </div>
                 Parejas sin Zona ({availableCouples.length})

@@ -10,7 +10,7 @@ export function WeeklyWinnersSkeleton() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white border border-slate-200 shadow-lg rounded-lg overflow-hidden animate-pulse">
+            <div key={i} className="bg-white border border-slate-200 shadow-lg rounded-surface overflow-hidden animate-pulse">
               <div className="h-64 bg-gray-200" />
               <div className="p-6">
                 <div className="h-6 bg-gray-200 rounded w-3/4 mb-2" />

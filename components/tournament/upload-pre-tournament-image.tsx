@@ -130,7 +130,7 @@ export default function UploadPreTournamentImage({
     <Card className="bg-white border border-gray-200 shadow-sm">
       <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardTitle className="text-xl font-semibold text-slate-900 flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-lg">
+          <div className="bg-blue-100 p-2 rounded-surface">
             <Image className="h-5 w-5 text-blue-600" />
           </div>
           {existingImageUrl ? 'Cambiar Imagen del Torneo' : 'Imagen del Torneo'}
@@ -179,7 +179,7 @@ export default function UploadPreTournamentImage({
                 <img
                   src={previewUrl}
                   alt="Preview de imagen del torneo"
-                  className="max-w-full h-64 mx-auto rounded-lg object-cover shadow-md"
+                  className="max-w-full h-64 mx-auto rounded-surface object-cover shadow-md"
                 />
                 <Button
                   variant="outline"
@@ -243,14 +243,14 @@ export default function UploadPreTournamentImage({
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-red-50 border border-red-200 rounded-surface p-4">
               <p className="text-red-700 text-sm font-medium">{error}</p>
             </div>
           )}
 
           {/* Success Message */}
           {uploadSuccess && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-surface p-4">
               <p className="text-emerald-700 text-sm font-medium">
                 ¡Imagen configurada exitosamente! La imagen del torneo ahora está disponible.
               </p>
@@ -258,7 +258,7 @@ export default function UploadPreTournamentImage({
           )}
 
           {/* Guidelines */}
-          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+          <div className="bg-slate-50 rounded-surface p-4 border border-slate-200">
             <h4 className="font-medium text-slate-900 mb-2">💡 Consejos para una mejor imagen:</h4>
             <ul className="text-sm text-slate-600 space-y-1">
               <li>• Usa una imagen que represente bien el torneo</li>

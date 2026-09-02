@@ -68,7 +68,7 @@ export default function NotRegisteredView({
     <>
       <div className="space-y-4">
         <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-blue-100 p-2.5">
+          <div className="rounded-surface bg-blue-100 p-2.5">
             <Trophy className="h-6 w-6 text-blue-700" />
           </div>
           <div className="min-w-0 flex-1 space-y-2">
@@ -212,7 +212,7 @@ export default function NotRegisteredView({
               buttonClassName="w-full"
             />
           ) : (
-            <div className="w-full rounded-md border border-red-300 bg-red-100 px-4 py-3 text-center text-sm font-semibold text-red-800 shadow-[0_0_0_1px_rgba(220,38,38,0.08)]">
+            <div className="w-full rounded-control border border-red-300 bg-red-100 px-4 py-3 text-center text-sm font-semibold text-red-800 shadow-[0_0_0_1px_rgba(220,38,38,0.08)]">
               {closedLabel}
             </div>
           )}

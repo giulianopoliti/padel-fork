@@ -107,7 +107,7 @@ export default function PublicBracketTreeView({
   }, [activeBracketKey, tournamentId, tournamentType])
 
   const cupSelector = isGoldSilverFormat ? (
-    <div className="rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm">
+    <div className="rounded-surface border border-slate-200 bg-white p-1.5 shadow-sm">
       <div className="grid grid-cols-2 gap-1.5">
         <Button
           type="button"
@@ -135,7 +135,7 @@ export default function PublicBracketTreeView({
     return (
       <div className="space-y-3">
         {cupSelector}
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="rounded-surface border border-slate-200 bg-white p-4">
           <div className="mb-4 flex items-center gap-2 text-sm text-slate-600">
             <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
             Cargando llave...
@@ -164,7 +164,7 @@ export default function PublicBracketTreeView({
     return (
       <div className="space-y-3">
         {cupSelector}
-        <div className="rounded-lg border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
+        <div className="rounded-surface border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
           <Trophy className="mx-auto mb-4 h-14 w-14 text-slate-300" />
           <h3 className="text-lg font-semibold text-slate-800">No hay llave disponible</h3>
           <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
@@ -180,7 +180,7 @@ export default function PublicBracketTreeView({
   return (
     <div className="space-y-3">
       {cupSelector}
-      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="rounded-surface border border-slate-200 bg-white p-3 shadow-sm">
         <div>
           <p className="text-sm font-medium text-slate-500">Llave del torneo</p>
           <h2 className="text-lg font-semibold text-slate-900">

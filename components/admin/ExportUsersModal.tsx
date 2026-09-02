@@ -211,7 +211,7 @@ export const ExportUsersModal = ({ isOpen, onClose }: ExportUsersModalProps) => 
 
           {/* Contador de usuarios */}
           {userCount !== null && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+            <div className="bg-blue-50 border border-blue-200 rounded-surface p-4 text-center">
               <p className="text-sm text-blue-900">
                 📊 Se exportarán <span className="font-bold">{userCount}</span> usuario
                 {userCount !== 1 ? "s" : ""}

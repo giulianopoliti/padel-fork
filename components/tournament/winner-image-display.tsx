@@ -26,7 +26,7 @@ export default function WinnerImageDisplay({
     <Card className={`bg-white border border-gray-200 shadow-sm ${className}`}>
       <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-amber-50 to-yellow-50">
         <CardTitle className="text-xl font-semibold text-slate-900 flex items-center gap-3">
-          <div className="bg-amber-100 p-2 rounded-lg">
+          <div className="bg-amber-100 p-2 rounded-surface">
             <Trophy className="h-5 w-5 text-amber-600" />
           </div>
           Foto de los Ganadores
@@ -57,7 +57,7 @@ export default function WinnerImageDisplay({
           
           <div className="flex justify-center">
             <div className="relative max-w-2xl w-full">
-              <div className="relative bg-gray-100 rounded-lg overflow-hidden shadow-lg border border-gray-200">
+              <div className="relative bg-gray-100 rounded-surface overflow-hidden shadow-lg border border-gray-200">
                 <img
                   src={imageUrlWithCacheBust}
                   alt={`Ganadores del torneo ${tournamentName}`}

@@ -99,7 +99,7 @@ export default function UploadWinnerImage({
     <Card className="bg-white border border-gray-200 shadow-sm">
       <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-amber-50 to-yellow-50">
         <CardTitle className="text-xl font-semibold text-slate-900 flex items-center gap-3">
-          <div className="bg-amber-100 p-2 rounded-lg">
+          <div className="bg-amber-100 p-2 rounded-surface">
             <Trophy className="h-5 w-5 text-amber-600" />
           </div>
           {existingImageUrl ? 'Cambiar Foto de los Ganadores' : 'Foto de los Ganadores'}
@@ -142,13 +142,13 @@ export default function UploadWinnerImage({
           />
 
           {/* Upload Area */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+          <div className="border-2 border-dashed border-gray-300 rounded-surface p-8 text-center hover:border-blue-400 transition-colors">
             {previewUrl ? (
               <div className="relative">
                 <img
                   src={previewUrl}
                   alt="Preview de imagen de ganadores"
-                  className="max-w-full h-64 mx-auto rounded-lg object-cover shadow-md"
+                  className="max-w-full h-64 mx-auto rounded-surface object-cover shadow-md"
                 />
                 <Button
                   variant="outline"
@@ -200,14 +200,14 @@ export default function UploadWinnerImage({
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-red-50 border border-red-200 rounded-surface p-4">
               <p className="text-red-700 text-sm font-medium">{error}</p>
             </div>
           )}
 
           {/* Success Message */}
           {uploadSuccess && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-surface p-4">
               <p className="text-emerald-700 text-sm font-medium">
                 ¡Imagen subida exitosamente! La foto de los ganadores ahora está disponible en el torneo.
               </p>
@@ -215,7 +215,7 @@ export default function UploadWinnerImage({
           )}
 
           {/* Guidelines */}
-          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+          <div className="bg-slate-50 rounded-surface p-4 border border-slate-200">
             <h4 className="font-medium text-slate-900 mb-2">💡 Consejos para una mejor foto:</h4>
             <ul className="text-sm text-slate-600 space-y-1">
               <li>• Asegúrate de que se vean claramente las caras de los ganadores</li>

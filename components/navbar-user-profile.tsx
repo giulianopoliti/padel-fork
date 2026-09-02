@@ -171,7 +171,7 @@ export default function NavbarUserProfile({ profileLinks = [] }: NavbarUserProfi
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-64 bg-white border-gray-200 shadow-lg rounded-md mt-1"
+        className="w-64 bg-white border-gray-200 shadow-lg rounded-control mt-1"
         data-navbar-dropdown-content="true"
       >
         <DropdownMenuLabel className="px-3 py-2.5">
@@ -188,7 +188,7 @@ export default function NavbarUserProfile({ profileLinks = [] }: NavbarUserProfi
           const IconComponent = getIcon(link.icon as IconName);
           return (
             <DropdownMenuItem key={link.path} asChild>
-              <Link href={link.path} className="cursor-pointer flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-sm focus:bg-gray-100 focus:text-gray-900">
+              <Link href={link.path} className="cursor-pointer flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-control-sm focus:bg-gray-100 focus:text-gray-900">
                 {IconComponent && <IconComponent className="mr-2.5 h-4 w-4 text-gray-500" />}
                 <span>{link.label}</span>
               </Link>
@@ -199,7 +199,7 @@ export default function NavbarUserProfile({ profileLinks = [] }: NavbarUserProfi
         {profileLinks.length > 0 && <DropdownMenuSeparator className="bg-gray-100"/>}
         
         <DropdownMenuItem
-          className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer flex items-center px-3 py-2 text-sm rounded-sm"
+          className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer flex items-center px-3 py-2 text-sm rounded-control-sm"
           onClick={handleLogout}
           disabled={isLoggingOut}
         >

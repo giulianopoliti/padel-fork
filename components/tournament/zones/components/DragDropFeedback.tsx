@@ -79,7 +79,7 @@ export function DragDropFeedback({
   if (requiresConfirmation && consequences?.eliminated > 0) {
     return (
       <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 ${className}`}>
-        <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+        <div className="bg-white rounded-surface p-6 max-w-md mx-4 shadow-xl">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-6 w-6 text-yellow-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
@@ -92,7 +92,7 @@ export function DragDropFeedback({
               </p>
 
               {consequences && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-surface p-3 mb-4">
                   <div className="text-sm space-y-1">
                     <div className="flex items-center gap-2 text-yellow-800">
                       <Users className="h-4 w-4" />
@@ -139,12 +139,12 @@ export function DragDropFeedback({
   // Inline feedback during drag operations
   return (
     <div className={`
-      absolute inset-0 pointer-events-none border-2 border-dashed rounded-lg 
+      absolute inset-0 pointer-events-none border-2 border-dashed rounded-surface 
       ${getBackgroundColor()} ${className}
     `}>
       <div className="flex items-center justify-center h-full">
         <div className={`
-          px-4 py-2 rounded-lg font-medium border
+          px-4 py-2 rounded-surface font-medium border
           ${canDrop 
             ? 'bg-white/90 text-gray-800 border-gray-200 shadow-sm' 
             : 'bg-red-100 text-red-800 border-red-200'

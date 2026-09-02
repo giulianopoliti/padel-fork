@@ -208,7 +208,7 @@ export default function TournamentPageLayout({
         )}
       >
         {/* Content Container - Single scroll container */}
-        <div className="flex-1 bg-white lg:rounded-tl-xl shadow-sm lg:ml-2 h-full overflow-y-auto overflow-x-hidden">
+        <div className="flex-1 bg-white lg:rounded-tl-elevated shadow-sm lg:ml-2 h-full overflow-y-auto overflow-x-hidden">
           {/* Tab Content */}
           {renderContent()}
         </div>

@@ -128,7 +128,7 @@ export default function CoachesUnderConstruction() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20"
+                className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-surface border border-white/20"
               >
                 <GraduationCap className="h-12 w-12 text-blue-400 mx-auto mb-4" />
                 <h3 className="font-bold text-white mb-2">Entrenadores Certificados</h3>
@@ -139,7 +139,7 @@ export default function CoachesUnderConstruction() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
-                className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20"
+                className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-surface border border-white/20"
               >
                 <Calendar className="h-12 w-12 text-blue-400 mx-auto mb-4" />
                 <h3 className="font-bold text-white mb-2">Reservas Online</h3>
@@ -150,7 +150,7 @@ export default function CoachesUnderConstruction() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
-                className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20"
+                className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-surface border border-white/20"
               >
                 <Target className="h-12 w-12 text-blue-400 mx-auto mb-4" />
                 <h3 className="font-bold text-white mb-2">Seguimiento de Progreso</h3>

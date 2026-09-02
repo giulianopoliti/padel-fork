@@ -176,7 +176,7 @@ export function ModifyResultForm({
 
   if (!couple1 || !couple2) {
     return (
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-center text-amber-700 text-xs">
+      <div className="bg-amber-50 border border-amber-200 rounded-surface p-2 text-center text-amber-700 text-xs">
         Match incompleto
       </div>
     )
@@ -185,7 +185,7 @@ export function ModifyResultForm({
   // Modo confirmación
   if (showConfirmation) {
     return (
-      <div className={`bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-4 ${className}`}>
+      <div className={`bg-orange-50 border border-orange-200 rounded-surface p-4 space-y-4 ${className}`}>
         <div className="flex items-center gap-2 text-orange-800">
           <AlertTriangle className="h-5 w-5" />
           <span className="font-semibold">Confirmar Modificación</span>
@@ -239,7 +239,7 @@ export function ModifyResultForm({
 
   // Modo formulario normal
   return (
-    <div className={`bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-3 ${className}`}>
+    <div className={`bg-blue-50 border border-blue-200 rounded-surface p-3 space-y-3 ${className}`}>
       {/* Título */}
       <div className="flex items-center gap-2">
         <RefreshCw className="h-4 w-4 text-blue-600" />

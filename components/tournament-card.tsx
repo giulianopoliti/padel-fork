@@ -169,7 +169,7 @@ export default function TournamentCard({
         {/* Organization Logo - Centered (if provided) */}
         {organizationLogo && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="w-20 h-20 rounded-xl bg-white shadow-2xl border-3 border-white overflow-hidden ring-4 ring-blue-400/50">
+            <div className="w-20 h-20 rounded-elevated bg-white shadow-2xl border-3 border-white overflow-hidden ring-4 ring-blue-400/50">
               <Image
                 src={organizationLogo}
                 alt={organizationName || "Organization"}
@@ -260,13 +260,13 @@ export default function TournamentCard({
           (tournament.matchesFinished && tournament.matchesFinished > 0)) && (
           <div className="grid grid-cols-2 gap-2 mb-4">
             {tournament.inscriptionsCount !== undefined && (
-              <div className="bg-blue-50 rounded-lg p-2 text-center">
+              <div className="bg-blue-50 rounded-surface p-2 text-center">
                 <div className="text-lg font-bold text-blue-900">{tournament.inscriptionsCount}</div>
                 <div className="text-xs text-blue-600">Parejas</div>
               </div>
             )}
             {tournament.matchesFinished !== undefined && (
-              <div className="bg-cyan-50 rounded-lg p-2 text-center">
+              <div className="bg-cyan-50 rounded-surface p-2 text-center">
                 <div className="text-lg font-bold text-cyan-900">{tournament.matchesFinished}</div>
                 <div className="text-xs text-cyan-600">Partidos</div>
               </div>

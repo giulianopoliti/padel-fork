@@ -58,7 +58,7 @@ export default function TournamentZonesTab({
 
   if (error) {
     return (
-      <div className="bg-red-50 text-red-700 p-6 rounded-lg border border-red-200 text-center">
+      <div className="bg-red-50 text-red-700 p-6 rounded-surface border border-red-200 text-center">
         <div className="font-semibold mb-1">Error al cargar zonas</div>
         <div className="text-sm">{error}</div>
       </div>
@@ -130,14 +130,14 @@ export default function TournamentZonesTab({
         <Card key={zone.id} className="border-gray-200 shadow-sm">
           <CardHeader className="bg-slate-50 border-b border-slate-200">
             <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-3">
-              <div className="bg-slate-200 p-2 rounded-lg">
+              <div className="bg-slate-200 p-2 rounded-surface">
                 <Users className="h-5 w-5 text-slate-600" />
               </div>
               {zone.name}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="border border-gray-200 rounded-b-lg overflow-hidden">
+            <div className="border border-gray-200 rounded-b-surface overflow-hidden">
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow className="border-b border-gray-200">

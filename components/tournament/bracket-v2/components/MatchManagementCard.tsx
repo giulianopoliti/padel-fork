@@ -288,7 +288,7 @@ export function MatchManagementCard({
 
         {/* Resultado actual */}
         {match.result && (
-          <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="p-3 bg-gray-50 rounded-surface">
             <div className="flex items-center gap-2 text-sm">
               <Trophy className="h-4 w-4 text-yellow-500" />
               <span className="font-medium">

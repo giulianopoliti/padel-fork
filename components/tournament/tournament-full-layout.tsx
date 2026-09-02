@@ -93,7 +93,7 @@ export default function TournamentFullLayout({
 
             {/* Tournament Title */}
             <div className="flex items-start gap-3 lg:gap-4">
-              <div className="bg-slate-100 p-2 lg:p-3 rounded-xl">
+              <div className="bg-slate-100 p-2 lg:p-3 rounded-elevated">
                 <Trophy className="h-5 w-5 lg:h-6 lg:w-6 text-slate-600" />
               </div>
               <div className="flex-1 min-w-0">

@@ -106,7 +106,7 @@ export default function AnimatedBracketDemo() {
 
   const MatchCard = ({ match, delay = 0 }: { match: DemoMatch; delay?: number }) => (
     <div 
-      className={`bg-white rounded-lg shadow-md border-2 border-slate-200 overflow-hidden transform transition-all duration-1000 relative ${
+      className={`bg-white rounded-surface shadow-md border-2 border-slate-200 overflow-hidden transform transition-all duration-1000 relative ${
         match.visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
       }`}
       style={{ 
@@ -306,17 +306,17 @@ export default function AnimatedBracketDemo() {
 
             {/* Round headers */}
             <div className="absolute top-0 left-0" style={{ width: '200px' }}>
-              <h3 className="text-center text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-lg py-2 px-3 border border-emerald-200">
+              <h3 className="text-center text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-surface py-2 px-3 border border-emerald-200">
                 Cuartos de Final
               </h3>
             </div>
             <div className="absolute top-0" style={{ left: '300px', width: '200px' }}>
-              <h3 className="text-center text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-lg py-2 px-3 border border-emerald-200">
+              <h3 className="text-center text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-surface py-2 px-3 border border-emerald-200">
                 Semifinales
               </h3>
             </div>
             <div className="absolute top-0" style={{ left: '600px', width: '200px' }}>
-              <h3 className="text-center text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-lg py-2 px-3 border border-emerald-200">
+              <h3 className="text-center text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-surface py-2 px-3 border border-emerald-200">
                 Final
               </h3>
             </div>

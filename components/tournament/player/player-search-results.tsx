@@ -29,7 +29,7 @@ export default function PlayerSearchResults({
   }
 
   return (
-    <div className="border rounded-md overflow-hidden">
+    <div className="border rounded-control overflow-hidden">
       <div className="bg-slate-50 p-2 border-b">
         <p className="text-sm font-medium text-slate-700">Resultados de búsqueda</p>
       </div>
@@ -69,7 +69,7 @@ export default function PlayerSearchResults({
                   </div>
                 </div>
                 {player.score !== undefined && (
-                  <div className="bg-teal-50 text-teal-700 font-medium px-2 py-1 rounded-md border border-teal-200">
+                  <div className="bg-teal-50 text-teal-700 font-medium px-2 py-1 rounded-control border border-teal-200">
                     {player.score}
                   </div>
                 )}

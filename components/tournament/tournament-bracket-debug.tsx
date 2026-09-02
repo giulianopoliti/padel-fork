@@ -384,7 +384,7 @@ export default function TournamentBracketDebug({
                       const seed2 = getSeedForCouple(match.couple2_id || '')
                       
                       return (
-                        <div key={match.id} className="border rounded-lg p-4 bg-slate-50">
+                        <div key={match.id} className="border rounded-surface p-4 bg-slate-50">
                           <div className="flex items-center justify-between mb-2">
                             <Badge variant="outline">Partido {index + 1}</Badge>
                             <Badge 

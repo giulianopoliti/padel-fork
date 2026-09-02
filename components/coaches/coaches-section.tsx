@@ -156,7 +156,7 @@ export default function CoachesSection() {
         <div className="flex justify-center mt-10">
           <Button
             asChild
-            className="bg-gradient-to-r from-teal-600 to-blue-600 hover:opacity-90 text-white rounded-xl"
+            className="bg-gradient-to-r from-teal-600 to-blue-600 hover:opacity-90 text-white rounded-elevated"
           >
             <Link href="/coaches" className="flex items-center">
               Ver todos los entrenadores

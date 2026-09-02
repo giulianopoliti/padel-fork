@@ -14,7 +14,7 @@ export function SecuritySection({ userEmail = "usuario@ejemplo.com" }: SecurityS
     <Card className="bg-white border border-gray-200 shadow-sm">
       <CardHeader className="border-b border-gray-100">
         <div className="flex items-center space-x-3">
-          <div className="bg-blue-100 p-2 rounded-lg">
+          <div className="bg-blue-100 p-2 rounded-surface">
             <Shield className="h-5 w-5 text-blue-600" />
           </div>
           <div>
@@ -45,7 +45,7 @@ export function SecuritySection({ userEmail = "usuario@ejemplo.com" }: SecurityS
 
         <PasswordChangeForm />
 
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 mt-6">
+        <div className="rounded-surface border border-blue-200 bg-blue-50 p-4 mt-6">
           <h3 className="text-blue-800 font-medium flex items-center">
             <Info className="h-4 w-4 mr-2" />
             Información de Seguridad

@@ -204,7 +204,7 @@ export function NewMatchCard({ match, points, sets = [], tournamentType = 'AMERI
   const team2Exists = match.couple2_id !== null
 
   return (
-    <div className={`overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ${
+    <div className={`overflow-hidden rounded-surface border border-slate-200 bg-white shadow-sm ${
       tournamentType === 'LONG' ? 'max-w-md' : 'max-w-xs'
     }`}>
       {/* Header */}

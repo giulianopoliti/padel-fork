@@ -149,14 +149,14 @@ export function InlineResultForm({
 
   if (!couple1 || !couple2) {
     return (
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-center text-amber-700 text-xs">
+      <div className="bg-amber-50 border border-amber-200 rounded-surface p-2 text-center text-amber-700 text-xs">
         Match incompleto
       </div>
     )
   }
 
   return (
-    <div className={`bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-3 ${className}`}>
+    <div className={`bg-gray-50 border border-gray-200 rounded-surface p-3 space-y-3 ${className}`}>
       {/* Título */}
       <div className="text-center text-sm font-medium text-gray-900">
         Cargar Resultado

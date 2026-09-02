@@ -99,9 +99,9 @@ export default function PlayerTournamentDashboard({ tournamentId, tournament, ov
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 sm:space-y-6 sm:p-6">
-      <header className="rounded-3xl bg-primary px-5 py-6 text-primary-foreground shadow-xl shadow-primary/15 sm:px-7">
+      <header className="rounded-display-lg bg-primary px-5 py-6 text-primary-foreground shadow-xl shadow-primary/15 sm:px-7">
         <div className="flex items-start gap-3">
-          <div className="rounded-2xl bg-accent p-2.5 text-accent-foreground"><Trophy className="h-6 w-6" /></div>
+          <div className="rounded-display bg-accent p-2.5 text-accent-foreground"><Trophy className="h-6 w-6" /></div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-foreground/70">Tu torneo</p>
             <h1 className="mt-1 truncate text-2xl font-bold sm:text-3xl">{tournament.name}</h1>
@@ -155,7 +155,7 @@ const AvailabilityCard = ({ tournamentId, overview }: { tournamentId: string; ov
       <CardContent className="p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
-            <div className={cn('h-fit rounded-2xl p-3', complete ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/10 text-primary')}>
+            <div className={cn('h-fit rounded-display p-3', complete ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/10 text-primary')}>
               {complete ? <CheckCircle2 className="h-6 w-6" /> : <CalendarCheck2 className="h-6 w-6" />}
             </div>
             <div>
@@ -181,7 +181,7 @@ const NextMatchSummary = ({ match }: { match: LongPlayerOverviewMatch | null }) 
     <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-lg"><Swords className="h-5 w-5 text-primary" />Proximo partido</CardTitle></CardHeader>
     <CardContent>
       {!match ? (
-        <div className="rounded-2xl bg-muted/70 p-5 text-sm text-muted-foreground">Todavia no tenes un partido pendiente programado.</div>
+        <div className="rounded-display bg-muted/70 p-5 text-sm text-muted-foreground">Todavia no tenes un partido pendiente programado.</div>
       ) : (
         <div className="space-y-4">
           <div>
@@ -212,7 +212,7 @@ const StandingCard = ({ tournamentId, overview }: { tournamentId: string; overvi
             <Stat value={overview.standing.losses} label="PP" />
           </div>
         </div>
-      ) : <p className="rounded-xl bg-muted/70 p-4 text-sm text-muted-foreground">La tabla todavia no esta disponible.</p>}
+      ) : <p className="rounded-elevated bg-muted/70 p-4 text-sm text-muted-foreground">La tabla todavia no esta disponible.</p>}
       <Button asChild variant="outline" className="mt-4 w-full"><Link href={`/tournaments/${tournamentId}/qually`}>Ver tabla completa</Link></Button>
     </CardContent>
   </Card>
@@ -225,14 +225,14 @@ const FinishedMatches = ({ matches }: { matches: LongPlayerOverviewMatch[] }) =>
     <Card>
       <CardHeader><CardTitle className="flex items-center justify-between gap-3"><span className="flex items-center gap-2"><Trophy className="h-5 w-5 text-primary" />Mis partidos</span><Badge variant="secondary">{matches.length} jugados</Badge></CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        {visibleMatches.length === 0 ? <p className="rounded-xl bg-muted/70 p-5 text-sm text-muted-foreground">Todavia no jugaste partidos en este torneo.</p> : visibleMatches.map(match => {
+        {visibleMatches.length === 0 ? <p className="rounded-elevated bg-muted/70 p-5 text-sm text-muted-foreground">Todavia no jugaste partidos en este torneo.</p> : visibleMatches.map(match => {
           const won = match.winnerId === match.playerCoupleId
           const playerIsCouple1 = match.couple1Id === match.playerCoupleId
           const playerResult = playerIsCouple1 ? match.resultCouple1 : match.resultCouple2
           const opponentResult = playerIsCouple1 ? match.resultCouple2 : match.resultCouple1
           return (
-            <article key={match.id} className="flex items-center gap-3 rounded-2xl border border-border/80 p-3 sm:p-4">
-              <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-black', won ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>{won ? 'G' : 'P'}</div>
+            <article key={match.id} className="flex items-center gap-3 rounded-display border border-border/80 p-3 sm:p-4">
+              <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-elevated text-sm font-black', won ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>{won ? 'G' : 'P'}</div>
               <div className="min-w-0 flex-1"><p className="truncate font-semibold">{match.opponentName}</p><p className="text-xs text-muted-foreground">{roundLabels[match.round] || match.round}{formatDate(match.scheduledDate) ? ` · ${formatDate(match.scheduledDate)}` : ''}</p></div>
               <div className="text-right"><p className="font-bold">{playerResult ?? '-'} / {opponentResult ?? '-'}</p><p className={cn('text-xs font-semibold', won ? 'text-emerald-700' : 'text-rose-700')}>{won ? 'Victoria' : 'Derrota'}</p></div>
             </article>
@@ -263,7 +263,7 @@ const PendingRegistrationView = ({
   onCancelled,
 }: PlayerTournamentDashboardProps & { onCancelled: () => void }) => (
   <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
-    <header className="rounded-3xl bg-primary px-5 py-6 text-primary-foreground shadow-xl shadow-primary/15">
+    <header className="rounded-display-lg bg-primary px-5 py-6 text-primary-foreground shadow-xl shadow-primary/15">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-foreground/70">Tu torneo</p>
       <h1 className="mt-1 text-2xl font-bold">{tournament.name}</h1>
       {overview.coupleName && <p className="mt-2 text-sm text-primary-foreground/80">{overview.coupleName}</p>}
@@ -297,5 +297,5 @@ const PendingRegistrationView = ({
   </div>
 )
 
-const InfoLine = ({ icon: Icon, text }: { icon: typeof Clock3; text: string }) => <div className="flex items-center gap-2 rounded-xl bg-muted/70 px-3 py-2"><Icon className="h-4 w-4 text-primary" /><span>{text}</span></div>
-const Stat = ({ value, label }: { value: number; label: string }) => <div className="rounded-xl bg-muted/70 p-2"><p className="text-lg font-bold">{value}</p><p className="text-[10px] font-bold text-muted-foreground">{label}</p></div>
+const InfoLine = ({ icon: Icon, text }: { icon: typeof Clock3; text: string }) => <div className="flex items-center gap-2 rounded-elevated bg-muted/70 px-3 py-2"><Icon className="h-4 w-4 text-primary" /><span>{text}</span></div>
+const Stat = ({ value, label }: { value: number; label: string }) => <div className="rounded-elevated bg-muted/70 p-2"><p className="text-lg font-bold">{value}</p><p className="text-[10px] font-bold text-muted-foreground">{label}</p></div>

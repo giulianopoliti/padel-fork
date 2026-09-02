@@ -11,7 +11,7 @@ export function ClubSecuritySection({ userEmail }: ClubSecuritySectionProps) {
   return (
     <div className="space-y-6">
       {userEmail && (
-        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="p-4 bg-blue-50 rounded-surface border border-blue-200">
           <div className="flex gap-3">
             <div className="shrink-0 mt-0.5">
               <Mail className="h-5 w-5 text-blue-600" />
@@ -29,7 +29,7 @@ export function ClubSecuritySection({ userEmail }: ClubSecuritySectionProps) {
 
       <PasswordChangeForm />
 
-      <div className="bg-amber-50 rounded-lg border border-amber-200 p-4">
+      <div className="bg-amber-50 rounded-surface border border-amber-200 p-4">
         <div className="flex items-start gap-3">
           <div className="shrink-0 mt-0.5">
             <AlertCircle className="h-5 w-5 text-amber-600" />

@@ -62,7 +62,7 @@ export function DeleteCoupleDialog({
               <span className="font-semibold text-slate-900">{coupleName}</span>
             </p>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-surface p-4">
               <p className="text-sm font-medium text-amber-900 mb-2">
                 Esta acción eliminará:
               </p>

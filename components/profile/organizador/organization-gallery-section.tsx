@@ -283,9 +283,9 @@ export function OrganizationGallerySection({ defaultValues }: OrganizationGaller
   return (
     <div className="space-y-8">
       {/* Logo Section */}
-      <div className="bg-purple-50 rounded-lg border border-purple-200 p-6">
+      <div className="bg-purple-50 rounded-surface border border-purple-200 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="bg-purple-100 w-10 h-10 rounded-lg flex items-center justify-center">
+          <div className="bg-purple-100 w-10 h-10 rounded-surface flex items-center justify-center">
             <Award className="h-5 w-5 text-purple-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">Logo de la Organización</h3>
@@ -310,17 +310,17 @@ export function OrganizationGallerySection({ defaultValues }: OrganizationGaller
                 disabled={isLogoPending}
               />
 
-              <div className="border-2 border-dashed border-purple-300 rounded-lg p-6 hover:border-purple-400 transition-colors">
+              <div className="border-2 border-dashed border-purple-300 rounded-surface p-6 hover:border-purple-400 transition-colors">
                 {logoPreview || logoImage ? (
                   <div className="relative group">
-                    <div className="flex justify-center items-center bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-center items-center bg-gray-50 rounded-surface p-4">
                       <img
                         src={logoPreview || getStorageUrl(logoImage) || ""}
                         alt="Logo de la organización"
                         className="max-w-[200px] max-h-[200px] object-contain"
                       />
                     </div>
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-end justify-center p-6">
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-surface flex items-end justify-center p-6">
                       <Button
                         type="button"
                         size="sm"
@@ -359,9 +359,9 @@ export function OrganizationGallerySection({ defaultValues }: OrganizationGaller
       </div>
 
       {/* Cover Image Section */}
-      <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+      <div className="bg-blue-50 rounded-surface border border-blue-200 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center">
+          <div className="bg-blue-100 w-10 h-10 rounded-surface flex items-center justify-center">
             <Camera className="h-5 w-5 text-blue-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">Imagen de Portada</h3>
@@ -387,15 +387,15 @@ export function OrganizationGallerySection({ defaultValues }: OrganizationGaller
                 disabled={isCoverPending}
               />
 
-              <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 hover:border-blue-400 transition-colors">
+              <div className="border-2 border-dashed border-blue-300 rounded-surface p-6 hover:border-blue-400 transition-colors">
                 {coverPreview || coverImage ? (
                   <div className="relative group">
                     <img
                       src={coverPreview || getStorageUrl(coverImage) || ""}
                       alt="Imagen de portada"
-                      className="w-full h-60 object-cover rounded-lg shadow-sm"
+                      className="w-full h-60 object-cover rounded-surface shadow-sm"
                     />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-end justify-center p-6">
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-surface flex items-end justify-center p-6">
                       <Button
                         type="button"
                         size="sm"
@@ -434,9 +434,9 @@ export function OrganizationGallerySection({ defaultValues }: OrganizationGaller
       </div>
 
       {/* Gallery Images Section */}
-      <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
+      <div className="bg-gray-50 rounded-surface border border-gray-200 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="bg-gray-100 w-10 h-10 rounded-lg flex items-center justify-center">
+          <div className="bg-gray-100 w-10 h-10 rounded-surface flex items-center justify-center">
             <ImageIcon className="h-5 w-5 text-gray-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">Galería de Imágenes</h3>
@@ -470,7 +470,7 @@ export function OrganizationGallerySection({ defaultValues }: OrganizationGaller
           {galleryImages.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {galleryImages.map((imageUrl, index) => (
-                <div key={index} className="relative group overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+                <div key={index} className="relative group overflow-hidden rounded-surface border border-gray-200 shadow-sm">
                   <img
                     src={getStorageUrl(imageUrl) || "/placeholder.svg"}
                     alt={`Imagen de galería ${index + 1}`}
@@ -493,7 +493,7 @@ export function OrganizationGallerySection({ defaultValues }: OrganizationGaller
               ))}
             </div>
           ) : (
-            <div className="text-center py-10 border-2 border-dashed border-gray-300 rounded-lg bg-white">
+            <div className="text-center py-10 border-2 border-dashed border-gray-300 rounded-surface bg-white">
               <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ImageIcon className="h-8 w-8 text-gray-400" />
               </div>
@@ -504,9 +504,9 @@ export function OrganizationGallerySection({ defaultValues }: OrganizationGaller
         </div>
       </div>
 
-      <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+      <div className="bg-blue-50 rounded-surface border border-blue-200 p-4">
         <div className="flex items-start gap-3">
-          <div className="bg-blue-100 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+          <div className="bg-blue-100 w-8 h-8 rounded-surface flex items-center justify-center shrink-0 mt-0.5">
             <Info className="h-4 w-4 text-blue-600" />
           </div>
           <div>

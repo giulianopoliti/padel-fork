@@ -180,7 +180,7 @@ export function LongBracketGenerator({
 
             {/* Qualifying Advancement Info */}
             {validation.details?.qualifyingAdvancementEnabled && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-surface p-3">
                 <div className="flex items-center gap-2 text-amber-800">
                   <Trophy className="w-4 h-4" />
                   <span className="text-sm font-medium">Clasificación Limitada</span>
@@ -242,7 +242,7 @@ export function LongBracketGenerator({
             {/* Detailed Incomplete Couples */}
             {validation.details?.incompleteCouplesDetail && validation.details.incompleteCouplesDetail.length > 0 && (
               <div className="text-sm text-muted-foreground">
-                <details className="cursor-pointer bg-muted/30 rounded-md p-3">
+                <details className="cursor-pointer bg-muted/30 rounded-control p-3">
                   <summary className="font-medium hover:text-foreground">
                     Ver parejas incompletas ({validation.details.incompleteCouplesDetail.length})
                   </summary>

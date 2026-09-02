@@ -205,7 +205,7 @@ export function ImprovedMatchResultForm({
             )}
           </div>
           
-          <div className="bg-gray-50 p-3 rounded-lg">
+          <div className="bg-gray-50 p-3 rounded-surface">
             <div className="text-lg font-semibold text-gray-900">
               {couple1.player1_details?.first_name || 'Jugador'} {couple1.player1_details?.last_name || '1'}
             </div>
@@ -249,7 +249,7 @@ export function ImprovedMatchResultForm({
             )}
           </div>
           
-          <div className="bg-gray-50 p-3 rounded-lg">
+          <div className="bg-gray-50 p-3 rounded-surface">
             <div className="text-lg font-semibold text-gray-900">
               {couple2.player1_details?.first_name || 'Jugador'} {couple2.player1_details?.last_name || '3'}
             </div>
@@ -277,7 +277,7 @@ export function ImprovedMatchResultForm({
 
           {/* RESULTADO DETECTADO */}
           {detectedWinner && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <div className="bg-green-50 border border-green-200 rounded-surface p-3">
               <div className="flex items-center gap-2 text-green-800">
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="font-medium">
@@ -292,7 +292,7 @@ export function ImprovedMatchResultForm({
 
           {/* ERROR DE VALIDACIÓN */}
           {(gameScore.couple1Games >= 6 || gameScore.couple2Games >= 6) && !detectedWinner && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="bg-red-50 border border-red-200 rounded-surface p-3">
               <div className="flex items-center gap-2 text-red-800">
                 <AlertCircle className="h-4 w-4" />
                 <span className="font-medium">Resultado inválido</span>
@@ -308,7 +308,7 @@ export function ImprovedMatchResultForm({
 
         {/* ERROR DEL SISTEMA */}
         {matchState.error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="bg-red-50 border border-red-200 rounded-surface p-3">
             <div className="flex items-center gap-2 text-red-800">
               <AlertCircle className="h-4 w-4" />
               <span className="font-medium">Error al guardar resultado</span>

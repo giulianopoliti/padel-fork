@@ -47,7 +47,7 @@ export async function RankingSection() {
         <div className="max-w-4xl mx-auto">
           <Card className="border-slate-200 shadow-lg">
             <CardContent className="p-0">
-              <div className="bg-slate-900 text-white p-4 rounded-t-lg">
+              <div className="bg-slate-900 text-white p-4 rounded-t-surface">
                 <h3 className="text-lg font-bold flex items-center">
                   <Trophy className="mr-2 h-5 w-5 text-amber-400" />
                   Top 5 Nacional

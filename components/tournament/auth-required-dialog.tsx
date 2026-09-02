@@ -38,7 +38,7 @@ export default function AuthRequiredDialog({
         </DialogHeader>
 
         <div className="py-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-surface p-4 mb-6">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
               <div>

@@ -107,7 +107,7 @@ export function BracketMoveCoupleSheet({
           <div className="space-y-4">
             {targetGroups.length > 0 ? (
               targetGroups.map(group => (
-                <section key={group.matchId} className="rounded-xl border border-slate-200 bg-white">
+                <section key={group.matchId} className="rounded-elevated border border-slate-200 bg-white">
                   <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
                     <div>
                       <h3 className="text-sm font-semibold text-slate-900">{group.matchLabel}</h3>
@@ -124,7 +124,7 @@ export function BracketMoveCoupleSheet({
                         key={option.key}
                         type="button"
                         onClick={() => onSelectTarget(option)}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                        className="w-full rounded-surface border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1 space-y-2">
@@ -171,7 +171,7 @@ export function BracketMoveCoupleSheet({
                 </section>
               ))
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+              <div className="rounded-elevated border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
                 <ArrowRightLeft className="mx-auto h-8 w-8 text-slate-400" />
                 <p className="mt-3 text-sm font-medium text-slate-700">No hay destinos disponibles</p>
                 <p className="mt-1 text-xs text-slate-500">

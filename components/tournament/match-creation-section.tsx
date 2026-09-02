@@ -145,7 +145,7 @@ const MatchCreationZone = ({ selectedCouples }: { selectedCouples: Couple[] }) =
           {selectedCouples.length > 0 && (
             <div className="space-y-2 mt-4">
               {selectedCouples.map((couple, index) => (
-                <div key={couple.id} className="bg-white rounded-lg p-2 border">
+                <div key={couple.id} className="bg-white rounded-surface p-2 border">
                   <div className="text-sm font-medium">
                     {couple.player1_name} / {couple.player2_name}
                   </div>
@@ -563,7 +563,7 @@ export default function MatchCreationSection({
 
   if (error) {
     return (
-      <div className="bg-red-50 text-red-700 p-6 rounded-lg border border-red-200 text-center">
+      <div className="bg-red-50 text-red-700 p-6 rounded-surface border border-red-200 text-center">
         <div className="font-semibold mb-1">Error al cargar zonas</div>
         <div className="text-sm">{error}</div>
       </div>

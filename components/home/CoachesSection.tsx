@@ -25,7 +25,7 @@ export function CoachesSection() {
             <Button 
               asChild 
               size="lg" 
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300"
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg px-8 py-4 text-lg font-semibold rounded-elevated transition-all duration-300"
             >
               <Link href="/coaches">
                 <User className="mr-3 h-6 w-6" />

@@ -103,7 +103,7 @@ export default function SetScoreDisplay({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className={cn(
-              'bg-white border rounded-lg px-2 text-center transition-all duration-200 hover:shadow-md flex flex-col',
+              'bg-white border rounded-surface px-2 text-center transition-all duration-200 hover:shadow-md flex flex-col',
               isTieBreak
                 ? 'border-orange-300 bg-orange-50'
                 : 'border-slate-200 hover:border-slate-300'

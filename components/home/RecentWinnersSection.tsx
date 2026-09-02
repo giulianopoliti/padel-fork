@@ -35,7 +35,7 @@ export function RecentWinnersSection({ winners }: RecentWinnersSectionProps) {
           </div>
 
           {winners.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-white/20 bg-white/5 px-6 py-10 text-center text-slate-300">
+            <div className="rounded-display-lg border border-dashed border-white/20 bg-white/5 px-6 py-10 text-center text-slate-300">
               Aun no hay torneos finalizados con ganadores en los ultimos 30 dias.
             </div>
           ) : (
@@ -48,7 +48,7 @@ export function RecentWinnersSection({ winners }: RecentWinnersSectionProps) {
                     key={winner.id}
                     href={getPublicTournamentHref(winner)}
                     aria-label={`Ver resultados de ${winner.tournamentName}`}
-                    className="group flex overflow-hidden rounded-3xl border border-white/10 bg-[#13203d] shadow-[0_16px_36px_rgba(7,12,28,0.18)] transition hover:-translate-y-1 hover:border-court-300/70 hover:bg-[#1b2d53] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#182b52]"
+                    className="group flex overflow-hidden rounded-display-lg border border-white/10 bg-[#13203d] shadow-[0_16px_36px_rgba(7,12,28,0.18)] transition hover:-translate-y-1 hover:border-court-300/70 hover:bg-[#1b2d53] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#182b52]"
                   >
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="relative aspect-[16/8] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,#2e4d87_0%,#182b52_48%,#101a31_100%)]">

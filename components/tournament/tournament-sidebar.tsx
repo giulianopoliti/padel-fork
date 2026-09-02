@@ -106,7 +106,7 @@ export default function TournamentSidebar({
             href={fullPath}
             onClick={() => setIsMobileOpen(false)}
             className={cn(
-              "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+              "flex items-center gap-3 px-3 py-3 rounded-surface text-sm font-medium transition-all duration-200",
               "hover:bg-slate-100 active:scale-95",
               isActive
                 ? "bg-blue-600 text-white hover:bg-blue-700"

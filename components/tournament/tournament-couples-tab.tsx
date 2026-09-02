@@ -479,7 +479,7 @@ export default function TournamentCouplesTab({
 
       <div className="p-6">
         {coupleInscriptions.length > 0 ? (
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 rounded-surface overflow-hidden">
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow className="border-b border-gray-200">
@@ -817,7 +817,7 @@ export default function TournamentCouplesTab({
           </DialogHeader>
 
           {coupleToDelete && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-control">
               <h4 className="font-medium text-red-900 mb-2">Datos de la pareja a eliminar:</h4>
               <div className="space-y-2 text-sm text-red-800">
                 <div className="grid grid-cols-2 gap-4">
@@ -844,7 +844,7 @@ export default function TournamentCouplesTab({
           )}
 
           {coupleToDelete && canManageTournament && isTpeLateCancellationWindow && !isUserInCouple(coupleToDelete) && (
-            <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <label className="flex items-start gap-2 rounded-control border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               <Checkbox checked={recordLateWithdrawal} onCheckedChange={(checked) => setRecordLateWithdrawal(checked === true)} />
               <span>
                 <strong className="block">Faltan menos de 3 horas para el torneo.</strong>
@@ -919,7 +919,7 @@ export default function TournamentCouplesTab({
           </AlertDialogHeader>
 
           {coupleToReject && (
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-md">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-control">
               <div className="space-y-2 text-sm">
                 <div className="grid grid-cols-2 gap-4">
                   <div>

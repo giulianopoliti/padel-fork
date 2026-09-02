@@ -133,7 +133,7 @@ export default function ReadOnlyMatchesTabNew({ tournamentId, tournamentStatus }
 
   if (error) {
     return (
-      <div className="bg-red-50 text-red-700 p-6 rounded-lg border border-red-200 text-center">
+      <div className="bg-red-50 text-red-700 p-6 rounded-surface border border-red-200 text-center">
         <div className="font-semibold mb-1">Error al cargar partidos</div>
         <div className="text-sm">{error}</div>
       </div>
@@ -231,7 +231,7 @@ export default function ReadOnlyMatchesTabNew({ tournamentId, tournamentStatus }
         <Card key={zoneName} className="border-gray-200 shadow-sm">
           <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200 py-4 px-6">
             <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-3">
-              <div className="bg-blue-200 p-2 rounded-lg">
+              <div className="bg-blue-200 p-2 rounded-surface">
                 <Users className="h-5 w-5 text-blue-700" />
               </div>
               {zoneName}
@@ -323,7 +323,7 @@ export default function ReadOnlyMatchesTabNew({ tournamentId, tournamentStatus }
           <Card key={roundKey} className="border-gray-200 shadow-sm">
             <div className="bg-slate-50 border-b border-slate-200 py-4 px-6">
               <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-3">
-                <div className="bg-slate-200 p-2 rounded-lg">
+                <div className="bg-slate-200 p-2 rounded-surface">
                   <Trophy className="h-5 w-5 text-slate-600" />
                 </div>
                 {roundTranslation[roundKey]}

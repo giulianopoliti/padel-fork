@@ -104,7 +104,7 @@ export default function TournamentHeroDetails({
         {items.map(({ label, value, icon: Icon }) => (
           <div
             key={`${label}-${value}`}
-            className={cn('rounded-xl border p-4 text-left', tone.card)}
+            className={cn('rounded-elevated border p-4 text-left', tone.card)}
           >
             <div className="flex items-start gap-3">
               <div className={cn('rounded-full p-2', tone.icon)}>
@@ -128,7 +128,7 @@ export default function TournamentHeroDetails({
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
-            'inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition',
+            'inline-flex items-center justify-center gap-2 rounded-elevated border px-4 py-2 text-sm font-semibold transition',
             variant === 'dark'
               ? 'border-white/20 bg-white/15 text-white hover:bg-white/25'
               : 'border-slate-200 bg-white text-slate-900 shadow-sm hover:bg-slate-50',

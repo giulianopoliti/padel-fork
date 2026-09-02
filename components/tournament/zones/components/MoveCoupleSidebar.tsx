@@ -197,7 +197,7 @@ export function MoveCoupleSidebar({
             <button
               onClick={handleSelectPool}
               className={cn(
-                "w-full text-left p-3 rounded-lg border-2 transition-all",
+                "w-full text-left p-3 rounded-surface border-2 transition-all",
                 "border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 active:scale-[0.98]"
               )}
             >
@@ -223,7 +223,7 @@ export function MoveCoupleSidebar({
             <button
               onClick={handleDeleteClick}
               className={cn(
-                "w-full text-left p-3 rounded-lg border-2 transition-all",
+                "w-full text-left p-3 rounded-surface border-2 transition-all",
                 "border-red-200 bg-red-50 hover:border-red-400 hover:bg-red-100 active:scale-[0.98]"
               )}
             >
@@ -288,7 +288,7 @@ function ZoneOptionCard({
       onClick={onSelect}
       disabled={isDisabled}
       className={cn(
-        'w-full text-left p-3 rounded-lg border-2 transition-all',
+        'w-full text-left p-3 rounded-surface border-2 transition-all',
         isDisabled
           ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
           : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50 active:scale-[0.98]'

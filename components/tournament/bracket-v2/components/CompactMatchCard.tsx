@@ -396,7 +396,7 @@ export const CompactMatchCard = memo(function CompactMatchCard({
 
         {/* Formularios inline */}
         {showInlineResult && isOwner && !isEditMode && (
-          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-lg p-2 z-20">
+          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-surface p-2 z-20">
             <InlineResultForm
               match={match}
               tournamentId={tournamentId}
@@ -409,7 +409,7 @@ export const CompactMatchCard = memo(function CompactMatchCard({
         )}
 
         {showModifyResult && isOwner && !isEditMode && (
-          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-lg p-2 z-20">
+          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-surface p-2 z-20">
             <ModifyResultForm
               match={match}
               tournamentId={tournamentId}

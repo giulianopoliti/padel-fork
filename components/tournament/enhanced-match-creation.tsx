@@ -517,7 +517,7 @@ export default function EnhancedMatchCreation({
 
   if (error) {
     return (
-      <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">
+      <div className="bg-red-50 text-red-700 p-4 rounded-surface border border-red-200">
         <div className="font-semibold mb-1">Error al cargar zonas</div>
         <div className="text-sm">{error}</div>
       </div>

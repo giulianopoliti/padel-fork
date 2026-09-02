@@ -431,10 +431,10 @@ function BracketLoadingSkeleton() {
   return (
     <div className="bracket-v2-loading">
       <div className="animate-pulse space-y-4">
-        <div className="h-16 bg-slate-200 rounded-lg"></div>
+        <div className="h-16 bg-slate-200 rounded-surface"></div>
         <div className="grid grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-32 bg-slate-200 rounded-lg"></div>
+            <div key={i} className="h-32 bg-slate-200 rounded-surface"></div>
           ))}
         </div>
       </div>
@@ -562,7 +562,7 @@ function BracketEmptyState({
       </div>
 
       {/* Alerta sutil */}
-      <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 text-left rounded-r-lg">
+      <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 text-left rounded-r-surface">
         <div className="flex items-start">
           <div className="flex-shrink-0">
             <svg className="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -582,7 +582,7 @@ function BracketEmptyState({
       </div>
       
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+        <div className="bg-red-50 border border-red-200 rounded-surface p-4 mb-4">
           <div className="text-red-800 text-sm">
             <strong>Error:</strong> {error}
           </div>
@@ -636,7 +636,7 @@ function BracketControlsPlaceholder({
 }) {
   
   return (
-    <div className="bracket-v2-controls bg-white border border-slate-200 rounded-lg p-4 mb-6">
+    <div className="bracket-v2-controls bg-white border border-slate-200 rounded-surface p-4 mb-6">
       <div className="flex gap-3 items-center flex-wrap">
         {tournamentStatus === 'BRACKET_PHASE' && (
           <BackFromBracketButton
@@ -740,7 +740,7 @@ function BracketContentPlaceholder({
   bracketData?: any
 }) {
   return (
-    <div className="bracket-v2-content bg-white border border-slate-200 rounded-lg p-8">
+    <div className="bracket-v2-content bg-white border border-slate-200 rounded-surface p-8">
       <div className="text-center space-y-4">
         <div className="text-2xl">🏗️</div>
         <div className="text-lg font-medium text-slate-700">

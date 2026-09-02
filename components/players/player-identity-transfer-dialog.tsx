@@ -185,7 +185,7 @@ export const PlayerIdentityTransferDialog = ({
                     type="button"
                     key={player.id}
                     onClick={() => setTarget(player)}
-                    className={`rounded-lg border p-4 text-left transition-colors ${target?.id === player.id ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
+                    className={`rounded-surface border p-4 text-left transition-colors ${target?.id === player.id ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
                   >
                     <PlayerSummary player={player} />
                   </button>
@@ -195,7 +195,7 @@ export const PlayerIdentityTransferDialog = ({
           )}
 
           {source && target && !blocked && (
-            <section className="space-y-4 rounded-lg border p-4" aria-labelledby="identity-confirm-heading">
+            <section className="space-y-4 rounded-surface border p-4" aria-labelledby="identity-confirm-heading">
               <h3 id="identity-confirm-heading" className="font-semibold">3. Confirmar transferencia</h3>
               <div className="flex items-center gap-3 text-sm">
                 <span>{source.firstName} {source.lastName}</span>

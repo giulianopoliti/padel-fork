@@ -174,13 +174,13 @@ export function PublicTournamentCards({
   const allowActivePhaseRegistration = branding.key === "padel-fv"
   const emptyStateClassName = isElite
     ? "tpe-shell rounded-[2rem] px-5 py-10 text-center text-white sm:px-6 sm:py-12"
-    : "rounded-3xl border border-dashed border-white/20 bg-white/5 px-5 py-10 text-center shadow-sm backdrop-blur-sm sm:px-6 sm:py-12"
+    : "rounded-display-lg border border-dashed border-white/20 bg-white/5 px-5 py-10 text-center shadow-sm backdrop-blur-sm sm:px-6 sm:py-12"
   const emptyTitleClassName = isElite ? "text-2xl font-black text-white" : "text-xl font-bold text-white"
   const emptyDescriptionClassName = isElite
     ? "mx-auto mt-3 max-w-2xl text-sm text-white/72 sm:text-base"
     : "mx-auto mt-3 max-w-2xl text-slate-300"
   const cardClassName = isElite
-    ? "overflow-hidden rounded-3xl border-2 border-[var(--tpe-forest)] bg-[linear-gradient(180deg,#2f3169_0%,#2b2e62_100%)] shadow-[0_16px_36px_rgba(16,24,40,0.22)]"
+    ? "overflow-hidden rounded-display-lg border-2 border-[var(--tpe-forest)] bg-[linear-gradient(180deg,#2f3169_0%,#2b2e62_100%)] shadow-[0_16px_36px_rgba(16,24,40,0.22)]"
     : "overflow-hidden border-white/10 bg-brand-800/70 shadow-sm transition-shadow hover:border-court-500/40 hover:shadow-md"
   const primaryBadgeClassName = isElite
     ? "rounded-full border-0 bg-[var(--tpe-lime)] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--tpe-night)] hover:bg-[var(--tpe-lime)]"
@@ -198,8 +198,8 @@ export function PublicTournamentCards({
     ? "text-xs font-semibold uppercase tracking-[0.03em] text-white"
     : "text-xs text-slate-300 sm:text-sm"
   const infoBoxClassName = isElite
-    ? "flex items-start gap-2.5 rounded-xl border border-white/20 bg-[rgba(16,25,50,0.86)] px-3 py-2 sm:px-4"
-    : "flex items-start gap-2.5 rounded-xl bg-white/5 px-3 py-2 sm:px-3.5"
+    ? "flex items-start gap-2.5 rounded-elevated border border-white/20 bg-[rgba(16,25,50,0.86)] px-3 py-2 sm:px-4"
+    : "flex items-start gap-2.5 rounded-elevated bg-white/5 px-3 py-2 sm:px-3.5"
   const infoIconClassName = isElite ? "mt-0.5 h-3.5 w-3.5 text-[var(--tpe-lime)]" : "mt-0.5 h-3.5 w-3.5 text-court-300"
   const infoLabelClassName = isElite ? "text-[10px] font-black uppercase tracking-[0.14em] text-white/88" : "text-sm font-semibold text-white"
   const infoValueClassName = isElite ? "text-sm font-semibold text-white" : "text-sm"
@@ -432,7 +432,7 @@ export function PublicTournamentCards({
                       fullWidth
                     />
                   ) : !isElite || tournament.status === "NOT_STARTED" ? (
-                    <div className="rounded-xl border border-white/12 bg-white/6 px-3 py-2 text-center text-[11px] font-bold uppercase tracking-[0.16em] text-white/80">
+                    <div className="rounded-elevated border border-white/12 bg-white/6 px-3 py-2 text-center text-[11px] font-bold uppercase tracking-[0.16em] text-white/80">
                       {getPublicRegistrationClosedLabel({
                         isFull: tournament.isFull,
                       })}

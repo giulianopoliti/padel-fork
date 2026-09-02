@@ -609,7 +609,7 @@ export default function TournamentPlayersTab({
                   </div>
                 ) : isPlayer && isPlayerAlreadyRegistered ? (
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                    <div className="bg-green-50 border border-green-200 rounded-control px-3 py-2">
                       <p className="text-sm text-green-700 font-medium text-center">
                         ✓ Ya estás inscrito
                       </p>
@@ -650,7 +650,7 @@ export default function TournamentPlayersTab({
               {individualInscriptions.map((player) => (
                 <div
                   key={player.id}
-                  className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm ${
+                  className={`bg-white border border-gray-200 rounded-surface p-4 shadow-sm ${
                     canViewPlayerDetails ? 'cursor-pointer hover:border-blue-300 hover:shadow-md transition-all' : ''
                   }`}
                   onClick={canViewPlayerDetails ? () => handlePlayerClick(player.id) : undefined}
@@ -718,7 +718,7 @@ export default function TournamentPlayersTab({
             </div>
 
             {/* Vista desktop - Tabla */}
-            <div className="hidden sm:block border border-gray-200 rounded-lg overflow-hidden">
+            <div className="hidden sm:block border border-gray-200 rounded-surface overflow-hidden">
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow className="border-b border-gray-200">
@@ -887,7 +887,7 @@ export default function TournamentPlayersTab({
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2">
+                  <div className="grid gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-control p-2">
                     {individualInscriptions.map((player) => (
                       <Button
                         key={player.id}
@@ -937,7 +937,7 @@ export default function TournamentPlayersTab({
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2">
+                  <div className="grid gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-control p-2">
                     {individualInscriptions.map((player) => (
                       <Button
                         key={player.id}
@@ -961,7 +961,7 @@ export default function TournamentPlayersTab({
 
             {/* Vista previa de la pareja */}
             {selectedPlayers.player1 && selectedPlayers.player2 && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-control">
                 <div className="flex items-center gap-2 text-green-800 mb-2">
                   <CheckCircle className="h-4 w-4" />
                   <p className="font-medium">Pareja lista para crear:</p>
@@ -1019,7 +1019,7 @@ export default function TournamentPlayersTab({
           </DialogHeader>
 
           {playerToDelete && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-control">
               <h4 className="font-medium text-red-900 mb-2">Datos del jugador a eliminar:</h4>
               <div className="space-y-1 text-sm text-red-800">
                 <p><strong>Nombre:</strong> {getPlayerDisplayName(playerToDelete)}</p>
@@ -1031,7 +1031,7 @@ export default function TournamentPlayersTab({
           )}
 
           {playerToDelete && canManageTournament && isTpeLateCancellationWindow && (
-            <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <label className="flex items-start gap-2 rounded-control border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               <Checkbox checked={recordLateWithdrawal} onCheckedChange={(checked) => setRecordLateWithdrawal(checked === true)} />
               <span>
                 <strong className="block">Faltan menos de 3 horas para el torneo.</strong>
@@ -1085,7 +1085,7 @@ export default function TournamentPlayersTab({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-control">
             <h4 className="font-medium text-green-900 mb-2">Detalles de la inscripción:</h4>
             <div className="space-y-1 text-sm text-green-800">
               <p><strong>Modalidad:</strong> Jugador individual</p>
@@ -1138,7 +1138,7 @@ export default function TournamentPlayersTab({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-control">
             <h4 className="font-medium text-red-900 mb-2">Consecuencias de cancelar:</h4>
             <div className="space-y-1 text-sm text-red-800">
               <p>• Perderás tu lugar en el torneo</p>

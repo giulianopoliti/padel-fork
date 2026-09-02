@@ -23,8 +23,8 @@ const getRoundLabel = (round: string) => {
 
 export default function MatchTable({ matches, formatDate, isOwner, tournamentId, onUpdateMatch, onOpenResultDialog, onMatchDeleted, matchPoints }: MatchTableProps & { matchPoints?: Record<string, MatchPointsCouple> }) {
   return (
-    <Tabs defaultValue="matches" className="bg-white rounded-lg shadow-sm border border-slate-100 hover:border-teal-100 transition-all duration-300">
-      <TabsList className="w-full border-b border-slate-200 rounded-t-lg bg-slate-50">
+    <Tabs defaultValue="matches" className="bg-white rounded-surface shadow-sm border border-slate-100 hover:border-teal-100 transition-all duration-300">
+      <TabsList className="w-full border-b border-slate-200 rounded-t-surface bg-slate-50">
         <TabsTrigger
           value="matches"
           className="flex-1 py-3 data-[state=active]:bg-white data-[state=active]:text-teal-700 data-[state=active]:shadow-none rounded-none data-[state=active]:border-b-2 data-[state=active]:border-teal-500"

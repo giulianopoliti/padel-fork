@@ -89,7 +89,7 @@ function GhostElement({ draggedItem, mousePosition, config }: GhostElementProps)
     <div
       className={cn(
         'ghost-element fixed pointer-events-none z-50',
-        'bg-white border-2 border-blue-500 rounded-lg shadow-lg',
+        'bg-white border-2 border-blue-500 rounded-surface shadow-lg',
         'transition-transform duration-75 ease-out',
         config.visual.animations && 'animate-pulse'
       )}
@@ -204,7 +204,7 @@ function DropZoneIndicator({
 function DragInfo({ draggedItem }: { draggedItem: DraggedCouple }) {
   return (
     <div className="drag-info absolute top-4 left-4 z-40">
-      <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-4 max-w-sm">
+      <div className="bg-white border border-slate-200 rounded-surface shadow-lg p-4 max-w-sm">
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -252,11 +252,11 @@ function DragInstructions({ config }: { config: DragDropConfig }) {
   
   return (
     <div className="drag-instructions absolute bottom-4 left-1/2 transform -translate-x-1/2 z-40">
-      <div className="bg-slate-900 text-white rounded-lg px-4 py-2 text-sm shadow-lg">
+      <div className="bg-slate-900 text-white rounded-surface px-4 py-2 text-sm shadow-lg">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border border-green-400 border-dashed rounded-sm"></div>
+          <div className="w-3 h-3 border border-green-400 border-dashed rounded-control-sm"></div>
           <span>Zonas válidas</span>
-          <div className="w-3 h-3 border border-red-400 border-dashed rounded-sm ml-4"></div>
+          <div className="w-3 h-3 border border-red-400 border-dashed rounded-control-sm ml-4"></div>
           <span>No válidas</span>
         </div>
       </div>
@@ -348,7 +348,7 @@ export function DragDropOverlay({
       {currentTarget && (
         <div className="current-target-info absolute top-4 right-4 z-40">
           <div className={cn(
-            'bg-white border rounded-lg shadow-lg p-3',
+            'bg-white border rounded-surface shadow-lg p-3',
             currentTarget.isValid 
               ? 'border-green-200' 
               : 'border-red-200'

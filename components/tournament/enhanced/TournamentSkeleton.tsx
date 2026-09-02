@@ -45,7 +45,7 @@ const BracketSkeleton = () => (
                 </CardHeader>
                 <CardContent className="pt-2 pb-3 px-3 space-y-3">
                   {/* Couple 1 */}
-                  <div className="p-3 rounded-lg bg-slate-50/80 space-y-2">
+                  <div className="p-3 rounded-surface bg-slate-50/80 space-y-2">
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-8 w-8 rounded-full bg-gradient-to-r from-slate-300 to-slate-200" />
                       <Skeleton className="h-4 w-24 bg-gradient-to-r from-slate-300 to-slate-200" />
@@ -62,7 +62,7 @@ const BracketSkeleton = () => (
                   </div>
 
                   {/* Couple 2 */}
-                  <div className="p-3 rounded-lg bg-slate-50/80 space-y-2">
+                  <div className="p-3 rounded-surface bg-slate-50/80 space-y-2">
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-8 w-8 rounded-full bg-gradient-to-r from-slate-300 to-slate-200" />
                       <Skeleton className="h-4 w-20 bg-gradient-to-r from-slate-300 to-slate-200" />

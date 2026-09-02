@@ -191,9 +191,9 @@ export function UnassignedPool({
         
         {/* Drop Zone Indicator */}
         {isOver && isEditMode && draggedItem?.type === 'zone-couple' && (
-          <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-green-400 bg-green-50/50 rounded-lg">
+          <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-green-400 bg-green-50/50 rounded-surface">
             <div className="flex items-center justify-center h-full">
-              <div className="px-4 py-2 rounded-lg font-medium bg-green-100 text-green-800 border border-green-200">
+              <div className="px-4 py-2 rounded-surface font-medium bg-green-100 text-green-800 border border-green-200">
                 Devolver al pool de disponibles
               </div>
             </div>

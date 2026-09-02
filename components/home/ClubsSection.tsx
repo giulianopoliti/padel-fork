@@ -79,14 +79,14 @@ export async function ClubsSection() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="flex items-center text-slate-600 text-sm bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <div className="flex items-center text-slate-600 text-sm bg-slate-50 rounded-surface p-3 border border-slate-100">
                       <Users className="h-4 w-4 mr-2 text-slate-500" />
                       <div>
                         <span className="block font-bold text-lg text-slate-800">{club.courts || 0}</span>
                         <span className="text-xs text-slate-500">pistas</span>
                       </div>
                     </div>
-                    <div className="flex items-center text-slate-600 text-sm bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <div className="flex items-center text-slate-600 text-sm bg-slate-50 rounded-surface p-3 border border-slate-100">
                       <Clock className="h-4 w-4 mr-2 text-slate-500" />
                       <div>
                         <span className="block font-bold text-sm text-slate-800">

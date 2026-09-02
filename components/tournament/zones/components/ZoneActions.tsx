@@ -53,7 +53,7 @@ export function ZoneActions({
   return (
     <div className="mb-6 space-y-3">
       {/* Main Control Bar */}
-      <div className="flex justify-between items-center p-4 bg-white border rounded-lg shadow-sm">
+      <div className="flex justify-between items-center p-4 bg-white border rounded-surface shadow-sm">
       {/* Left Side - Mode Controls */}
       <div className="flex items-center gap-3">
         {!isEditMode ? (
@@ -173,7 +173,7 @@ export function ZoneActions({
       
       {/* Help Text - Now in natural flow */}
       {isEditMode && !hasUnsavedChanges && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-surface">
           <p className="text-sm text-blue-700 text-center">
             💡 Arrastra parejas entre zonas para reorganizar. Los cambios se guardan automáticamente.
           </p>
@@ -182,7 +182,7 @@ export function ZoneActions({
       
       {/* Unsaved Changes Warning - Now in natural flow */}
       {hasUnsavedChanges && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-surface">
           {(() => {
             const deletionOperations = pendingOperations.filter(op => op.type === 'delete')
             const otherOperations = pendingOperations.filter(op => op.type !== 'delete')

@@ -161,9 +161,9 @@ export default function TournamentsTabs({
     const statusColor = getStatusColor(tournament.status)
 
     return (
-      <div className="bg-white rounded-xl border border-gray-200 hover:border-slate-300 transition-all duration-300 shadow-sm hover:shadow-md group">
+      <div className="bg-white rounded-elevated border border-gray-200 hover:border-slate-300 transition-all duration-300 shadow-sm hover:shadow-md group">
         {/* Status indicator bar */}
-        <div className={`h-1 w-full ${statusColor.accent} rounded-t-xl`}></div>
+        <div className={`h-1 w-full ${statusColor.accent} rounded-t-elevated`}></div>
 
         {/* Card content */}
         <div className="p-6">
@@ -190,7 +190,7 @@ export default function TournamentsTabs({
 
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+            <div className="bg-slate-50 rounded-surface p-4 border border-slate-100">
               <div className="flex items-center justify-between">
                 <Users className="h-5 w-5 text-slate-600" />
                 <span className="text-xs text-slate-500">Inscripciones</span>
@@ -201,7 +201,7 @@ export default function TournamentsTabs({
               </div>
             </div>
 
-            <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+            <div className="bg-slate-50 rounded-surface p-4 border border-slate-100">
               <div className="flex items-center justify-between">
                 <Trophy className="h-5 w-5 text-slate-600" />
                 <span className="text-xs text-slate-500">Categoría</span>
@@ -252,7 +252,7 @@ export default function TournamentsTabs({
           )}
 
           {/* Action button */}
-          <Button asChild className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-lg">
+          <Button asChild className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-surface">
                                 <Link href={`/my-tournaments/${tournament.id}`} className="flex items-center justify-center gap-2">
               Ver detalles
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -267,7 +267,7 @@ export default function TournamentsTabs({
   const renderTournamentsSection = (title: string, tournaments: any[], icon: React.ReactNode, colorClass: string) => (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-xl ${colorClass}`}>{icon}</div>
+        <div className={`p-3 rounded-elevated ${colorClass}`}>{icon}</div>
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
           <p className="text-sm text-slate-500">
@@ -283,7 +283,7 @@ export default function TournamentsTabs({
           ))}
         </div>
       ) : (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+        <div className="text-center py-16 bg-white rounded-elevated border border-gray-200">
           <div className="flex flex-col items-center gap-4">
             <div className={`p-4 rounded-full ${colorClass}`}>{icon}</div>
             <div>
@@ -300,31 +300,31 @@ export default function TournamentsTabs({
     <div className="space-y-8">
       <Tabs defaultValue="all" className="space-y-8">
         <div className="flex justify-center">
-          <TabsList className="bg-white border border-gray-200 p-1.5 rounded-xl shadow-sm">
+          <TabsList className="bg-white border border-gray-200 p-1.5 rounded-elevated shadow-sm">
             <TabsTrigger
               value="all"
-              className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-lg px-4 py-2"
+              className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-surface px-4 py-2"
             >
               <Trophy className="mr-2 h-4 w-4" />
               Todos
             </TabsTrigger>
             <TabsTrigger
               value="upcoming"
-              className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-lg px-4 py-2"
+              className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-surface px-4 py-2"
             >
               <Clock className="mr-2 h-4 w-4" />
               Próximos
             </TabsTrigger>
             <TabsTrigger
               value="active"
-              className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-lg px-4 py-2"
+              className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-surface px-4 py-2"
             >
               <TrendingUp className="mr-2 h-4 w-4" />
               Activos
             </TabsTrigger>
             <TabsTrigger
               value="finished"
-              className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-lg px-4 py-2"
+              className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-surface px-4 py-2"
             >
               <CheckCircle className="mr-2 h-4 w-4" />
               Finalizados

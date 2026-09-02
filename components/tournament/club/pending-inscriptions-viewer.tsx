@@ -84,7 +84,7 @@ export default function PendingInscriptionsViewer({
   if (!inscriptions || inscriptions.length === 0) {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <Card className="w-full max-w-lg bg-white shadow-xl rounded-lg">
+        <Card className="w-full max-w-lg bg-white shadow-xl rounded-surface">
           <CardHeader>
             <CardTitle>Solicitudes Pendientes</CardTitle>
           </CardHeader>
@@ -101,7 +101,7 @@ export default function PendingInscriptionsViewer({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl bg-white shadow-xl rounded-lg flex flex-col max-h-[90vh]">
+      <Card className="w-full max-w-2xl bg-white shadow-xl rounded-surface flex flex-col max-h-[90vh]">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Solicitudes de Inscripción Pendientes ({inscriptions.length})</CardTitle>
           <Button onClick={onClose} variant="ghost" size="sm">
@@ -112,7 +112,7 @@ export default function PendingInscriptionsViewer({
           <ScrollArea className="h-full pr-3">
             <div className="space-y-4">
               {inscriptions.map((insc) => (
-                <div key={insc.id} className="p-4 border rounded-md shadow-sm bg-slate-50">
+                <div key={insc.id} className="p-4 border rounded-control shadow-sm bg-slate-50">
                   <div className="flex justify-between items-start">
                     <div>
                       {insc.player && !insc.couple && (

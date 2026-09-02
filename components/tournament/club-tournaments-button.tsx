@@ -12,7 +12,7 @@ export default function ClubTournamentsButton() {
       <Button
         onClick={() => router.push('/tournaments/my-tournaments')}
         variant="outline"
-        className="border-slate-300 text-slate-700 hover:bg-slate-50 px-6 py-3 rounded-xl shadow-sm"
+        className="border-slate-300 text-slate-700 hover:bg-slate-50 px-6 py-3 rounded-elevated shadow-sm"
       >
         <Trophy className="mr-2 h-5 w-5" />
         Mis Torneos
@@ -20,7 +20,7 @@ export default function ClubTournamentsButton() {
       </Button>
       <Button
         onClick={() => router.push('/tournaments/create')}
-        className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl shadow-sm"
+        className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-elevated shadow-sm"
       >
         <Trophy className="mr-2 h-5 w-5" />
         Crear Torneo

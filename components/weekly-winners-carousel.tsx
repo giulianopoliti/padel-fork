@@ -75,7 +75,7 @@ export default function WeeklyWinnersCarousel({ weeklyWinners }: { weeklyWinners
 
               {/* Champions Info - Simplified and smaller */}
               <div className="absolute bottom-0 left-0 right-0 p-4">
-                <div className="bg-black/40 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                <div className="bg-black/40 backdrop-blur-sm rounded-surface p-3 border border-white/20">
                   <div className="text-center">
                     <div className="flex items-center justify-center mb-2">
                       <Trophy className="h-4 w-4 text-amber-400 mr-2" />
@@ -100,7 +100,7 @@ export default function WeeklyWinnersCarousel({ weeklyWinners }: { weeklyWinners
                   {tournament.tournamentName}
                 </h3>
 
-                <div className="flex items-center justify-center text-slate-600 text-sm mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div className="flex items-center justify-center text-slate-600 text-sm mb-4 bg-slate-50 p-3 rounded-surface border border-slate-100">
                   <Clock className="h-4 w-4 mr-2 text-blue-600" />
                   <span className="font-medium">
                     Finalizado el{" "}

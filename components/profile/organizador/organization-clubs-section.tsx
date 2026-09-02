@@ -699,9 +699,9 @@ export function OrganizationClubsSection({
                   <Camera className="h-5 w-5" />
                   Imagen de Portada
                 </Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-blue-400 transition-colors">
+                <div className="border-2 border-dashed border-gray-300 rounded-surface p-4 hover:border-blue-400 transition-colors">
                   {selectedClub.cover_image_url ? (
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
+                    <div className="relative aspect-video rounded-surface overflow-hidden bg-gray-100">
                       <img
                         src={getStorageUrl(selectedClub.cover_image_url) || selectedClub.cover_image_url}
                         alt="Cover"
@@ -792,7 +792,7 @@ export function OrganizationClubsSection({
                 {/* Gallery Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
                   {(selectedClub.gallery_images || []).map((imageUrl: string, index: number) => (
-                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
+                    <div key={index} className="relative aspect-square rounded-surface overflow-hidden bg-gray-100 group">
                       <img
                         src={getStorageUrl(imageUrl) || imageUrl}
                         alt={`Gallery ${index + 1}`}
@@ -848,7 +848,7 @@ export function OrganizationClubsSection({
                       galleryInputRef.current?.click()
                     }}
                     disabled={isUploadingImage}
-                    className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-blue-600 hover:border-blue-400 transition-colors disabled:opacity-50"
+                    className="aspect-square border-2 border-dashed border-gray-300 rounded-surface flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-blue-600 hover:border-blue-400 transition-colors disabled:opacity-50"
                   >
                     <Plus className="h-6 w-6" />
                     <span className="text-xs font-medium">Agregar Imagen</span>

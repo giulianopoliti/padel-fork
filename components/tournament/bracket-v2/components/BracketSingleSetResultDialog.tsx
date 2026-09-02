@@ -114,7 +114,7 @@ export function BracketSingleSetResultDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-surface border border-slate-200 bg-slate-50 p-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-semibold text-slate-900">{formatCoupleLabel(couple1)}</span>
@@ -152,14 +152,14 @@ export function BracketSingleSetResultDialog({
           </div>
 
           {isValid && (
-            <div className="flex items-center justify-center gap-2 rounded-lg bg-blue-50 p-2 text-sm text-blue-700">
+            <div className="flex items-center justify-center gap-2 rounded-surface bg-blue-50 p-2 text-sm text-blue-700">
               <Trophy className="h-4 w-4" />
               Ganador: {c1 > c2 ? formatCoupleLabel(couple1) : formatCoupleLabel(couple2)}
             </div>
           )}
 
           {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-red-50 p-2 text-sm text-red-700">
+            <div className="flex items-center gap-2 rounded-surface bg-red-50 p-2 text-sm text-red-700">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               {error}
             </div>

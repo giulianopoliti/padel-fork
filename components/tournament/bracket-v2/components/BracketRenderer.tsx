@@ -101,7 +101,7 @@ function ViewportContainer({ layout, children, className }: ViewportContainerPro
     <div
       className={cn(
         'bracket-viewport relative overflow-auto',
-        'border border-slate-200 rounded-lg bg-slate-50',
+        'border border-slate-200 rounded-surface bg-slate-50',
         className
       )}
       style={{
@@ -200,7 +200,7 @@ function NavigationControls({
   
   // Para esta fase, controles básicos
   return (
-    <div className="navigation-controls flex items-center gap-3 mb-4 p-3 bg-white border border-slate-200 rounded-lg">
+    <div className="navigation-controls flex items-center gap-3 mb-4 p-3 bg-white border border-slate-200 rounded-surface">
       <div className="flex items-center gap-2">
         <span className="text-sm text-slate-600">Zoom:</span>
         <input

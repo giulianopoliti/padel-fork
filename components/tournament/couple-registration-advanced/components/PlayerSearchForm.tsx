@@ -112,7 +112,7 @@ export default function PlayerSearchForm({
 
       {/* Current user option for player mode */}
       {showCurrentUserOption && (
-        <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
+        <div className="p-3 bg-violet-50 border border-violet-200 rounded-surface">
           <div className="flex items-center gap-2 mb-2">
             <UserCheck className="h-4 w-4 text-violet-600" />
             <span className="text-sm font-medium text-violet-800">Registrarme a mí mismo</span>
@@ -200,7 +200,7 @@ export default function PlayerSearchForm({
               <p className="text-sm">Intente con otro término de búsqueda</p>
             </div>
           ) : (
-            <div className="border rounded-md divide-y divide-gray-200 max-h-60 overflow-y-auto">
+            <div className="border rounded-control divide-y divide-gray-200 max-h-60 overflow-y-auto">
               {searchResults.map((player) => (
                 <div
                   key={player.id}

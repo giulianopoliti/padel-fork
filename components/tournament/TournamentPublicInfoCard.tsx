@@ -119,7 +119,7 @@ interface InfoItemProps {
 
 function InfoItem({ icon: Icon, label, value, badge = false }: InfoItemProps) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-slate-200/80 bg-slate-50/60 p-4">
+    <div className="flex items-start gap-3 rounded-surface border border-slate-200/80 bg-slate-50/60 p-4">
       <div className="rounded-full bg-white p-2 text-slate-600 shadow-sm">
         <Icon className="h-4 w-4" />
       </div>

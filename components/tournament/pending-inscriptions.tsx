@@ -244,7 +244,7 @@ export default function PendingInscriptions({
             {inscriptions.map((inscription) => (
               <div
                 key={inscription.id}
-                className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-200 shadow-sm"
+                className="flex items-center justify-between p-3 bg-white rounded-surface border border-amber-200 shadow-sm"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-full bg-amber-100">
