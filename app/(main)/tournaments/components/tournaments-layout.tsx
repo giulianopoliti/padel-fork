@@ -11,6 +11,11 @@ import { useRouter } from "next/navigation"
 import TournamentFilters from "./tournament-filters"
 import { getTenantBranding } from "@/config/tenant"
 import { toast } from "@/components/ui/use-toast"
+import {
+  getPublicTournamentListPath,
+  getPublicTournamentListTabs,
+  type PublicTournamentListStatus,
+} from "@/lib/tournaments/public-tournament-list-routes"
 
 interface TournamentsLayoutProps {
   children: React.ReactNode
@@ -91,67 +96,31 @@ export default function TournamentsLayout({
     window.sessionStorage.setItem(toastKey, "shown")
   }, [isElite, pathname])
 
-  const buildStatusHref = (statusPath: "active" | "upcoming" | "in-progress" | "past") => {
+  const buildStatusHref = (statusPath: PublicTournamentListStatus) => {
     const params = new URLSearchParams(searchParams.toString())
     params.delete("page")
     const queryString = buildQueryString(params)
-    const basePath = statusPath === "active" || (isElite && statusPath === "upcoming") ? "/torneos" : `/tournaments/${statusPath}`
+    const basePath = getPublicTournamentListPath(branding.key, statusPath)
     return `${basePath}${queryString ? `?${queryString}` : ""}`
   }
 
-  const isActiveStatus = (statusPath: "active" | "upcoming" | "in-progress" | "past") => {
-    if (statusPath === "active") {
-      return (
-        pathname === "/torneos" ||
-        pathname.includes("/tournaments/upcoming") ||
-        pathname.includes("/tournaments/in-progress")
-      )
+  const isActiveStatus = (statusPath: PublicTournamentListStatus) => pathname === getPublicTournamentListPath(branding.key, statusPath)
+
+  const statusTabs = getPublicTournamentListTabs(branding.key).map((status) => {
+    const tab = {
+      active: { label: "Activos", icon: Trophy },
+      upcoming: { label: "Proximos", icon: Calendar },
+      "in-progress": { label: "Activos", icon: Trophy },
+      past: { label: isElite ? "Pasados" : "Finalizados", icon: Archive },
+    }[status]
+
+    return {
+      href: buildStatusHref(status),
+      label: tab.label,
+      icon: tab.icon,
+      active: isActiveStatus(status),
     }
-
-    if (isElite && statusPath === "upcoming" && pathname === "/torneos") {
-      return true
-    }
-
-    return pathname.includes(`/tournaments/${statusPath}`)
-  }
-
-  const statusTabs = [
-    ...(isElite
-      ? [
-          {
-            href: buildStatusHref("upcoming"),
-            label: "Proximos",
-            icon: Calendar,
-            active: isActiveStatus("upcoming"),
-          },
-          {
-            href: buildStatusHref("in-progress"),
-            label: "Activos",
-            icon: Trophy,
-            active: isActiveStatus("in-progress"),
-          },
-          {
-            href: buildStatusHref("past"),
-            label: "Pasados",
-            icon: Archive,
-            active: isActiveStatus("past"),
-          },
-        ]
-      : [
-          {
-            href: buildStatusHref("active"),
-            label: "Activos",
-            icon: Trophy,
-            active: isActiveStatus("active"),
-          },
-          {
-            href: buildStatusHref("past"),
-            label: "Finalizados",
-            icon: Archive,
-            active: isActiveStatus("past"),
-          },
-        ]),
-  ]
+  })
 
   const pageClassName = isElite
     ? "tpe-page min-h-screen text-[var(--tpe-night)]"

@@ -1,23 +1,12 @@
 import { permanentRedirect } from "next/navigation"
+import { getPublicTournamentListRedirect, type PublicTournamentListSearchParams } from "@/lib/seo/legacy-public-route"
 
 export const dynamic = "force-dynamic"
 
 interface LegacyTournamentsPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: Promise<PublicTournamentListSearchParams>
 }
 
 export default async function LegacyTournamentsPage({ searchParams }: LegacyTournamentsPageProps) {
-  const params = await searchParams
-  const query = new URLSearchParams()
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach((item) => query.append(key, item))
-      return
-    }
-
-    if (value) query.set(key, value)
-  })
-
-  permanentRedirect(query.size ? `/torneos?${query.toString()}` : "/torneos")
+  permanentRedirect(getPublicTournamentListRedirect("/tournaments", await searchParams))
 }

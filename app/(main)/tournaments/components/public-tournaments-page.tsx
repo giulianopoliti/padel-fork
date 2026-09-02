@@ -4,6 +4,10 @@ import PaginationWrapper from "./pagination-wrapper"
 import { PublicTournamentCards } from "@/components/tournaments/public-tournament-cards"
 import { getDefaultPublicTournamentType, getTenantBranding } from "@/config/tenant"
 import { isTournamentGenderFilter } from "@/lib/tournaments/gender-filtering"
+import {
+  getDefaultPublicTournamentListStatus,
+  type PublicTournamentListStatus,
+} from "@/lib/tournaments/public-tournament-list-routes"
 
 export interface PublicTournamentsPageProps {
   searchParams: Promise<{
@@ -16,8 +20,6 @@ export interface PublicTournamentsPageProps {
   }>
   status?: PublicTournamentListStatus
 }
-
-export type PublicTournamentListStatus = "active" | "upcoming" | "in-progress" | "past"
 
 const statusContent: Record<PublicTournamentListStatus, { title: string; description: (siteName: string) => string }> = {
   active: {
@@ -52,7 +54,7 @@ export default async function PublicTournamentsPage({
   const defaultType = getDefaultPublicTournamentType()
   const type = params.type === "AMERICAN" || params.type === "LONG" ? params.type : defaultType
   const isElite = branding.key === "padel-elite"
-  const status = requestedStatus ?? (isElite ? "upcoming" : "active")
+  const status = requestedStatus ?? getDefaultPublicTournamentListStatus(branding.key)
   const content = statusContent[status]
 
   const [tournamentsData, categories, clubs] = await Promise.all([
