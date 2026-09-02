@@ -89,6 +89,7 @@ const config = {
         surface: "var(--radius-surface)",
         elevated: "var(--radius-elevated)",
         display: "var(--radius-display)",
+        "display-lg": "var(--radius-display-lg)",
         pill: "var(--radius-pill)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
