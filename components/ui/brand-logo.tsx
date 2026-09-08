@@ -17,7 +17,7 @@ export default function BrandLogo({
   const branding = getTenantBranding()
   const resolvedSurface = surface || (variant === "navbar" ? "dark" : "light")
   const surfaceSrc = resolvedSurface === "dark" ? branding.logo.onDark : branding.logo.onLight
-  const src = variant === "hero" ? branding.logo.hero || surfaceSrc : branding.logo.navbar || surfaceSrc
+  const src = variant === "hero" ? branding.logo.hero || surfaceSrc : surfaceSrc
   const markSrc = branding.logo.mark
   const alt = `${branding.siteName} logo`
   const defaultClassName = variant === "hero" ? "h-auto w-full max-w-[320px]" : "h-14 w-auto"

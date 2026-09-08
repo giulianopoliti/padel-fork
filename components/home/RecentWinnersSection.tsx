@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { CalendarDays, ChevronRight, MapPin, Trophy } from "lucide-react"
+import { CalendarDays, ChevronRight, MapPin } from "lucide-react"
 import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import type { TenantRecentWinner } from "@/lib/services/tenant-home.service"
@@ -29,14 +29,14 @@ export function RecentWinnersSection({ winners }: RecentWinnersSectionProps) {
         <div className="mx-auto max-w-6xl">
           <div className="mb-6 flex items-end gap-4 sm:mb-8">
             <div>
-              <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-court-300">Ultimo mes</p>
-              <h2 className="text-2xl font-black text-white sm:text-3xl">Ultimos ganadores</h2>
+              <p className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-court-300">Campeones</p>
+              <h2 className="text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl">Últimos ganadores</h2>
             </div>
           </div>
 
           {winners.length === 0 ? (
-            <div className="rounded-display-lg border border-dashed border-white/20 bg-white/5 px-6 py-10 text-center text-slate-300">
-              Aun no hay torneos finalizados con ganadores en los ultimos 30 dias.
+            <div className="rounded-display-lg border border-dashed border-white/20 bg-white/5 px-6 py-6 text-center text-sm font-medium text-slate-300">
+              Aún no hay campeones recientes para mostrar.
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -48,7 +48,7 @@ export function RecentWinnersSection({ winners }: RecentWinnersSectionProps) {
                     key={winner.id}
                     href={getPublicTournamentHref(winner)}
                     aria-label={`Ver resultados de ${winner.tournamentName}`}
-                    className="group flex overflow-hidden rounded-display-lg border border-white/10 bg-[#13203d] shadow-[0_16px_36px_rgba(7,12,28,0.18)] transition hover:-translate-y-1 hover:border-court-300/70 hover:bg-[#1b2d53] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#182b52]"
+                    className="group flex overflow-hidden rounded-display-lg border border-white/10 bg-[#101a31] shadow-[0_16px_36px_rgba(7,12,28,0.18)] transition hover:-translate-y-1 hover:border-court-300/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#182b52]"
                   >
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="relative aspect-[16/8] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,#2e4d87_0%,#182b52_48%,#101a31_100%)]">
@@ -84,24 +84,18 @@ export function RecentWinnersSection({ winners }: RecentWinnersSectionProps) {
                           </div>
                         )}
                         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#101a31]/80 to-transparent" />
-                        <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-court-500 px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-900 shadow-sm">
-                          <Trophy className="h-3.5 w-3.5" /> Campeones
-                        </span>
                         <span className="absolute bottom-3 right-4 inline-flex items-center gap-1.5 text-xs font-bold text-white">
                           <CalendarDays className="h-3.5 w-3.5 text-court-300" /> {formatEndDate(winner.endDate)}
                         </span>
                       </div>
 
-                      <div className="flex min-h-[196px] flex-1 flex-col p-5">
-                        <h3 className="line-clamp-2 text-xl font-black leading-tight text-white group-hover:text-court-300">
-                          {winner.tournamentName}
-                        </h3>
-                        <p className="mt-1 text-sm font-semibold text-court-300">{winner.category || "Categoria no informada"}</p>
-
-                        <div className="mt-5 min-w-0 text-sm font-bold leading-5 text-white">
+                      <div className="flex min-h-[172px] flex-1 flex-col p-5">
+                        <div className="min-w-0 text-lg font-black leading-6 text-white sm:text-xl">
                           <p className="truncate">{winner.player1.name}</p>
                           <p className="truncate">{winner.player2.name}</p>
                         </div>
+                        <p className="mt-4 line-clamp-1 text-sm font-bold text-court-300">{winner.tournamentName}</p>
+                        <p className="mt-1 text-sm text-slate-300">{winner.category || "Categoría no informada"}</p>
 
                         <div className="mt-auto flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-sm">
                           <span className="flex min-w-0 items-center gap-1.5 truncate text-slate-300">
@@ -109,7 +103,7 @@ export function RecentWinnersSection({ winners }: RecentWinnersSectionProps) {
                             {winner.clubName || "Club no informado"}
                           </span>
                           <span className="inline-flex shrink-0 items-center font-bold text-court-300">
-                            Ver torneo <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                            Ver resultados <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                           </span>
                         </div>
                       </div>

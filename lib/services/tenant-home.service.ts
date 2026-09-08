@@ -52,6 +52,8 @@ export interface TenantHomeData {
   } | null
   upcomingTournaments: PublicTournamentSummary[]
   inProgressTournaments: PublicTournamentSummary[]
+  upcomingAmericanTournaments: PublicTournamentSummary[]
+  activeLeagueTournaments: PublicTournamentSummary[]
   ranking: TenantRankingPlayer[]
   recentWinners: TenantRecentWinner[]
 }
@@ -330,24 +332,47 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
       organization: null,
       upcomingTournaments: [],
       inProgressTournaments: [],
+      upcomingAmericanTournaments: [],
+      activeLeagueTournaments: [],
       ranking: [],
       recentWinners: [],
     }
   }
 
-  const upcomingOptions: TenantTournamentSummaryOptions = branding.key === "padel-elite"
-    ? { statuses: ["NOT_STARTED"], tournamentType: "AMERICAN" }
-    : { statuses: ["NOT_STARTED", "ZONE_PHASE"] }
+  if (branding.key === "padel-elite") {
+    const [upcomingTournaments, inProgressTournaments, ranking] = await Promise.all([
+      getTenantTournamentSummaries(12, { statuses: ["NOT_STARTED"], tournamentType: "AMERICAN" }),
+      getTenantTournamentSummaries(12, { statuses: ["ZONE_PHASE", "IN_PROGRESS", "BRACKET_PHASE"], tournamentType: "AMERICAN" }),
+      getTenantHomeRanking(),
+    ])
 
-  const inProgressOptions: TenantTournamentSummaryOptions = branding.key === "padel-elite"
-    ? { statuses: ["ZONE_PHASE", "IN_PROGRESS", "BRACKET_PHASE"], tournamentType: "AMERICAN" }
-    : { statuses: ["IN_PROGRESS", "BRACKET_PHASE"] }
+    return {
+      organization: {
+        id: organization.id,
+        slug: organization.slug,
+        name: organization.name,
+        description: organization.description,
+        logo_url: organization.logo_url,
+      },
+      upcomingTournaments,
+      inProgressTournaments,
+      upcomingAmericanTournaments: [],
+      activeLeagueTournaments: [],
+      ranking,
+      recentWinners: [],
+    }
+  }
 
-  const [upcomingTournaments, inProgressTournaments, ranking, recentWinners] = await Promise.all([
-    getTenantTournamentSummaries(12, upcomingOptions),
-    getTenantTournamentSummaries(12, inProgressOptions),
+  const [upcomingAmericanTournaments, activeLeagueTournaments, ranking, recentWinners] = await Promise.all([
+    getTenantTournamentSummaries(12, { statuses: ["NOT_STARTED"], tournamentType: "AMERICAN" }),
+    // Matches the public /torneos "active" collection: upcoming and in-progress
+    // leagues are intentionally presented together on the FV home.
+    getTenantTournamentSummaries(12, {
+      statuses: ["NOT_STARTED", "IN_PROGRESS", "ZONE_PHASE", "BRACKET_PHASE"],
+      tournamentType: "LONG",
+    }),
     getTenantHomeRanking(),
-    branding.key === "padel-fv" ? getTenantRecentWinners(organization.id) : Promise.resolve([]),
+    getTenantRecentWinners(organization.id),
   ])
 
   return {
@@ -358,8 +383,10 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
       description: organization.description,
       logo_url: organization.logo_url,
     },
-    upcomingTournaments,
-    inProgressTournaments,
+    upcomingTournaments: [],
+    inProgressTournaments: [],
+    upcomingAmericanTournaments,
+    activeLeagueTournaments,
     ranking,
     recentWinners,
   }

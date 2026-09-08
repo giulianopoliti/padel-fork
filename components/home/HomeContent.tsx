@@ -1,67 +1,141 @@
-import Image from "next/image"
 import Link from "next/link"
 import { ChevronRight, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import BrandLogo from "@/components/ui/brand-logo"
 import { getTenantBranding } from "@/config/tenant"
 import { getTenantHomeData, type TenantRankingPlayer } from "@/lib/services/tenant-home.service"
-import { HomeTournamentTabs } from "@/components/tournaments/home-tournament-tabs"
 import PublicTournamentList from "@/components/public/public-tournament-list"
+import { PublicTournamentCards } from "@/components/tournaments/public-tournament-cards"
 import { RecentWinnersSection } from "@/components/home/RecentWinnersSection"
+import { PadelFvImmersiveHero } from "@/components/home/padel-fv-immersive-hero"
 import type { PublicTournamentSummary } from "@/types/public-tournament"
 
 export async function HomeContent() {
   const branding = getTenantBranding()
-  const { organization, upcomingTournaments, inProgressTournaments, ranking, recentWinners } = await getTenantHomeData()
+  const {
+    organization,
+    upcomingTournaments,
+    inProgressTournaments,
+    upcomingAmericanTournaments,
+    activeLeagueTournaments,
+    ranking,
+    recentWinners,
+  } = await getTenantHomeData()
 
   if (branding.home.variant === "padel-elite") {
     return <PadelEliteHomeContent branding={branding} upcomingTournaments={upcomingTournaments} inProgressTournaments={inProgressTournaments} ranking={ranking} />
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#162545_0%,#192b50_42%,#152340_100%)] text-white">
-      <section id="proximos-torneos" className="border-b border-white/12 bg-[linear-gradient(180deg,rgba(31,50,89,0.94)_0%,rgba(28,46,82,0.92)_100%)]">
-        <div className="container mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
-          <div className="mb-6 sm:mb-8">
-            <div className="mx-auto max-w-3xl">
-              <div className="flex justify-center">
-                <div className="rounded-[28px] border border-white/10 bg-[#182b52]/68 px-5 py-4 shadow-[0_18px_45px_rgba(7,12,28,0.16)] backdrop-blur-sm sm:px-6 sm:py-5">
-                  <div className="relative h-[56px] w-[180px] overflow-hidden sm:h-[72px] sm:w-[244px] lg:h-[88px] lg:w-[300px]">
-                    <Image src={branding.logo.onDark} alt={`${branding.siteName} logo`} fill priority sizes="(max-width: 640px) 180px, (max-width: 1024px) 244px, 300px" className="object-cover object-center" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 border-t border-white/10 pt-8 text-center sm:mt-10 sm:pt-10">
-                <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-5xl">Proximos torneos</h1>
-                <div className="mt-6 flex justify-center">
-                  <Button asChild className="h-11 bg-court-500 px-6 text-base font-semibold text-brand-900 hover:bg-court-400">
-                    <Link href="/torneos">Ver todos <ChevronRight className="ml-1 h-4 w-4" /></Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {upcomingTournaments.length === 0 ? (
-            <SetupEmptyState title="Todavia no hay torneos publicados" description="En cuanto Padel FV cargue nuevos torneos, van a aparecer aca automaticamente." />
-          ) : <HomeTournamentTabs tournaments={upcomingTournaments} />}
-        </div>
-      </section>
-
-      <section className="border-b border-white/12 bg-[#13203d] py-12 sm:py-16">
-        <div className="container mx-auto px-4 sm:px-6">
-          <SectionHeader title="Torneos en curso" dark />
-          {inProgressTournaments.length === 0 ? (
-            <SetupEmptyState title="No hay torneos en curso" description="Los torneos que ya esten en competencia apareceran aca." />
-          ) : <HomeTournamentTabs tournaments={inProgressTournaments} />}
-        </div>
-      </section>
-
+    <div className="min-h-screen bg-[#f7f5ee] text-[#20335d]">
+      <PadelFvImmersiveHero />
+      <FvTournamentSection
+        id="proximos-americanos"
+        kicker="Próximas fechas"
+        title="Próximos torneos americanos"
+        description="Competencias dinámicas, categorías definidas e inscripción directa."
+        action="Ver todos los americanos"
+        tournaments={upcomingAmericanTournaments}
+        emptyTitle="Todavía no hay americanos publicados"
+        emptyDescription="Cuando haya una nueva fecha disponible, la vas a encontrar acá."
+      />
+      <FvLeaguesSection
+        id="nuestras-ligas"
+        kicker="Competencias de 1 a 2 meses"
+        title="Nuestras ligas"
+        description="Torneos de uno a dos meses, con fechas programadas, resultados y seguimiento de cada etapa."
+        action="Conocer todas las ligas"
+        tournaments={activeLeagueTournaments}
+      />
+      <div
+        className="h-14 bg-[linear-gradient(180deg,#eef2f6_0%,#20335d_78%,#182b52_100%)] sm:h-20"
+        aria-hidden="true"
+      />
       <RecentWinnersSection winners={recentWinners} />
-      {branding.features.publicRanking && <HomeRanking ranking={ranking} dark />}
       <HomeFooter organizationName={organization?.name || branding.siteName} branding={branding} dark />
     </div>
+  )
+}
+
+function FvTournamentSection({
+  id,
+  kicker,
+  title,
+  description,
+  action,
+  tournaments,
+  emptyTitle,
+  emptyDescription,
+}: {
+  id: string
+  kicker: string
+  title: string
+  description: string
+  action: string
+  tournaments: PublicTournamentSummary[]
+  emptyTitle: string
+  emptyDescription: string
+}) {
+  return (
+    <section id={id} className="bg-[#f7f5ee]">
+      <div className="container mx-auto px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-8 flex flex-col gap-5 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-[#20335d] sm:text-sm">{kicker}</p>
+              <h2 className="text-3xl font-black leading-[1.03] tracking-[-0.04em] text-[#20335d] sm:text-4xl lg:text-5xl">{title}</h2>
+              <p className="mt-4 max-w-xl text-base font-medium leading-7 text-slate-600 sm:text-lg">{description}</p>
+            </div>
+            <Button asChild variant="outline" className="h-11 shrink-0 border-[#20335d]/30 bg-white/70 px-5 font-bold text-[#20335d] hover:border-[#20335d] hover:bg-white hover:text-[#20335d] focus-visible:ring-[#c6de06]">
+              <Link href="/torneos?type=AMERICAN">{action}<ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" /></Link>
+            </Button>
+          </div>
+          <PublicTournamentCards tournaments={tournaments} emptyTitle={emptyTitle} emptyDescription={emptyDescription} surface="light" />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FvLeaguesSection({
+  id,
+  kicker,
+  title,
+  description,
+  action,
+  tournaments,
+}: {
+  id: string
+  kicker: string
+  title: string
+  description: string
+  action: string
+  tournaments: PublicTournamentSummary[]
+}) {
+  return (
+    <section id={id} className="border-y border-[#20335d]/10 bg-[#eef2f6]">
+      <div className="container mx-auto px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-8 flex flex-col gap-5 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-[#20335d] sm:text-sm">{kicker}</p>
+              <h2 className="text-3xl font-black leading-[1.03] tracking-[-0.04em] text-[#20335d] sm:text-4xl lg:text-5xl">{title}</h2>
+              <p className="mt-4 max-w-xl text-base font-medium leading-7 text-slate-600 sm:text-lg">{description}</p>
+            </div>
+            <Button asChild variant="outline" className="h-11 shrink-0 border-[#20335d]/30 bg-white/70 px-5 font-bold text-[#20335d] hover:border-[#20335d] hover:bg-white hover:text-[#20335d] focus-visible:ring-[#c6de06]">
+              <Link href="/torneos?type=LONG">{action}<ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" /></Link>
+            </Button>
+          </div>
+
+          <PublicTournamentCards
+            tournaments={tournaments}
+            emptyTitle="No hay ligas activas"
+            emptyDescription="Las próximas ligas y las que ya están en juego van a aparecer acá."
+            surface="light"
+          />
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -181,14 +255,5 @@ function HomeFooter({ organizationName, branding, dark = false }: { organization
         <p className={dark ? "text-slate-400" : "text-slate-500"}>{branding.supportEmail}</p>
       </div>
     </footer>
-  )
-}
-
-function SetupEmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="rounded-display-lg border border-dashed border-white/20 bg-white/5 px-6 py-12 text-center shadow-sm backdrop-blur-sm">
-      <h3 className="text-xl font-bold text-white">{title}</h3>
-      <p className="mx-auto mt-3 max-w-2xl text-slate-300">{description}</p>
-    </div>
   )
 }

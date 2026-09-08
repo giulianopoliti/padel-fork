@@ -7,9 +7,9 @@ export interface PublicTournamentSummary {
   status: string
   type?: "LONG" | "AMERICAN" | string | null
   category?: string | null
-  categoryName: string | null
-  gender: Gender | string | null
-  startDate: string | null
+  categoryName?: string | null
+  gender?: Gender | string | null
+  startDate?: string | null
   endDate?: string | null
   price?: number | string | null
   award?: string | null
