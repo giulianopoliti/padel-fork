@@ -27,6 +27,10 @@ interface Tournament {
   type: string;
   status: string;
   gender: string;
+  format_config?: {
+    version?: number;
+    zoneMode?: string;
+  } | null;
 }
 
 interface PlayerInfo {
@@ -64,6 +68,9 @@ const ZonesView: React.FC<ZonesViewProps> = ({
   isOwner,
   pendingInscriptionsCount = 0
 }) => {
+  const isSingleZone = tournament.format_config?.version === 2
+    && tournament.format_config.zoneMode === 'SINGLE_ZONE';
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* ========================================
@@ -98,13 +105,13 @@ const ZonesView: React.FC<ZonesViewProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-xl lg:text-2xl font-bold text-slate-900 mb-2 truncate">
-                  Armado de Zonas - {tournament.name}
+                  {isSingleZone ? 'Zona General' : 'Armado de Zonas'} - {tournament.name}
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-3 lg:gap-4 text-xs lg:text-sm text-slate-600">
                   <div className="flex items-center gap-1">
                     <ListChecks className="h-3 w-3 lg:h-4 lg:w-4" />
-                    <span>Gestión de zonas y distribución de parejas</span>
+                    <span>{isSingleZone ? 'Todas las parejas aprobadas se asignan automáticamente' : 'Gestión de zonas y distribución de parejas'}</span>
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -117,13 +124,15 @@ const ZonesView: React.FC<ZonesViewProps> = ({
               {/* Action Buttons - Show only when NOT_STARTED and isOwner */}
               {isOwner && tournament.status === 'NOT_STARTED' && (
                 <div className="hidden sm:flex gap-2">
-                  <BuildZonesButton
-                    tournamentId={tournament.id}
-                    tournament={tournament as any}
-                    couplesCount={coupleInscriptions?.length || 0}
-                    playersCount={0}
-                    pendingInscriptionsCount={pendingInscriptionsCount}
-                  />
+                  {!isSingleZone && (
+                    <BuildZonesButton
+                      tournamentId={tournament.id}
+                      tournament={tournament as any}
+                      couplesCount={coupleInscriptions?.length || 0}
+                      playersCount={0}
+                      pendingInscriptionsCount={pendingInscriptionsCount}
+                    />
+                  )}
                   <InitiateTournamentButton
                     tournamentId={tournament.id}
                     tournament={tournament as any}
@@ -137,13 +146,15 @@ const ZonesView: React.FC<ZonesViewProps> = ({
             {/* Mobile buttons - below title on small screens */}
             {isOwner && tournament.status === 'NOT_STARTED' && (
               <div className="sm:hidden mt-4 flex flex-col gap-2">
-                <BuildZonesButton
-                  tournamentId={tournament.id}
-                  tournament={tournament as any}
-                  couplesCount={coupleInscriptions?.length || 0}
-                  playersCount={0}
-                  pendingInscriptionsCount={pendingInscriptionsCount}
-                />
+                {!isSingleZone && (
+                  <BuildZonesButton
+                    tournamentId={tournament.id}
+                    tournament={tournament as any}
+                    couplesCount={coupleInscriptions?.length || 0}
+                    playersCount={0}
+                    pendingInscriptionsCount={pendingInscriptionsCount}
+                  />
+                )}
                 <InitiateTournamentButton
                   tournamentId={tournament.id}
                   tournament={tournament as any}
@@ -166,6 +177,7 @@ const ZonesView: React.FC<ZonesViewProps> = ({
             tournamentId={tournament.id}
             isOwner={isOwner}
             tournamentStatus={tournament.status}
+            isSingleZone={isSingleZone}
           />
         </div>
       </div>

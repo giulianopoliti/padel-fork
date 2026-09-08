@@ -67,6 +67,8 @@ export default function AmericanOrganizerView({
 
   const isActive = tournament.status !== 'NOT_STARTED';
   const isCanceled = tournament.status === 'CANCELED';
+  const isSingleZone = tournament.format_config?.version === 2
+    && tournament.format_config?.zoneMode === 'SINGLE_ZONE';
 
   // Determinar badge según fuente
   const getRoleBadge = () => {
@@ -190,13 +192,15 @@ export default function AmericanOrganizerView({
             {/* Tournament Action Buttons - Solo si NO está iniciado y NO está cancelado */}
             {tournament.status === 'NOT_STARTED' && !isCanceled && (
               <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
-                <BuildZonesButton
-                  tournamentId={tournament.id}
-                  tournament={tournament as any}
-                  couplesCount={approvedCouplesCount}
-                  playersCount={stats.players}
-                  pendingInscriptionsCount={pendingInscriptionsCount}
-                />
+                {!isSingleZone && (
+                  <BuildZonesButton
+                    tournamentId={tournament.id}
+                    tournament={tournament as any}
+                    couplesCount={approvedCouplesCount}
+                    playersCount={stats.players}
+                    pendingInscriptionsCount={pendingInscriptionsCount}
+                  />
+                )}
                 <InitiateTournamentButton
                   tournamentId={tournament.id}
                   tournament={tournament as any}

@@ -477,6 +477,7 @@ function BracketEmptyState({
   const [error, setError] = React.useState<string | null>(null)
   const [requiredMatchesPerCoupleValues, setRequiredMatchesPerCoupleValues] = React.useState<number[]>([])
   const [longBracketMatchRequirementEnabled, setLongBracketMatchRequirementEnabled] = React.useState(true)
+  const [qualificationText, setQualificationText] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     let cancelled = false
@@ -496,6 +497,14 @@ function BracketEmptyState({
         if (!cancelled) {
           setRequiredMatchesPerCoupleValues(values)
           setLongBracketMatchRequirementEnabled(validation.longBracketMatchRequirementEnabled !== false)
+          const preview = validation.qualificationPreview
+          if (preview?.bracketMode === 'SINGLE') {
+            setQualificationText(`${preview.mainCount ?? 0} de ${preview.eligibleCouples ?? 0} parejas avanzan a la llave única.`)
+          } else if (preview?.bracketMode === 'GOLD_SILVER') {
+            setQualificationText(`${preview.goldCount ?? 0} parejas avanzan a Copa Oro y ${preview.silverCount ?? 0} a Copa Plata${preview.eliminatedCount ? `; ${preview.eliminatedCount} quedan eliminadas` : ''}.`)
+          } else {
+            setQualificationText(null)
+          }
         }
       } catch (requirementError) {
         console.warn('[BracketEmptyState] Could not load bracket requirements:', requirementError)
@@ -578,6 +587,11 @@ function BracketEmptyState({
       </div>
 
       <div className="text-sm text-slate-500 mb-6">
+        {qualificationText && (
+          <div className="mb-4 rounded-surface border border-blue-200 bg-blue-50 px-4 py-3 font-medium text-blue-900">
+            {qualificationText}
+          </div>
+        )}
         {requirementText}
       </div>
       

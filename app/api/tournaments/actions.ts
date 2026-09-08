@@ -28,6 +28,7 @@ import {
 import { normalizePlayerDni } from '@/lib/utils/player-dni';
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity';
 import { ensureLongTournamentGeneralZone } from '@/lib/services/tournaments/long-general-zone';
+import { ensureAmericanSingleZone } from '@/lib/services/tournaments/american-single-zone';
 import {
   ensureCanonicalZoneMembership,
   removeTournamentCoupleMembership,
@@ -85,6 +86,7 @@ interface CreateTournamentData {
   price: number | null;
   award: string | null;
   format_config?: any;
+  show_public_inscriptions?: boolean;
 }
 
 // Interface for couple with extended stats used in sorting (extends the imported CoupleWithStats)
@@ -705,8 +707,9 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
       status: 'NOT_STARTED', // Default status
       uses_new_system: true, // Nuevos torneos usan el sistema nuevo por defecto
       organization_id: organization_id,
-      // TPE registrations stay available, but its roster starts private.
-      show_public_inscriptions: getTenantBranding().key !== 'padel-elite',
+      // Keep the tenant default when older clients do not send this setting.
+      show_public_inscriptions:
+        formData.show_public_inscriptions ?? (getTenantBranding().key !== 'padel-elite'),
       // Ensure date fields are correctly formatted if they come as strings
       start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
       end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
@@ -792,6 +795,20 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
         zoneId: zoneEnsureResult.zoneId,
         created: zoneEnsureResult.created,
       })
+    }
+
+    if (newTournament.type === 'AMERICAN') {
+      const zoneEnsureResult = await ensureAmericanSingleZone(newTournament.id)
+      if (!zoneEnsureResult.success) {
+        console.error('[createTournamentAction] Failed to ensure American single zone:', {
+          tournamentId: newTournament.id,
+          zoneEnsureResult,
+        })
+        return {
+          success: false,
+          error: zoneEnsureResult.error || 'No se pudo completar la Zona General del torneo.',
+        }
+      }
     }
 
     // 5. Revalidate paths
@@ -3059,6 +3076,14 @@ export async function acceptInscriptionRequest(inscriptionId: string, tournament
     if (error) {
       console.error("[acceptInscriptionRequest] Error updating inscription:", error);
       return { success: false, message: "Error al aceptar la solicitud.", error: error.message };
+    }
+
+    if (inscription.couple_id) {
+      const zoneResult = await ensureAmericanSingleZone(tournamentId)
+      if (!zoneResult.success) {
+        console.error('[acceptInscriptionRequest] Error assigning single-zone membership:', zoneResult.error)
+        return { success: false, message: 'La inscripción fue aceptada, pero no se pudo actualizar la Zona General.', error: zoneResult.error }
+      }
     }
 
     try {
@@ -6374,7 +6399,7 @@ export async function approveInscription(inscriptionId: string): Promise<{
   // Obtener la inscripcion
   const { data: inscription, error: fetchError } = await supabase
     .from('inscriptions')
-    .select('id, tournament_id, is_pending, payment_proof_status')
+    .select('id, tournament_id, is_pending, payment_proof_status, couple_id')
     .eq('id', inscriptionId)
     .single();
   
@@ -6413,6 +6438,15 @@ export async function approveInscription(inscriptionId: string): Promise<{
   if (updateError) {
     console.error('[approveInscription] Error actualizando inscripcion:', updateError);
     return { success: false, error: 'Error al aprobar la inscripcion' };
+  }
+
+
+  if (inscription.couple_id) {
+    const zoneResult = await ensureAmericanSingleZone(inscription.tournament_id)
+    if (!zoneResult.success) {
+      console.error('[approveInscription] Error assigning single-zone membership:', zoneResult.error)
+      return { success: false, error: 'La inscripción fue aprobada, pero no se pudo actualizar la Zona General.' }
+    }
   }
 
   try {

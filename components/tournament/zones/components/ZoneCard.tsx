@@ -36,6 +36,7 @@ interface ZoneCardProps {
   selectedCoupleForMove?: { coupleId: string; coupleName: string; sourceZoneId: string | null } | null
   onCoupleSelect?: (selection: { coupleId: string; coupleName: string; sourceZoneId: string | null } | null) => void
   onDisqualificationChange?: () => Promise<void> | void
+  isSingleZone?: boolean
 }
 
 export function ZoneCard({
@@ -54,7 +55,8 @@ export function ZoneCard({
   isMobile = false,
   selectedCoupleForMove = null,
   onCoupleSelect,
-  onDisqualificationChange
+  onDisqualificationChange,
+  isSingleZone = false
 }: ZoneCardProps) {
   const {
     isDragging,
@@ -147,13 +149,17 @@ export function ZoneCard({
           
           <div className="flex items-center gap-2">
             {/* Enhanced capacity indicator with tournament validation */}
-            <ZoneCapacityDetails
-              currentSize={zone.couples.length}
-              zoneId={zone.id}
-              zoneName={zone.name}
-              formatId={formatId}
-              tournamentId={tournamentId}
-            />
+            {isSingleZone ? (
+              <Badge variant="outline">{zone.couples.length} parejas</Badge>
+            ) : (
+              <ZoneCapacityDetails
+                currentSize={zone.couples.length}
+                zoneId={zone.id}
+                zoneName={zone.name}
+                formatId={formatId}
+                tournamentId={tournamentId}
+              />
+            )}
             
             {isOver && !canDrop && (
               <Badge variant="destructive" className="text-xs">

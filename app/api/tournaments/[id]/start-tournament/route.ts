@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { checkTournamentPermissions } from "@/utils/tournament-permissions"
+import { ensureAmericanSingleZone } from "@/lib/services/tournaments/american-single-zone"
+import { TournamentFormatResolver } from "@/lib/services/tournament-format-resolver"
 
 /**
  * 🎯 API ROUTE: INICIAR TORNEO
  *
- * Esta ruta SOLO cambia el status del torneo a ZONE_PHASE.
- * NO crea zonas ni asigna parejas.
+ * Cambia el status a ZONE_PHASE y prepara la Zona General cuando el formato
+ * americano administra una única zona.
  *
  * Responsabilidades:
  * ✅ Validar autenticación y permisos
  * ✅ Verificar que hay parejas inscritas
  * ✅ Verificar que NO hay jugadores individuales sin pareja
+ * ✅ Sincronizar parejas aprobadas en formatos de zona única
  * ✅ Cambiar status a ZONE_PHASE
  * ✅ Retornar éxito con mensaje
  */
@@ -51,7 +54,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const { data: tournament, error: tournErr } = await supabase
     .from("tournaments")
-    .select("status, type")
+    .select("status, type, format_type, format_config")
     .eq("id", tournamentId)
     .single()
 
@@ -78,12 +81,35 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     .select("*", { count: "exact", head: true })
     .eq("tournament_id", tournamentId)
     .not("couple_id", "is", null)
+    .eq("is_pending", false)
 
   if (!couplesCount || couplesCount === 0) {
     return NextResponse.json({
       success: false,
       error: "No hay parejas inscritas en el torneo"
     }, { status: 400 })
+  }
+
+  const resolvedFormat = TournamentFormatResolver.getResolvedFormat(tournament, {
+    totalCouples: couplesCount,
+  })
+  const isAmericanSingleZone = resolvedFormat.baseType === 'AMERICAN' && resolvedFormat.zoneMode === 'SINGLE_ZONE'
+
+  if (isAmericanSingleZone && couplesCount < 3) {
+    return NextResponse.json({
+      success: false,
+      error: "Un americano de zona única necesita al menos 3 parejas aprobadas"
+    }, { status: 400 })
+  }
+
+  if (isAmericanSingleZone) {
+    const zoneResult = await ensureAmericanSingleZone(tournamentId)
+    if (!zoneResult.success) {
+      return NextResponse.json({
+        success: false,
+        error: zoneResult.error || "No se pudo preparar la Zona General"
+      }, { status: 500 })
+    }
   }
 
   // ========================================

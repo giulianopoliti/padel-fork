@@ -45,6 +45,7 @@ interface TournamentZonesMatrixProps {
   tournamentId: string
   isOwner?: boolean
   tournamentStatus?: string
+  isSingleZone?: boolean
 }
 
 /**
@@ -53,7 +54,8 @@ interface TournamentZonesMatrixProps {
 function TournamentZonesMatrixInternal({
   tournamentId,
   isOwner = false,
-  tournamentStatus
+  tournamentStatus,
+  isSingleZone = false
 }: TournamentZonesMatrixProps) {
   // Local state
   const [isEditMode, setIsEditMode] = useState(false)
@@ -614,7 +616,7 @@ function TournamentZonesMatrixInternal({
   return (
     <div className="space-y-6 relative">
       {/* Zone Actions Controls */}
-      <ZoneActions
+      {!isSingleZone && <ZoneActions
         isEditMode={isEditMode}
         isLoading={isLoading}
         hasUnsavedChanges={hasUnsavedChanges}
@@ -625,10 +627,10 @@ function TournamentZonesMatrixInternal({
         onCancel={handleCancel}
         onRefresh={handleRefresh}
         isOwner={isOwner}
-      />
+      />}
 
       {/* Zone Management - Add/Delete Zones */}
-      {isOwner && (
+      {isOwner && !isSingleZone && (
         <ZoneManagement
           zones={enhancedZones}
           isEditMode={isEditMode}
@@ -645,12 +647,12 @@ function TournamentZonesMatrixInternal({
             <ZoneCard
               key={zone.id}
               zone={zone}
-              isEditMode={isEditMode}
+              isEditMode={!isSingleZone && isEditMode}
               matches={matches}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
               onDrop={handleZoneDrop}
-              onDeleteZone={handleDeleteZone}
+              onDeleteZone={isSingleZone ? undefined : handleDeleteZone}
               onCellClick={handleCellClick}
               zoneCounts={zoneCounts}
               tournamentId={tournamentId}
@@ -660,6 +662,7 @@ function TournamentZonesMatrixInternal({
               selectedCoupleForMove={selectedCoupleForMove}
               onCoupleSelect={setSelectedCoupleForMove}
               onDisqualificationChange={handleDisqualificationRefresh}
+              isSingleZone={isSingleZone}
             />
           ))}
         </div>
@@ -680,7 +683,7 @@ function TournamentZonesMatrixInternal({
       )}
 
       {/* Unassigned Pool */}
-      <UnassignedPool
+      {!isSingleZone && <UnassignedPool
         availableCouples={availableCouples}
         isEditMode={isEditMode}
         onDragStart={handleDragStart}
@@ -690,16 +693,16 @@ function TournamentZonesMatrixInternal({
         isMobile={isMobile}
         selectedCoupleForMove={selectedCoupleForMove}
         onCoupleSelect={setSelectedCoupleForMove}
-      />
+      />}
 
       {/* Trash Drop Zone */}
-      <TrashDropZone
+      {!isSingleZone && <TrashDropZone
         onDrop={handleTrashDrop}
         onDragEnter={setDragOver}
         onDragLeave={() => setDragOver(null)}
         isEditMode={isEditMode}
         isVisible={isOwner}
-      />
+      />}
       
       {/* Global Loading Overlay */}
       {mutationLoading && (

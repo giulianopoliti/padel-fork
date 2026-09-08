@@ -18,6 +18,7 @@ export interface CoupleStats {
 // Clean, serializable couple data
 export interface SerializableCouple {
   id: string
+  position?: number
   player1Name: string
   player2Name: string
   stats: CoupleStats

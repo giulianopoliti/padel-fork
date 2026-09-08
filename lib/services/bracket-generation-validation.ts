@@ -12,6 +12,7 @@ import {
 } from '@/lib/services/tournament-disqualifications'
 import { shouldEnforceLongBracketMatchRequirement } from '@/lib/services/tournament-operational-settings'
 import { resolveZoneFixtureRequirements } from '@/lib/services/zone-fixture-requirements.service'
+import { ensureAmericanSingleZone } from '@/lib/services/tournaments/american-single-zone'
 
 export interface BracketArtifactState {
   seedCount: number
@@ -19,6 +20,15 @@ export interface BracketArtifactState {
   hierarchyCount: number
   resolutionCount: number
   exists: boolean
+}
+
+export type BracketQualificationPreview = {
+  bracketMode: 'NONE' | 'SINGLE' | 'GOLD_SILVER'
+  eligibleCouples: number
+  mainCount?: number
+  goldCount?: number
+  silverCount?: number
+  eliminatedCount: number
 }
 
 export interface PlaceholderBracketValidationSuccess {
@@ -40,6 +50,7 @@ export interface PlaceholderBracketValidationSuccess {
   artifacts: BracketArtifactState
   requiredMatchesPerCoupleValues?: number[]
   longBracketMatchRequirementEnabled?: boolean
+  qualificationPreview?: BracketQualificationPreview
 }
 
 export interface PlaceholderBracketValidationFailure {
@@ -56,6 +67,7 @@ export interface PlaceholderBracketValidationFailure {
   artifacts: BracketArtifactState
   requiredMatchesPerCoupleValues?: number[]
   longBracketMatchRequirementEnabled?: boolean
+  qualificationPreview?: BracketQualificationPreview
   tournament?: {
     id: string
     status: string
@@ -348,6 +360,22 @@ export async function validatePlaceholderBracketGeneration(
     }
   }
 
+  const resolvedTournamentFormat = TournamentFormatResolver.getResolvedFormat(tournament)
+  if (resolvedTournamentFormat.baseType === 'AMERICAN' && resolvedTournamentFormat.zoneMode === 'SINGLE_ZONE') {
+    const zoneResult = await ensureAmericanSingleZone(tournamentId)
+    if (!zoneResult.success) {
+      return {
+        success: false,
+        code: 'ZONE_VALIDATION_ERROR',
+        message: zoneResult.error || 'No se pudo sincronizar la Zona General',
+        totalCouples: 0,
+        totalZones: 0,
+        artifacts,
+        tournament,
+      }
+    }
+  }
+
   const { data: zones, error: zonesError } = await supabase
     .from('zones')
     .select('id, name, rounds_per_couple')
@@ -485,6 +513,23 @@ export async function validatePlaceholderBracketGeneration(
     }
   }
 
+  const effectiveFormat = TournamentFormatResolver.getResolvedFormat(tournament, { totalCouples })
+  const effectiveAllocation = effectiveFormat.effectiveAdvancementConfig
+  const qualificationPreview: BracketQualificationPreview = {
+    bracketMode: effectiveFormat.effectiveBracketMode,
+    eligibleCouples: totalCouples,
+    eliminatedCount: effectiveAllocation.kind === 'GOLD_SILVER'
+      ? effectiveAllocation.eliminatedCount
+      : effectiveAllocation.kind === 'SINGLE'
+        ? Math.max(totalCouples - effectiveAllocation.advanceCount, 0)
+        : totalCouples,
+    ...(effectiveAllocation.kind === 'SINGLE' ? { mainCount: effectiveAllocation.advanceCount } : {}),
+    ...(effectiveAllocation.kind === 'GOLD_SILVER' ? {
+      goldCount: effectiveAllocation.goldCount,
+      silverCount: effectiveAllocation.silverCount,
+    } : {}),
+  }
+
   if (incompleteZones.length > 0) {
     const firstIncompleteZone = incompleteZones[0]
     return {
@@ -501,6 +546,7 @@ export async function validatePlaceholderBracketGeneration(
       tournament,
       requiredMatchesPerCoupleValues: Array.from(requiredMatchesPerCoupleValues).sort((a, b) => a - b),
       longBracketMatchRequirementEnabled: enforceLongBracketMatchRequirement,
+      qualificationPreview,
       incompleteZones
     }
   }
@@ -514,6 +560,7 @@ export async function validatePlaceholderBracketGeneration(
     totalZones: zones?.length || 0,
     requiredMatchesPerCoupleValues: Array.from(requiredMatchesPerCoupleValues).sort((a, b) => a - b),
     longBracketMatchRequirementEnabled: enforceLongBracketMatchRequirement,
+    qualificationPreview,
     artifacts
   }
 }

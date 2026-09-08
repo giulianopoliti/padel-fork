@@ -41,6 +41,7 @@ import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getPresetOptionsByType } from '@/config/tournament-format-presets';
 import { useUser } from '@/contexts/user-context';
@@ -136,6 +137,7 @@ const tournamentSchema = z.object({
   end_date: z.string().optional(),
   end_time: z.string().optional(),
   max_participants: z.number().min(2, 'Minimo 2 parejas').max(64, 'Maximo 64 parejas').optional(),
+  show_public_inscriptions: z.boolean().default(true),
   club_id: z.string().min(1, 'Selecciona un club'),
   extra_club_ids: z.array(z.string()).default([]),
   price: z.number().int('El precio debe ser un numero entero').min(0, 'El precio no puede ser negativo').max(MAX_TOURNAMENT_PRICE, 'El precio es demasiado alto').optional(),
@@ -147,6 +149,7 @@ const tournamentSchema = z.object({
   gold_count: z.number().int().min(0, 'No puede ser negativo').optional(),
   silver_count: z.number().int().min(0, 'No puede ser negativo').optional(),
   eliminated_count: z.number().int().min(0, 'No puede ser negativo').optional(),
+  advancement_allocation_mode: z.enum(['AUTO', 'CUSTOM']).default('AUTO'),
 }).refine((data) => {
   if (data.type === 'AMERICAN' && !data.start_time) {
     return false;
@@ -213,6 +216,44 @@ const tournamentSchema = z.object({
 }, {
   message: 'La categoria por suma solo esta disponible para torneos mixtos',
   path: ['gender'],
+}).superRefine((data, context) => {
+  const preset = PRESET_OPTIONS[data.type].find((option) => option.presetId === data.format_preset)
+  if (!preset) return
+
+  if (preset.baseType === 'AMERICAN' && preset.zoneMode === 'SINGLE_ZONE') {
+    if (typeof data.max_participants === 'number' && data.max_participants < 3) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['max_participants'], message: 'La zona única necesita al menos 3 parejas' })
+    }
+    if (typeof data.max_participants === 'number' && data.max_participants > preset.zoneRules.maxSize) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['max_participants'], message: `Máximo ${preset.zoneRules.maxSize} parejas para zona única` })
+    }
+  }
+
+  if (data.advancement_allocation_mode !== 'CUSTOM') return
+
+  if (preset.advancementConfig.kind === 'SINGLE') {
+    const advanceCount = data.single_bracket_advance_count || 0
+    if (advanceCount < 2) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['single_bracket_advance_count'], message: 'La llave necesita al menos 2 parejas' })
+    }
+    if (data.max_participants && advanceCount > data.max_participants) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['single_bracket_advance_count'], message: 'No puede superar el cupo del torneo' })
+    }
+  }
+
+  if (preset.advancementConfig.kind === 'GOLD_SILVER') {
+    const goldCount = data.gold_count || 0
+    const silverCount = data.silver_count || 0
+    if (goldCount < 2) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['gold_count'], message: 'Copa Oro necesita al menos 2 parejas' })
+    }
+    if (silverCount < 2) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['silver_count'], message: 'Copa Plata necesita al menos 2 parejas' })
+    }
+    if (data.max_participants && goldCount + silverCount > data.max_participants) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['gold_count'], message: 'La distribución supera el cupo del torneo' })
+    }
+  }
 });
 
 type TournamentFormData = z.infer<typeof tournamentSchema>;
@@ -343,6 +384,7 @@ export default function TournamentCreateForm() {
       end_date: '',
       end_time: '',
       max_participants: undefined,
+      show_public_inscriptions: true,
       club_id: '',
       extra_club_ids: [],
       price: undefined,
@@ -354,6 +396,7 @@ export default function TournamentCreateForm() {
       gold_count: 4,
       silver_count: 4,
       eliminated_count: 0,
+      advancement_allocation_mode: 'AUTO',
     },
   });
 
@@ -687,18 +730,6 @@ export default function TournamentCreateForm() {
         baseFields.push('mixed_sum_target');
       }
 
-      if (selectedPreset?.advancementConfig.kind === 'SINGLE') {
-        baseFields.push('single_bracket_advance_count');
-      }
-
-      if (selectedPreset?.advancementConfig.kind === 'PER_ZONE_TOP') {
-        baseFields.push('american_couples_per_zone');
-      }
-
-      if (selectedPreset?.advancementConfig.kind === 'GOLD_SILVER') {
-        baseFields.push('gold_count', 'silver_count', 'eliminated_count');
-      }
-
       return baseFields;
     }
 
@@ -708,7 +739,13 @@ export default function TournamentCreateForm() {
         : ['start_date', 'end_date'];
     }
 
-    return [];
+    const finalFields: FieldPath<TournamentFormData>[] = ['max_participants', 'show_public_inscriptions', 'advancement_allocation_mode'];
+    if (watchedValues.advancement_allocation_mode === 'CUSTOM') {
+      if (selectedPreset?.advancementConfig.kind === 'SINGLE') finalFields.push('single_bracket_advance_count');
+      if (selectedPreset?.advancementConfig.kind === 'PER_ZONE_TOP') finalFields.push('american_couples_per_zone');
+      if (selectedPreset?.advancementConfig.kind === 'GOLD_SILVER') finalFields.push('gold_count', 'silver_count');
+    }
+    return finalFields;
   };
 
   const handleNextStep = async () => {
@@ -804,11 +841,13 @@ export default function TournamentCreateForm() {
           goldCount: data.gold_count,
           silverCount: data.silver_count,
           eliminatedCount: data.eliminated_count,
+          allocationMode: data.advancement_allocation_mode,
         }),
         gender: data.gender as 'MALE' | 'FEMALE' | 'MIXED',
         start_date: formatDateTime(data.start_date, data.start_time),
         end_date: data.type === 'LONG' && data.end_date ? formatDateTime(data.end_date) : null,
         max_participants: data.max_participants || null,
+        show_public_inscriptions: data.show_public_inscriptions,
         club_id: data.club_id,
         extra_club_ids: (data.extra_club_ids || []).filter((id) => id && id !== data.club_id),
         price: data.price ?? null,
@@ -1519,120 +1558,8 @@ export default function TournamentCreateForm() {
                               <p className="mt-1 text-sm text-slate-600">{selectedPreset.display.description}</p>
                             </div>
 
-                            {selectedPreset.advancementConfig.kind === 'SINGLE' && (
-                              <FormField
-                                control={form.control}
-                                name="single_bracket_advance_count"
-                                render={({ field }) => (
-                                  <FormItem className="max-w-xs">
-                                    <FormLabel className="font-medium text-slate-700">Parejas que avanzan a la llave</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        min="2"
-                                        className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
-                                        value={field.value ?? ''}
-                                        onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)}
-                                      />
-                                    </FormControl>
-                                    <FormDescription className="text-slate-500">
-                                      Ajusta cuantas parejas pasan a la etapa final.
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            )}
 
-                            {selectedPreset.advancementConfig.kind === 'PER_ZONE_TOP' && (
-                              <FormField
-                                control={form.control}
-                                name="american_couples_per_zone"
-                                render={({ field }) => (
-                                  <FormItem className="max-w-xs">
-                                    <FormLabel className="font-medium text-slate-700">Parejas que pasan por zona</FormLabel>
-                                    <Select value={field.value ?? 'ALL'} onValueChange={field.onChange}>
-                                      <FormControl>
-                                        <SelectTrigger className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900">
-                                          <SelectValue placeholder="Selecciona cuantas pasan" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="2">2 por zona</SelectItem>
-                                        <SelectItem value="3">3 por zona</SelectItem>
-                                        <SelectItem value="ALL">Todas por zona</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormDescription className="text-slate-500">
-                                      La llave se arma tomando primero esta cantidad en cada zona.
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            )}
 
-                            {selectedPreset.advancementConfig.kind === 'GOLD_SILVER' && (
-                              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                                <FormField
-                                  control={form.control}
-                                  name="gold_count"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel className="font-medium text-slate-700">Copa Oro</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
-                                          value={field.value ?? ''}
-                                          onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name="silver_count"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel className="font-medium text-slate-700">Copa Plata</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
-                                          value={field.value ?? ''}
-                                          onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name="eliminated_count"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel className="font-medium text-slate-700">Eliminadas</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
-                                          value={field.value ?? ''}
-                                          onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -1930,8 +1857,8 @@ export default function TournamentCreateForm() {
                               <FormControl>
                                 <Input
                                   type="number"
-                                  min="2"
-                                  max="64"
+                                  min={selectedPreset?.zoneMode === 'SINGLE_ZONE' ? 3 : 2}
+                                  max={selectedPreset?.zoneMode === 'SINGLE_ZONE' ? selectedPreset.zoneRules.maxSize : 64}
                                   placeholder="Ej: 16"
                                   className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
                                   value={field.value ?? ''}
@@ -1948,33 +1875,95 @@ export default function TournamentCreateForm() {
 
                         <FormField
                           control={form.control}
-                          name="price"
+                          name="show_public_inscriptions"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="font-medium text-slate-700">
-                                <Tag className="mr-1 inline h-4 w-4" />
-                                Precio de inscripcion
-                              </FormLabel>
+                            <FormItem className="flex items-center justify-between gap-4 rounded-elevated border border-slate-200 bg-slate-50 p-4">
+                              <div className="space-y-1">
+                                <FormLabel className="font-medium text-slate-700">Mostrar inscriptos públicamente</FormLabel>
+                                <FormDescription className="text-slate-500">
+                                  Si lo desactivás, se ocultan la cantidad y la lista de inscriptos al público.
+                                </FormDescription>
+                              </div>
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max={MAX_TOURNAMENT_PRICE}
-                                  step="1"
-                                  placeholder="Ej: 5000"
-                                  className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900"
-                                  value={field.value ?? ''}
-                                  onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)}
-                                />
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
-                              <FormDescription className="text-slate-500">
-                                Opcional. Solo numeros enteros.
-                              </FormDescription>
-                              <FormMessage />
                             </FormItem>
                           )}
                         />
                       </div>
+
+                      {selectedPreset?.bracketMode !== 'NONE' && (
+                        <div className="space-y-5 rounded-elevated border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                          <div>
+                            <p className="font-medium text-slate-900">Parejas que avanzan a la llave</p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Definí la clasificación junto al cupo. Podrás modificarla antes de crear la llave.
+                            </p>
+                          </div>
+
+                          <FormField
+                            control={form.control}
+                            name="advancement_allocation_mode"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <RadioGroup value={field.value} onValueChange={field.onChange} className="grid gap-3 sm:grid-cols-2">
+                                    <label className={cn('flex cursor-pointer items-start gap-3 rounded-surface border bg-white p-4', field.value === 'AUTO' && 'border-slate-900 ring-1 ring-slate-900')}>
+                                      <RadioGroupItem value="AUTO" className="mt-0.5" />
+                                      <span><span className="block font-medium text-slate-900">Clasifican todas</span><span className="mt-1 block text-sm text-slate-500">El sistema ajusta la llave a las parejas inscriptas.</span></span>
+                                    </label>
+                                    <label className={cn('flex cursor-pointer items-start gap-3 rounded-surface border bg-white p-4', field.value === 'CUSTOM' && 'border-slate-900 ring-1 ring-slate-900')}>
+                                      <RadioGroupItem value="CUSTOM" className="mt-0.5" />
+                                      <span><span className="block font-medium text-slate-900">Elegir cantidades</span><span className="mt-1 block text-sm text-slate-500">Indicá cuántas avanzan y cuántas quedan eliminadas.</span></span>
+                                    </label>
+                                  </RadioGroup>
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          {watchedValues.advancement_allocation_mode === 'CUSTOM' && selectedPreset?.advancementConfig.kind === 'SINGLE' && (
+                            <FormField control={form.control} name="single_bracket_advance_count" render={({ field }) => (
+                              <FormItem className="max-w-xs">
+                                <FormLabel>Parejas en la llave única</FormLabel>
+                                <FormControl><Input type="number" min="2" value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)} /></FormControl>
+                                <FormDescription>Con 2 parejas se genera una final.</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                          )}
+
+                          {watchedValues.advancement_allocation_mode === 'CUSTOM' && selectedPreset?.advancementConfig.kind === 'PER_ZONE_TOP' && (
+                            <FormField control={form.control} name="american_couples_per_zone" render={({ field }) => (
+                              <FormItem className="max-w-xs">
+                                <FormLabel>Parejas que pasan por zona</FormLabel>
+                                <Select value={field.value ?? 'ALL'} onValueChange={field.onChange}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="2">2 por zona</SelectItem><SelectItem value="3">3 por zona</SelectItem><SelectItem value="ALL">Todas por zona</SelectItem></SelectContent></Select>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                          )}
+
+                          {watchedValues.advancement_allocation_mode === 'CUSTOM' && selectedPreset?.advancementConfig.kind === 'GOLD_SILVER' && (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              <FormField control={form.control} name="gold_count" render={({ field }) => (<FormItem><FormLabel>Copa Oro</FormLabel><FormControl><Input type="number" min="2" value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)} /></FormControl><FormDescription>Mínimo 2.</FormDescription><FormMessage /></FormItem>)} />
+                              <FormField control={form.control} name="silver_count" render={({ field }) => (<FormItem><FormLabel>Copa Plata</FormLabel><FormControl><Input type="number" min="2" value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)} /></FormControl><FormDescription>Mínimo 2.</FormDescription><FormMessage /></FormItem>)} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <FormField
+                        control={form.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-medium text-slate-700"><Tag className="mr-1 inline h-4 w-4" />Precio de inscripcion</FormLabel>
+                            <FormControl><Input type="number" min="0" max={MAX_TOURNAMENT_PRICE} step="1" placeholder="Ej: 5000" className="h-11 border-slate-200/80 bg-white focus:border-slate-900 focus:ring-slate-900" value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : undefined)} /></FormControl>
+                            <FormDescription className="text-slate-500">Opcional. Solo numeros enteros.</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       <FormField
                         control={form.control}

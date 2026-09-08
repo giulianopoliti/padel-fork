@@ -13,6 +13,7 @@ interface TournamentZonesWrapperProps {
   tournamentId: string
   isOwner?: boolean
   tournamentStatus?: string
+  isSingleZone?: boolean
 }
 
 interface SystemTypeResponse {
@@ -39,7 +40,8 @@ interface SystemTypeResponse {
 export default function TournamentZonesWrapper({
   tournamentId,
   isOwner = false,
-  tournamentStatus
+  tournamentStatus,
+  isSingleZone = false
 }: TournamentZonesWrapperProps) {
   const [systemType, setSystemType] = useState<'legacy' | 'new' | 'loading' | 'error'>('loading')
   const [errorDetails, setErrorDetails] = useState<string>('')
@@ -146,6 +148,7 @@ export default function TournamentZonesWrapper({
           tournamentId={tournamentId}
           isOwner={isOwner}
           tournamentStatus={tournamentStatus}
+          isSingleZone={isSingleZone}
         />
       )}
     </>

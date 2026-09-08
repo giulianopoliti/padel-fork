@@ -4,9 +4,9 @@
  * Estrategia de inscripciones para torneos tipo AMERICAN.
  * Características:
  * - Solo maneja tabla 'inscriptions'
- * - No asigna automáticamente a zonas
+ * - Asigna automáticamente a Zona General en formatos de zona única
  * - Permite inscripciones individuales y por parejas
- * - El organizador asigna zonas manualmente después
+ * - Los formatos multizona conservan la asignación manual posterior
  */
 
 import { BaseRegistrationStrategy } from './registration-strategy.interface'
@@ -15,6 +15,7 @@ import { normalizePlayerDni } from '@/lib/utils/player-dni'
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity'
 import { shouldRequireInscriptionValidation } from './inscription-validation'
 import { createClientServiceRole } from '@/utils/supabase/server'
+import { ensureAmericanSingleZone } from '@/lib/services/tournaments/american-single-zone'
 import type {
   RegisterCoupleRequest,
   RegisterNewPlayersRequest,
@@ -124,6 +125,17 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
         return { success: false, error: 'No se pudo inscribir la pareja.' }
       }
 
+      let zoneAssigned = false
+      const isSingleZone = context.tournament.format_config?.version === 2
+        && context.tournament.format_config.zoneMode === 'SINGLE_ZONE'
+      if (!inscription.is_pending && isSingleZone) {
+        const zoneResult = await ensureAmericanSingleZone(tournamentId)
+        if (!zoneResult.success) {
+          console.warn('[AmericanStrategy] La inscripción se guardó y la Zona General se reconciliará al abrir o iniciar el torneo:', zoneResult.error)
+        }
+        zoneAssigned = zoneResult.success && zoneResult.applies
+      }
+
       console.log(`✅ [AmericanStrategy] Pareja registrada exitosamente: ${coupleId}`)
 
       return {
@@ -131,7 +143,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
         inscriptionId: inscription.id,
         coupleId: coupleId,
         inscription: inscription,
-        zoneAssigned: false // American no asigna zonas automáticamente
+        zoneAssigned
       }
 
     } catch (error) {

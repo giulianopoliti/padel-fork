@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { checkTournamentPermissions } from '@/utils/tournament-permissions';
 import ZonesView from './components/ZonesView';
+import { ensureAmericanSingleZone } from '@/lib/services/tournaments/american-single-zone';
 
 interface ZonesPageProps {
   params: { id: string };
@@ -60,7 +61,7 @@ export default async function ZonesPage({ params }: ZonesPageProps) {
 
   const { data: tournament, error } = await supabase
     .from('tournaments')
-    .select('id, name, type, status, club_id, gender')
+    .select('id, name, type, status, club_id, gender, format_config')
     .eq('id', tournamentId)
     .single();
 
@@ -83,6 +84,17 @@ export default async function ZonesPage({ params }: ZonesPageProps) {
     // ✅ USAR FUNCIÓN CENTRALIZADA que maneja ADMIN, CLUB y ORGANIZADOR
     const permissions = await checkTournamentPermissions(user.id, tournamentId);
     isOwner = permissions.hasPermission;
+  }
+
+  if (
+    isOwner
+    && tournament.format_config?.version === 2
+    && tournament.format_config?.zoneMode === 'SINGLE_ZONE'
+  ) {
+    const zoneResult = await ensureAmericanSingleZone(tournamentId)
+    if (!zoneResult.success) {
+      console.error('[ZonesPage] Could not reconcile American single zone:', zoneResult.error)
+    }
   }
 
   // ========================================
