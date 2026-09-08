@@ -51,7 +51,7 @@ export default async function TournamentFormatPage({ params }: FormatPageProps) 
           <p className="mt-6 text-base leading-7 text-foreground/85">{resolved.display.description}</p>
           <p className="mt-3 text-base leading-7 text-foreground/85">
             {isAmerican
-              ? 'El Americano se juega en una sola jornada y cada partido es a un set. Si el formato incluye llave, esos partidos son eliminatorios: la pareja que pierde queda afuera.'
+              ? 'El Americano se juega en una sola jornada y cada partido es a un set. Cuando el formato incluye llave, la clasificación de zona define los cruces eliminatorios posteriores.'
               : isPadelFvLong
                 ? 'Cada partido de la Liga se juega al mejor de tres sets. Primero se juega la clasificación y después comienzan los partidos eliminatorios.'
                 : 'La Liga de PadelElite se desarrolla durante varias jornadas, con cada partido asignado a un día y horario determinado por la organización.'}

@@ -15,11 +15,27 @@ export const RUNTIME_AMERICAN_MULTI_ZONE_PRESET_IDS = [
   'AMERICAN_MULTI_ZONE_HYBRID_3',
 ] as const
 
+export const RUNTIME_AMERICAN_SINGLE_ZONE_PRESET_IDS = [
+  'AMERICAN_SINGLE_ZONE_GLOBAL_2',
+  'AMERICAN_SINGLE_ZONE_GLOBAL_3',
+  'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_2',
+  'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3',
+] as const
+
 export function isRuntimeAmericanMultiZonePreset(presetId?: string | null): boolean {
   return Boolean(
     presetId &&
     RUNTIME_AMERICAN_MULTI_ZONE_PRESET_IDS.includes(
       presetId as (typeof RUNTIME_AMERICAN_MULTI_ZONE_PRESET_IDS)[number]
+    )
+  )
+}
+
+export function isRuntimeAmericanSingleZonePreset(presetId?: string | null): boolean {
+  return Boolean(
+    presetId &&
+    RUNTIME_AMERICAN_SINGLE_ZONE_PRESET_IDS.includes(
+      presetId as (typeof RUNTIME_AMERICAN_SINGLE_ZONE_PRESET_IDS)[number]
     )
   )
 }
@@ -31,6 +47,26 @@ export function canSwitchAmericanMultiZoneRuntime(
   return (
     isRuntimeAmericanMultiZonePreset(currentPresetId) &&
     isRuntimeAmericanMultiZonePreset(nextPresetId)
+  )
+}
+
+export function canSwitchAmericanSingleZoneRuntime(
+  currentPresetId?: string | null,
+  nextPresetId?: string | null
+): boolean {
+  return (
+    isRuntimeAmericanSingleZonePreset(currentPresetId) &&
+    isRuntimeAmericanSingleZonePreset(nextPresetId)
+  )
+}
+
+export function hasSameAmericanZoneTopology(
+  currentPresetId?: string | null,
+  nextPresetId?: string | null
+): boolean {
+  return (
+    (isRuntimeAmericanMultiZonePreset(currentPresetId) && isRuntimeAmericanMultiZonePreset(nextPresetId)) ||
+    (isRuntimeAmericanSingleZonePreset(currentPresetId) && isRuntimeAmericanSingleZonePreset(nextPresetId))
   )
 }
 
@@ -61,6 +97,7 @@ export function shouldWrapLegacyEndpointsWithCanonicalFlow(
     resolved.presetId === 'AMERICAN_MULTI_ZONE_GLOBAL_3' ||
     resolved.presetId === 'AMERICAN_MULTI_ZONE_HYBRID_2' ||
     resolved.presetId === 'AMERICAN_MULTI_ZONE_HYBRID_3' ||
+    isRuntimeAmericanSingleZonePreset(resolved.presetId) ||
     resolved.presetId === 'LONG_SINGLE_ZONE_BRACKET' ||
     resolved.presetId === 'LONG_SINGLE_ZONE_GOLD_SILVER'
   )

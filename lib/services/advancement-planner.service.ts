@@ -1,5 +1,6 @@
 import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
 import { selectQualifiedEntries } from '@/lib/services/qualification-policy.service'
+import { BracketQualificationAllocationService } from '@/lib/services/bracket-qualification-allocation.service'
 import type {
   AdvancementResult,
   BracketKey,
@@ -14,6 +15,11 @@ export class AdvancementPlanner {
     config: TournamentFormatConfigV2
   ): { isValid: boolean; error?: string } {
     const resolved = TournamentFormatResolver.getResolvedFormat({ format_config: config }, { totalCouples })
+    const allocationValidation = BracketQualificationAllocationService.validateAllocation(
+      totalCouples,
+      resolved.effectiveAdvancementConfig
+    )
+    if (!allocationValidation.isValid) return { isValid: false, error: allocationValidation.errors[0] }
 
     if (resolved.effectiveBracketMode === 'GOLD_SILVER') {
       const goldSilverConfig = resolved.effectiveAdvancementConfig as GoldSilverAdvancementConfig
@@ -27,13 +33,6 @@ export class AdvancementPlanner {
     }
 
     if (resolved.effectiveBracketMode === 'SINGLE' && resolved.effectiveAdvancementConfig.kind === 'SINGLE') {
-      if (resolved.baseType === 'AMERICAN' && resolved.zoneMode === 'SINGLE_ZONE' && totalCouples < 4) {
-        return {
-          isValid: false,
-          error: 'El formato americano de zona unica con llave necesita al menos 4 parejas para generar una llave justa.',
-        }
-      }
-
       if (resolved.effectiveAdvancementConfig.advanceCount < 2) {
         return {
           isValid: false,
@@ -85,11 +84,7 @@ export class AdvancementPlanner {
     }
 
     if (resolved.effectiveBracketMode === 'SINGLE' && resolved.effectiveAdvancementConfig.kind === 'SINGLE') {
-      let advanceCount = resolved.effectiveAdvancementConfig.advanceCount
-
-      if (resolved.baseType === 'AMERICAN' && resolved.zoneMode === 'SINGLE_ZONE' && totalCouples === 5) {
-        advanceCount = 4
-      }
+      const advanceCount = resolved.effectiveAdvancementConfig.advanceCount
 
       return {
         gold: rankedEntries.slice(0, advanceCount),

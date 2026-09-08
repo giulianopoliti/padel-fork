@@ -10,17 +10,19 @@ import type { TournamentFormatConfigV2 } from '@/types/tournament-format-v2'
 import { getZoneStageAndMatchesPerCouple } from '@/lib/services/zone-fixture-planner.service'
 import {
   canSwitchAmericanMultiZoneRuntime,
+  canSwitchAmericanSingleZoneRuntime,
+  hasSameAmericanZoneTopology,
+  isRuntimeAmericanMultiZonePreset,
+  isRuntimeAmericanSingleZonePreset,
   isFormatStatusAllowedForRuntimeSwitch,
   shouldUseLegacyQualifying
 } from '@/lib/services/tournament-format-policy'
 import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
-import {
-  calculateExpectedZoneMatches,
-  getPersistedBracketArtifacts
-} from '@/lib/services/bracket-generation-validation'
+import { getPersistedBracketArtifacts } from '@/lib/services/bracket-generation-validation'
 import { syncTournamentCapacityRegistrationLock } from '@/lib/services/tournament-capacity.service'
 import { MAX_TOURNAMENT_PRICE } from '@/lib/constants/tournaments'
 import { mergeTournamentOperationalSettings } from '@/lib/services/tournament-operational-settings'
+import { BracketQualificationAllocationService } from '@/lib/services/bracket-qualification-allocation.service'
 
 interface QualifyingAdvancementSettings {
   enabled: boolean
@@ -104,6 +106,8 @@ type ZoneSnapshot = {
   name: string
   coupleCount: number
   matchCount: number
+  roundsPerCouple: number | null
+  coupleMatchCounts: Record<string, number>
 }
 
 const LONG_SINGLE_ZONE_BRACKET_MODE_SWITCH_PRESETS = [
@@ -164,7 +168,7 @@ async function getZoneSnapshots(
 ): Promise<ZoneSnapshot[]> {
   const { data: zones, error: zonesError } = await supabase
     .from('zones')
-    .select('id, name')
+    .select('id, name, rounds_per_couple')
     .eq('tournament_id', tournamentId)
 
   if (zonesError || !zones) {
@@ -179,7 +183,7 @@ async function getZoneSnapshots(
 
   const { data: zonePositions, error: zonePositionsError } = await supabase
     .from('zone_positions')
-    .select('zone_id')
+    .select('zone_id, couple_id')
     .in('zone_id', zoneIds)
 
   if (zonePositionsError) {
@@ -188,7 +192,7 @@ async function getZoneSnapshots(
 
   const { data: zoneMatches, error: zoneMatchesError } = await supabase
     .from('matches')
-    .select('zone_id')
+    .select('zone_id, couple1_id, couple2_id')
     .in('zone_id', zoneIds)
 
   if (zoneMatchesError) {
@@ -202,10 +206,17 @@ async function getZoneSnapshots(
   }
 
   const matchCountByZone = new Map<string, number>()
+  const coupleMatchCountsByZone = new Map<string, Record<string, number>>()
   for (const match of zoneMatches || []) {
     if (!match.zone_id) continue
     const current = matchCountByZone.get(match.zone_id) || 0
     matchCountByZone.set(match.zone_id, current + 1)
+    const counts = coupleMatchCountsByZone.get(match.zone_id) || {}
+    for (const coupleId of [match.couple1_id, match.couple2_id]) {
+      if (!coupleId) continue
+      counts[coupleId] = (counts[coupleId] || 0) + 1
+    }
+    coupleMatchCountsByZone.set(match.zone_id, counts)
   }
 
   return zones.map((zone) => ({
@@ -213,6 +224,8 @@ async function getZoneSnapshots(
     name: zone.name || 'Zona sin nombre',
     coupleCount: coupleCountByZone.get(zone.id) || 0,
     matchCount: matchCountByZone.get(zone.id) || 0,
+    roundsPerCouple: zone.rounds_per_couple,
+    coupleMatchCounts: coupleMatchCountsByZone.get(zone.id) || {},
   }))
 }
 
@@ -430,27 +443,22 @@ export async function updateTournamentFormatConfig(
       format_config: formatConfig,
     })
     const isAmericanTournament = tournament.type === 'AMERICAN' || tournament.type === 'AMERICANO'
-    const runtimeSwitchRequested =
-      isAmericanTournament &&
-      canSwitchAmericanMultiZoneRuntime(currentResolved.presetId, nextResolved.presetId)
+    const isAmericanFormatUpdate = isAmericanTournament && (
+      JSON.stringify(tournament.format_config) !== JSON.stringify(formatConfig)
+    )
+    const runtimeSwitchRequested = isAmericanFormatUpdate && (
+      canSwitchAmericanMultiZoneRuntime(currentResolved.presetId, nextResolved.presetId) ||
+      canSwitchAmericanSingleZoneRuntime(currentResolved.presetId, nextResolved.presetId)
+    )
+    const topologySwitchRequested = isAmericanFormatUpdate && (
+      (isRuntimeAmericanMultiZonePreset(currentResolved.presetId) || isRuntimeAmericanSingleZonePreset(currentResolved.presetId)) &&
+      (isRuntimeAmericanMultiZonePreset(nextResolved.presetId) || isRuntimeAmericanSingleZonePreset(nextResolved.presetId)) &&
+      !hasSameAmericanZoneTopology(currentResolved.presetId, nextResolved.presetId)
+    )
     const longSingleZoneBracketModeSwitchRequested = canSwitchLongSingleZoneBracketMode(
       currentResolved.presetId,
       nextResolved.presetId
     )
-
-    if (
-      isAmericanTournament &&
-      tournament.status === 'ZONE_PHASE' &&
-      !runtimeSwitchRequested
-    ) {
-      return {
-        success: false,
-        code: 'UNSUPPORTED_RUNTIME_PRESET_TRANSITION',
-        error:
-          'En fase de zonas solo se permite cambiar entre formatos americanos multizona compatibles, ' +
-          'mientras no exista llave generada.',
-      }
-    }
 
     if (longSingleZoneBracketModeSwitchRequested) {
       const hasBracketFlag =
@@ -477,7 +485,7 @@ export async function updateTournamentFormatConfig(
     }
 
     let zoneSnapshots: ZoneSnapshot[] = []
-    if (runtimeSwitchRequested) {
+    if (isAmericanFormatUpdate) {
       if (!isFormatStatusAllowedForRuntimeSwitch(tournament.status)) {
         return {
           success: false,
@@ -510,7 +518,26 @@ export async function updateTournamentFormatConfig(
 
       zoneSnapshots = await getZoneSnapshots(supabase, tournamentId)
 
-      if (nextResolved.effectiveTargetMatchesPerCouple === 3) {
+      if (topologySwitchRequested && zoneSnapshots.length > 0) {
+        return {
+          success: false,
+          code: 'ZONE_TOPOLOGY_CHANGE_WITH_PERSISTED_ZONES',
+          error: 'No se puede cambiar entre zona única y multizona porque el torneo ya tiene zonas creadas.',
+        }
+      }
+
+      if (!runtimeSwitchRequested && !topologySwitchRequested && currentResolved.presetId !== nextResolved.presetId) {
+        return {
+          success: false,
+          code: 'UNSUPPORTED_RUNTIME_PRESET_TRANSITION',
+          error: 'En fase de zonas solo se permiten cambios entre formatos americanos de la misma topología.',
+        }
+      }
+
+      if (
+        isRuntimeAmericanMultiZonePreset(nextResolved.presetId) &&
+        nextResolved.effectiveTargetMatchesPerCouple === 3
+      ) {
         const oversizedZone = zoneSnapshots.find((zone) => zone.coupleCount > 4)
         if (oversizedZone) {
           return {
@@ -526,16 +553,17 @@ export async function updateTournamentFormatConfig(
         nextResolved.effectiveTargetMatchesPerCouple === 2
       ) {
         for (const zone of zoneSnapshots) {
-          const stageInfo = getZoneStageAndMatchesPerCouple(zone.coupleCount, formatConfig)
-          const expectedMatches = calculateExpectedZoneMatches(zone.coupleCount, stageInfo.matchesPerCouple)
+          const overLimitCouples = Object.entries(zone.coupleMatchCounts)
+            .filter(([, matchCount]) => matchCount > 2)
+            .map(([coupleId, matchCount]) => `${coupleId} (${matchCount})`)
 
-          if (zone.matchCount > expectedMatches) {
+          if (overLimitCouples.length > 0) {
             return {
               success: false,
-              code: 'MZ3_TO_MZ2_OVER_LIMIT',
+              code: 'THREE_TO_TWO_COUPLE_OVER_LIMIT',
               error:
-                `No se puede pasar a MZ2: ${zone.name} tiene ${zone.matchCount} partidos creados ` +
-                `y MZ2 admite ${expectedMatches} para ${zone.coupleCount} parejas.`,
+                `No se puede pasar de 3 a 2 partidos: ${zone.name} tiene parejas por encima del nuevo límite: ` +
+                overLimitCouples.join(', '),
             }
           }
         }
@@ -554,12 +582,39 @@ export async function updateTournamentFormatConfig(
 
       if (
         registeredCouplesCount > 0 &&
+        formatConfig.advancementConfig.allocationMode !== 'AUTO' &&
         formatConfig.advancementConfig.advanceCount > registeredCouplesCount
       ) {
         return {
           success: false,
           error: `No puedes configurar ${formatConfig.advancementConfig.advanceCount} parejas para la llave cuando hay ${registeredCouplesCount} inscriptas.`,
         }
+      }
+    }
+
+    let registeredCouplesCountForAllocation = 0
+    try {
+      registeredCouplesCountForAllocation = (await getRegisteredCouplesCountForFormatValidation(supabase, tournamentId)).count
+    } catch (countError: any) {
+      console.error('[updateTournamentFormatConfig] Error validating allocation:', countError)
+      return { success: false, error: 'Error al validar las parejas inscriptas del torneo' }
+    }
+
+    if (registeredCouplesCountForAllocation > 0) {
+      const normalizedConfig = TournamentFormatResolver.getResolvedFormat(
+        { type: tournament.type, format_type: tournament.format_type, format_config: formatConfig },
+        { totalCouples: registeredCouplesCountForAllocation }
+      )
+      const allocationValidation = BracketQualificationAllocationService.validateAllocation(
+        registeredCouplesCountForAllocation,
+        normalizedConfig.effectiveAdvancementConfig
+      )
+      if (!allocationValidation.isValid) {
+        return { success: false, code: 'INVALID_ADVANCEMENT_ALLOCATION', error: allocationValidation.errors[0] }
+      }
+      formatConfig = {
+        ...formatConfig,
+        advancementConfig: normalizedConfig.effectiveAdvancementConfig,
       }
     }
 
@@ -572,7 +627,8 @@ export async function updateTournamentFormatConfig(
       return { success: false, error: updateError.message }
     }
 
-    if (runtimeSwitchRequested) {
+    if (isAmericanFormatUpdate && zoneSnapshots.length > 0) {
+      const updatedZoneIds: string[] = []
       for (const zone of zoneSnapshots) {
         const stageInfo = getZoneStageAndMatchesPerCouple(zone.coupleCount, formatConfig)
         const { error: zoneUpdateError } = await supabase
@@ -581,6 +637,15 @@ export async function updateTournamentFormatConfig(
           .eq('id', zone.id)
 
         if (zoneUpdateError) {
+          await Promise.all(
+            updatedZoneIds.map((zoneId) => {
+              const previousZone = zoneSnapshots.find((snapshot) => snapshot.id === zoneId)
+              return supabase
+                .from('zones')
+                .update({ rounds_per_couple: previousZone?.roundsPerCouple ?? null })
+                .eq('id', zoneId)
+            })
+          )
           await supabase
             .from('tournaments')
             .update({ format_config: tournament.format_config })
@@ -592,6 +657,7 @@ export async function updateTournamentFormatConfig(
             error: `No se pudo sincronizar rounds_per_couple en ${zone.name}: ${zoneUpdateError.message}`,
           }
         }
+        updatedZoneIds.push(zone.id)
       }
     }
 

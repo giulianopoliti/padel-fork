@@ -8,6 +8,10 @@ export type OperationalTournamentFormatPresetId =
   | 'AMERICAN_MULTI_ZONE_HYBRID_2'
   | 'AMERICAN_MULTI_ZONE_HYBRID_3'
   | 'AMERICAN_SINGLE_ZONE_ROUND_ROBIN_CHAMPION'
+  | 'AMERICAN_SINGLE_ZONE_GLOBAL_2'
+  | 'AMERICAN_SINGLE_ZONE_GLOBAL_3'
+  | 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_2'
+  | 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3'
   | 'LONG_SINGLE_ZONE_BRACKET'
   | 'LONG_SINGLE_ZONE_GOLD_SILVER'
 
@@ -40,6 +44,7 @@ export interface PerZoneTopAdvancementConfig {
 export interface SingleBracketAdvancementConfig {
   kind: 'SINGLE'
   advanceCount: number
+  allocationMode?: 'AUTO' | 'CUSTOM'
 }
 
 export interface GoldSilverAdvancementConfig {
@@ -47,6 +52,7 @@ export interface GoldSilverAdvancementConfig {
   goldCount: number
   silverCount: number
   eliminatedCount: number
+  allocationMode?: 'AUTO' | 'CUSTOM'
 }
 
 export interface NoBracketAdvancementConfig {

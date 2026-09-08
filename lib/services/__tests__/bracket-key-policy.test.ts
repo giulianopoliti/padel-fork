@@ -20,6 +20,18 @@ describe('bracket key policy', () => {
     expect(getOperationalBracketKeysForFormat(resolved)).toEqual(['GOLD', 'SILVER'])
   })
 
+  it('uses the same MAIN and GOLD/SILVER keys for American single-zone formats', () => {
+    const single = TournamentFormatResolver.getResolvedFormat({
+      format_config: getTournamentFormatPreset('AMERICAN_SINGLE_ZONE_GLOBAL_2'),
+    })
+    const cups = TournamentFormatResolver.getResolvedFormat({
+      format_config: getTournamentFormatPreset('AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3'),
+    })
+
+    expect(getOperationalBracketKeysForFormat(single)).toEqual(['MAIN'])
+    expect(getOperationalBracketKeysForFormat(cups)).toEqual(['GOLD', 'SILVER'])
+  })
+
   it('wraps legacy endpoints for long gold/silver', () => {
     const tournament = {
       type: 'LONG',

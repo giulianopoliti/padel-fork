@@ -11,6 +11,7 @@ import {
   matchInvolvesDisqualifiedCouple,
 } from '@/lib/services/tournament-disqualifications'
 import { shouldEnforceLongBracketMatchRequirement } from '@/lib/services/tournament-operational-settings'
+import { resolveZoneFixtureRequirements } from '@/lib/services/zone-fixture-requirements.service'
 
 export interface BracketArtifactState {
   seedCount: number
@@ -392,7 +393,7 @@ export async function validatePlaceholderBracketGeneration(
 
     const { data: zoneMatches, error: matchError } = await supabase
       .from('matches')
-      .select('id, couple1_id, couple2_id')
+      .select('id, couple1_id, couple2_id, status')
       .eq('zone_id', zone.id)
 
     if (matchError) {
@@ -436,10 +437,21 @@ export async function validatePlaceholderBracketGeneration(
       syncedZone,
       couplesInZone
     )
-    const expectedMatches = calculateExpectedZoneMatches(couplesInZone, roundsPerCouple)
+    const resolvedFormat = TournamentFormatResolver.getResolvedFormat(tournament, { totalCouples: couplesInZone })
+    const fixtureRequirements = resolveZoneFixtureRequirements({
+      coupleIds,
+      targetMatchesPerCouple: roundsPerCouple,
+      matches: zoneMatches || [],
+      zoneMode: resolvedFormat.zoneMode,
+      baseType: resolvedFormat.baseType,
+      disqualifiedCoupleIds,
+    })
+    const expectedMatches = fixtureRequirements.expectedTotalMatches
     const coupleMatchCounts = calculateCoupleMatchCounts(coupleIds, zoneMatches || [])
     const hasActiveDisqualifications = disqualifiedCoupleIds.size > 0
-    const incompleteCouples = enforceLongBracketMatchRequirement
+    const incompleteCouples = resolvedFormat.baseType === 'AMERICAN' && resolvedFormat.zoneMode === 'SINGLE_ZONE'
+      ? fixtureRequirements.incompleteCouples
+      : enforceLongBracketMatchRequirement
       ? hasActiveDisqualifications
         ? findBlockingIncompleteCouplesWithActiveOpponentCapacity(
             coupleIds,
@@ -456,7 +468,9 @@ export async function validatePlaceholderBracketGeneration(
 
     if (
       enforceLongBracketMatchRequirement &&
-      ((!hasActiveDisqualifications && matchesInZone < expectedMatches) || incompleteCouples.length > 0)
+      ((resolvedFormat.baseType === 'AMERICAN' && resolvedFormat.zoneMode === 'SINGLE_ZONE' && !fixtureRequirements.isComplete) ||
+        (resolvedFormat.baseType !== 'AMERICAN' || resolvedFormat.zoneMode !== 'SINGLE_ZONE') &&
+          ((!hasActiveDisqualifications && matchesInZone < expectedMatches) || incompleteCouples.length > 0))
     ) {
       incompleteZones.push({
         zoneId: zone.id,

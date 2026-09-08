@@ -5,6 +5,7 @@ import {
   type StandingStats,
 } from '@/lib/services/standings-calculator.service'
 import { TournamentFormatRulesService } from '@/lib/services/tournament-format-rules.service'
+import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
 import { DefinitivePositionService, type DefinitivePositionResult } from '@/lib/services/definitive-position.service'
 import { selectQualifiedEntries } from '@/lib/services/qualification-policy.service'
 import type { BracketKey } from '@/types/tournament-format-v2'
@@ -94,8 +95,13 @@ export class QualificationSourceService {
       const effectiveEntries = useCurrentLongStandings
         ? this.markCurrentEntriesAsDefinitive(entries)
         : entries
+      const advancementConfig = this.resolveAdvancementConfigForEligibleEntries(
+        tournament,
+        effectiveEntries.length,
+        rules.resolvedFormat.effectiveAdvancementConfig
+      )
       return shouldApplyAdvancementLimit
-        ? selectQualifiedEntries(effectiveEntries, rules.resolvedFormat.effectiveAdvancementConfig, bracketKey)
+        ? selectQualifiedEntries(effectiveEntries, advancementConfig, bracketKey)
         : effectiveEntries
     }
 
@@ -110,9 +116,24 @@ export class QualificationSourceService {
       ? this.markCurrentEntriesAsDefinitive(entries)
       : entries
 
+    const advancementConfig = this.resolveAdvancementConfigForEligibleEntries(
+      tournament,
+      effectiveEntries.length,
+      rules.resolvedFormat.effectiveAdvancementConfig
+    )
     return shouldApplyAdvancementLimit
-      ? selectQualifiedEntries(effectiveEntries, rules.resolvedFormat.effectiveAdvancementConfig, bracketKey)
+      ? selectQualifiedEntries(effectiveEntries, advancementConfig, bracketKey)
       : effectiveEntries
+  }
+
+  private static resolveAdvancementConfigForEligibleEntries(
+    tournament: { type?: string | null; format_type?: string | null; format_config?: unknown },
+    eligibleCouplesCount: number,
+    fallback: ReturnType<typeof TournamentFormatRulesService.resolve>['resolvedFormat']['effectiveAdvancementConfig']
+  ) {
+    return TournamentFormatResolver.getResolvedFormat(tournament, {
+      totalCouples: eligibleCouplesCount,
+    }).effectiveAdvancementConfig || fallback
   }
 
   private static markCurrentEntriesAsDefinitive(entries: QualifiedEntry[]): QualifiedEntry[] {

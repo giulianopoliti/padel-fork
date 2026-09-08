@@ -1,6 +1,7 @@
 "use client"
 
 import { type FormEvent, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,7 +26,10 @@ import {
   type AmericanMultiZoneMatchesPerCouple,
 } from '@/lib/services/american-multizone-format-options'
 import { buildTournamentFormatConfig } from '@/lib/services/tournament-format-config-builder'
-import { RUNTIME_AMERICAN_MULTI_ZONE_PRESET_IDS } from '@/lib/services/tournament-format-policy'
+import {
+  RUNTIME_AMERICAN_MULTI_ZONE_PRESET_IDS,
+  RUNTIME_AMERICAN_SINGLE_ZONE_PRESET_IDS,
+} from '@/lib/services/tournament-format-policy'
 import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
 import { updateTournamentFormatConfig } from '../actions'
 import type { CouplesPerZone, TournamentFormatPresetId } from '@/types/tournament-format-v2'
@@ -45,6 +49,7 @@ export default function TournamentFormatConfigForm({
   formatConfig,
   registeredCouplesCount,
 }: TournamentFormatConfigFormProps) {
+  const router = useRouter()
   const getDefaultSingleAdvanceCount = (fallback: number) => {
     if (registeredCouplesCount > 0) {
       return registeredCouplesCount
@@ -72,11 +77,13 @@ export default function TournamentFormatConfigForm({
       return allOptions
     }
 
-    const runtimeOptions = allOptions.filter((preset) =>
+    const runtimeOptions = allOptions.filter((preset) => (
       RUNTIME_AMERICAN_MULTI_ZONE_PRESET_IDS.includes(
         preset.presetId as (typeof RUNTIME_AMERICAN_MULTI_ZONE_PRESET_IDS)[number]
+      ) || RUNTIME_AMERICAN_SINGLE_ZONE_PRESET_IDS.includes(
+        preset.presetId as (typeof RUNTIME_AMERICAN_SINGLE_ZONE_PRESET_IDS)[number]
       )
-    )
+    ))
     const currentPreset = allOptions.find((preset) => preset.presetId === resolvedFormat.presetId)
 
     if (
@@ -111,8 +118,10 @@ export default function TournamentFormatConfigForm({
   const [silverCount, setSilverCount] = useState(
     resolvedFormat.advancementConfig.kind === 'GOLD_SILVER' ? resolvedFormat.advancementConfig.silverCount : 4
   )
-  const [eliminatedCount, setEliminatedCount] = useState(
-    resolvedFormat.advancementConfig.kind === 'GOLD_SILVER' ? resolvedFormat.advancementConfig.eliminatedCount : 0
+  const [allocationMode, setAllocationMode] = useState<'AUTO' | 'CUSTOM'>(
+    resolvedFormat.advancementConfig.kind === 'SINGLE' || resolvedFormat.advancementConfig.kind === 'GOLD_SILVER'
+      ? resolvedFormat.advancementConfig.allocationMode ?? 'CUSTOM'
+      : 'AUTO'
   )
   const [isLoading, setIsLoading] = useState(false)
   const [businessError, setBusinessError] = useState<string | null>(null)
@@ -120,6 +129,12 @@ export default function TournamentFormatConfigForm({
   const selectedPreset = presetOptions.find((preset) => preset.presetId === presetId)
   const isSelectedAmericanMultiZone =
     tournamentType === 'AMERICAN' && isAmericanMultiZonePresetId(presetId)
+  const isSelectedAmericanSingleZoneGlobal = tournamentType === 'AMERICAN' && [
+    'AMERICAN_SINGLE_ZONE_GLOBAL_2',
+    'AMERICAN_SINGLE_ZONE_GLOBAL_3',
+    'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_2',
+    'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3',
+  ].includes(presetId)
   const selectedAmericanMultiZoneAlgorithm =
     getAmericanMultiZoneAlgorithmFromPresetId(presetId)
   const selectedAmericanZoneMatchesPerCouple =
@@ -129,6 +144,19 @@ export default function TournamentFormatConfigForm({
           presetId,
           targetMatchesPerCouple: matchesPerCouple,
         })) as AmericanMultiZoneMatchesPerCouple
+  const effectiveSingleAdvanceCount = allocationMode === 'AUTO'
+    ? registeredCouplesCount
+    : singleAdvanceCount
+  const effectiveGoldCount = allocationMode === 'AUTO'
+    ? Math.floor(registeredCouplesCount / 2)
+    : goldCount
+  const effectiveSilverCount = allocationMode === 'AUTO'
+    ? registeredCouplesCount - effectiveGoldCount
+    : silverCount
+  const effectiveEliminatedCount = Math.max(
+    registeredCouplesCount - effectiveGoldCount - effectiveSilverCount,
+    0
+  )
 
   const getFriendlyFormatError = (code?: string, fallback?: string) => {
     switch (code) {
@@ -138,10 +166,12 @@ export default function TournamentFormatConfigForm({
       case 'BRACKET_ARTIFACTS_EXIST':
         return 'No se puede cambiar el formato porque la llave ya fue generada o hay artefactos de llave persistidos.'
       case 'UNSUPPORTED_RUNTIME_PRESET_TRANSITION':
-        return 'Con el torneo en curso, solo se permite cambiar entre formatos americanos multizona compatibles.'
+        return 'Con el torneo en curso, solo se permite cambiar entre formatos americanos con la misma estructura de zonas.'
       case 'ZONE_CAPACITY_EXCEEDED_FOR_MZ3':
-      case 'MZ3_TO_MZ2_OVER_LIMIT':
+      case 'THREE_TO_TWO_COUPLE_OVER_LIMIT':
         return fallback || 'Las zonas actuales no son compatibles con el formato seleccionado.'
+      case 'ZONE_TOPOLOGY_CHANGE_WITH_PERSISTED_ZONES':
+        return 'No se puede cambiar entre zona única y multizona después de crear las zonas.'
       case 'ZONE_ROUNDS_SYNC_FAILED':
         return 'No se pudo sincronizar la configuración de partidos por zona. Intentá nuevamente.'
       default:
@@ -169,7 +199,9 @@ export default function TournamentFormatConfigForm({
     if (nextPreset.advancementConfig.kind === 'GOLD_SILVER') {
       setGoldCount(nextPreset.advancementConfig.goldCount)
       setSilverCount(nextPreset.advancementConfig.silverCount)
-      setEliminatedCount(nextPreset.advancementConfig.eliminatedCount)
+    }
+    if (nextPreset.advancementConfig.kind === 'SINGLE' || nextPreset.advancementConfig.kind === 'GOLD_SILVER') {
+      setAllocationMode(nextPreset.advancementConfig.allocationMode ?? 'CUSTOM')
     }
   }
 
@@ -203,6 +235,33 @@ export default function TournamentFormatConfigForm({
     applyPresetDefaults(nextPreset, nextMatches)
   }
 
+  const handleSingleZoneMatchesChange = (value: string) => {
+    const matches = value === '3' ? 3 : 2
+    const isGoldSilver = selectedPreset?.bracketMode === 'GOLD_SILVER'
+    const nextPresetId = isGoldSilver
+      ? matches === 3 ? 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3' : 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_2'
+      : matches === 3 ? 'AMERICAN_SINGLE_ZONE_GLOBAL_3' : 'AMERICAN_SINGLE_ZONE_GLOBAL_2'
+    handlePresetChange(nextPresetId)
+  }
+
+  const handleSingleZoneBracketModeChange = (value: 'SINGLE' | 'GOLD_SILVER') => {
+    const matches = matchesPerCouple === 3 ? 3 : 2
+    const nextPresetId = value === 'GOLD_SILVER'
+      ? matches === 3 ? 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3' : 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_2'
+      : matches === 3 ? 'AMERICAN_SINGLE_ZONE_GLOBAL_3' : 'AMERICAN_SINGLE_ZONE_GLOBAL_2'
+    handlePresetChange(nextPresetId)
+  }
+
+  const handleResetRecommended = () => {
+    if (selectedPreset?.advancementConfig.kind === 'SINGLE') setSingleAdvanceCount(registeredCouplesCount)
+    if (selectedPreset?.advancementConfig.kind === 'GOLD_SILVER') {
+      const gold = Math.floor(registeredCouplesCount / 2)
+      setGoldCount(gold)
+      setSilverCount(registeredCouplesCount - gold)
+    }
+    setAllocationMode('AUTO')
+  }
+
   const handleSave = async (event: FormEvent) => {
     event.preventDefault()
     setIsLoading(true)
@@ -212,11 +271,12 @@ export default function TournamentFormatConfigForm({
       const nextConfig = buildTournamentFormatConfig({
         presetId,
         couplesPerZone,
-        singleAdvanceCount,
+        singleAdvanceCount: effectiveSingleAdvanceCount,
         matchesPerCouple: isSelectedAmericanMultiZone ? selectedAmericanZoneMatchesPerCouple : matchesPerCouple,
-        goldCount,
-        silverCount,
-        eliminatedCount,
+        goldCount: effectiveGoldCount,
+        silverCount: effectiveSilverCount,
+        eliminatedCount: effectiveEliminatedCount,
+        allocationMode,
       })
 
       const result = await updateTournamentFormatConfig(tournamentId, nextConfig)
@@ -228,6 +288,7 @@ export default function TournamentFormatConfigForm({
       }
 
       toast.success('Formato guardado correctamente')
+      router.refresh()
     } catch (error) {
       const message = 'Ocurrió un error inesperado al guardar el formato.'
       console.error('Unexpected error saving format config:', error)
@@ -292,6 +353,31 @@ export default function TournamentFormatConfigForm({
             </p>
           </div>
         </div>
+      ) : isSelectedAmericanSingleZoneGlobal ? (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tipo de eliminación</Label>
+            <Select
+              value={selectedPreset?.bracketMode}
+              disabled={tournamentStatus === 'BRACKET_PHASE'}
+              onValueChange={(value) => handleSingleZoneBracketModeChange(value as 'SINGLE' | 'GOLD_SILVER')}
+            >
+              <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SINGLE">Llave única</SelectItem>
+                <SelectItem value="GOLD_SILVER" disabled={registeredCouplesCount > 0 && registeredCouplesCount < 4}>
+                  Copa de Oro y Copa de Plata
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {registeredCouplesCount > 0 && registeredCouplesCount < 4 && (
+              <p className="text-xs text-slate-500">Oro y Plata requiere al menos 4 parejas elegibles.</p>
+            )}
+          </div>
+          {tournamentStatus === 'BRACKET_PHASE' && (
+            <p className="text-xs text-slate-500">La configuración es de solo lectura porque la llave ya fue creada.</p>
+          )}
+        </div>
       ) : (
         <div className="space-y-2">
           <Label>Preset</Label>
@@ -312,7 +398,7 @@ export default function TournamentFormatConfigForm({
           )}
           {tournamentType === 'AMERICAN' && tournamentStatus && tournamentStatus !== 'NOT_STARTED' && (
             <p className="text-xs text-slate-500">
-              En torneo iniciado solo se permite cambiar entre formatos americanos multizona mientras no exista llave generada.
+              En torneo iniciado solo se permite cambiar entre formatos americanos con la misma estructura de zonas mientras no exista llave generada.
             </p>
           )}
         </div>
@@ -327,7 +413,12 @@ export default function TournamentFormatConfigForm({
       {selectedPreset?.zoneStage === 'FIXED_MATCH_COUNT' && !isSelectedAmericanMultiZone && (
         <div className="space-y-2">
           <Label htmlFor="matches-per-couple">Partidos por pareja</Label>
-          <Input
+          {isSelectedAmericanSingleZoneGlobal ? (
+            <Select value={String(matchesPerCouple)} disabled={tournamentStatus === 'BRACKET_PHASE'} onValueChange={handleSingleZoneMatchesChange}>
+              <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="2">2 partidos</SelectItem><SelectItem value="3">3 partidos</SelectItem></SelectContent>
+            </Select>
+          ) : <Input
             id="matches-per-couple"
             type="number"
             min="1"
@@ -342,7 +433,7 @@ export default function TournamentFormatConfigForm({
               setMatchesPerCouple(raw)
             }}
             className="bg-white"
-          />
+          />}
           {registeredCouplesCount > 1 && (
             <p className="text-xs text-slate-500">
               Maximo permitido: {registeredCouplesCount - 1} por pareja.
@@ -359,8 +450,11 @@ export default function TournamentFormatConfigForm({
             type="number"
             min="2"
             max={registeredCouplesCount > 0 ? registeredCouplesCount : undefined}
-            value={singleAdvanceCount}
+            value={effectiveSingleAdvanceCount}
+            readOnly={allocationMode === 'AUTO'}
+            disabled={tournamentStatus === 'BRACKET_PHASE'}
             onChange={(event) => {
+              setAllocationMode('CUSTOM')
               const raw = Number(event.target.value || 0)
               if (registeredCouplesCount > 0) {
                 setSingleAdvanceCount(Math.min(raw, registeredCouplesCount))
@@ -407,9 +501,11 @@ export default function TournamentFormatConfigForm({
             <Input
               id="gold-count"
               type="number"
-              min="0"
-              value={goldCount}
-              onChange={(event) => setGoldCount(Number(event.target.value || 0))}
+              min="2"
+              value={effectiveGoldCount}
+              readOnly={allocationMode === 'AUTO'}
+              disabled={tournamentStatus === 'BRACKET_PHASE'}
+              onChange={(event) => { setAllocationMode('CUSTOM'); setGoldCount(Number(event.target.value || 0)) }}
               className="bg-white"
             />
           </div>
@@ -418,9 +514,11 @@ export default function TournamentFormatConfigForm({
             <Input
               id="silver-count"
               type="number"
-              min="0"
-              value={silverCount}
-              onChange={(event) => setSilverCount(Number(event.target.value || 0))}
+              min="2"
+              value={effectiveSilverCount}
+              readOnly={allocationMode === 'AUTO'}
+              disabled={tournamentStatus === 'BRACKET_PHASE'}
+              onChange={(event) => { setAllocationMode('CUSTOM'); setSilverCount(Number(event.target.value || 0)) }}
               className="bg-white"
             />
           </div>
@@ -430,16 +528,33 @@ export default function TournamentFormatConfigForm({
               id="eliminated-count"
               type="number"
               min="0"
-              value={eliminatedCount}
-              onChange={(event) => setEliminatedCount(Number(event.target.value || 0))}
+              value={effectiveEliminatedCount}
+              readOnly
               className="bg-white"
             />
           </div>
         </div>
       )}
 
+      {isSelectedAmericanSingleZoneGlobal && selectedPreset?.advancementConfig.kind !== 'NONE' && (
+        <div className="space-y-2 rounded-md border p-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-slate-600">Asignación: {allocationMode === 'AUTO' ? 'recomendada automáticamente' : 'personalizada'}</span>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" disabled={tournamentStatus === 'BRACKET_PHASE'} onClick={() => setAllocationMode('CUSTOM')}>Personalizar</Button>
+              <Button type="button" variant="outline" disabled={tournamentStatus === 'BRACKET_PHASE'} onClick={handleResetRecommended}>Usar recomendada</Button>
+            </div>
+          </div>
+          {selectedPreset?.advancementConfig.kind === 'SINGLE' ? (
+            <p className="text-xs text-slate-500">Vista previa: {effectiveSingleAdvanceCount} clasificadas y {Math.max(registeredCouplesCount - effectiveSingleAdvanceCount, 0)} eliminadas.</p>
+          ) : (
+            <p className="text-xs text-slate-500">Vista previa: Oro {effectiveGoldCount}, Plata {effectiveSilverCount} y {effectiveEliminatedCount} eliminadas.</p>
+          )}
+        </div>
+      )}
+
       <div className="flex justify-end pt-4 border-t">
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading || tournamentStatus === 'BRACKET_PHASE'}>
           {isLoading ? 'Guardando...' : 'Guardar Formato'}
         </Button>
       </div>

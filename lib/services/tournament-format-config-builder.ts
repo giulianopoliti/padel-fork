@@ -16,6 +16,7 @@ export type TournamentFormatBuilderInput = {
   goldCount?: number | null
   silverCount?: number | null
   eliminatedCount?: number | null
+  allocationMode?: 'AUTO' | 'CUSTOM' | null
 }
 
 export function buildTournamentFormatConfig(
@@ -35,6 +36,7 @@ export function buildTournamentFormatConfig(
   if (config.advancementConfig.kind === 'SINGLE') {
     const nextAdvanceCount = input.singleAdvanceCount ?? config.advancementConfig.advanceCount
     ;(config.advancementConfig as SingleBracketAdvancementConfig).advanceCount = nextAdvanceCount
+    ;(config.advancementConfig as SingleBracketAdvancementConfig).allocationMode = input.allocationMode ?? config.advancementConfig.allocationMode
   }
 
   if (config.advancementConfig.kind === 'GOLD_SILVER') {
@@ -42,6 +44,7 @@ export function buildTournamentFormatConfig(
     goldSilverConfig.goldCount = input.goldCount ?? goldSilverConfig.goldCount
     goldSilverConfig.silverCount = input.silverCount ?? goldSilverConfig.silverCount
     goldSilverConfig.eliminatedCount = input.eliminatedCount ?? goldSilverConfig.eliminatedCount
+    goldSilverConfig.allocationMode = input.allocationMode ?? goldSilverConfig.allocationMode
   }
 
   return config

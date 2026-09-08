@@ -1,4 +1,5 @@
 import { getTournamentFormatPreset } from '@/config/tournament-format-presets'
+import { BracketQualificationAllocationService } from '@/lib/services/bracket-qualification-allocation.service'
 import type {
   AdvancementConfig,
   ResolvedTournamentFormat,
@@ -113,18 +114,11 @@ export class TournamentFormatResolver {
 
     const totalCouples = options.totalCouples
 
-    if (
-      baseConfig.baseType === 'AMERICAN' &&
-      baseConfig.zoneMode === 'SINGLE_ZONE' &&
-      effectiveBracketMode === 'SINGLE' &&
-      totalCouples === 5
-    ) {
-      effectiveZoneStage = 'ROUND_ROBIN'
-      effectiveTargetMatchesPerCouple = 4
-      if (effectiveAdvancementConfig.kind === 'SINGLE') {
-        effectiveAdvancementConfig.advanceCount = 4
-      }
-      notes.push('Zona unica de 5 parejas: se aplica round robin completo y top 4 a semifinales.')
+    if (typeof totalCouples === 'number' && totalCouples >= 0) {
+      effectiveAdvancementConfig = BracketQualificationAllocationService.applyAutomaticAllocation(
+        totalCouples,
+        effectiveAdvancementConfig
+      )
     }
 
     if (

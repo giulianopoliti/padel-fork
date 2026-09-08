@@ -71,15 +71,6 @@ export function getZoneStageAndMatchesPerCouple(
     }
   }
 
-  if (config.zoneMode === 'SINGLE_ZONE' && config.baseType === 'AMERICAN' && zoneSize === 5 && config.bracketMode === 'SINGLE') {
-    notes.push('Override de 5 parejas: round robin completo.')
-    return {
-      stage: 'ROUND_ROBIN',
-      matchesPerCouple: 4,
-      notes,
-    }
-  }
-
   if (config.baseType === 'AMERICAN' && config.zoneMode === 'MULTI_ZONE' && config.targetMatchesPerCouple === 3 && zoneSize === 3) {
     notes.push('Excepcion valida: zona de 3 juega round robin completo de 2 partidos por pareja.')
     return {

@@ -114,7 +114,7 @@ describe('Tournament format v2', () => {
     expect(resolved.effectiveBracketMode).toBe('GOLD_SILVER')
   })
 
-  it('rejects invalid gold/silver splits', () => {
+  it('derives eliminated couples instead of trusting a stale persisted value', () => {
     const config = getTournamentFormatPreset('LONG_SINGLE_ZONE_GOLD_SILVER')
     if (config.advancementConfig.kind === 'GOLD_SILVER') {
       config.advancementConfig.goldCount = 4
@@ -124,7 +124,12 @@ describe('Tournament format v2', () => {
 
     const validation = AdvancementPlanner.validateAdvancementCounts(10, config)
 
-    expect(validation.isValid).toBe(false)
+    expect(validation.isValid).toBe(true)
+    const resolved = TournamentFormatResolver.getResolvedFormat(
+      { type: 'LONG', format_config: config },
+      { totalCouples: 10 }
+    )
+    expect(resolved.effectiveAdvancementConfig).toMatchObject({ eliminatedCount: 2 })
   })
 
   it('splits gold, silver and eliminated couples from ranking order', () => {
