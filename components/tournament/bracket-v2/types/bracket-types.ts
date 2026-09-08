@@ -440,6 +440,8 @@ export interface BracketVisualizationV2Props {
   isOwner?: boolean
   /** Status del torneo (para mostrar vistas condicionales) */
   tournamentStatus?: string
+  /** Tipo de etapa final configurada para el torneo */
+  bracketMode?: 'NONE' | 'SINGLE' | 'GOLD_SILVER'
   /** Callback cuando se actualiza un match */
   onMatchUpdate?: (matchId: string, result: MatchResultV2) => void
   /** Callback para refrescar datos */

@@ -8,6 +8,7 @@ interface TournamentBracketWrapperProps {
   isOwner: boolean
   isPublicView?: boolean
   tournamentStatus?: string
+  bracketMode?: 'NONE' | 'SINGLE' | 'GOLD_SILVER'
   onDataRefresh?: () => void
 }
 
@@ -23,6 +24,7 @@ export default function TournamentBracketWrapper({
   isOwner,
   isPublicView,
   tournamentStatus,
+  bracketMode,
   onDataRefresh
 }: TournamentBracketWrapperProps) {
 
@@ -34,6 +36,7 @@ export default function TournamentBracketWrapper({
         algorithm="serpentine"
         isOwner={true}
         tournamentStatus={tournamentStatus}
+        bracketMode={bracketMode}
         config={{
           features: {
             enableDragDrop: true,

@@ -50,6 +50,7 @@ interface ClientTournament {
   registration_locked: boolean | null;
   bracket_status: string | null;
   format_type: string | null;
+  format_config: unknown;
   clubes: {
     id: string;
     name: string;
@@ -109,6 +110,7 @@ const serializeTournamentForClient = (
   registration_locked: tournament.registration_locked ?? null,
   bracket_status: tournament.bracket_status ?? null,
   format_type: tournament.format_type ?? null,
+  format_config: tournament.format_config ?? null,
   clubes: tournament.clubes
     ? {
         id: tournament.clubes.id,

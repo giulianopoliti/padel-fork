@@ -9,6 +9,7 @@ interface TournamentBracketTabProps {
   isOwner: boolean;
   isPublicView?: boolean;
   tournamentStatus?: string;
+  bracketMode?: 'NONE' | 'SINGLE' | 'GOLD_SILVER';
   onDataRefresh?: () => void;
 }
 
@@ -18,6 +19,7 @@ const TournamentBracketTab: React.FC<TournamentBracketTabProps> = React.memo(({
   isOwner,
   isPublicView = false,
   tournamentStatus,
+  bracketMode,
   onDataRefresh
 }) => {
   const MemoizedBracket = React.memo(TournamentBracketWrapper);
@@ -30,6 +32,7 @@ const TournamentBracketTab: React.FC<TournamentBracketTabProps> = React.memo(({
           isOwner={isOwner}
           isPublicView={isPublicView}
           tournamentStatus={tournamentStatus}
+          bracketMode={bracketMode}
           onDataRefresh={onDataRefresh}
         />
       </CardContent>
@@ -42,6 +45,7 @@ const TournamentBracketTab: React.FC<TournamentBracketTabProps> = React.memo(({
     prevProps.isOwner === nextProps.isOwner &&
     prevProps.isPublicView === nextProps.isPublicView &&
     prevProps.tournamentStatus === nextProps.tournamentStatus &&
+    prevProps.bracketMode === nextProps.bracketMode &&
     prevProps.onDataRefresh === nextProps.onDataRefresh
   )
 });

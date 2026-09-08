@@ -37,6 +37,7 @@ import { PointsCalculationBanner } from './components/PointsCalculationBanner'
 import ReadOnlyBracketTab from '../read-only-bracket-tab'
 import { Trophy } from 'lucide-react'
 import BackFromBracketButton from '@/app/(main)/tournaments/[id]/settings/components/BackFromBracketButton'
+import { Button } from '@/components/ui/button'
 
 // REMOVIDO: generatePlaceholderBracketAction import (causaba error de serialización)
 // Ahora usamos API Route en su lugar
@@ -50,10 +51,18 @@ function BracketVisualizationV2Internal({
   config,
   isOwner = false,
   tournamentStatus,
+  bracketMode = 'SINGLE',
   onMatchUpdate,
   onDataRefresh,
   onBracketStateChange
 }: BracketVisualizationV2Props) {
+  const [activeBracketKey, setActiveBracketKey] = React.useState<'MAIN' | 'GOLD' | 'SILVER'>(
+    bracketMode === 'GOLD_SILVER' ? 'GOLD' : 'MAIN'
+  )
+
+  React.useEffect(() => {
+    setActiveBracketKey(bracketMode === 'GOLD_SILVER' ? 'GOLD' : 'MAIN')
+  }, [bracketMode])
 
   /**
    * Configuración final del bracket
@@ -88,7 +97,8 @@ function BracketVisualizationV2Internal({
     algorithm,
     config: finalConfig,
     enableRealtime: false,  // ✅ DESHABILITAR REALTIME para debugging
-    enabled: true
+    enabled: true,
+    bracketKey: activeBracketKey
   })
 
   /**
@@ -382,6 +392,26 @@ function BracketVisualizationV2Internal({
 
   return (
     <div className="bracket-v2-container">
+      {bracketMode === 'GOLD_SILVER' && (
+        <div className="mb-6 flex w-full max-w-md gap-2 rounded-surface border border-slate-200 bg-slate-50 p-1">
+          <Button
+            type="button"
+            variant={activeBracketKey === 'GOLD' ? 'default' : 'ghost'}
+            className="flex-1"
+            onClick={() => setActiveBracketKey('GOLD')}
+          >
+            Copa Oro
+          </Button>
+          <Button
+            type="button"
+            variant={activeBracketKey === 'SILVER' ? 'default' : 'ghost'}
+            className="flex-1"
+            onClick={() => setActiveBracketKey('SILVER')}
+          >
+            Copa Plata
+          </Button>
+        </div>
+      )}
       
       {/* ✨ NUEVO: Banner de cálculo de puntos */}
       {finalization.canShowPointsCalculation && isOwner && (

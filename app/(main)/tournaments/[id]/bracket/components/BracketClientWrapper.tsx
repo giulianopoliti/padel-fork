@@ -55,7 +55,7 @@ export default function BracketClientWrapper({
     window.location.reload()
   }
 
-  if (!isOwner && !tournament) {
+  if (!tournament) {
     return (
       <div className="px-4 py-10 text-center text-sm text-slate-500 lg:px-6">
         Cargando llave...
@@ -83,6 +83,7 @@ export default function BracketClientWrapper({
       isOwner={isOwner}
       isPublicView={isPublicView}
       tournamentStatus={tournamentStatus ?? undefined}
+      bracketMode={(tournament.format_config as { bracketMode?: 'NONE' | 'SINGLE' | 'GOLD_SILVER' } | null)?.bracketMode ?? 'SINGLE'}
       onDataRefresh={handleDataRefresh}
     />
   )

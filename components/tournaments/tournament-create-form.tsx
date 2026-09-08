@@ -406,8 +406,8 @@ export default function TournamentCreateForm() {
   const isAmericanTournament = selectedType === 'AMERICAN';
   const presetOptions = PRESET_OPTIONS[selectedType];
   const selectedPreset = presetOptions.find((preset) => preset.presetId === watchedValues.format_preset);
-  const nonMultiZoneAmericanPresetOptions = PRESET_OPTIONS.AMERICAN.filter(
-    (preset) => !isAmericanMultiZonePresetId(preset.presetId)
+  const roundRobinAmericanPresetOptions = PRESET_OPTIONS.AMERICAN.filter(
+    (preset) => preset.presetId === 'AMERICAN_SINGLE_ZONE_ROUND_ROBIN_CHAMPION'
   );
   const selectedAmericanMultiZoneAlgorithm =
     (watchedValues.american_multizone_algorithm as AmericanMultiZoneAlgorithm | undefined) ??
@@ -415,6 +415,12 @@ export default function TournamentCreateForm() {
   const selectedAmericanZoneMatchesPerCouple =
     (watchedValues.american_zone_matches_per_couple === '3' ? 3 : 2) as AmericanMultiZoneMatchesPerCouple;
   const isSelectedAmericanMultiZone = isAmericanMultiZonePresetId(watchedValues.format_preset);
+  const isSelectedAmericanSingleZoneGlobal = [
+    'AMERICAN_SINGLE_ZONE_GLOBAL_2',
+    'AMERICAN_SINGLE_ZONE_GLOBAL_3',
+    'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_2',
+    'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3',
+  ].includes(watchedValues.format_preset);
   const extraClubIds = form.watch('extra_club_ids') || [];
   const userRole = userDetails?.role;
   const selectedClub = clubs.find((club) => club.id === watchedValues.club_id);
@@ -487,6 +493,17 @@ export default function TournamentCreateForm() {
       shouldDirty: true,
       shouldValidate: true,
     });
+    form.setValue('format_preset', nextPresetId, { shouldDirty: true, shouldValidate: true });
+  };
+
+  const handleAmericanSingleZoneOptionChange = (
+    matches: 2 | 3,
+    bracketMode: 'SINGLE' | 'GOLD_SILVER'
+  ) => {
+    const nextPresetId: TournamentFormatPresetId = bracketMode === 'GOLD_SILVER'
+      ? matches === 3 ? 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3' : 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_2'
+      : matches === 3 ? 'AMERICAN_SINGLE_ZONE_GLOBAL_3' : 'AMERICAN_SINGLE_ZONE_GLOBAL_2';
+
     form.setValue('format_preset', nextPresetId, { shouldDirty: true, shouldValidate: true });
   };
 
@@ -1406,54 +1423,88 @@ export default function TournamentCreateForm() {
                                   })}
                                 </div>
 
-                                {nonMultiZoneAmericanPresetOptions.length > 0 && (
+                                <div className="space-y-3">
+                                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">Zona única</p>
+                                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const matches = selectedPreset?.targetMatchesPerCouple === 3 ? 3 : 2;
+                                        const bracketMode = selectedPreset?.bracketMode === 'GOLD_SILVER' ? 'GOLD_SILVER' : 'SINGLE';
+                                        handleAmericanSingleZoneOptionChange(matches, bracketMode);
+                                      }}
+                                      className={cn(
+                                        'rounded-elevated border p-4 text-left transition-all sm:p-5',
+                                        isSelectedAmericanSingleZoneGlobal
+                                          ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                                          : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+                                      )}
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <p className="text-base font-medium">Americano zona única</p>
+                                          <p className={cn('mt-1 text-sm leading-relaxed', isSelectedAmericanSingleZoneGlobal ? 'text-slate-200' : 'text-slate-500')}>
+                                            Todas las parejas comparten una tabla general. Después elegís partidos y tipo de llave.
+                                          </p>
+                                        </div>
+                                        {isSelectedAmericanSingleZoneGlobal && (
+                                          <div className="rounded-full border border-white/20 bg-white/10 p-2"><Check className="h-4 w-4" /></div>
+                                        )}
+                                      </div>
+                                      <div className="mt-3 flex flex-wrap gap-2">
+                                        <Badge variant="outline" className={cn('border-current/20 bg-transparent', isSelectedAmericanSingleZoneGlobal ? 'text-white' : 'text-slate-600')}>Zona única</Badge>
+                                        <Badge variant="outline" className={cn('border-current/20 bg-transparent', isSelectedAmericanSingleZoneGlobal ? 'text-white' : 'text-slate-600')}>Tabla general</Badge>
+                                      </div>
+                                    </button>
+
+                                    {roundRobinAmericanPresetOptions.map((preset) => {
+                                      const isSelected = field.value === preset.presetId;
+                                      return (
+                                        <button
+                                          key={preset.presetId}
+                                          type="button"
+                                          onClick={() => field.onChange(preset.presetId)}
+                                          className={cn(
+                                            'rounded-elevated border p-4 text-left transition-all sm:p-5',
+                                            isSelected ? 'border-slate-900 bg-slate-900 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+                                          )}
+                                        >
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                              <p className="text-base font-medium">{preset.display.name}</p>
+                                              <p className={cn('mt-1 text-sm leading-relaxed', isSelected ? 'text-slate-200' : 'text-slate-500')}>{preset.display.description}</p>
+                                            </div>
+                                            {isSelected && <div className="rounded-full border border-white/20 bg-white/10 p-2"><Check className="h-4 w-4" /></div>}
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                {isSelectedAmericanSingleZoneGlobal && (
                                   <div className="space-y-3">
-                                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">Otros formatos americanos</p>
-                                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
-                                      {nonMultiZoneAmericanPresetOptions.map((preset) => {
-                                        const isSelected = field.value === preset.presetId;
-                                        const presetMeta = getPresetMeta(preset.presetId);
-
-                                        return (
-                                          <button
-                                            key={preset.presetId}
-                                            type="button"
-                                            onClick={() => field.onChange(preset.presetId)}
-                                            className={cn(
-                                              'rounded-elevated border p-4 text-left transition-all sm:p-5',
-                                              isSelected
-                                                ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                                                : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
-                                            )}
-                                          >
-                                            <div className="flex items-start justify-between gap-3">
-                                              <div className="min-w-0">
-                                                <p className="text-base font-medium">{preset.display.name}</p>
-                                                <p className={cn('mt-1 text-sm leading-relaxed', isSelected ? 'text-slate-200' : 'text-slate-500')}>
-                                                  {preset.display.description}
-                                                </p>
-                                              </div>
-                                              {isSelected && (
-                                                <div className="rounded-full border border-white/20 bg-white/10 p-2">
-                                                  <Check className="h-4 w-4" />
-                                                </div>
-                                              )}
-                                            </div>
-
-                                            <div className="mt-3 flex flex-wrap gap-2">
-                                              {presetMeta.map((item) => (
-                                                <Badge
-                                                  key={item}
-                                                  variant="outline"
-                                                  className={cn('border-current/20 bg-transparent', isSelected ? 'text-white' : 'text-slate-600')}
-                                                >
-                                                  {item}
-                                                </Badge>
-                                              ))}
-                                            </div>
-                                          </button>
-                                        );
-                                      })}
+                                    <div className="grid grid-cols-1 gap-4 rounded-elevated border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
+                                      <div className="space-y-2">
+                                        <FormLabel>Partidos de zona por pareja</FormLabel>
+                                        <Select
+                                          value={String(selectedPreset?.targetMatchesPerCouple === 3 ? 3 : 2)}
+                                          onValueChange={(value) => handleAmericanSingleZoneOptionChange(value === '3' ? 3 : 2, selectedPreset?.bracketMode === 'GOLD_SILVER' ? 'GOLD_SILVER' : 'SINGLE')}
+                                        >
+                                          <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                                          <SelectContent><SelectItem value="2">2 partidos</SelectItem><SelectItem value="3">3 partidos</SelectItem></SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <FormLabel>Etapa final</FormLabel>
+                                        <Select
+                                          value={selectedPreset?.bracketMode === 'GOLD_SILVER' ? 'GOLD_SILVER' : 'SINGLE'}
+                                          onValueChange={(value) => handleAmericanSingleZoneOptionChange(selectedPreset?.targetMatchesPerCouple === 3 ? 3 : 2, value as 'SINGLE' | 'GOLD_SILVER')}
+                                        >
+                                          <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                                          <SelectContent><SelectItem value="SINGLE">Llave única</SelectItem><SelectItem value="GOLD_SILVER">Copa Oro y Copa Plata</SelectItem></SelectContent>
+                                        </Select>
+                                      </div>
                                     </div>
                                   </div>
                                 )}

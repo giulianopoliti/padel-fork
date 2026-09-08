@@ -451,7 +451,6 @@ export default function TournamentFormatConfigForm({
             min="2"
             max={registeredCouplesCount > 0 ? registeredCouplesCount : undefined}
             value={effectiveSingleAdvanceCount}
-            readOnly={allocationMode === 'AUTO'}
             disabled={tournamentStatus === 'BRACKET_PHASE'}
             onChange={(event) => {
               setAllocationMode('CUSTOM')
@@ -466,7 +465,7 @@ export default function TournamentFormatConfigForm({
           />
           {registeredCouplesCount > 0 && (
             <p className="text-xs text-slate-500">
-              Máximo permitido: {registeredCouplesCount} (parejas inscriptas).
+              Máximo permitido: {registeredCouplesCount} (parejas inscriptas). Editá el valor para personalizar.
             </p>
           )}
         </div>
@@ -503,7 +502,6 @@ export default function TournamentFormatConfigForm({
               type="number"
               min="2"
               value={effectiveGoldCount}
-              readOnly={allocationMode === 'AUTO'}
               disabled={tournamentStatus === 'BRACKET_PHASE'}
               onChange={(event) => { setAllocationMode('CUSTOM'); setGoldCount(Number(event.target.value || 0)) }}
               className="bg-white"
@@ -516,7 +514,6 @@ export default function TournamentFormatConfigForm({
               type="number"
               min="2"
               value={effectiveSilverCount}
-              readOnly={allocationMode === 'AUTO'}
               disabled={tournamentStatus === 'BRACKET_PHASE'}
               onChange={(event) => { setAllocationMode('CUSTOM'); setSilverCount(Number(event.target.value || 0)) }}
               className="bg-white"
@@ -540,10 +537,7 @@ export default function TournamentFormatConfigForm({
         <div className="space-y-2 rounded-md border p-3">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-slate-600">Asignación: {allocationMode === 'AUTO' ? 'recomendada automáticamente' : 'personalizada'}</span>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" disabled={tournamentStatus === 'BRACKET_PHASE'} onClick={() => setAllocationMode('CUSTOM')}>Personalizar</Button>
-              <Button type="button" variant="outline" disabled={tournamentStatus === 'BRACKET_PHASE'} onClick={handleResetRecommended}>Usar recomendada</Button>
-            </div>
+            <Button type="button" variant="outline" disabled={tournamentStatus === 'BRACKET_PHASE'} onClick={handleResetRecommended}>Restablecer recomendada</Button>
           </div>
           {selectedPreset?.advancementConfig.kind === 'SINGLE' ? (
             <p className="text-xs text-slate-500">Vista previa: {effectiveSingleAdvanceCount} clasificadas y {Math.max(registeredCouplesCount - effectiveSingleAdvanceCount, 0)} eliminadas.</p>
