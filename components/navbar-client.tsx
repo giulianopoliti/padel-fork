@@ -101,6 +101,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const contextualLoginHref = isTournamentDetailPage ? `/login?redirectTo=${encodeURIComponent(pathname)}` : "/login"
   const contextualRegisterHref = isTournamentDetailPage ? `/register?redirectTo=${encodeURIComponent(pathname)}` : "/register"
   const isFvHomeOverHero = isFvHome && isFvHeroVisible
+  const isFvDarkNavbar = !isElite && (isFvHomeOverHero || !isFvHome)
   const headerClassName = isElite
     ? "sticky top-0 z-50 bg-gray-950/95 shadow-md backdrop-blur"
     : isFvHomeOverHero
@@ -141,7 +142,11 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-20">
           <Link href="/" className="flex items-center space-x-3">
-            <BrandLogo variant="navbar" surface={isFvHomeOverHero ? "dark" : "light"} />
+            <BrandLogo
+              variant="navbar"
+              surface={isFvDarkNavbar ? "dark" : "light"}
+              emphasized={isFvDarkNavbar}
+            />
           </Link>
 
           <nav className="hidden lg:flex items-center space-x-2">

@@ -28,6 +28,8 @@ const publicLinks = [
   },
 ]
 
+const fvMainLinks = publicLinks.filter((link) => link.path !== "/clubes")
+
 const profileLinkPaths = ["/edit-profile", "/panel"]
 
 const useNavbarLinks = (userRole: Role | null, authState: AuthState) => {
@@ -37,10 +39,16 @@ const useNavbarLinks = (userRole: Role | null, authState: AuthState) => {
     }
 
     if (authState === "guest") {
-      return { mainLinks: publicLinks, profileLinks: [] }
+      const branding = getTenantBranding()
+      return { mainLinks: branding.key === "padel-fv" ? fvMainLinks : publicLinks, profileLinks: [] }
     }
 
     const branding = getTenantBranding()
+
+    if (branding.key === "padel-fv") {
+      return { mainLinks: fvMainLinks, profileLinks: [] }
+    }
+
     const allAuthLinks = userRole
       ? getLinksForRole(userRole).filter((link) => branding.features.showRankingInNav || link.path !== "/ranking")
       : []

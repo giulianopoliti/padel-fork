@@ -6,6 +6,7 @@ interface BrandLogoProps {
   surface?: "light" | "dark"
   className?: string
   priority?: boolean
+  emphasized?: boolean
 }
 
 export default function BrandLogo({
@@ -13,6 +14,7 @@ export default function BrandLogo({
   surface,
   className,
   priority = true,
+  emphasized = false,
 }: BrandLogoProps) {
   const branding = getTenantBranding()
   const resolvedSurface = surface || (variant === "navbar" ? "dark" : "light")
@@ -20,7 +22,12 @@ export default function BrandLogo({
   const src = variant === "hero" ? branding.logo.hero || surfaceSrc : surfaceSrc
   const markSrc = branding.logo.mark
   const alt = `${branding.siteName} logo`
-  const defaultClassName = variant === "hero" ? "h-auto w-full max-w-[320px]" : "h-14 w-auto"
+  const defaultClassName = variant === "hero"
+    ? "h-auto w-full max-w-[320px]"
+    : emphasized
+      ? "h-20 w-auto drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]"
+      : "h-14 w-auto"
+  const maxHeight = variant === "hero" ? "112px" : emphasized ? "80px" : "56px"
 
   if (variant === "navbar" && markSrc) {
     return (
@@ -39,8 +46,8 @@ export default function BrandLogo({
           alt={alt}
           width={440}
           height={120}
-          className="hidden h-12 w-auto sm:block sm:h-14"
-          style={{ width: "auto", height: "auto", maxHeight: "56px" }}
+          className={emphasized ? "hidden h-16 w-auto sm:block sm:h-20 drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" : "hidden h-12 w-auto sm:block sm:h-14"}
+          style={{ width: "auto", height: "auto", maxHeight }}
           priority={priority}
         />
       </div>
@@ -54,7 +61,7 @@ export default function BrandLogo({
       width={variant === "hero" ? 320 : 220}
       height={variant === "hero" ? 120 : 56}
       className={className || defaultClassName}
-      style={{ width: "auto", height: "auto", maxHeight: variant === "hero" ? "112px" : "56px" }}
+      style={{ width: "auto", height: "auto", maxHeight }}
       priority={priority}
     />
   )
