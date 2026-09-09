@@ -30,13 +30,15 @@ interface MatchesViewProps {
   isOwner: boolean;
   isPublicView: boolean;
   clubCourts: number;
+  recommendationEnabled: boolean;
 }
 
 const MatchesView: React.FC<MatchesViewProps> = ({
   tournament,
   isOwner,
   isPublicView,
-  clubCourts
+  clubCourts,
+  recommendationEnabled,
 }) => {
   return (
     <div className="min-h-screen bg-slate-50">
@@ -116,6 +118,7 @@ const MatchesView: React.FC<MatchesViewProps> = ({
             isOwner={isOwner}
             isPublicView={isPublicView}
             tournamentStatus={tournament.status}
+            recommendationEnabled={recommendationEnabled}
           />
         </div>
       </div>

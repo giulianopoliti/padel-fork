@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Users, Clock, CheckCircle } from "lucide-react"
+import { Clock, GripVertical, Trophy, Users } from "lucide-react"
 import { useDraggable } from "@dnd-kit/core"
 
 interface Couple {
@@ -37,6 +37,12 @@ interface Zone {
   couples: Couple[]
 }
 
+interface CoupleMatchStatusSummary {
+  finished: number
+  inProgress: number
+  pending: number
+}
+
 interface ZoneMatrixTableProps {
   zone: Zone
   matches: Match[]
@@ -44,7 +50,32 @@ interface ZoneMatrixTableProps {
   onCellClick?: (couple1: Couple, couple2: Couple, match: Match | null) => void
   selectedCouples?: Couple[]
   couplesWithFinishedMatches?: string[]
+  pendingCoupleIds?: string[]
+  matchStatusSummaryByCouple?: Record<string, CoupleMatchStatusSummary>
   isOwner?: boolean
+}
+
+const MatchCountDots = ({
+  count,
+  colorClassName,
+  label
+}: {
+  count: number
+  colorClassName: string
+  label: string
+}) => {
+  if (count === 0) return null
+
+  return (
+    <span className="inline-flex items-center gap-1" aria-label={`${count} ${label}`} title={`${count} ${label}`}>
+      <span className="text-[10px] font-medium text-slate-600">{label}</span>
+      <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+        {Array.from({ length: count }, (_, index) => (
+          <span key={index} className={`h-2 w-2 rounded-full ${colorClassName}`} />
+        ))}
+      </span>
+    </span>
+  )
 }
 
 // Draggable couple name component for the matrix
@@ -53,7 +84,9 @@ const DraggableCoupleRow = ({
   zoneId, 
   rowIndex, 
   isSelected, 
-  cannotBeMoved, 
+  cannotBeMoved,
+  isPendingCreation,
+  matchStatusSummary,
   onClick 
 }: {
   couple: Couple
@@ -61,12 +94,15 @@ const DraggableCoupleRow = ({
   rowIndex: number
   isSelected: boolean
   cannotBeMoved: boolean
+  isPendingCreation: boolean
+  matchStatusSummary: CoupleMatchStatusSummary
   onClick: () => void
 }) => {
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     isDragging,
   } = useDraggable({
@@ -83,14 +119,9 @@ const DraggableCoupleRow = ({
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
       className={`flex items-center gap-2 ${
-        cannotBeMoved ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'
-      } ${
         isDragging ? 'opacity-50' : ''
       }`}
-      onClick={onClick}
     >
       <div className="flex items-center gap-1 text-xs">
         <span className="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-medium">
@@ -99,18 +130,47 @@ const DraggableCoupleRow = ({
         {couple.stats.won === 3 && ( // Assuming zone has 4 couples, so 3 wins = zone leader
           <Trophy className="h-3 w-3 text-yellow-500" />
         )}
-        {cannotBeMoved && (
-          <div className="w-2 h-2 bg-red-500 rounded-full" title="Tiene partidos jugados" />
-        )}
-        {isSelected && (
-          <div className="w-2 h-2 bg-emerald-500 rounded-full" title="Seleccionado" />
-        )}
       </div>
-      <div className="min-w-0 flex-1">
+      <button
+        type="button"
+        className="min-w-0 flex-1 rounded px-1 py-1 text-left transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:cursor-not-allowed"
+        onClick={onClick}
+        disabled={cannotBeMoved}
+        aria-pressed={isSelected}
+        aria-label={`Seleccionar a ${couple.player1_name} y ${couple.player2_name}`}
+      >
         <div className="font-medium text-slate-900 text-xs truncate">
           {couple.player1_name} / {couple.player2_name}
         </div>
-      </div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          {isSelected && (
+            <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">Seleccionada</span>
+          )}
+          {isPendingCreation && (
+            <span className="rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">En cola</span>
+          )}
+          <MatchCountDots count={matchStatusSummary.finished} colorClassName="bg-emerald-500" label="Jugados" />
+          <MatchCountDots count={matchStatusSummary.inProgress} colorClassName="bg-blue-500 ring-2 ring-blue-100" label="En juego" />
+          <MatchCountDots count={matchStatusSummary.pending} colorClassName="bg-amber-500" label="Programados" />
+          {cannotBeMoved && (
+            <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">Cupo completo</span>
+          )}
+        </div>
+      </button>
+      {!cannotBeMoved && (
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          {...listeners}
+          {...attributes}
+          className="hidden h-8 w-7 shrink-0 cursor-grab items-center justify-center rounded text-slate-400 hover:bg-white hover:text-slate-700 active:cursor-grabbing lg:flex"
+          onClick={(event) => event.stopPropagation()}
+          aria-label={`Arrastrar a ${couple.player1_name} y ${couple.player2_name}`}
+          title="Arrastrar pareja"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
     </div>
   )
 }
@@ -122,6 +182,8 @@ export default function ZoneMatrixTable({
   onCellClick,
   selectedCouples = [],
   couplesWithFinishedMatches = [],
+  pendingCoupleIds = [],
+  matchStatusSummaryByCouple = {},
   isOwner = false
 }: ZoneMatrixTableProps) {
   // Helper function to get match result between two couples
@@ -133,7 +195,7 @@ export default function ZoneMatrixTable({
 
     if (!match) return null
 
-    if (match.status !== 'FINISHED' || !match.result_couple1 || !match.result_couple2) {
+    if (match.status !== 'FINISHED' || match.result_couple1 == null || match.result_couple2 == null) {
       return {
         match, // ✅ Retornar match completo
         status: match.status,
@@ -171,10 +233,10 @@ export default function ZoneMatrixTable({
     return couplesWithFinishedMatches.includes(coupleId)
   }
 
-  // Helper function to get couple display name
-  const getCoupleDisplayName = (couple: Couple) => {
-    return `${couple.player1_name} / ${couple.player2_name}`
-  }
+  const isCouplePendingCreation = (coupleId: string) => pendingCoupleIds.includes(coupleId)
+
+  const getCoupleMatchStatusSummary = (coupleId: string): CoupleMatchStatusSummary =>
+    matchStatusSummaryByCouple[coupleId] || { finished: 0, inProgress: 0, pending: 0 }
 
   return (
     <Card className="overflow-hidden">
@@ -220,13 +282,29 @@ export default function ZoneMatrixTable({
                   <tr 
                     key={couple.id} 
                     className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                      isCoupleSelected(couple.id) ? 'bg-emerald-50 ring-2 ring-emerald-200' : ''
+                      isCoupleSelected(couple.id)
+                        ? 'bg-rose-50 ring-2 ring-inset ring-rose-300'
+                        : isCouplePendingCreation(couple.id)
+                          ? 'bg-rose-50/70'
+                          : getCoupleMatchStatusSummary(couple.id).inProgress > 0
+                            ? 'bg-blue-50/70'
+                            : getCoupleMatchStatusSummary(couple.id).finished > 0
+                              ? 'bg-emerald-50/60'
+                              : ''
                     }`}
                   >
                     {/* Couple name column - sticky */}
                     <td 
                       className={`p-2 sticky left-0 bg-white hover:bg-slate-50 transition-colors ${
-                        isCoupleSelected(couple.id) ? 'bg-emerald-50' : ''
+                        isCoupleSelected(couple.id)
+                          ? 'bg-rose-50'
+                          : isCouplePendingCreation(couple.id)
+                            ? 'bg-rose-50'
+                            : getCoupleMatchStatusSummary(couple.id).inProgress > 0
+                              ? 'bg-blue-50'
+                              : getCoupleMatchStatusSummary(couple.id).finished > 0
+                                ? 'bg-emerald-50'
+                                : ''
                       }`}
                     >
                       <DraggableCoupleRow
@@ -235,6 +313,8 @@ export default function ZoneMatrixTable({
                         rowIndex={rowIndex}
                         isSelected={isCoupleSelected(couple.id)}
                         cannotBeMoved={coupleCannotBeMoved(couple.id)}
+                        isPendingCreation={isCouplePendingCreation(couple.id)}
+                        matchStatusSummary={getCoupleMatchStatusSummary(couple.id)}
                         onClick={() => {
                           if (!coupleCannotBeMoved(couple.id)) {
                             onCoupleClick?.(couple, zone.id)

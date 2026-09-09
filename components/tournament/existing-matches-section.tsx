@@ -64,13 +64,33 @@ const MatchStatusBadge = ({ status }: { status: string }) => {
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return { variant: 'secondary' as const, text: 'Pendiente', icon: Clock }
+        return {
+          variant: 'outline' as const,
+          text: 'Pendiente',
+          icon: Clock,
+          className: 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100'
+        }
       case 'IN_PROGRESS':
-        return { variant: 'default' as const, text: 'En Progreso', icon: ArrowRight }
+        return {
+          variant: 'outline' as const,
+          text: 'En curso',
+          icon: ArrowRight,
+          className: 'border-blue-200 bg-blue-100 text-blue-700 hover:bg-blue-100'
+        }
       case 'FINISHED':
-        return { variant: 'default' as const, text: 'Finalizado', icon: CheckCircle }
+        return {
+          variant: 'outline' as const,
+          text: 'Finalizado',
+          icon: CheckCircle,
+          className: 'border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+        }
       default:
-        return { variant: 'outline' as const, text: status, icon: Clock }
+        return {
+          variant: 'outline' as const,
+          text: status,
+          icon: Clock,
+          className: 'border-slate-200 bg-white text-slate-700'
+        }
     }
   }
 
@@ -78,7 +98,7 @@ const MatchStatusBadge = ({ status }: { status: string }) => {
   const Icon = config.icon
 
   return (
-    <Badge variant={config.variant} className="gap-1">
+    <Badge variant={config.variant} className={`gap-1 whitespace-nowrap ${config.className}`}>
       <Icon className="h-3 w-3" />
       {config.text}
     </Badge>
@@ -407,15 +427,6 @@ export default function ExistingMatchesSection({
     }
   }
 
-  const handleStatusChange = async (matchId: string, newStatus: string) => {
-    // TODO: Implement status change functionality
-    toast({
-      title: "Función pendiente",
-      description: "El cambio de estado estará disponible pronto",
-      variant: "default"
-    })
-  }
-
   const handleDeleteMatch = async (match: Match) => {
     // Validar que el torneo esté en ZONE_PHASE
     if (tournamentStatus !== 'ZONE_PHASE') {
@@ -502,7 +513,7 @@ export default function ExistingMatchesSection({
         <h3 className="text-xl font-semibold text-slate-900 mb-2">No hay partidos creados</h3>
         <p className="text-slate-500 max-w-md mx-auto">
           {isOwner 
-            ? "Aún no se han creado partidos para este torneo. Usa la pestaña 'Crear Partidos' para empezar."
+            ? "Aún no se han creado partidos. Usá el panel superior para preparar el primer cruce."
             : "Aún no se han creado partidos para este torneo."
           }
         </p>
@@ -671,25 +682,7 @@ export default function ExistingMatchesSection({
                       )}
                     </TableCell>
                     <TableCell>
-                      {isOwner ? (
-                        <Select
-                          value={match.status}
-                          onValueChange={(newStatus) => handleStatusChange(match.id, newStatus)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue>
-                              <MatchStatusBadge status={match.status} />
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="PENDING">Pendiente</SelectItem>
-                            <SelectItem value="IN_PROGRESS">En Progreso</SelectItem>
-                            <SelectItem value="FINISHED">Finalizado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <MatchStatusBadge status={match.status} />
-                      )}
+                      <MatchStatusBadge status={match.status} />
                     </TableCell>
                     <TableCell>
                       {match.court ? (

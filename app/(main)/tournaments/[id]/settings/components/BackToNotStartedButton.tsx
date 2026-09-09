@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { mutate } from 'swr'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -21,6 +23,7 @@ interface ResetPreviewData {
 }
 
 export default function BackToNotStartedButton({ tournamentId }: BackToNotStartedButtonProps) {
+  const router = useRouter()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
@@ -91,6 +94,11 @@ export default function BackToNotStartedButton({ tournamentId }: BackToNotStarte
         setIsDialogOpen(false)
         setIsConfirmed(false)
         setPreviewData(null)
+
+        // La navegación del torneo se calcula con el estado en la cache de SWR.
+        // Al volver a NOT_STARTED, releerlo evita que se muestren accesos de ZONE_PHASE.
+        await mutate(`tournament-sidebar-${tournamentId}`)
+        router.refresh()
       } else {
         toast({
           title: 'Error',

@@ -1,15 +1,30 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from "@dnd-kit/core"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Users, Plus, X, Save } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Loader2, MousePointer2, Plus, Save, Sparkles, Users, X } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 // Avoid importing server actions inside client components
 import CourtSelector from "./court-selector"
 import ZoneMatrixTable from "./zone-matrix-table"
+import SingleZoneRecommendationPanel from "./match-recommendation/SingleZoneRecommendationPanel"
+import {
+  type ZoneRecommendationPair,
+  zoneRecommendationPairKey,
+} from "@/lib/services/zone-match-recommendation/types"
 
 interface Couple {
   id: string
@@ -49,6 +64,9 @@ interface PendingMatch {
   couple2: Couple
   court?: string
   zoneId: string
+  zoneName: string
+  source?: 'MANUAL' | 'RECOMMENDATION'
+  recommendationRevision?: string
 }
 
 interface MatchCreationSectionProps {
@@ -56,63 +74,32 @@ interface MatchCreationSectionProps {
   clubCourts: number
   isOwner?: boolean
   onMatchesCreated?: () => void
+  onPendingMatchesChange?: (count: number) => void
   refreshTrigger?: number
+  recommendationEnabled?: boolean
 }
 
-const DraggableCouple = ({ couple, zoneId, isSelected }: { 
-  couple: Couple; 
-  zoneId: string;
-  isSelected: boolean;
+interface CreateMatchResponse {
+  success: boolean
+  code?: string
+  error?: string
+  requiresConfirmation?: boolean
+}
+
+interface UnsafeMatchConfirmation {
+  match: PendingMatch
+  includeRevision: boolean
+}
+
+const MatchCreationZone = ({
+  selectedCouples,
+  selectedZoneName,
+  onRemoveSelected
+}: {
+  selectedCouples: Couple[]
+  selectedZoneName?: string
+  onRemoveSelected: (coupleId: string) => void
 }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging,
-  } = useDraggable({
-    id: `couple-${couple.id}`,
-    data: { couple, zoneId }
-  })
-
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined
-
-  return (
-    <Card 
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-all border-slate-200 ${
-        isDragging ? 'opacity-50 shadow-lg' : 'bg-white'
-      } ${isSelected ? 'ring-2 ring-emerald-500 bg-emerald-50' : ''}`}
-    >
-      <CardContent className="p-3">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-slate-500 flex-shrink-0" />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium text-slate-900 truncate">
-              {couple.player1_name}
-            </div>
-            <div className="text-sm font-medium text-slate-900 truncate">
-              {couple.player2_name}
-            </div>
-          </div>
-          <Badge 
-            variant={couple.stats.points >= 0 ? "default" : "secondary"} 
-            className={`text-xs ${couple.stats.points >= 0 ? 'bg-green-600 text-white' : 'bg-red-100 text-red-700'}`}
-          >
-            {couple.stats.points >= 0 ? '+' : ''}{couple.stats.points}
-          </Badge>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-const MatchCreationZone = ({ selectedCouples }: { selectedCouples: Couple[] }) => {
   const { isOver, setNodeRef } = useDroppable({
     id: 'match-creation-zone'
   })
@@ -130,25 +117,37 @@ const MatchCreationZone = ({ selectedCouples }: { selectedCouples: Couple[] }) =
     >
       <CardContent className="p-6 text-center">
         <div className="space-y-3">
-          <Users className="h-8 w-8 text-slate-400 mx-auto" />
+          <MousePointer2 className="h-8 w-8 text-slate-400 mx-auto" />
           <div>
             <p className="font-medium text-slate-700">
-              {selectedCouples.length === 0 && "Arrastra parejas aquí para crear un partido"}
+              {selectedCouples.length === 0 && "Elegí la primera pareja con un clic"}
               {selectedCouples.length === 1 && "Necesitas una pareja más"}
               {selectedCouples.length === 2 && "¡Listo para crear el partido!"}
             </p>
             <p className="text-sm text-slate-500 mt-1">
               Parejas seleccionadas: {selectedCouples.length}/2
+              {selectedZoneName ? ` · ${selectedZoneName}` : ''}
             </p>
           </div>
           
           {selectedCouples.length > 0 && (
             <div className="space-y-2 mt-4">
               {selectedCouples.map((couple, index) => (
-                <div key={couple.id} className="bg-white rounded-surface p-2 border">
-                  <div className="text-sm font-medium">
+                <div key={couple.id} className="flex items-center justify-between gap-2 rounded-surface border border-rose-200 bg-white p-2 text-left">
+                  <div className="min-w-0 text-sm font-medium">
+                    <span className="mr-2 text-xs font-semibold text-rose-600">Pareja {index + 1}</span>
                     {couple.player1_name} / {couple.player2_name}
                   </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 p-0 text-slate-500 hover:bg-rose-50 hover:text-rose-700"
+                    onClick={() => onRemoveSelected(couple.id)}
+                    aria-label={`Quitar a ${couple.player1_name} y ${couple.player2_name}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
@@ -164,18 +163,26 @@ const MatchBuilder = ({
   onRemoveMatch, 
   onCourtChange,
   clubCourts,
-  selectedCouples
+  selectedCouples,
+  selectedZoneName,
+  onRemoveSelected
 }: {
   pendingMatches: PendingMatch[]
   onRemoveMatch: (matchId: string) => void
   onCourtChange: (matchId: string, court?: string) => void
   clubCourts: number
   selectedCouples: Couple[]
+  selectedZoneName?: string
+  onRemoveSelected: (coupleId: string) => void
 }) => {
   return (
     <div className="space-y-4">
       {/* Match Creation Zone */}
-      <MatchCreationZone selectedCouples={selectedCouples} />
+      <MatchCreationZone
+        selectedCouples={selectedCouples}
+        selectedZoneName={selectedZoneName}
+        onRemoveSelected={onRemoveSelected}
+      />
       
       <div className="flex items-center gap-2 mb-4">
         <Plus className="h-5 w-5 text-slate-600" />
@@ -190,29 +197,39 @@ const MatchBuilder = ({
             <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
             <p className="text-slate-500 mb-2">No hay partidos pendientes</p>
             <p className="text-sm text-slate-400">
-              Arrastra parejas de las zonas para crear partidos
+              Elegí dos parejas de la misma zona para preparar un partido
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           {pendingMatches.map((match) => (
-            <Card key={match.id} className="border-emerald-200 bg-emerald-50">
+            <Card key={match.id} className="border-rose-200 bg-rose-50/70">
               <CardContent className="p-4">
                 <div className="space-y-3">
                   {/* Match details */}
                   <div className="flex items-center justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-emerald-600" />
-                        <span className="font-medium text-emerald-900">
+                        <Badge className="bg-rose-600 text-white hover:bg-rose-600">En cola</Badge>
+                        {match.source === 'RECOMMENDATION' && (
+                          <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+                            <Sparkles className="mr-1 h-3 w-3" aria-hidden="true" />
+                            Recomendado
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="border-rose-200 bg-white text-slate-600">{match.zoneName}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-rose-600" />
+                        <span className="font-medium text-slate-900">
                           {match.couple1.player1_name} / {match.couple1.player2_name}
                         </span>
                       </div>
-                      <div className="text-center text-emerald-700 font-medium">VS</div>
+                      <div className="pl-6 text-xs font-semibold uppercase tracking-wide text-rose-600">vs.</div>
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-emerald-600" />
-                        <span className="font-medium text-emerald-900">
+                        <Users className="h-4 w-4 text-rose-600" />
+                        <span className="font-medium text-slate-900">
                           {match.couple2.player1_name} / {match.couple2.player2_name}
                         </span>
                       </div>
@@ -250,18 +267,30 @@ export default function MatchCreationSection({
   clubCourts, 
   isOwner = false,
   onMatchesCreated,
-  refreshTrigger = 0
+  onPendingMatchesChange,
+  refreshTrigger = 0,
+  recommendationEnabled = false,
 }: MatchCreationSectionProps) {
   const [zones, setZones] = useState<Zone[]>([])
   const [matches, setMatches] = useState<Match[]>([])
   const [couplesWithFinishedMatches, setCouplesWithFinishedMatches] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
   const [selectedCouples, setSelectedCouples] = useState<Couple[]>([])
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [visibleZoneId, setVisibleZoneId] = useState<string | null>(null)
   const [pendingMatches, setPendingMatches] = useState<PendingMatch[]>([])
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [recommendationOpen, setRecommendationOpen] = useState(false)
+  const [recommendationRefreshTrigger, setRecommendationRefreshTrigger] = useState(0)
+  const [unsafeMatch, setUnsafeMatch] = useState<UnsafeMatchConfirmation | null>(null)
+  const [confirmingUnsafe, setConfirmingUnsafe] = useState(false)
   const { toast } = useToast()
+
+  useEffect(() => {
+    onPendingMatchesChange?.(pendingMatches.length)
+  }, [onPendingMatchesChange, pendingMatches.length])
 
   // Load zones and matches data
   useEffect(() => {
@@ -282,6 +311,11 @@ export default function MatchCreationSection({
         
         if (zonesResult.success && zonesResult.zones) {
           setZones(zonesResult.zones)
+          setVisibleZoneId(currentZoneId =>
+            zonesResult.zones.some((zone: Zone) => zone.id === currentZoneId)
+              ? currentZoneId
+              : zonesResult.zones[0]?.id || null
+          )
           
           // For each zone, get couples with finished matches
           const couplesWithFinished: Record<string, string[]> = {}
@@ -325,6 +359,146 @@ export default function MatchCreationSection({
     setActiveDragId(event.active.id as string)
   }
 
+  const handleSelectCouple = (couple: Couple, zoneId: string) => {
+    if (pendingMatches.some(match => match.source === 'RECOMMENDATION')) {
+      toast({
+        title: "Primero creá el cruce recomendado",
+        description: "Para conservar el plan calculado, no agregues otros partidos mientras esa recomendación está en cola.",
+      })
+      return
+    }
+
+    const unavailableCouples = couplesWithFinishedMatches[zoneId] || []
+    if (unavailableCouples.includes(couple.id)) {
+      toast({
+        title: "Cupo de partidos completo",
+        description: "Esta pareja ya alcanzó el máximo de partidos permitido en la zona.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (selectedCouples.some(selectedCouple => selectedCouple.id === couple.id)) {
+      setSelectedCouples(current => current.filter(selectedCouple => selectedCouple.id !== couple.id))
+      if (selectedCouples.length === 1) setSelectedZoneId(null)
+      return
+    }
+
+    if (selectedZoneId && selectedZoneId !== zoneId) {
+      toast({
+        title: "Elegí una pareja de la misma zona",
+        description: "Terminá o cancelá la selección actual antes de cambiar de zona.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (selectedCouples.length === 0) {
+      setSelectedCouples([couple])
+      setSelectedZoneId(zoneId)
+      return
+    }
+
+    const firstCouple = selectedCouples[0]
+    const matchAlreadyExists = matches.some(match =>
+      match.zone_id === zoneId && (
+        (match.couple1_id === firstCouple.id && match.couple2_id === couple.id) ||
+        (match.couple1_id === couple.id && match.couple2_id === firstCouple.id)
+      )
+    )
+    const matchAlreadyQueued = pendingMatches.some(match =>
+      match.zoneId === zoneId && (
+        (match.couple1.id === firstCouple.id && match.couple2.id === couple.id) ||
+        (match.couple1.id === couple.id && match.couple2.id === firstCouple.id)
+      )
+    )
+
+    if (matchAlreadyExists || matchAlreadyQueued) {
+      toast({
+        title: matchAlreadyExists ? "Partido ya creado" : "Partido ya en cola",
+        description: "Estas dos parejas ya tienen este enfrentamiento registrado.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    const zone = zones.find(currentZone => currentZone.id === zoneId)
+    const newMatch: PendingMatch = {
+      id: `temp-${Date.now()}-${firstCouple.id}-${couple.id}`,
+      couple1: firstCouple,
+      couple2: couple,
+      zoneId,
+      zoneName: zone?.name || "Zona",
+      source: 'MANUAL',
+    }
+
+    setPendingMatches(current => [...current, newMatch])
+    setSelectedCouples([])
+    setSelectedZoneId(null)
+  }
+
+  const handleUseRecommendations = ({
+    zoneId,
+    matches: recommendedMatches,
+    revision,
+  }: {
+    zoneId: string
+    matches: ZoneRecommendationPair[]
+    revision: string
+  }) => {
+    const manualMatchesArePending = pendingMatches.some(match => match.source !== 'RECOMMENDATION')
+    if (manualMatchesArePending) {
+      toast({
+        title: "Hay cruces manuales en cola",
+        description: "Crealos o quitalos antes de mezclar una tanda recomendada.",
+      })
+      return
+    }
+
+    const zone = zones.find(currentZone => currentZone.id === zoneId)
+    const couplesById = new Map(zone?.couples.map(couple => [couple.id, couple]) || [])
+    const queuedKeys = new Set(pendingMatches.map(match =>
+      zoneRecommendationPairKey(match.couple1.id, match.couple2.id),
+    ))
+    const matchesToQueue = recommendedMatches.filter(match =>
+      !queuedKeys.has(zoneRecommendationPairKey(match.couple1Id, match.couple2Id)),
+    )
+    const everyCoupleExists = matchesToQueue.every(match =>
+      couplesById.has(match.couple1Id) && couplesById.has(match.couple2Id),
+    )
+
+    if (!zone || !everyCoupleExists) {
+      toast({
+        title: "La recomendación quedó desactualizada",
+        description: "Actualizá los datos y volvé a calcular el cruce.",
+        variant: "destructive",
+      })
+      setRecommendationRefreshTrigger(current => current + 1)
+      return
+    }
+
+    const newPendingMatches: PendingMatch[] = matchesToQueue.map(match => ({
+      id: `recommended-${revision}-${match.couple1Id}-${match.couple2Id}`,
+      couple1: couplesById.get(match.couple1Id)!,
+      couple2: couplesById.get(match.couple2Id)!,
+      zoneId,
+      zoneName: zone.name || "Zona",
+      source: 'RECOMMENDATION' as const,
+      recommendationRevision: revision,
+    }))
+
+    if (newPendingMatches.length === 0) return
+
+    setPendingMatches(current => [...current, ...newPendingMatches])
+    setVisibleZoneId(zoneId)
+    setSelectedCouples([])
+    setSelectedZoneId(null)
+    toast({
+      title: newPendingMatches.length === 1 ? "Cruce agregado" : "Cruces agregados",
+      description: `${newPendingMatches.length} partido${newPendingMatches.length === 1 ? '' : 's'} enviado${newPendingMatches.length === 1 ? '' : 's'} a la cola. Ahora podés asignar las canchas.`,
+    })
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveDragId(null)
@@ -333,58 +507,17 @@ export default function MatchCreationSection({
 
     if (over.id === 'match-creation-zone') {
       const draggedData = active.data.current as { couple: Couple; zoneId: string }
-      
-      if (selectedCouples.length < 2) {
-        if (!selectedCouples.find(c => c.id === draggedData.couple.id)) {
-          const newSelection = [...selectedCouples, draggedData.couple]
-          setSelectedCouples(newSelection)
-          
-          // Auto-create match when 2 couples selected
-          if (newSelection.length === 2) {
-            const newMatch: PendingMatch = {
-              id: `temp-${Date.now()}`,
-              couple1: newSelection[0],
-              couple2: newSelection[1],
-              zoneId: draggedData.zoneId,
-            }
-            setPendingMatches(prev => [...prev, newMatch])
-            setSelectedCouples([]) // Reset selection
-          }
-        }
-      }
+      handleSelectCouple(draggedData.couple, draggedData.zoneId)
     }
   }
 
   const handleCoupleClick = (couple: Couple, zoneId: string) => {
-    // Check if couple has finished matches and cannot be moved
-    const couplesWithFinished = couplesWithFinishedMatches[zoneId] || []
-    if (couplesWithFinished.includes(couple.id)) {
-      toast({
-        title: "No se puede seleccionar",
-        description: "Esta pareja ya ha jugado partidos en esta zona y no se puede mover.",
-        variant: "destructive"
-      })
-      return
-    }
+    handleSelectCouple(couple, zoneId)
+  }
 
-    if (selectedCouples.length < 2) {
-      if (!selectedCouples.find(c => c.id === couple.id)) {
-        const newSelection = [...selectedCouples, couple]
-        setSelectedCouples(newSelection)
-        
-        // Auto-create match when 2 couples selected
-        if (newSelection.length === 2) {
-          const newMatch: PendingMatch = {
-            id: `temp-${Date.now()}`,
-            couple1: newSelection[0],
-            couple2: newSelection[1],
-            zoneId: zoneId,
-          }
-          setPendingMatches(prev => [...prev, newMatch])
-          setSelectedCouples([]) // Reset selection
-        }
-      }
-    }
+  const handleRemoveSelected = (coupleId: string) => {
+    setSelectedCouples(current => current.filter(couple => couple.id !== coupleId))
+    setSelectedZoneId(null)
   }
 
   const handleRemoveMatch = (matchId: string) => {
@@ -433,6 +566,27 @@ export default function MatchCreationSection({
     return formattedMessage.trim()
   }
 
+  const postPendingMatch = async (
+    match: PendingMatch,
+    options: { allowUnsafe?: boolean; includeRevision?: boolean } = {},
+  ) => {
+    const { allowUnsafe = false, includeRevision = true } = options
+    const response = await fetch(`/api/tournaments/${tournamentId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        zoneId: match.zoneId,
+        couple1Id: match.couple1.id,
+        couple2Id: match.couple2.id,
+        court: match.court ? parseInt(match.court) : null,
+        expectedRecommendationRevision: includeRevision ? match.recommendationRevision : undefined,
+        allowUnsafe,
+      }),
+    })
+    const result = await response.json() as CreateMatchResponse
+    return { response, result }
+  }
+
   const handleCreateMatches = async () => {
     if (pendingMatches.length === 0) return
 
@@ -440,41 +594,65 @@ export default function MatchCreationSection({
     let successCount = 0
     let errorCount = 0
     let lastError = ''
+    let lastErrorCode = ''
+    let confirmationRequested = false
+    const successfulMatchIds = new Set<string>()
+    const validatedRecommendationRevisions = new Set<string>()
 
     try {
       for (const match of pendingMatches) {
         try {
-          const response = await fetch(`/api/tournaments/${tournamentId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              zoneId: match.zoneId,
-              couple1Id: match.couple1.id,
-              couple2Id: match.couple2.id,
-              court: match.court ? parseInt(match.court) : null,
-            }),
-          })
-
-          const result = await response.json()
+          const includeRevision = Boolean(
+            match.recommendationRevision &&
+            !validatedRecommendationRevisions.has(match.recommendationRevision),
+          )
+          const { response, result } = await postPendingMatch(match, { includeRevision })
 
           if (response.ok && result.success) {
             successCount++
+            successfulMatchIds.add(match.id)
+            if (match.recommendationRevision) {
+              validatedRecommendationRevisions.add(match.recommendationRevision)
+            }
+          } else if (result.requiresConfirmation) {
+            // Se detiene el lote: los partidos que siguen todavía no fueron
+            // evaluados contra el posible override del organizador.
+            setUnsafeMatch({ match, includeRevision })
+            confirmationRequested = true
+            break
           } else {
             console.error("Error creating match:", result.error)
             lastError = result.error || 'Error desconocido'
+            lastErrorCode = result.code || ''
             errorCount++
+
+            if (result.code === 'RECOMMENDATION_STALE') {
+              // La sugerencia anterior ya no debe seguir ocupando la cola: se
+              // descarta y se muestra inmediatamente el nuevo cálculo.
+              setPendingMatches(current => current.filter(item =>
+                match.recommendationRevision
+                  ? item.recommendationRevision !== match.recommendationRevision
+                  : item.id !== match.id,
+              ))
+              setRecommendationOpen(true)
+              setRecommendationRefreshTrigger(current => current + 1)
+              break
+            }
           }
         } catch (err) {
           console.error("Error creating individual match:", err)
           lastError = 'Error de conexión'
+          lastErrorCode = ''
           errorCount++
         }
       }
 
       if (successCount > 0) {
-        const successMessage = errorCount > 0 
-          ? `${successCount} partidos creados exitosamente. ${errorCount} partidos fallaron por errores de validación.`
-          : `${successCount} partidos creados exitosamente.`
+        const successMessage = confirmationRequested
+          ? `${successCount} partidos creados. Revisá el cruce que requiere confirmación antes de continuar.`
+          : errorCount > 0
+            ? `${successCount} partidos creados exitosamente. ${errorCount} partidos fallaron por errores de validación.`
+            : `${successCount} partidos creados exitosamente.`
         
         toast({
           title: "Partidos creados",
@@ -494,36 +672,25 @@ export default function MatchCreationSection({
           }, 1000) // Small delay to show after success message
         }
         
-        setPendingMatches([])
-        
-        // Reload both zones and matches data to update the matrix with new scores
-        const [updatedZonesResponse, updatedMatchesResponse] = await Promise.all([
-          fetch(`/api/tournaments/${tournamentId}?endpoint=zones`),
-          fetch(`/api/tournaments/${tournamentId}`)
-        ])
-        
-        const [updatedZonesResult, updatedMatchesResult] = await Promise.all([
-          updatedZonesResponse.json(),
-          updatedMatchesResponse.json()
-        ])
-        
-        if (updatedZonesResult.success && updatedZonesResult.zones) {
-          setZones(updatedZonesResult.zones)
-        }
-        
-        if (updatedMatchesResult.success && updatedMatchesResult.matches) {
-          setMatches(updatedMatchesResult.matches)
-        }
-        
-        if (onMatchesCreated) {
-          onMatchesCreated()
-        }
+        setPendingMatches(current => current
+          .filter(match => !successfulMatchIds.has(match.id))
+          .map(match => match.recommendationRevision && validatedRecommendationRevisions.has(match.recommendationRevision)
+            ? { ...match, recommendationRevision: undefined }
+            : match),
+        )
+        setRecommendationRefreshTrigger(current => current + 1)
+        onMatchesCreated?.()
       }
 
-      if (errorCount > 0 && successCount === 0) {
+      if (errorCount > 0 && successCount === 0 && !confirmationRequested) {
+        const title = lastErrorCode === 'RECOMMENDATION_STALE'
+          ? "La recomendación quedó desactualizada"
+          : lastErrorCode === 'COUPLE_IN_PROGRESS'
+            ? "Una pareja ya está jugando"
+            : "No se pudo crear el partido"
         const formattedError = parseMatchCreationError(lastError)
         toast({
-          title: "No se pudo crear el partido",
+          title,
           description: formattedError,
           variant: "destructive"
         })
@@ -539,6 +706,52 @@ export default function MatchCreationSection({
       setCreating(false)
     }
   }
+
+  const handleConfirmUnsafeMatch = async () => {
+    if (!unsafeMatch) return
+
+    const { match: matchToCreate, includeRevision } = unsafeMatch
+    setConfirmingUnsafe(true)
+    try {
+      const { response, result } = await postPendingMatch(matchToCreate, {
+        allowUnsafe: true,
+        includeRevision,
+      })
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'No se pudo crear el partido')
+      }
+
+      setPendingMatches(current => current
+        .filter(match => match.id !== matchToCreate.id)
+        .map(match => match.recommendationRevision === matchToCreate.recommendationRevision
+          ? { ...match, recommendationRevision: undefined }
+          : match),
+      )
+      setUnsafeMatch(null)
+      setRecommendationRefreshTrigger(current => current + 1)
+      onMatchesCreated?.()
+      toast({
+        title: "Partido creado con confirmación",
+        description: "El cruce fue creado aunque no conserva un cierre completo garantizado.",
+      })
+    } catch (confirmationError) {
+      setUnsafeMatch(null)
+      toast({
+        title: "No se pudo crear el partido",
+        description: confirmationError instanceof Error ? confirmationError.message : "Error inesperado",
+        variant: "destructive",
+      })
+    } finally {
+      setConfirmingUnsafe(false)
+    }
+  }
+
+  const selectedZoneName = zones.find(zone => zone.id === selectedZoneId)?.name || undefined
+  const visibleZones = zones.filter(zone => !visibleZoneId || zone.id === visibleZoneId)
+  const hasManualPendingMatches = pendingMatches.some(match => match.source !== 'RECOMMENDATION')
+  const queuedRecommendationPairKeys = pendingMatches
+    .filter(match => match.source === 'RECOMMENDATION')
+    .map(match => zoneRecommendationPairKey(match.couple1.id, match.couple2.id))
 
   if (!isOwner) {
     return (
@@ -572,23 +785,123 @@ export default function MatchCreationSection({
 
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+      <div className="space-y-6">
+        {recommendationEnabled && (
+          <section aria-labelledby="match-assistant-title" className="space-y-3">
+            <div className="flex flex-col gap-3 rounded-surface border border-blue-100 bg-blue-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 id="match-assistant-title" className="font-semibold text-slate-900">Asistente de cruces</h2>
+                  <p className="mt-0.5 text-sm text-slate-600">
+                    Buscá un partido que permita completar la zona sin repetir rivales.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant={recommendationOpen ? "secondary" : "outline"}
+                className="shrink-0 gap-2 border-blue-200 bg-white text-blue-800 hover:bg-blue-100"
+                aria-expanded={recommendationOpen}
+                aria-controls="single-zone-recommendation"
+                onClick={() => setRecommendationOpen(current => !current)}
+              >
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                {recommendationOpen ? "Ocultar recomendación" : "Recomendar cruce"}
+              </Button>
+            </div>
+
+            {recommendationOpen && (
+              <div id="single-zone-recommendation">
+                <SingleZoneRecommendationPanel
+                  tournamentId={tournamentId}
+                  refreshTrigger={refreshTrigger + recommendationRefreshTrigger}
+                  useDisabled={hasManualPendingMatches}
+                  useDisabledReason="Creá o vaciá los cruces manuales antes de agregar una tanda recomendada."
+                  queuedPairKeys={queuedRecommendationPairKeys}
+                  onUseRecommendations={handleUseRecommendations}
+                />
+              </div>
+            )}
+          </section>
+        )}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
         {/* Left side - Zones */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-900">Zonas del Torneo</h2>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">Elegir parejas</h2>
+                <p className="mt-1 text-sm text-slate-500">Un clic selecciona; el segundo clic prepara el partido.</p>
+              </div>
             {selectedCouples.length > 0 && (
-              <Badge variant="default" className="bg-emerald-600">
+              <Badge className="shrink-0 bg-rose-600 text-white hover:bg-rose-600">
                 {selectedCouples.length}/2 seleccionadas
               </Badge>
             )}
+            </div>
+
+            {zones.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Seleccionar zona">
+                {zones.map(zone => (
+                  <Button
+                    key={zone.id}
+                    type="button"
+                    size="sm"
+                    variant={visibleZoneId === zone.id ? "default" : "outline"}
+                    className={visibleZoneId === zone.id ? "shrink-0 bg-slate-900 text-white hover:bg-slate-800" : "shrink-0"}
+                    onClick={() => {
+                      setVisibleZoneId(zone.id)
+                      setSelectedCouples([])
+                      setSelectedZoneId(null)
+                    }}
+                  >
+                    {zone.name || "Zona"}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-x-3 gap-y-2 text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-600" />En selección o cola</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" />En juego</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Finalizado</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-slate-400" />Cupo completo</span>
+            </div>
           </div>
 
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-            {zones.map((zone) => {
+          <div className="space-y-4 lg:max-h-[70vh] lg:overflow-y-auto lg:pr-1">
+            {visibleZones.map((zone) => {
               // Filter matches for this zone
               const zoneMatches = matches.filter(match => match.zone_id === zone.id)
               const couplesWithFinished = couplesWithFinishedMatches[zone.id] || []
+              const pendingCoupleIds = Array.from(new Set(
+                pendingMatches
+                  .filter(match => match.zoneId === zone.id)
+                  .flatMap(match => [match.couple1.id, match.couple2.id])
+              ))
+              const matchStatusSummaryByCouple = zoneMatches.reduce<Record<string, {
+                finished: number
+                inProgress: number
+                pending: number
+              }>>((summary, match) => {
+                const coupleIds = [match.couple1_id, match.couple2_id]
+
+                coupleIds.forEach(coupleId => {
+                  const currentSummary = summary[coupleId] || { finished: 0, inProgress: 0, pending: 0 }
+
+                  if (match.status === 'FINISHED') currentSummary.finished += 1
+                  else if (match.status === 'IN_PROGRESS') currentSummary.inProgress += 1
+                  else if (match.status === 'PENDING') currentSummary.pending += 1
+
+                  summary[coupleId] = currentSummary
+                })
+
+                return summary
+              }, {})
               
               return (
                 <ZoneMatrixTable
@@ -598,6 +911,8 @@ export default function MatchCreationSection({
                   onCoupleClick={handleCoupleClick}
                   selectedCouples={selectedCouples}
                   couplesWithFinishedMatches={couplesWithFinished}
+                  pendingCoupleIds={pendingCoupleIds}
+                  matchStatusSummaryByCouple={matchStatusSummaryByCouple}
                 />
               )
             })}
@@ -605,13 +920,15 @@ export default function MatchCreationSection({
         </div>
 
         {/* Right side - Match Builder */}
-        <div className="space-y-4">
+        <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
           <MatchBuilder
             pendingMatches={pendingMatches}
             onRemoveMatch={handleRemoveMatch}
             onCourtChange={handleCourtChange}
             clubCourts={clubCourts}
             selectedCouples={selectedCouples}
+            selectedZoneName={selectedZoneName}
+            onRemoveSelected={handleRemoveSelected}
           />
 
           {/* Create matches button */}
@@ -641,6 +958,7 @@ export default function MatchCreationSection({
           )}
         </div>
       </div>
+      </div>
 
       <DragOverlay>
         {activeDragId ? (
@@ -656,6 +974,46 @@ export default function MatchCreationSection({
           </Card>
         ) : null}
       </DragOverlay>
+
+      <AlertDialog
+        open={Boolean(unsafeMatch)}
+        onOpenChange={open => {
+          if (!open && !confirmingUnsafe) setUnsafeMatch(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Este cruce puede romper el fixture restante</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unsafeMatch
+                ? `${unsafeMatch.match.couple1.player1_name} / ${unsafeMatch.match.couple1.player2_name} vs. ${unsafeMatch.match.couple2.player1_name} / ${unsafeMatch.match.couple2.player2_name} no conserva un cierre completo garantizado sin repetir rivales.`
+                : 'El partido no conserva un cierre completo garantizado.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={confirmingUnsafe}
+              onClick={() => {
+                setRecommendationOpen(true)
+                setRecommendationRefreshTrigger(current => current + 1)
+              }}
+            >
+              Cancelar y recalcular
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirmingUnsafe}
+              onClick={event => {
+                event.preventDefault()
+                void handleConfirmUnsafeMatch()
+              }}
+              className="bg-amber-600 text-white hover:bg-amber-700"
+            >
+              {confirmingUnsafe && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+              Crear igualmente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DndContext>
   )
 }

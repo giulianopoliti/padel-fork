@@ -143,7 +143,7 @@ export default function ZoneMatchDialog({
   }
 
   // Handle create match
-  const handleCreateMatch = async () => {
+  const handleCreateMatch = async (allowUnsafe = false): Promise<void> => {
     if (!canCreateMatch()) {
       setError('Por favor ingresa un número de cancha válido')
       return
@@ -160,11 +160,26 @@ export default function ZoneMatchDialog({
           zoneId,
           couple1Id: couple1.id,
           couple2Id: couple2.id,
-          court: parseInt(court)
+          court: parseInt(court),
+          allowUnsafe,
         })
       })
 
       const result = await response.json()
+
+      if (!response.ok && result.requiresConfirmation && !allowUnsafe) {
+        const confirmed = window.confirm(
+          `${result.error}\n\n` +
+          'Si continuás, podría ser necesario borrar otro partido o repetir un cruce para completar la zona.\n\n' +
+          '¿Querés crear el partido igualmente?'
+        )
+
+        if (confirmed) {
+          setLoading(false)
+          await handleCreateMatch(true)
+        }
+        return
+      }
 
       if (response.ok && result.success) {
         toast({
@@ -622,7 +637,7 @@ export default function ZoneMatchDialog({
               </Button>
               <Button
                 type="submit"
-                onClick={handleCreateMatch}
+                onClick={() => handleCreateMatch()}
                 disabled={!canCreateMatch() || loading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >

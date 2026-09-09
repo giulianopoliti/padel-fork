@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { checkTournamentPermissions } from '@/utils/tournament-permissions';
+import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver';
 import MatchesView from './components/MatchesView';
 
 interface MatchesPageProps {
@@ -56,7 +57,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
 
   const { data: tournament, error } = await supabase
     .from('tournaments')
-    .select('id, name, type, status, club_id, gender')
+    .select('id, name, type, status, club_id, gender, format_type, format_config')
     .eq('id', tournamentId)
     .single();
 
@@ -91,6 +92,11 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
     .single();
 
   const clubCourts = clubData?.courts || 10;
+  const resolvedFormat = TournamentFormatResolver.getResolvedFormat(tournament);
+  const recommendationEnabled = (
+    resolvedFormat.baseType === 'AMERICAN' &&
+    resolvedFormat.zoneMode === 'SINGLE_ZONE'
+  );
 
   // ========================================
   // PASO 4: RENDERIZAR CLIENT COMPONENT
@@ -102,6 +108,7 @@ export default async function MatchesPage({ params }: MatchesPageProps) {
       isOwner={isOwner}
       isPublicView={isPublicView}
       clubCourts={clubCourts}
+      recommendationEnabled={recommendationEnabled}
     />
   );
 }

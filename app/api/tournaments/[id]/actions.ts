@@ -11,6 +11,7 @@ import { SingleZoneDefinitiveAnalyzer } from '@/lib/services/single-zone-definit
 import { generatePlaceholderBracket } from '@/lib/services/bracket-generation-orchestrator';
 import { ZoneFixturePlanner } from '@/lib/services/zone-fixture-planner.service';
 import { ZoneRulesSyncService } from '@/lib/services/zone-rules-sync.service';
+import { assessAmericanSingleZoneCandidate } from '@/lib/services/zone-match-recommendation/american-single-zone.service';
 import {
   replaceZonePositionsAtomically,
 } from '@/lib/services/zone-position/atomic-position-persistence';
@@ -1204,10 +1205,24 @@ export async function buildZonesAction(tournamentId: string): Promise<{
 // -----------------------------------------------------------------------------
 //  FIN buildZonesAction
 // -----------------------------------------------------------------------------
-
-
-
-export async function createMatchOfZone(tournamentId: string, zoneId: string, couple1Id: string, couple2Id: string, court: number) {
+/**
+ * Crea un partido de zona y, cuando aplica el recomendador, protege el fixture
+ * restante justo antes del INSERT.
+ *
+ * expectedRecommendationRevision detecta una sugerencia que quedó vieja.
+ * allowUnsafe permite un override explícito luego de advertir al organizador.
+ */
+export async function createMatchOfZone(
+  tournamentId: string,
+  zoneId: string,
+  couple1Id: string,
+  couple2Id: string,
+  court: number,
+  options: {
+    expectedRecommendationRevision?: string
+    allowUnsafe?: boolean
+  } = {},
+) {
   const supabase = await createClient()
 
   // 1. Validar usuario autenticado
@@ -1263,7 +1278,51 @@ export async function createMatchOfZone(tournamentId: string, zoneId: string, co
   // Incluir warnings en la respuesta si existen
   const warnings = validation.warnings || [];
 
-  // 6. Crear el partido with IN_PROGRESS status
+  // 6. Para AMERICAN SINGLE_ZONE, verificar que el cruce conserve un cierre
+  // completo. El servicio es agnóstico; este adaptador limita su activación.
+  const recommendationAssessment = await assessAmericanSingleZoneCandidate(
+    supabase,
+    tournamentId,
+    zoneId,
+    { couple1Id, couple2Id },
+  )
+
+  if (recommendationAssessment.applicable) {
+    if (recommendationAssessment.reason === 'ZONE_MISMATCH') {
+      return { success: false, code: 'ZONE_MISMATCH', error: 'La zona no corresponde al torneo single-zone' }
+    }
+
+    if (
+      options.expectedRecommendationRevision &&
+      options.expectedRecommendationRevision !== recommendationAssessment.revision
+    ) {
+      return {
+        success: false,
+        code: 'RECOMMENDATION_STALE',
+        error: 'Los partidos cambiaron desde que se generó la recomendación. Recalculá antes de crear.',
+      }
+    }
+
+    if (recommendationAssessment.reason === 'COUPLE_BUSY') {
+      return {
+        success: false,
+        code: 'COUPLE_IN_PROGRESS',
+        error: 'Una de las parejas ya tiene un partido en curso.',
+      }
+    }
+
+    if (!recommendationAssessment.safe && !options.allowUnsafe) {
+      return {
+        success: false,
+        code: 'WOULD_BREAK_REMAINING_FIXTURE',
+        requiresConfirmation: true,
+        error: 'Este cruce puede dejar la zona sin una combinación completa de rivales nuevos.',
+        diagnostics: recommendationAssessment.result?.diagnostics || [],
+      }
+    }
+  }
+
+  // 7. Crear el partido with IN_PROGRESS status
   const { data: matchRow, error: matchErr } = await supabase
     .from("matches")
     .insert({
@@ -1293,7 +1352,13 @@ export async function createMatchOfZone(tournamentId: string, zoneId: string, co
   return createApiResponse({ 
     success: true, 
     match: safeMatch,
-    warnings: warnings.length > 0 ? warnings : undefined
+    warnings: warnings.length > 0 ? warnings : undefined,
+    recommendationRevision: recommendationAssessment.revision,
+    unsafeOverrideApplied: Boolean(
+      recommendationAssessment.applicable &&
+      !recommendationAssessment.safe &&
+      options.allowUnsafe
+    ),
   })
 }
 

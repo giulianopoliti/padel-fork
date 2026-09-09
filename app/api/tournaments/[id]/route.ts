@@ -113,11 +113,20 @@ export async function POST(
     const { id: tournamentId } = await params;
 
     const body = await request.json();
-    const { zoneId, couple1Id, couple2Id, court } = body as {
+    const {
+      zoneId,
+      couple1Id,
+      couple2Id,
+      court,
+      expectedRecommendationRevision,
+      allowUnsafe,
+    } = body as {
       zoneId: string;
       couple1Id: string;
       couple2Id: string;
       court?: number | null;
+      expectedRecommendationRevision?: string;
+      allowUnsafe?: boolean;
     };
 
     if (!zoneId || !couple1Id || !couple2Id) {
@@ -130,15 +139,26 @@ export async function POST(
     // Dynamically import to avoid edge bundling issues
     const { createMatchOfZone } = await import("./actions");
 
+    // Los dos campos opcionales conectan el POST existente con la protección del
+    // recomendador sin obligar a que todas las pantallas muestren todavía el panel.
     const result = await createMatchOfZone(
       tournamentId,
       zoneId,
       couple1Id,
       couple2Id,
-      court ?? 0
+      court ?? 0,
+      { expectedRecommendationRevision, allowUnsafe },
     );
 
-    return NextResponse.json(result, { status: result.success ? 200 : 400 });
+    const status = result.success
+      ? 200
+      : 'code' in result && result.code === 'RECOMMENDATION_STALE'
+        ? 409
+        : 'requiresConfirmation' in result && result.requiresConfirmation
+          ? 422
+          : 400
+
+    return NextResponse.json(result, { status });
   } catch (e: any) {
     return NextResponse.json(
       { success: false, error: e.message || "Error inesperado" },
