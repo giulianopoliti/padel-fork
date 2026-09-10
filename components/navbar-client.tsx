@@ -101,9 +101,12 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const contextualLoginHref = isTournamentDetailPage ? `/login?redirectTo=${encodeURIComponent(pathname)}` : "/login"
   const contextualRegisterHref = isTournamentDetailPage ? `/register?redirectTo=${encodeURIComponent(pathname)}` : "/register"
   const isFvHomeOverHero = isFvHome && isFvHeroVisible
+  const isFvHeroMenuOpen = isFvHomeOverHero && mobileMenuOpen
   const isFvDarkNavbar = !isElite && (isFvHomeOverHero || !isFvHome)
   const headerClassName = isElite
     ? "sticky top-0 z-50 bg-gray-950/95 shadow-md backdrop-blur"
+    : isFvHeroMenuOpen
+      ? "sticky top-0 z-50 border-b border-white/10 bg-brand-900/95 shadow-[0_12px_28px_rgba(8,16,31,0.28)] backdrop-blur transition-colors duration-200"
     : isFvHomeOverHero
       ? "sticky top-0 z-50 border-b border-transparent bg-transparent transition-colors duration-200"
       : isFvHome
@@ -125,6 +128,8 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
     : "text-slate-100/90 hover:bg-white/10 hover:text-white"
   const mobilePanelClassName = isElite
     ? "border-t border-gray-800 py-4 lg:hidden"
+    : isFvHeroMenuOpen
+      ? "border-t border-white/10 bg-brand-900/95 py-4 shadow-[0_16px_28px_rgba(8,16,31,0.2)] backdrop-blur lg:hidden"
     : isFvHome && !isFvHeroVisible
       ? "border-t border-[#20335d]/10 py-4 lg:hidden"
       : "border-t border-white/10 py-4 lg:hidden"

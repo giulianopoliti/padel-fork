@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -25,11 +25,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Calendar, Loader2, AlertCircle } from 'lucide-react'
 import { TournamentFecha } from '../../types'
-import { createTournamentFecha } from '../../../schedule-management/actions'
+import {
+  createTournamentFecha,
+  getAvailableScheduleRoundOptions,
+  type ScheduleRoundOption,
+} from '../../../schedule-management/actions'
 import type { CreateFechaData } from '../../../schedule-management/types'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { toast } from 'sonner'
-import { resolveFechaBracketKeyForTournament } from '@/lib/services/fecha-bracket-policy'
 
 type RoundType = 'ZONE' | '32VOS' | '16VOS' | '8VOS' | '4TOS' | 'SEMIFINAL' | 'FINAL'
 type BracketKey = 'MAIN' | 'GOLD' | 'SILVER'
@@ -86,51 +88,10 @@ export default function CreateFechaDialog({
 }: CreateFechaDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [availableRounds, setAvailableRounds] = useState<RoundType[]>(['ZONE'])
+  const [roundSelectionOptions, setRoundSelectionOptions] = useState<RoundSelectionOption[]>([
+    { value: 'ZONE:MAIN', roundType: 'ZONE', bracketKey: 'MAIN', label: ROUND_LABELS.ZONE },
+  ])
   const [roundsLoading, setRoundsLoading] = useState(false)
-  const [isGoldSilverLong, setIsGoldSilverLong] = useState(false)
-
-  const roundSelectionOptions = useMemo<RoundSelectionOption[]>(() => {
-    const options: RoundSelectionOption[] = []
-
-    for (const round of availableRounds) {
-      if (round === 'ZONE') {
-        options.push({
-          value: 'ZONE:MAIN',
-          roundType: 'ZONE',
-          bracketKey: 'MAIN',
-          label: ROUND_LABELS.ZONE,
-        })
-        continue
-      }
-
-      if (isGoldSilverLong) {
-        options.push(
-          {
-            value: `${round}:GOLD`,
-            roundType: round,
-            bracketKey: 'GOLD',
-            label: `${ROUND_LABELS[round]} (Copa de Oro)`,
-          },
-          {
-            value: `${round}:SILVER`,
-            roundType: round,
-            bracketKey: 'SILVER',
-            label: `${ROUND_LABELS[round]} (Copa de Plata)`,
-          }
-        )
-      } else {
-        options.push({
-          value: `${round}:MAIN`,
-          roundType: round,
-          bracketKey: 'MAIN',
-          label: ROUND_LABELS[round],
-        })
-      }
-    }
-
-    return options
-  }, [availableRounds, isGoldSilverLong])
 
   const form = useForm<CreateFechaFormData>({
     resolver: zodResolver(createFechaSchema),
@@ -147,72 +108,32 @@ export default function CreateFechaDialog({
     const fetchAvailableRounds = async () => {
       setRoundsLoading(true)
       try {
-        const supabase = createClientComponentClient()
-        const { data: matches, error: fetchError } = await supabase
-          .from('matches')
-          .select('round')
-          .eq('tournament_id', tournamentId)
-          .not('round', 'is', null)
-
-        if (fetchError) {
-          console.error('Error fetching rounds:', fetchError)
+        const result = await getAvailableScheduleRoundOptions(tournamentId)
+        if (!result.success || !result.data) {
+          setError(result.error || 'No se pudieron cargar las rondas disponibles')
           return
         }
 
-        const bracketRounds = new Set<RoundType>()
-        matches?.forEach((match) => {
-          if (match.round) {
-            bracketRounds.add(match.round as RoundType)
-          }
-        })
-
-        const allRounds = new Set<RoundType>(['ZONE', ...Array.from(bracketRounds)])
-        const orderedRounds: RoundType[] = ['ZONE', '32VOS', '16VOS', '8VOS', '4TOS', 'SEMIFINAL', 'FINAL']
-        const sortedRounds = Array.from(allRounds).sort((a, b) => orderedRounds.indexOf(a) - orderedRounds.indexOf(b))
-        setAvailableRounds(sortedRounds)
+        setRoundSelectionOptions(result.data.map((option: ScheduleRoundOption) => ({
+          value: `${option.roundType}:${option.bracketKey}`,
+          roundType: option.roundType,
+          bracketKey: option.bracketKey,
+          label: option.bracketKey === 'MAIN'
+            ? ROUND_LABELS[option.roundType]
+            : `${ROUND_LABELS[option.roundType]} (${option.bracketKey === 'GOLD' ? 'Copa de Oro' : 'Copa de Plata'})`,
+        })))
       } catch (fetchError) {
         console.error('Error fetching available rounds:', fetchError)
+        setError('No se pudieron cargar las rondas disponibles')
       } finally {
         setRoundsLoading(false)
       }
     }
 
-    if (tournamentId) {
+    if (tournamentId && isOpen) {
       fetchAvailableRounds()
     }
-  }, [tournamentId])
-
-  useEffect(() => {
-    const fetchTournamentFormat = async () => {
-      try {
-        const supabase = createClientComponentClient()
-        const { data: tournament } = await supabase
-          .from('tournaments')
-          .select('type, format_config')
-          .eq('id', tournamentId)
-          .single()
-
-        if (!tournament) {
-          setIsGoldSilverLong(false)
-          return
-        }
-
-        const checkResult = resolveFechaBracketKeyForTournament(tournament as any, {
-          roundType: 'SEMIFINAL',
-          requestedBracketKey: 'GOLD',
-        })
-
-        setIsGoldSilverLong(tournament.type === 'LONG' && checkResult.ok)
-      } catch (fetchError) {
-        console.error('Error fetching tournament format:', fetchError)
-        setIsGoldSilverLong(false)
-      }
-    }
-
-    if (tournamentId) {
-      fetchTournamentFormat()
-    }
-  }, [tournamentId])
+  }, [tournamentId, isOpen])
 
   useEffect(() => {
     const currentValue = form.getValues('round_selection')
@@ -403,11 +324,6 @@ export default function CreateFechaDialog({
                     </select>
                   </FormControl>
                   <FormMessage />
-                  {isGoldSilverLong && (
-                    <p className="text-sm text-muted-foreground">
-                      Para rondas de llave, selecciona la copa dentro de la misma opción.
-                    </p>
-                  )}
                 </FormItem>
               )}
             />

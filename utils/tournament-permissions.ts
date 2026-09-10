@@ -207,26 +207,24 @@ export async function checkTournamentPermissions(
 
 
 export async function checkOrganizationPermissions(userId: string, tournamentOrganizationId?: string): Promise<boolean> {
+  if (!tournamentOrganizationId) {
+    return false
+  }
+
   const supabase = await createClient()
   const {data: organizador, error: organizadorError} = await supabase
     .from('organization_members')
     .select('organizacion_id')
     .eq('user_id', userId)
+    .eq('organizacion_id', tournamentOrganizationId)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
   if (organizadorError || !organizador) {
     return false
   }
 
-  // If tournament organization ID is provided, check if user belongs to that specific organization
-  if (tournamentOrganizationId) {
-    return organizador.organizacion_id === tournamentOrganizationId
-  }
-
-  // If no tournament organization ID, then organizadores can't access this tournament
-  // (it belongs to a specific club owner, not an organization)
-  return false
+  return true
 }
 
 /**

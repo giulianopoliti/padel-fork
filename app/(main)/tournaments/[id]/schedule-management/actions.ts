@@ -1,9 +1,10 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { createTournamentFecha, type CreateFechaData } from '../dates/actions'
 import { createTimeSlot, getScheduleData, type CreateTimeSlotData } from '../schedules/actions'
+import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import {
   type FechaBracketKey,
   type FechaRoundType,
@@ -29,6 +30,89 @@ const adjustDateForArgentina = (dateString: string): string => {
 
 // Re-export functions (not types) from existing modules
 export { createTournamentFecha, createTimeSlot, getScheduleData }
+
+type ScheduleRoundType = Exclude<FechaRoundType, 'ZONE'>
+
+export interface ScheduleRoundOption {
+  roundType: FechaRoundType
+  bracketKey: FechaBracketKey
+}
+
+const SCHEDULE_ROUND_ORDER: readonly ScheduleRoundType[] = [
+  '32VOS',
+  '16VOS',
+  '8VOS',
+  '4TOS',
+  'SEMIFINAL',
+  'FINAL',
+]
+
+/**
+ * Returns only the rounds that actually exist for each bracket cup.
+ *
+ * This intentionally runs on the server after the same permission check used
+ * to create fechas. Draft bracket matches must be available to tournament
+ * managers when they create their schedules, but must remain private from
+ * players and the public.
+ */
+export async function getAvailableScheduleRoundOptions(
+  tournamentId: string,
+): Promise<{ success: boolean; data?: ScheduleRoundOption[]; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'Usuario no autenticado' }
+    }
+
+    const permissionResult = await checkTournamentPermissions(user.id, tournamentId)
+    if (!permissionResult.hasPermission) {
+      return {
+        success: false,
+        error: permissionResult.reason || 'No tienes permisos para ver las rondas del torneo',
+      }
+    }
+
+    const serviceSupabase = await createClientServiceRole()
+    const { data: matches, error: matchesError } = await serviceSupabase
+      .from('matches')
+      .select('round, bracket_key')
+      .eq('tournament_id', tournamentId)
+      .eq('type', 'ELIMINATION')
+      .in('round', [...SCHEDULE_ROUND_ORDER])
+
+    if (matchesError) {
+      throw matchesError
+    }
+
+    const optionsByKey = new Map<string, ScheduleRoundOption>()
+    for (const match of matches || []) {
+      const roundType = match.round as ScheduleRoundType
+      const bracketKey = (match.bracket_key || 'MAIN') as FechaBracketKey
+
+      if (!SCHEDULE_ROUND_ORDER.includes(roundType)) continue
+      if (!['MAIN', 'GOLD', 'SILVER'].includes(bracketKey)) continue
+
+      optionsByKey.set(`${roundType}:${bracketKey}`, { roundType, bracketKey })
+    }
+
+    const options = [
+      { roundType: 'ZONE' as const, bracketKey: 'MAIN' as const },
+      ...Array.from(optionsByKey.values()).sort((left, right) => {
+        const roundDifference = SCHEDULE_ROUND_ORDER.indexOf(left.roundType as ScheduleRoundType)
+          - SCHEDULE_ROUND_ORDER.indexOf(right.roundType as ScheduleRoundType)
+        if (roundDifference !== 0) return roundDifference
+        return left.bracketKey.localeCompare(right.bracketKey)
+      }),
+    ]
+
+    return { success: true, data: options }
+  } catch (error) {
+    console.error('Error loading schedule round options:', error)
+    return { success: false, error: 'No se pudieron cargar las rondas disponibles' }
+  }
+}
 
 // New unified actions specific to the schedule management page
 
