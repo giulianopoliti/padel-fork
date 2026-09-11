@@ -25,9 +25,9 @@ export default function BrandLogo({
   const defaultClassName = variant === "hero"
     ? "h-auto w-full max-w-[320px]"
     : emphasized
-      ? "h-20 w-auto drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]"
+      ? "h-16 w-auto"
       : "h-14 w-auto"
-  const maxHeight = variant === "hero" ? "112px" : emphasized ? "80px" : "56px"
+  const maxHeight = variant === "hero" ? "112px" : emphasized ? "64px" : "56px"
 
   if (variant === "navbar" && markSrc) {
     return (
@@ -46,7 +46,7 @@ export default function BrandLogo({
           alt={alt}
           width={440}
           height={120}
-          className={emphasized ? "hidden h-16 w-auto sm:block sm:h-20 drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]" : "hidden h-12 w-auto sm:block sm:h-14"}
+          className={emphasized ? "hidden h-14 w-auto sm:block sm:h-16" : "hidden h-12 w-auto sm:block sm:h-14"}
           style={{ width: "auto", height: "auto", maxHeight }}
           priority={priority}
         />
