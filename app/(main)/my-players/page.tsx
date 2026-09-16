@@ -45,6 +45,13 @@ export default async function MyPlayersPage() {
     page: 1,
     pageSize: 20,
   })
+  const initialPlayers = playersResult.players.map((player) => ({
+    ...player,
+    first_name: player.first_name || "",
+    last_name: player.last_name || "",
+    profile_image_url: player.profile_image_url || null,
+    users: player.users ? { email: player.users.email || null } : null,
+  }))
 
   // 4. Fetch categorías para filtros y edición
   const categories = await getCategories()
@@ -52,7 +59,7 @@ export default async function MyPlayersPage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PlayersManagementClient
-        initialPlayers={playersResult.players}
+        initialPlayers={initialPlayers}
         initialCategories={categories}
         initialTotal={playersResult.total}
         initialPage={1}

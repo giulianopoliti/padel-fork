@@ -20,7 +20,22 @@ export interface PlayerSearchRecord {
 interface SearchScoredPlayer {
   player: PlayerSearchRecord
   score: number
+  matchType: PlayerSearchMatchType
 }
+
+type PlayerSearchMatchType =
+  | "exact-dni"
+  | "dni-prefix"
+  | "dni-partial"
+  | "exact-full-name"
+  | "exact-reverse-name"
+  | "exact-tokens"
+  | "prefix-tokens"
+  | "fuzzy-tokens"
+  | "single-token-exact"
+  | "single-token-prefix"
+  | "single-token-partial"
+  | "none"
 
 export interface SearchPlayersOptions {
   searchTerm?: string
@@ -205,18 +220,72 @@ function isAdjacentTransposition(left: string, right: string): boolean {
     && left[second] === right[first]
 }
 
-function tokenMatches(token: string, textTokens: string[]): boolean {
-  if (!token || textTokens.length === 0) return false
+type TokenMatchMode = "exact" | "prefix" | "fuzzy"
 
-  for (const textToken of textTokens) {
-    if (!textToken) continue
-    if (textToken.includes(token) || token.includes(textToken)) return true
-    if (isAdjacentTransposition(token, textToken)) return true
-    if (token.length >= 4 && textToken.length >= 4 && similarity(token, textToken) >= 0.84) return true
-    if (Math.min(token.length, textToken.length) >= 3 && levenshteinDistance(token, textToken) <= 1) return true
+function scoreTokenPair(
+  searchToken: string,
+  candidateToken: string,
+  mode: TokenMatchMode,
+): number {
+  if (searchToken === candidateToken) return 1
+  if (mode === "exact") return 0
+
+  const shorterLength = Math.min(searchToken.length, candidateToken.length)
+  if (
+    shorterLength >= 2
+    && (candidateToken.startsWith(searchToken) || searchToken.startsWith(candidateToken))
+  ) {
+    return 0.94
+  }
+  if (mode === "prefix" || shorterLength < 3) return 0
+
+  if (isAdjacentTransposition(searchToken, candidateToken)) return 0.9
+  if (levenshteinDistance(searchToken, candidateToken) <= 1) return 0.88
+
+  const tokenSimilarity = similarity(searchToken, candidateToken)
+  return tokenSimilarity >= 0.84 ? tokenSimilarity * 0.9 : 0
+}
+
+function matchTokensOneToOne(
+  searchTokens: string[],
+  candidateTokens: string[],
+  mode: TokenMatchMode,
+): number | null {
+  if (searchTokens.length === 0 || candidateTokens.length === 0) return null
+  if (searchTokens.length > candidateTokens.length) return null
+
+  const optionsBySearchToken = searchTokens
+    .map((searchToken) => candidateTokens
+      .map((candidateToken, candidateIndex) => ({
+        candidateIndex,
+        score: scoreTokenPair(searchToken, candidateToken, mode),
+      }))
+      .filter((option) => option.score > 0)
+      .sort((left, right) => right.score - left.score))
+    .sort((left, right) => left.length - right.length)
+
+  if (optionsBySearchToken.some((options) => options.length === 0)) return null
+
+  let bestTotalScore = 0
+  const usedCandidateIndexes = new Set<number>()
+
+  const assignToken = (searchIndex: number, totalScore: number) => {
+    if (searchIndex === optionsBySearchToken.length) {
+      bestTotalScore = Math.max(bestTotalScore, totalScore)
+      return
+    }
+
+    for (const option of optionsBySearchToken[searchIndex]) {
+      if (usedCandidateIndexes.has(option.candidateIndex)) continue
+
+      usedCandidateIndexes.add(option.candidateIndex)
+      assignToken(searchIndex + 1, totalScore + option.score)
+      usedCandidateIndexes.delete(option.candidateIndex)
+    }
   }
 
-  return false
+  assignToken(0, 0)
+  return bestTotalScore > 0 ? bestTotalScore / searchTokens.length : null
 }
 
 function normalizeDniLoose(value?: string | null): string {
@@ -224,11 +293,16 @@ function normalizeDniLoose(value?: string | null): string {
 }
 
 function isLikelyDniSearch(normalizedSearch: string): boolean {
-  return /^[0-9]{3,}$/.test(normalizedSearch.replace(/\s+/g, ""))
+  return /^[0-9\s]+$/.test(normalizedSearch)
+    && normalizeDniLoose(normalizedSearch).length >= 3
 }
 
-function scorePlayerMatch(player: PlayerSearchRecord, normalizedSearch: string, searchTokens: string[]): number {
-  if (!normalizedSearch) return 0
+function scorePlayerMatch(
+  player: PlayerSearchRecord,
+  normalizedSearch: string,
+  searchTokens: string[],
+): Pick<SearchScoredPlayer, "score" | "matchType"> {
+  if (!normalizedSearch) return { score: 0, matchType: "none" }
 
   const firstName = normalizeName(player.first_name)
   const lastName = normalizeName(player.last_name)
@@ -238,34 +312,59 @@ function scorePlayerMatch(player: PlayerSearchRecord, normalizedSearch: string, 
   const normalizedDniSearch = normalizeDniLoose(normalizedSearch)
   const nameTokens = tokenize(fullName)
 
-  let score = 0
-
-  if (normalizedDniSearch && dniDigits) {
-    if (dniDigits === normalizedDniSearch) score = Math.max(score, 1.2)
-    else if (dniDigits.startsWith(normalizedDniSearch)) score = Math.max(score, 1.05)
-    else if (dniDigits.includes(normalizedDniSearch)) score = Math.max(score, 0.9)
+  if (isLikelyDniSearch(normalizedSearch) && normalizedDniSearch && dniDigits) {
+    if (dniDigits === normalizedDniSearch) return { score: 2, matchType: "exact-dni" }
+    if (dniDigits.startsWith(normalizedDniSearch)) return { score: 1.8, matchType: "dni-prefix" }
+    if (normalizedDniSearch.length >= 4 && dniDigits.includes(normalizedDniSearch)) {
+      return { score: 1.5, matchType: "dni-partial" }
+    }
   }
 
-  if (firstName.includes(normalizedSearch)) score = Math.max(score, 0.95)
-  if (lastName.includes(normalizedSearch)) score = Math.max(score, 0.95)
-  if (fullName.includes(normalizedSearch) || reverseName.includes(normalizedSearch)) score = Math.max(score, 1.0)
-
-  const exactWordMatches = searchTokens.filter((token) => nameTokens.includes(token)).length
-  if (searchTokens.length > 0) {
-    const coverage = exactWordMatches / searchTokens.length
-    score = Math.max(score, coverage * 0.95)
+  if (fullName === normalizedSearch) {
+    return { score: 1.4, matchType: "exact-full-name" }
+  }
+  if (reverseName === normalizedSearch) {
+    return { score: 1.35, matchType: "exact-reverse-name" }
   }
 
-  const allTokensMatch = searchTokens.length > 0 && searchTokens.every((token) => tokenMatches(token, nameTokens))
-  if (allTokensMatch) {
-    score = Math.max(score, 0.9 + Math.min(0.08, searchTokens.length * 0.02))
+  if (searchTokens.length === 1) {
+    const searchToken = searchTokens[0]
+    if (nameTokens.includes(searchToken)) {
+      return { score: 1.3, matchType: "single-token-exact" }
+    }
+    if (
+      searchToken.length >= 2
+      && nameTokens.some((nameToken) => nameToken.startsWith(searchToken))
+    ) {
+      return { score: 1.15, matchType: "single-token-prefix" }
+    }
+    if (
+      searchToken.length >= 3
+      && nameTokens.some((nameToken) => nameToken.includes(searchToken))
+    ) {
+      return { score: 0.95, matchType: "single-token-partial" }
+    }
+
+    const fuzzyTokenScore = matchTokensOneToOne(searchTokens, nameTokens, "fuzzy")
+    return fuzzyTokenScore
+      ? { score: 0.9 + fuzzyTokenScore * 0.1, matchType: "fuzzy-tokens" }
+      : { score: 0, matchType: "none" }
   }
 
-  const fullSimilarity = similarity(normalizedSearch, fullName)
-  const reverseSimilarity = similarity(normalizedSearch, reverseName)
-  score = Math.max(score, fullSimilarity * 0.92, reverseSimilarity * 0.9)
+  const exactTokenScore = matchTokensOneToOne(searchTokens, nameTokens, "exact")
+  if (exactTokenScore) return { score: 1.3, matchType: "exact-tokens" }
 
-  return Math.min(score, 1.25)
+  const prefixTokenScore = matchTokensOneToOne(searchTokens, nameTokens, "prefix")
+  if (prefixTokenScore) {
+    return { score: 1.1 + prefixTokenScore * 0.05, matchType: "prefix-tokens" }
+  }
+
+  const fuzzyTokenScore = matchTokensOneToOne(searchTokens, nameTokens, "fuzzy")
+  if (fuzzyTokenScore) {
+    return { score: 0.9 + fuzzyTokenScore * 0.1, matchType: "fuzzy-tokens" }
+  }
+
+  return { score: 0, matchType: "none" }
 }
 
 export function applyRobustPlayerSearch({
@@ -279,34 +378,33 @@ export function applyRobustPlayerSearch({
   const safePageSize = Math.max(1, Math.min(200, pageSize))
   const normalizedSearch = normalizeSearchTerm(searchTerm)
   const searchTokens = tokenize(normalizedSearch)
-  const likelyDni = isLikelyDniSearch(normalizedSearch)
 
   const excludedIds = new Set(excludePlayerIds)
   let scored: SearchScoredPlayer[] = players
     .filter((player) => !excludedIds.has(player.id))
-    .map((player) => ({ player, score: 0 }))
+    .map((player) => ({ player, score: 0, matchType: "none" }))
 
   if (normalizedSearch) {
     scored = scored
       .map((entry) => ({
         ...entry,
-        score: scorePlayerMatch(entry.player, normalizedSearch, searchTokens),
+        ...scorePlayerMatch(entry.player, normalizedSearch, searchTokens),
       }))
-      .filter((entry) => {
-        if (entry.score <= 0) return false
-        if (likelyDni) return entry.score >= 0.85
-        return entry.score >= 0.75
-      })
+      .filter((entry) => entry.score > 0)
   }
 
   scored.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score
-    const aScore = a.player.score ?? -1
-    const bScore = b.player.score ?? -1
-    if (bScore !== aScore) return bScore - aScore
+    if (!normalizedSearch) {
+      const aScore = a.player.score ?? -1
+      const bScore = b.player.score ?? -1
+      if (bScore !== aScore) return bScore - aScore
+    }
     const aName = `${a.player.first_name || ""} ${a.player.last_name || ""}`.trim()
     const bName = `${b.player.first_name || ""} ${b.player.last_name || ""}`.trim()
-    return aName.localeCompare(bName, "es")
+    const nameComparison = aName.localeCompare(bName, "es")
+    if (nameComparison !== 0) return nameComparison
+    return a.player.id.localeCompare(b.player.id)
   })
 
   const total = scored.length

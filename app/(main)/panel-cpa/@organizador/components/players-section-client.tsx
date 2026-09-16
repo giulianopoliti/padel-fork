@@ -10,6 +10,9 @@ import { searchPlayersOrganization } from '@/lib/api/supabase-edge'
 import PlayersTableWithActions from '@/components/players/players-table-with-actions'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useToast } from '@/components/ui/use-toast'
+import { PaginationControl } from '@/components/ui/pagination'
+
+const PAGE_SIZE = 10
 
 interface PlayerData {
   id: string
@@ -50,6 +53,8 @@ export default function PlayersSectionClient({
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [isSearching, setIsSearching] = useState(false)
+  const [total, setTotal] = useState(totalPlayers)
+  const [currentPage, setCurrentPage] = useState(1)
   const [showIdentityTransfer, setShowIdentityTransfer] = useState(false)
   const { toast } = useToast()
 
@@ -64,7 +69,8 @@ export default function PlayersSectionClient({
   // Función de búsqueda via Edge Function
   const performSearch = useCallback(async (
     search: string,
-    category: string
+    category: string,
+    page = 1,
   ) => {
     const searchId = ++latestSearchIdRef.current
     try {
@@ -72,8 +78,8 @@ export default function PlayersSectionClient({
 
       const result = await searchPlayersOrganization({
         searchTerm: search,
-        page: 1,
-        pageSize: 10, // Solo mostramos top 10
+        page,
+        pageSize: PAGE_SIZE,
         categoryFilter: category,
         organizationId
       })
@@ -82,6 +88,8 @@ export default function PlayersSectionClient({
 
       if (result.success) {
         setPlayers(result.players || [])
+        setTotal(result.total || 0)
+        setCurrentPage(result.currentPage || page)
       } else {
         toast({
           title: 'Error',
@@ -109,8 +117,12 @@ export default function PlayersSectionClient({
       return
     }
 
-    performSearch(debouncedSearch, categoryFilter)
+    performSearch(debouncedSearch, categoryFilter, 1)
   }, [debouncedSearch, categoryFilter, performSearch])
+
+  const handlePageChange = (page: number) => {
+    performSearch(debouncedSearch, categoryFilter, page)
+  }
 
   const handlePlayerUpdate = (updatedPlayer: PlayerData) => {
     setPlayers(prev => prev.map(p => p.id === updatedPlayer.id ? updatedPlayer : p))
@@ -183,11 +195,25 @@ export default function PlayersSectionClient({
           onPlayerAccountReset={handlePlayerAccountReset}
         />
       </div>
+      <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {total === 0
+            ? 'No se encontraron jugadores'
+            : `Mostrando ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, total)} de ${total} jugadores`}
+        </p>
+        <PaginationControl
+          total={total}
+          pageSize={PAGE_SIZE}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
+          disabled={isSearching}
+        />
+      </div>
       {canResolvePlayerIdentity && (
         <PlayerIdentityTransferDialog
           open={showIdentityTransfer}
           onOpenChange={setShowIdentityTransfer}
-          onTransferred={() => performSearch(debouncedSearch, categoryFilter)}
+          onTransferred={() => performSearch(debouncedSearch, categoryFilter, currentPage)}
         />
       )}
     </div>
