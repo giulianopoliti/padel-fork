@@ -10,6 +10,7 @@ import {
   type PlayerIdentityCandidate,
   type PlayerTournamentReference,
 } from '@/lib/player-identity-transfer'
+import { searchPlayersByOrganization } from '@/lib/services/player-search-service'
 
 type OrganizerContext = {
   userId: string
@@ -162,27 +163,18 @@ export const searchOrganizationIdentityTargets = async (searchInput: string) => 
   try {
     const context = await getOrganizerContext()
     const search = z.string().trim().min(2).max(80).parse(searchInput)
-    const digits = search.replace(/\D/g, '')
-    const playerSelect = 'id, first_name, last_name, dni, phone, user_id, users!players_user_id_fkey(email)'
-    const results = await Promise.all([
-      supabaseAdmin.from('players').select(playerSelect).ilike('first_name', `%${search}%`).limit(15),
-      supabaseAdmin.from('players').select(playerSelect).ilike('last_name', `%${search}%`).limit(15),
-      digits.length > 0
-        ? supabaseAdmin.from('players').select(playerSelect).ilike('dni', `%${digits}%`).limit(15)
-        : Promise.resolve({ data: [], error: null }),
-    ])
+    const result = await searchPlayersByOrganization({
+      organizationId: context.organizationId,
+      searchTerm: search,
+      page: 1,
+      pageSize: 50,
+    })
 
-    const queryError = results.find((result) => result.error)?.error
-    if (queryError) throw queryError
-
-    const players = new Map<string, PlayerRow>()
-    results.flatMap((result) => result.data || []).forEach((player) => players.set(player.id, player as PlayerRow))
-
-    const candidates = await Promise.all(Array.from(players.values()).map(async (player) => {
+    const candidates = await Promise.all(result.players.map(async (player) => {
       const tournaments = await getPlayerTournaments(player.id)
       const ownTournaments = tournaments.filter((tournament) => tournament.organizationId === context.organizationId)
-      return ownTournaments.length > 0 && !player.user_id
-        ? normalizePlayer(player, ownTournaments)
+      return ownTournaments.length > 0
+        ? normalizePlayer(player as PlayerRow, ownTournaments)
         : null
     }))
 

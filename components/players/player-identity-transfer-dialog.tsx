@@ -75,6 +75,7 @@ export const PlayerIdentityTransferDialog = ({
     setError(null)
     setSource(null)
     setTarget(null)
+    setTargets([])
     try {
       const result = await findIdentitySourceByEmail(email)
       if (!result.success || !result.player) {
@@ -91,6 +92,7 @@ export const PlayerIdentityTransferDialog = ({
   const handleSearchTargets = async () => {
     setIsLoading(true)
     setError(null)
+    setTarget(null)
     try {
       const result = await searchOrganizationIdentityTargets(targetSearch)
       if (!result.success) {
@@ -185,9 +187,15 @@ export const PlayerIdentityTransferDialog = ({
                     type="button"
                     key={player.id}
                     onClick={() => setTarget(player)}
-                    className={`rounded-surface border p-4 text-left transition-colors ${target?.id === player.id ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
+                    disabled={Boolean(player.userId)}
+                    className={`rounded-surface border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${target?.id === player.id ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
                   >
                     <PlayerSummary player={player} />
+                    {player.userId && (
+                      <p className="mt-2 text-xs font-medium text-amber-700">
+                        Ya tiene una cuenta vinculada. Primero blanqueala desde el listado de jugadores.
+                      </p>
+                    )}
                   </button>
                 ))}
               </div>

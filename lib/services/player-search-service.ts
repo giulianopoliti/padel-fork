@@ -444,6 +444,27 @@ export async function searchPlayersByOrganization({
   })
 }
 
+export async function searchPlayersGlobally({
+  searchTerm,
+  page = 1,
+  pageSize = 20,
+  categoryFilter = "all",
+}: {
+  categoryFilter?: string
+} & SearchPlayersOptions) {
+  const players = await fetchTournamentDirectoryPlayers()
+  const filteredByCategory = players.filter((player) =>
+    categoryFilter === "all" ? true : player.category_name === categoryFilter
+  )
+
+  return applyRobustPlayerSearch({
+    players: filteredByCategory,
+    searchTerm,
+    page,
+    pageSize,
+  })
+}
+
 export async function searchPlayersForTournament({
   tournamentId,
   searchTerm,

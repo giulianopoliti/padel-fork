@@ -5,6 +5,7 @@ import { checkTournamentAccess } from "@/utils/tournament-permissions"
 import {
   PlayerSearchRecord,
   searchPlayersByOrganization,
+  searchPlayersGlobally,
   searchPlayersForTournament,
 } from "@/lib/services/player-search-service"
 
@@ -78,13 +79,18 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Sin permisos para esta organización" }, { status: 403 })
       }
 
-      const result = await searchPlayersByOrganization({
-        organizationId: params.organizationId,
+      const searchParams = {
         searchTerm: params.searchTerm,
         page: params.page,
         pageSize: params.pageSize,
         categoryFilter: params.categoryFilter,
-      })
+      }
+      const result = params.searchTerm.trim()
+        ? await searchPlayersGlobally(searchParams)
+        : await searchPlayersByOrganization({
+          ...searchParams,
+          organizationId: params.organizationId,
+        })
 
       return NextResponse.json({ success: true, ...result })
     }
