@@ -1,5 +1,33 @@
 import { createClient } from '@/utils/supabase/client'
 
+type PlayerSearchResponse = {
+  success: boolean
+  players?: any[]
+  total?: number
+  totalPages?: number
+  currentPage?: number
+  error?: string
+}
+
+async function searchPlayerDirectory(body: Record<string, unknown>): Promise<PlayerSearchResponse> {
+  const response = await fetch('/api/players/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  const payload = await response.json().catch(() => ({
+    success: false,
+    error: 'El servidor devolvió una respuesta inválida',
+  })) as PlayerSearchResponse
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'No se pudieron buscar jugadores')
+  }
+
+  return payload
+}
+
 export async function searchPlayersOrganization(params: {
   searchTerm?: string
   page?: number
@@ -7,39 +35,7 @@ export async function searchPlayersOrganization(params: {
   categoryFilter?: string
   organizationId: string
 }) {
-  const supabase = createClient()
-
-  // Obtener token de sesión
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-  console.log('[searchPlayersOrganization] Session status:', {
-    hasSession: !!session,
-    hasToken: !!session?.access_token,
-    error: sessionError
-  })
-
-  if (!session?.access_token) {
-    throw new Error('No autenticado - no hay sesión activa')
-  }
-
-  console.log('[searchPlayersOrganization] Calling edge function with params:', params)
-
-  // Llamar a Edge Function con el token de autenticación
-  const { data, error } = await supabase.functions.invoke('search-players-organization', {
-    body: params,
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  })
-
-  if (error) {
-    console.error('[searchPlayersOrganization] Error calling edge function:', error)
-    throw error
-  }
-
-  console.log('[searchPlayersOrganization] Success:', { hasData: !!data })
-
-  return data
+  return searchPlayerDirectory({ scope: 'organization', ...params })
 }
 
 export async function searchRankingPlayers(params: {
@@ -90,22 +86,7 @@ export async function searchTournamentPlayers(params: {
   tournamentId: string
   page?: number
   pageSize?: number
+  excludePlayerIds?: string[]
 }) {
-  const supabase = createClient()
-
-  console.log('[searchTournamentPlayers] Calling edge function with params:', params)
-
-  // Llamar a Edge Function (pública/autenticada según torneo)
-  const { data, error } = await supabase.functions.invoke('search-tournament-players', {
-    body: params,
-  })
-
-  if (error) {
-    console.error('[searchTournamentPlayers] Error calling edge function:', error)
-    throw error
-  }
-
-  console.log('[searchTournamentPlayers] Success:', { hasData: !!data, playersCount: data?.players?.length })
-
-  return data
+  return searchPlayerDirectory({ scope: 'tournament', ...params })
 }

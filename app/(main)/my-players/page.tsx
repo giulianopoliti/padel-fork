@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
-import { getTenantPlayers, getCategories } from "@/lib/services/players/players.service"
+import { getCategories } from "@/lib/services/players/players.service"
+import { searchPlayersByOrganization } from "@/lib/services/player-search-service"
 import PlayersManagementClient from "./components/players-management-client"
 
 export const dynamic = 'force-dynamic'
@@ -38,8 +39,12 @@ export default async function MyPlayersPage() {
 
   const organizationId = orgMember.organizacion_id
 
-  // 3. Fetch initial data (primeros 20 jugadores del tenant actual)
-  const playersResult = await getTenantPlayers(1, 20)
+  // 3. Fetch initial data de participantes históricos de la organización.
+  const playersResult = await searchPlayersByOrganization({
+    organizationId,
+    page: 1,
+    pageSize: 20,
+  })
 
   // 4. Fetch categorías para filtros y edición
   const categories = await getCategories()

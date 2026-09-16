@@ -14,7 +14,7 @@ import { toast } from "@/components/ui/use-toast"
 import { Search, UserPlus, Loader2, AlertCircle, Trophy } from "lucide-react"
 import { checkPlayerIdentity } from "@/app/api/players/actions"
 import { Gender } from "@/types"
-import { searchPlayers } from "@/utils/fuzzy-search"
+import { searchTournamentPlayers } from "@/lib/api/supabase-edge"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
 
 const searchSchema = z.object({
@@ -51,14 +51,12 @@ interface PlayerInfo {
 interface RegisterPlayerFormProps {
   tournamentId: string
   onSuccess: () => void
-  existingPlayers: PlayerInfo[]
   tournamentGender: Gender
 }
 
 export default function RegisterPlayerForm({
   tournamentId,
   onSuccess,
-  existingPlayers,
   tournamentGender
 }: RegisterPlayerFormProps) {
   const [activeTab, setActiveTab] = useState("search")
@@ -91,13 +89,13 @@ export default function RegisterPlayerForm({
   const handleSearch = async (values: z.infer<typeof searchSchema>) => {
     setIsSearching(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 300))
-
-      const results = searchPlayers(
-        values.searchTerm,
-        existingPlayers,
-        0.8,
-      )
+      const result = await searchTournamentPlayers({
+        searchTerm: values.searchTerm,
+        tournamentId,
+        page: 1,
+        pageSize: 50,
+      })
+      const results = result.players || []
 
       setSearchResults(results)
 

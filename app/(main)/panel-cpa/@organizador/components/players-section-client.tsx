@@ -55,6 +55,8 @@ export default function PlayersSectionClient({
 
   // Referencia para mantener el foco en el input
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const latestSearchIdRef = useRef(0)
+  const hasSearchEffectRunRef = useRef(false)
 
   // Debounce del searchTerm (300ms)
   const debouncedSearch = useDebounce(searchTerm, 300)
@@ -64,6 +66,7 @@ export default function PlayersSectionClient({
     search: string,
     category: string
   ) => {
+    const searchId = ++latestSearchIdRef.current
     try {
       setIsSearching(true)
 
@@ -75,6 +78,8 @@ export default function PlayersSectionClient({
         organizationId
       })
 
+      if (searchId !== latestSearchIdRef.current) return
+
       if (result.success) {
         setPlayers(result.players || [])
       } else {
@@ -85,6 +90,7 @@ export default function PlayersSectionClient({
         })
       }
     } catch (error) {
+      if (searchId !== latestSearchIdRef.current) return
       console.error('Error searching players:', error)
       toast({
         title: 'Error',
@@ -92,15 +98,18 @@ export default function PlayersSectionClient({
         variant: 'destructive'
       })
     } finally {
-      setIsSearching(false)
+      if (searchId === latestSearchIdRef.current) setIsSearching(false)
     }
   }, [organizationId, toast])
 
   // Effect para búsqueda en tiempo real
   useEffect(() => {
-    if (debouncedSearch || categoryFilter !== 'all') {
-      performSearch(debouncedSearch, categoryFilter)
+    if (!hasSearchEffectRunRef.current) {
+      hasSearchEffectRunRef.current = true
+      return
     }
+
+    performSearch(debouncedSearch, categoryFilter)
   }, [debouncedSearch, categoryFilter, performSearch])
 
   const handlePlayerUpdate = (updatedPlayer: PlayerData) => {

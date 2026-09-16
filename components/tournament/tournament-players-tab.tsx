@@ -837,7 +837,6 @@ export default function TournamentPlayersTab({
           <RegisterPlayerForm
             tournamentId={tournamentId}
             onSuccess={handleRegisterSuccess}
-            existingPlayers={allPlayers}
             tournamentGender={tournamentGender}
           />
         </DialogContent>

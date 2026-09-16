@@ -5,6 +5,7 @@ import { getCategories } from "@/lib/services/players/players.service"
 import { getTenantBranding } from "@/config/tenant"
 import { getTpeRestrictionPlayers } from "@/lib/services/tpe-registration-restrictions"
 import TpeRegistrationRestrictionsPanel from "@/app/(main)/panel/@organizador/components/tpe-registration-restrictions-panel"
+import { searchPlayersByOrganization } from "@/lib/services/player-search-service"
 
 export const dynamic = 'force-dynamic'
 
@@ -100,19 +101,23 @@ export default async function OrganizadorDashboardPage() {
 
   const tournamentsWithMetrics: TournamentWithMetrics[] = result?.tournaments || []
 
-  // 5. Fetch top 10 jugadores por puntos con email de users
-  const { data: players, error: playersError } = await supabase
-    .from("players")
-    .select("id, first_name, last_name, dni, phone, score, profile_image_url, category_name, user_id, users!players_user_id_fkey(email)")
-    .eq("es_prueba", false)
-    .order("score", { ascending: false })
-    .limit(10)
+  // 5. Jugadores que participaron en torneos de la organización.
+  let players: PlayerData[] = []
+  let totalPlayers = 0
+  let playersError: unknown = null
 
-  // 6. Contar total de jugadores para mostrar en el header
-  const { count: totalPlayers } = await supabase
-    .from("players")
-    .select("*", { count: "exact", head: true })
-    .eq("es_prueba", false)
+  try {
+    const playerSearch = await searchPlayersByOrganization({
+      organizationId,
+      page: 1,
+      pageSize: 10,
+    })
+    players = playerSearch.players as PlayerData[]
+    totalPlayers = playerSearch.total
+  } catch (error) {
+    playersError = error
+    console.error("[OrganizadorDashboardPage] Error loading organization players:", error)
+  }
 
   // 7. Fetch categorías para la edición de jugadores
   const categories = await getCategories()
@@ -120,7 +125,7 @@ export default async function OrganizadorDashboardPage() {
     ? await getTpeRestrictionPlayers()
     : []
 
-  const normalizedPlayers: PlayerData[] = (players || []).map((player) => ({
+  const normalizedPlayers: PlayerData[] = players.map((player) => ({
     ...player,
     users: Array.isArray(player.users) ? player.users[0] : player.users
   }))
@@ -131,7 +136,7 @@ export default async function OrganizadorDashboardPage() {
         tournaments={tournamentsWithMetrics}
         players={normalizedPlayers}
         categories={categories}
-        totalPlayers={totalPlayers || 0}
+        totalPlayers={totalPlayers}
         organizationId={organizationId}
         canResolvePlayerIdentity={['owner', 'admin'].includes(orgMember.member_role)}
         hasError={!!tournamentsError || !!playersError}

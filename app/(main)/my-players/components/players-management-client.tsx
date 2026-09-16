@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Search, Loader2, UserRoundCheck } from 'lucide-react'
@@ -56,6 +56,8 @@ export default function PlayersManagementClient({
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [isSearching, setIsSearching] = useState(false)
   const [showIdentityTransfer, setShowIdentityTransfer] = useState(false)
+  const latestSearchIdRef = useRef(0)
+  const hasSearchEffectRunRef = useRef(false)
   const { toast } = useToast()
 
   // Debounce del searchTerm (300ms)
@@ -67,6 +69,7 @@ export default function PlayersManagementClient({
     page: number,
     category: string
   ) => {
+    const searchId = ++latestSearchIdRef.current
     try {
       setIsSearching(true)
 
@@ -77,6 +80,8 @@ export default function PlayersManagementClient({
         categoryFilter: category,
         organizationId
       })
+
+      if (searchId !== latestSearchIdRef.current) return
 
       if (result.success) {
         setPlayers(result.players || [])
@@ -90,6 +95,7 @@ export default function PlayersManagementClient({
         })
       }
     } catch (error) {
+      if (searchId !== latestSearchIdRef.current) return
       console.error('Error searching players:', error)
       toast({
         title: 'Error',
@@ -97,12 +103,17 @@ export default function PlayersManagementClient({
         variant: 'destructive'
       })
     } finally {
-      setIsSearching(false)
+      if (searchId === latestSearchIdRef.current) setIsSearching(false)
     }
   }, [organizationId, toast])
 
   // Effect para búsqueda en tiempo real
   useEffect(() => {
+    if (!hasSearchEffectRunRef.current) {
+      hasSearchEffectRunRef.current = true
+      return
+    }
+
     performSearch(debouncedSearch, 1, categoryFilter)
   }, [debouncedSearch, categoryFilter, performSearch])
 
@@ -161,14 +172,12 @@ export default function PlayersManagementClient({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
-            disabled={isSearching}
           />
         </div>
 
         <Select
           value={categoryFilter}
           onValueChange={setCategoryFilter}
-          disabled={isSearching}
         >
           <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="Categoría" />

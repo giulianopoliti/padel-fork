@@ -16,7 +16,6 @@ import { Gender } from "@/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import PlayerDniDisplay from "@/components/players/player-dni-display"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { TPE_TERMS_PATH } from "@/lib/tpe/terms"
@@ -984,7 +983,7 @@ export default function RegisterCoupleForm({
                       <FormControl>
                         <div className="flex flex-col gap-2 sm:flex-row">
                           <Input
-                            placeholder="Nombre, apellido o DNI del compañero"
+                            placeholder="Nombre o apellido del compañero"
                             className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             {...field}
                           />
@@ -1032,9 +1031,6 @@ export default function RegisterCoupleForm({
                               Puntaje: {player.score}
                             </p>
                           )}
-                          <div className="mt-1 text-sm text-gray-600">
-                            <PlayerDniDisplay dni={player.dni} />
-                          </div>
                         </div>
                         {selectedCompanionId === player.id && (
                           <div className="shrink-0 rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
