@@ -406,13 +406,13 @@ export function PublicTournamentCards({
                       ) : null}
                       {tournament.maxParticipants ? (
                         <div className={isLightSurface ? "inline-flex items-center rounded-full border border-[#20335d]/12 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 sm:text-sm" : "inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-200 sm:text-sm"}>
-                          {tournament.isFull ? "Cupos completos" : `${tournament.remainingSlots ?? Math.max(tournament.maxParticipants - (tournament.currentParticipants || 0), 0)} cupos disponibles`}
+                          {tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
                         </div>
                       ) : null}
                     </div>
                   ) : tournament.maxParticipants ? (
                     <div className={isLightSurface ? "inline-flex w-fit items-center rounded-full border border-[#20335d]/12 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 sm:text-sm" : "inline-flex w-fit items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-200 sm:text-sm"}>
-                      {tournament.isFull ? "Cupos completos" : `${tournament.remainingSlots ?? Math.max(tournament.maxParticipants - (tournament.currentParticipants || 0), 0)} cupos disponibles`}
+                      {tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
                     </div>
                   ) : null}
 

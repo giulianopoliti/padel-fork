@@ -16,22 +16,23 @@ export default function PlayerFvNextMatchSection({ nextMatches }: PlayerFvNextMa
 
   if (nextMatches.length === 0) {
     return (
-      <section className="rounded-[2rem] border border-dashed border-white/20 bg-white/5 px-6 py-10 text-center shadow-sm backdrop-blur-sm sm:px-8 sm:py-12">
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-court-500/10 text-court-300">
-          <Swords className="h-8 w-8" />
+      <section className="flex items-start gap-3 rounded-display border border-white/15 bg-brand-600 px-4 py-4 sm:px-5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-court-500/10 text-court-300">
+          <Swords className="h-5 w-5" aria-hidden="true" />
         </div>
-        <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">{title}</p>
-        <h2 className="text-2xl font-black text-white sm:text-3xl">Todavia no tenes un cruce programado</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
-          Cuando se confirme tu siguiente partido lo vas a ver aca con rival, companero, horario y sede.
-        </p>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-white">Todavía no tenés un cruce programado</h2>
+          <p className="mt-1 text-sm leading-5 text-brand-200">
+            Cuando se confirme, vas a ver acá rival, compañero, horario y sede.
+          </p>
+        </div>
       </section>
     )
   }
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-brand-800/75 shadow-[0_18px_45px_rgba(7,12,28,0.18)] backdrop-blur-sm">
-      <div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(198,222,6,0.18)_0%,rgba(18,29,57,0)_100%)] px-5 py-5 sm:px-8">
+    <section className="overflow-hidden rounded-display-lg border border-white/15 bg-brand-500 shadow-lg">
+      <div className="border-b border-white/10  px-5 py-5 sm:px-8">
         <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">Agenda inmediata</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -59,9 +60,9 @@ export default function PlayerFvNextMatchSection({ nextMatches }: PlayerFvNextMa
             <article
               key={match.match_id}
               className={[
-                "overflow-hidden rounded-[1.75rem] border transition-colors",
+                "overflow-hidden rounded-display border transition-colors",
                 isPrimary
-                  ? "border-court-500/35 bg-[linear-gradient(135deg,rgba(198,222,6,0.12)_0%,rgba(255,255,255,0.03)_100%)]"
+                  ? "border-court-500/40 bg-brand-600"
                   : "border-white/10 bg-white/5 hover:bg-white/[0.07]",
               ].join(" ")}
             >
@@ -99,6 +100,7 @@ export default function PlayerFvNextMatchSection({ nextMatches }: PlayerFvNextMa
                     />
                     <InfoBlock
                       icon={<CalendarDays className="h-4 w-4 text-court-300" />}
+                      highlight
                       label="Fecha y hora"
                       value={formatMatchDateTime(match.scheduled_info.date, match.scheduled_info.time)}
                     />
@@ -145,18 +147,20 @@ function InfoBlock({
   icon,
   label,
   value,
+  highlight = false,
 }: {
   icon: ReactNode
   label: string
   value: string
+  highlight?: boolean
 }) {
   return (
-    <div className="rounded-display bg-white/5 px-3 py-3">
+    <div className={highlight ? "rounded-display bg-court-500/10 px-3 py-3" : "border-t border-white/10 px-1 py-3"}>
       <div className="flex items-start gap-3">
         <div className="mt-0.5">{icon}</div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-court-200">{label}</p>
-          <p className="mt-1 text-sm font-medium leading-5 text-white">{value}</p>
+          <p className={highlight ? "mt-1 text-base font-bold leading-6 text-white" : "mt-1 text-sm font-medium leading-5 text-white"}>{value}</p>
         </div>
       </div>
     </div>

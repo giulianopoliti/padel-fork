@@ -8,6 +8,7 @@ import PublicTournamentList from "@/components/public/public-tournament-list"
 import { PublicTournamentCards } from "@/components/tournaments/public-tournament-cards"
 import { RecentWinnersSection } from "@/components/home/RecentWinnersSection"
 import { PadelFvImmersiveHero } from "@/components/home/padel-fv-immersive-hero"
+import FvTournamentSection from "@/components/home/FvTournamentSection"
 import type { PublicTournamentSummary } from "@/types/public-tournament"
 
 export async function HomeContent() {
@@ -54,46 +55,6 @@ export async function HomeContent() {
       <RecentWinnersSection winners={recentWinners} />
       <HomeFooter organizationName={organization?.name || branding.siteName} branding={branding} dark />
     </div>
-  )
-}
-
-function FvTournamentSection({
-  id,
-  kicker,
-  title,
-  description,
-  action,
-  tournaments,
-  emptyTitle,
-  emptyDescription,
-}: {
-  id: string
-  kicker: string
-  title: string
-  description: string
-  action: string
-  tournaments: PublicTournamentSummary[]
-  emptyTitle: string
-  emptyDescription: string
-}) {
-  return (
-    <section id={id} className="bg-[#f7f5ee]">
-      <div className="container mx-auto px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-8 flex flex-col gap-5 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
-            <div className="max-w-2xl">
-              <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-[#20335d] sm:text-sm">{kicker}</p>
-              <h2 className="text-3xl font-black leading-[1.03] tracking-[-0.04em] text-[#20335d] sm:text-4xl lg:text-5xl">{title}</h2>
-              <p className="mt-4 max-w-xl text-base font-medium leading-7 text-slate-600 sm:text-lg">{description}</p>
-            </div>
-            <Button asChild variant="outline" className="h-11 shrink-0 border-[#20335d]/30 bg-white/70 px-5 font-bold text-[#20335d] hover:border-[#20335d] hover:bg-white hover:text-[#20335d] focus-visible:ring-[#c6de06]">
-              <Link href="/torneos?type=AMERICAN">{action}<ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" /></Link>
-            </Button>
-          </div>
-          <PublicTournamentCards tournaments={tournaments} emptyTitle={emptyTitle} emptyDescription={emptyDescription} surface="light" />
-        </div>
-      </div>
-    </section>
   )
 }
 

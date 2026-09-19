@@ -45,16 +45,17 @@ const useNavbarLinks = (userRole: Role | null, authState: AuthState) => {
 
     const branding = getTenantBranding()
 
-    if (branding.key === "padel-fv") {
-      return { mainLinks: fvMainLinks, profileLinks: [] }
-    }
-
     const allAuthLinks = userRole
       ? getLinksForRole(userRole).filter((link) => branding.features.showRankingInNav || link.path !== "/ranking")
       : []
 
-    const mainLinks = allAuthLinks.filter((link) => !profileLinkPaths.includes(link.path))
     const profileLinks = allAuthLinks.filter((link) => profileLinkPaths.includes(link.path))
+
+    if (branding.key === "padel-fv") {
+      return { mainLinks: fvMainLinks, profileLinks }
+    }
+
+    const mainLinks = allAuthLinks.filter((link) => !profileLinkPaths.includes(link.path))
 
     return { mainLinks, profileLinks }
   }, [authState, userRole])

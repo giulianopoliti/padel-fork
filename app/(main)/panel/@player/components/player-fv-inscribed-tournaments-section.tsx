@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Trophy, Users } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Swords, Trophy, Users } from "lucide-react"
 import type { InscribedTournament } from "@/app/api/panel/actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatDateLabel } from "./panel-formatters"
+import { formatFvDateLabel as formatDateLabel, formatMatchDateTime, formatRoundLabel, formatTimeLabel } from "./panel-formatters"
 
 interface PlayerFvInscribedTournamentsSectionProps {
   tournaments: InscribedTournament[]
@@ -41,13 +41,13 @@ export default function PlayerFvInscribedTournamentsSection({
 
   if (tournaments.length === 0) {
     return (
-      <section className="rounded-[2rem] border border-dashed border-white/20 bg-white/5 px-6 py-10 text-center shadow-sm backdrop-blur-sm sm:px-8 sm:py-12">
+      <section className="rounded-display-lg border border-dashed border-white/20 bg-brand-600 px-5 py-6 text-center sm:px-8">
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-court-500/10 text-court-300">
           <Trophy className="h-8 w-8" />
         </div>
         <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">Mis torneos inscriptos</p>
         <h2 className="text-2xl font-black text-white sm:text-3xl">Todavia no tenes inscripciones confirmadas</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
+        <p className="mx-auto mt-3 max-w-2xl text-sm text-brand-200 sm:text-base">
           Cuando te anotes en un torneo, aca vas a ver rapido la fecha, la sede y con quien jugas.
         </p>
         <Button asChild className="mt-6 h-11 rounded-full bg-court-500 px-6 text-base font-semibold text-brand-900 hover:bg-court-400">
@@ -58,70 +58,151 @@ export default function PlayerFvInscribedTournamentsSection({
   }
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-brand-800/75 shadow-[0_18px_45px_rgba(7,12,28,0.18)] backdrop-blur-sm">
-      <div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.06)_0%,rgba(18,29,57,0)_100%)] px-5 py-5 sm:px-8">
-        <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">Tu calendario activo</p>
-        <h2 className="text-2xl font-black text-white sm:text-3xl">Mis torneos inscriptos</h2>
+    <section className="overflow-hidden rounded-display-lg border border-white/10 bg-brand-800/75">
+      <div className="border-b border-white/10 px-5 py-4 sm:px-6">
+        <h2 className="text-xl font-bold text-white sm:text-2xl">Mis torneos inscriptos</h2>
       </div>
 
-      <div className="space-y-3 p-4 sm:p-6">
+      <div className="space-y-3 p-4 sm:p-5">
         {paginatedTournaments.map((inscription) => {
           const tournament = inscription.tournament
           const partnerName = `${inscription.partner.first_name} ${inscription.partner.last_name}`.trim()
           const tournamentType = tournament.type || null
           const hideVenue = Boolean(tournament.hide_venue)
           const venueLabel = [tournament.club?.name, tournament.club?.address].filter(Boolean).join(" - ")
+          const agenda = inscription.agenda
+          const scheduledMatch = agenda?.scheduled_matches[0]
+          const availability = agenda?.availability
 
           return (
             <article
               key={tournament.id}
-              className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/[0.07] sm:p-5"
+              className="rounded-display border border-white/10 bg-white/5 p-4 sm:p-5"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
                 <div className="min-w-0 flex-1 space-y-4">
                   {tournamentType ? (
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-court-500 text-brand-900 hover:bg-court-500">
+                      <Badge className="border-white/15 bg-white/5 text-brand-100 hover:bg-white/5">
                         {tournamentType === "AMERICAN" ? "Americano" : tournamentType === "LONG" ? "Torneo largo" : tournamentType}
                       </Badge>
                     </div>
                   ) : null}
 
                   <div className="space-y-1">
-                    <h3 className="text-lg font-black tracking-tight text-white sm:text-xl">{tournament.name}</h3>
-                    <p className="text-sm font-medium text-court-200">
+                    <h3 className="text-lg font-semibold tracking-tight text-white sm:text-xl">{tournament.name}</h3>
+                    <p className="text-sm font-semibold text-brand-200">
                       {tournament.category_name || "Categoria abierta"}
                     </p>
                   </div>
 
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                     <InfoBlock
-                      icon={<CalendarDays className="h-4 w-4 text-court-300" />}
-                      label="Fecha"
-                      value={formatDateLabel(tournament.start_date)}
+                      icon={<CalendarDays className="h-4 w-4 text-white" />}
+                      label={tournamentType === "AMERICAN" ? "Fecha y hora" : "Fecha"}
+                      value={tournamentType === "AMERICAN"
+                        ? `${formatDateLabel(tournament.start_date)} · ${formatTimeLabel(tournament.start_date)}`
+                        : formatDateLabel(tournament.start_date)}
                     />
                     <InfoBlock
-                      icon={<Users className="h-4 w-4 text-court-300" />}
+                      icon={<Users className="h-4 w-4 text-white" />}
                       label="Pareja"
                       value={partnerName}
                     />
                     {!hideVenue && venueLabel ? (
                       <InfoBlock
-                        icon={<MapPin className="h-4 w-4 text-court-300" />}
+                        icon={<MapPin className="h-4 w-4 text-white" />}
                         label="Sede"
                         value={venueLabel}
                       />
                     ) : null}
                     <InfoBlock
-                      icon={<Trophy className="h-4 w-4 text-court-300" />}
+                      icon={<Trophy className="h-4 w-4 text-white" />}
                       label="Estado"
                       value={statusLabels[tournament.status] || tournament.status}
                     />
                   </div>
+
+                  {agenda?.state === "MATCH_SCHEDULED" && scheduledMatch ? (
+                    <div className="rounded-display border border-white/10 bg-brand-700 p-4 text-white sm:p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge className="border-0 bg-court-500 text-brand-900 hover:bg-court-500">
+                              Partido programado
+                            </Badge>
+                            {scheduledMatch.round ? (
+                              <Badge variant="outline" className="border-white/20 text-white">
+                                {formatRoundLabel(scheduledMatch.round)}
+                              </Badge>
+                            ) : null}
+                            {agenda.scheduled_matches.length > 1 ? (
+                              <Badge variant="outline" className="border-white/20 text-white">
+                                +{agenda.scheduled_matches.length - 1} programado{agenda.scheduled_matches.length > 2 ? "s" : ""}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
+                            <AgendaLine
+                              icon={<Swords className="h-4 w-4 text-court-300" />}
+                              label="Rivales"
+                              value={scheduledMatch.opponent_names.join(" / ")}
+                            />
+                            <AgendaLine
+                              icon={<Clock3 className="h-4 w-4 text-court-300" />}
+                              label="Fecha y hora"
+                              value={formatMatchDateTime(
+                                scheduledMatch.scheduled_info.date,
+                                scheduledMatch.scheduled_info.time,
+                              )}
+                            />
+                            {scheduledMatch.scheduled_info.court ? (
+                              <AgendaLine
+                                icon={<MapPin className="h-4 w-4 text-court-300" />}
+                                label="Cancha"
+                                value={scheduledMatch.scheduled_info.court}
+                              />
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {agenda?.state === "AVAILABILITY_REQUIRED" && availability ? (
+                    <div className="rounded-display border border-brand-300/25 bg-brand-500/40 p-4 sm:p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0 rounded-elevated bg-brand-200/10 p-2.5 text-brand-100">
+                          <CalendarDays className="h-5 w-5" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-white">Disponibilidad horaria</p>
+                          <p className="mt-1 text-sm leading-5 text-brand-100">
+                            {availability.fecha_name}
+                            {availability.start_date ? ` · ${formatDateLabel(availability.start_date)}` : ""}
+                            {availability.end_date && availability.end_date !== availability.start_date
+                              ? ` al ${formatDateLabel(availability.end_date)}`
+                              : ""}
+                          </p>
+                          <p className="mt-2 text-sm leading-5 text-brand-200">
+                            Indicá en qué horarios puede jugar tu pareja para esta fecha.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="flex w-full flex-col justify-end gap-2 lg:w-48">
-                  <Button asChild variant="outline" className="h-10 border-white/20 bg-white/5 text-sm font-semibold text-white hover:bg-white/10">
+                  {agenda?.state === "AVAILABILITY_REQUIRED" && availability ? (
+                    <Button asChild className="h-11 bg-brand-100 text-sm font-semibold text-brand-900 hover:bg-brand-200">
+                      <Link href={availability.href}>
+                        Cargar horarios
+                        <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <Button asChild variant="outline" className="h-11 border-white/25 bg-transparent text-sm font-semibold text-white hover:bg-white/10 hover:text-white">
                     <Link href={`/tournaments/${tournament.id}`}>
                       Ver torneo
                       <ChevronRight className="ml-1 h-4 w-4" />
@@ -136,7 +217,7 @@ export default function PlayerFvInscribedTournamentsSection({
 
       {totalPages > 1 ? (
         <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-brand-200">
             Mostrando {paginatedTournaments.length} de {tournaments.length} inscripciones
           </p>
           <div className="flex items-center gap-2">
@@ -146,12 +227,12 @@ export default function PlayerFvInscribedTournamentsSection({
               size="sm"
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               disabled={page === 1}
-              className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+              className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
             >
               <ChevronLeft className="mr-1 h-4 w-4" />
               Anterior
             </Button>
-            <span className="text-sm font-medium text-slate-300">
+            <span className="text-sm font-medium text-brand-200">
               Pagina {page} de {totalPages}
             </span>
             <Button
@@ -160,7 +241,7 @@ export default function PlayerFvInscribedTournamentsSection({
               size="sm"
               onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
               disabled={page === totalPages}
-              className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+              className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
             >
               Siguiente
               <ChevronRight className="ml-1 h-4 w-4" />
@@ -169,6 +250,26 @@ export default function PlayerFvInscribedTournamentsSection({
         </div>
       ) : null}
     </section>
+  )
+}
+
+function AgendaLine({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <div className="mt-0.5">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-brand-200">{label}</p>
+        <p className="mt-0.5 text-sm font-semibold leading-5 text-white">{value}</p>
+      </div>
+    </div>
   )
 }
 
@@ -182,12 +283,12 @@ function InfoBlock({
   value: string
 }) {
   return (
-    <div className="rounded-display bg-white/5 px-3 py-3">
+    <div className="border-t border-white/10 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5">{icon}</div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-court-200">{label}</p>
-          <p className="mt-1 text-sm font-medium leading-5 text-white">{value}</p>
+          <p className="text-xs font-medium text-brand-200">{label}</p>
+          <p className="mt-1 text-sm font-semibold leading-5 text-white">{value}</p>
         </div>
       </div>
     </div>

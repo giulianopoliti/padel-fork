@@ -2,7 +2,6 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import { linkTournamentClubs, unlinkTournamentClubs } from '@/lib/services/tournaments/club-links'
 import { getZonesFromTournament, deleteZonesAndData, deleteMatchesHierarchy, deleteCoupleSeeds, deleteBracketMatchesFromTournament, getBracketMatchesFromTournament, deleteBracketOperationsLog, deleteMatchResultsHistory} from '@/app/api/tournaments/[id]/modify-status-tournament/actions'
@@ -1011,13 +1010,9 @@ export async function toggleDraftMatches(
       }
     }
 
-    // Revalidate paths
-    // Si igual querés mantener revalidación:
+    // Revalidate the tournament and the current settings page.
     revalidatePath(`/tournaments/${tournamentId}`)
-    // O podrías revalidar solo esa, en lugar de las otras dos
-
-    // 🚀 Redirige al detalle del torneo
-    redirect(`/tournaments/${tournamentId}`)
+    revalidatePath(`/tournaments/${tournamentId}/settings/operacion`)
 
     return {
       success: true,

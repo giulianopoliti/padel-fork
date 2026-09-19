@@ -24,6 +24,12 @@ export const formatDateLabel = (value: string | null | undefined) => {
   )
 }
 
+// FV date labels capitalize only the first letter, preserving accented weekdays.
+export const formatFvDateLabel = (value: string | null | undefined): string => {
+  const label = formatDateLabel(value).toLocaleLowerCase("es-AR")
+  return label.charAt(0).toLocaleUpperCase("es-AR") + label.slice(1)
+}
+
 export const formatTimeLabel = (value: string | null | undefined) => {
   if (!value || !hasExplicitTime(value)) return "Horario a confirmar"
 

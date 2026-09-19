@@ -33,35 +33,39 @@ const sponsors = [
 ] as const
 
 interface SponsorMarqueeProps {
+  tone?: "light" | "dark"
+  compact?: boolean
   className?: string
 }
 
-export default function SponsorMarquee({ className }: SponsorMarqueeProps) {
+export default function SponsorMarquee({ className, compact = false, tone = "light" }: SponsorMarqueeProps) {
   const marqueeSponsors = [...sponsors, ...sponsors]
 
   return (
     <section
       aria-label="Sponsors"
       className={cn(
-        "group overflow-hidden border-y border-white/12 bg-white/[0.04] py-5 backdrop-blur-sm",
+        "group overflow-hidden border border-[#20335d]/10 bg-white py-4 shadow-[0_8px_24px_rgba(16,26,49,0.05)]",
+        tone === "dark" && "border-white/10 bg-white/[0.04] shadow-none backdrop-blur-sm",
+        compact && "py-2",
         className,
       )}
     >
-      <div className="mb-4 flex justify-center px-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-court-300">
+      <div className={cn("mb-4 flex justify-center px-4", compact && "mb-1")}>
+        <p className={cn("text-xs font-bold uppercase tracking-[0.2em]", tone === "dark" ? "text-court-300" : "text-[#20335d]/65")}>
           Sponsors
         </p>
       </div>
 
       <div className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#162545] to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#162545] to-transparent" />
+        <div className={cn("pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r to-transparent", tone === "dark" ? "from-[#162545]" : "from-white")} />
+        <div className={cn("pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l to-transparent", tone === "dark" ? "from-[#162545]" : "from-white")} />
 
         <div className="flex w-max motion-safe:animate-sponsor-marquee group-hover:[animation-play-state:paused]">
           {marqueeSponsors.map((sponsor, index) => (
             <div
               key={`${sponsor.name}-${index}`}
-              className="mx-3 flex h-24 flex-none items-center justify-center px-5 sm:mx-4 sm:h-28"
+              className={cn("mx-3 flex h-24 flex-none items-center justify-center px-5 sm:mx-4 sm:h-28", compact && "h-14 sm:h-16")}
               aria-hidden={index >= sponsors.length}
             >
               <Image
@@ -70,7 +74,7 @@ export default function SponsorMarquee({ className }: SponsorMarqueeProps) {
                 width={sponsor.width}
                 height={sponsor.height}
                 sizes="(max-width: 640px) 224px, 288px"
-                className={cn("object-contain", sponsor.className)}
+                className={cn("object-contain", sponsor.className, compact && "max-h-12 sm:max-h-14")}
               />
             </div>
           ))}

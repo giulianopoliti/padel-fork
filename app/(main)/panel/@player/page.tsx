@@ -159,33 +159,33 @@ function PadelFvPlayerPanel({
   upcomingTournaments,
 }: PlayerPanelProps) {
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#162545_0%,#192b50_42%,#152340_100%)] text-white">
-      <section className="container mx-auto px-4 py-6 sm:px-6 lg:py-8">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#162545_0%,#192b50_42%,#152340_100%)] text-white [--ring:68_95%_45%]">
+      <section className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-6 overflow-hidden rounded-[2rem] border border-white/12 bg-[linear-gradient(135deg,rgba(32,51,93,0.98)_0%,rgba(23,36,71,0.98)_100%)] shadow-[0_24px_70px_rgba(7,12,28,0.22)]">
-            <div className="flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between">
+          <SponsorMarquee compact tone="dark" className="mb-5 rounded-display border-white/10 bg-white/[0.035]" />
+          <div className="mb-5 rounded-display-lg border border-white/10 bg-[linear-gradient(135deg,rgba(32,51,93,0.98)_0%,rgba(23,36,71,0.98)_100%)] px-5 py-4 sm:px-6">
+            <div className="flex flex-col gap-4 py-2 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-court-300">
+                <p className="mb-1 text-xs font-medium text-court-200">
                   Panel jugador
                 </p>
-                <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+                <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                   Mi agenda competitiva
                 </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
-                  Hola {firstName}. Aca tenes primero lo urgente: tu proximo partido, los torneos en los que ya estas
-                  anotado y las proximas fechas para inscribirte.
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-brand-200 sm:text-base">
+                  Hola {firstName}. Seguí tus partidos y elegí tu próximo torneo.
                 </p>
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                 {categoryName ? (
-                  <Badge className="border-court-400/30 bg-court-500/15 px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-court-200 hover:bg-court-500/15">
+                  <Badge className="w-fit border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/5">
                     Categoria {categoryName}
                   </Badge>
                 ) : null}
                 <Button
                   asChild
-                  className="h-11 rounded-full bg-court-500 px-6 text-base font-semibold text-brand-900 hover:bg-court-400"
+                  className="h-11 rounded-full border border-white/20 bg-white/5 px-6 text-sm font-bold text-white hover:bg-white/10"
                 >
                   <Link href="/torneos">
                     Ver torneos
@@ -195,8 +195,6 @@ function PadelFvPlayerPanel({
               </div>
             </div>
           </div>
-
-          <SponsorMarquee className="mb-6 rounded-[1.5rem] border-white/10 bg-white/[0.035]" />
 
           <div className="space-y-6">
             <PlayerFvNextMatchSection nextMatches={nextMatches} />
