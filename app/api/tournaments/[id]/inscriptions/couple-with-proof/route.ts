@@ -4,25 +4,19 @@ import { createClient } from '@/utils/supabase/server'
 import { getUserDetails } from '@/utils/db/getUserDetails'
 import { registerCoupleForTournament, removeCoupleFromTournament } from '@/app/api/tournaments/actions'
 import { uploadInscriptionProof, deleteInscriptionProof } from '@/lib/services/inscription-proofs'
-
-const ALLOWED_PROOF_TYPES = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'application/pdf',
-])
+import { MAX_INSCRIPTION_PROOF_BYTES, validateInscriptionProof } from '@/lib/tournaments/inscription-proof'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   let uploadedProofPath: string | null = null
+  let stage: 'upload' | 'registration' = 'upload'
+  let proofMetadata: { size: number; type: string } | undefined
 
   try {
     const { id: tournamentId } = await params
     const supabase = await createClient()
-    const formData = await request.formData()
 
     const {
       data: { user },
@@ -66,6 +60,7 @@ export async function POST(
       )
     }
 
+    const formData = await request.formData()
     const player1Id = String(formData.get('player1Id') || '')
     const player2Id = String(formData.get('player2Id') || '')
     const termsAccepted = formData.get('termsAccepted') === 'true'
@@ -92,13 +87,19 @@ export async function POST(
       )
     }
 
-    if (!ALLOWED_PROOF_TYPES.has(proofFile.type)) {
+    proofMetadata = { size: proofFile.size, type: proofFile.type }
+    const proofError = validateInscriptionProof(proofFile)
+    if (proofError) {
+      const status = proofFile.size > MAX_INSCRIPTION_PROOF_BYTES ? 413 : 400
+      console.warn('[couple-with-proof]', { stage, status, ...proofMetadata })
       return NextResponse.json(
-        { success: false, message: 'Formato de comprobante no permitido' },
-        { status: 400 }
+        { success: false, message: proofError, stage },
+        { status }
       )
     }
 
+    stage = 'registration'
+    console.info('[couple-with-proof]', { stage: 'received', ...proofMetadata })
     const { data: tournament, error: tournamentError } = await supabase
       .from('tournaments')
       .select('id, name, enable_transfer_proof, transfer_alias, transfer_amount')
@@ -129,6 +130,7 @@ export async function POST(
     const registrationResult = await registerCoupleForTournament(tournamentId, player1Id, player2Id, false, termsAccepted)
 
     if (!registrationResult.success || !registrationResult.inscription?.id || !registrationResult.inscription?.coupleId) {
+      console.warn('[couple-with-proof]', { stage, status: 400, ...proofMetadata })
       return NextResponse.json(
         { success: false, message: registrationResult.error || 'No se pudo registrar la pareja' },
         { status: 400 }
@@ -138,6 +140,7 @@ export async function POST(
     const inscriptionId = registrationResult.inscription.id as string
     const coupleId = registrationResult.inscription.coupleId as string
 
+    stage = 'upload'
     const uploadResult = await uploadInscriptionProof({
       tournamentId,
       inscriptionId,
@@ -147,15 +150,17 @@ export async function POST(
     })
 
     if (!uploadResult.success) {
+      console.warn('[couple-with-proof]', { stage, status: 500, ...proofMetadata })
       await removeCoupleFromTournament(tournamentId, coupleId)
 
       return NextResponse.json(
-        { success: false, message: uploadResult.error || 'No se pudo subir el comprobante' },
+        { success: false, message: 'No se pudo guardar el comprobante. Intentá con otro archivo.', stage },
         { status: 500 }
       )
     }
 
     uploadedProofPath = uploadResult.filePath
+    stage = 'registration'
 
     const { error: updateError } = await supabase
       .from('inscriptions')
@@ -169,6 +174,7 @@ export async function POST(
       .eq('id', inscriptionId)
 
     if (updateError) {
+      console.warn('[couple-with-proof]', { stage, status: 500, ...proofMetadata })
       await deleteInscriptionProof(uploadResult.filePath)
       await removeCoupleFromTournament(tournamentId, coupleId)
 
@@ -182,6 +188,7 @@ export async function POST(
     revalidatePath(`/tournaments/${tournamentId}/inscriptions`)
     revalidatePath(`/my-tournaments/${tournamentId}`)
 
+    console.info('[couple-with-proof]', { stage: 'complete', status: 200, ...proofMetadata })
     return NextResponse.json({
       success: true,
       message: 'La inscripción quedó registrada y pendiente de revisión',
@@ -192,14 +199,14 @@ export async function POST(
       },
     })
   } catch (error) {
-    console.error('[couple-with-proof] Unexpected error:', error)
+    console.error('[couple-with-proof]', { stage, status: 500, ...proofMetadata })
 
     if (uploadedProofPath) {
       await deleteInscriptionProof(uploadedProofPath)
     }
 
     return NextResponse.json(
-      { success: false, message: 'Error interno del servidor' },
+      { success: false, message: 'No se pudo confirmar la inscripción. Revisá Mis torneos antes de reintentar.', stage },
       { status: 500 }
     )
   }

@@ -19,6 +19,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { TPE_TERMS_PATH } from "@/lib/tpe/terms"
+import { validateInscriptionProof } from "@/lib/tournaments/inscription-proof"
+import { prepareInscriptionProof } from "@/lib/tournaments/prepare-inscription-proof"
+import { submitInscriptionProof } from "@/lib/tournaments/submit-inscription-proof"
 
 // Define the PlayerInfo interface locally
 interface PlayerInfo {
@@ -213,12 +216,37 @@ export default function RegisterCoupleForm({
   const player2PhoneInputRef = useRef<HTMLInputElement | null>(null)
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
   const [paymentProofError, setPaymentProofError] = useState<string | null>(null)
+  const [isPreparingProof, setIsPreparingProof] = useState(false)
+  const proofSelectionVersion = useRef(0)
+  const phoneCheckInFlight = useRef(false)
+  const registrationInFlight = useRef(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
 
   const transferProofEnabled = !!transferConfig?.enabled
   const transferAlias = transferConfig?.alias?.trim() || null
   const transferAmount = transferConfig?.amount ?? null
   const transferConfigInvalid = transferProofEnabled && (!transferAlias || transferAmount === null || transferAmount <= 0)
+
+  useEffect(() => () => { proofSelectionVersion.current += 1 }, [])
+
+  const handleProofSelection = async (file: File | null): Promise<void> => {
+    const version = ++proofSelectionVersion.current
+    setPaymentProofFile(null)
+    setPaymentProofError(null)
+    setIsPreparingProof(!!file)
+    if (!file) return
+
+    try {
+      const preparedFile = await prepareInscriptionProof(file)
+      if (version !== proofSelectionVersion.current) return
+      setPaymentProofFile(preparedFile)
+    } catch (error) {
+      if (version !== proofSelectionVersion.current) return
+      setPaymentProofError(error instanceof Error ? error.message : "No se pudo preparar el comprobante.")
+    } finally {
+      if (version === proofSelectionVersion.current) setIsPreparingProof(false)
+    }
+  }
 
   // Formulario para registrar nuevo jugador
   const playerForm = useForm<PlayerFormValues>({
@@ -311,6 +339,7 @@ export default function RegisterCoupleForm({
 
   // Verificar telefonos antes de registrar pareja
   const handleCheckPhonesAndRegister = async (companionId = selectedCompanionId) => {
+    if (phoneCheckInFlight.current || registrationInFlight.current) return false
     if (!userDetails?.player_id || !companionId) {
       toast({
         title: "Selección incompleta",
@@ -324,7 +353,9 @@ export default function RegisterCoupleForm({
       return false
     }
 
+    phoneCheckInFlight.current = true
     setIsCheckingPhones(true)
+    let readyToRegister = false
 
     try {
       console.log("[RegisterCoupleForm] Verificando telefonos de jugadores...")
@@ -355,7 +386,7 @@ export default function RegisterCoupleForm({
       // Si al menos uno tiene telefono, proceder con el registro directamente
       if (result.atLeastOneHasPhone) {
         console.log("[RegisterCoupleForm] Al menos un jugador tiene telefono, procediendo con registro...")
-        return await registerCoupleWithCompanion(companionId)
+        readyToRegister = true
       } else {
         // Ninguno tiene telefono, mostrar formulario para agregar al menos uno
         console.log("[RegisterCoupleForm] Ningun jugador tiene telefono, mostrando formulario...")
@@ -371,8 +402,11 @@ export default function RegisterCoupleForm({
       })
       return false
     } finally {
+      phoneCheckInFlight.current = false
       setIsCheckingPhones(false)
     }
+
+    return readyToRegister ? registerCoupleWithCompanion(companionId) : false
   }
 
   // Actualizar telefonos faltantes y luego registrar
@@ -468,39 +502,7 @@ export default function RegisterCoupleForm({
       return
     }
 
-    setIsSubmitting(true)
-
-    try {
-      const result = await submitCoupleRegistration(selectedCompanionId)
-
-      if (result.success) {
-        toast({
-          title: transferProofEnabled ? "Inscripción registrada" : "Pareja registrada",
-          description: transferProofEnabled
-            ? "Tu pareja quedó registrada y pendiente de revisión del organizador"
-            : "Te has registrado exitosamente en pareja para el torneo",
-        })
-        onComplete(true)
-      } else {
-        console.error('[RegisterCoupleForm] Registration error:', result.error)
-        toast({
-          title: "Error en el registro",
-          description: result.error || "No se pudo registrar la pareja",
-          variant: "destructive",
-        })
-        onComplete(false)
-      }
-    } catch (error) {
-      console.error("Error al registrar pareja:", error)
-      toast({
-        title: "Error inesperado",
-        description: error instanceof Error ? error.message : "Ocurrió un error al procesar la solicitud",
-        variant: "destructive",
-      })
-      onComplete(false)
-    } finally {
-      setIsSubmitting(false)
-    }
+    await registerCoupleWithCompanion(selectedCompanionId)
   }
 
   // Manejar registro de pareja con compañero existente (mantener por compatibilidad)
@@ -509,6 +511,7 @@ export default function RegisterCoupleForm({
   }
 
   const registerCoupleWithCompanion = async (companionId: string) => {
+    if (registrationInFlight.current) return false
     if (!userDetails?.player_id) {
       toast({
         title: "Error de usuario",
@@ -518,27 +521,43 @@ export default function RegisterCoupleForm({
       return false
     }
 
-    const result = await submitCoupleRegistration(companionId)
+    registrationInFlight.current = true
+    setIsSubmitting(true)
+    try {
+      const result = await submitCoupleRegistration(companionId)
 
-    if (result.success) {
+      if (result.success) {
+        toast({
+          title: transferProofEnabled ? "Inscripción registrada" : "¡Pareja registrada!",
+          description: transferProofEnabled
+            ? "La pareja quedó registrada y pendiente de revisión del organizador"
+            : "Se ha registrado la pareja exitosamente",
+        })
+        onComplete(true)
+        return true
+      }
+
+      console.error("[RegisterCoupleForm] Couple registration error:", result.error)
       toast({
-        title: transferProofEnabled ? "Inscripción registrada" : "¡Pareja registrada!",
-        description: transferProofEnabled
-          ? "La pareja quedó registrada y pendiente de revisión del organizador"
-          : "Se ha registrado la pareja exitosamente",
+        title: 'stage' in result && result.stage === 'upload'
+          ? "Error al enviar el comprobante"
+          : "Error en el registro de pareja",
+        description: result.error || "No se pudo registrar la pareja",
+        variant: "destructive",
       })
-      onComplete(true)
-      return true
+      return false
+    } catch {
+      console.error('[RegisterCoupleForm]', { stage: 'registration' })
+      toast({
+        title: "No se pudo confirmar la inscripción",
+        description: "Revisá Mis torneos antes de reintentar. Los datos del formulario se conservaron.",
+        variant: "destructive",
+      })
+      return false
+    } finally {
+      registrationInFlight.current = false
+      setIsSubmitting(false)
     }
-
-    console.error("[RegisterCoupleForm] Couple registration error:", result.error)
-    toast({
-      title: "Error en el registro de pareja",
-      description: result.error || "No se pudo registrar la pareja",
-      variant: "destructive",
-    })
-    onComplete(false)
-    return false
   }
 
   const createAndRegisterCompanion = async (
@@ -643,30 +662,13 @@ export default function RegisterCoupleForm({
         }
       }
 
-      const formData = new FormData()
-      formData.append("player1Id", userDetails.player_id)
-      formData.append("player2Id", companionId)
-      formData.append("termsAccepted", String(termsAccepted))
-      formData.append("proof", proofFile)
-
-      const response = await fetch(`/api/tournaments/${tournamentId}/inscriptions/couple-with-proof`, {
-        method: "POST",
-        body: formData,
+      return submitInscriptionProof({
+        tournamentId,
+        player1Id: userDetails.player_id,
+        player2Id: companionId,
+        termsAccepted,
+        file: proofFile,
       })
-
-      const result = await parseJsonResponse<{ message?: string }>(
-        response,
-        "El servidor devolvió una respuesta inválida al registrar la pareja.",
-      )
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: result.message || "No se pudo registrar la pareja con comprobante.",
-        }
-      }
-
-      return { success: true }
     }
 
     console.log("[RegisterCoupleForm] Llamando registerCoupleForTournament")
@@ -686,6 +688,8 @@ export default function RegisterCoupleForm({
   const getTransferProofValidationError = () => {
     if (!transferProofEnabled) return null
 
+    if (isPreparingProof) return "Esperá a que termine de prepararse el comprobante."
+
     if (transferConfigInvalid) {
       return "El organizador no configuró correctamente alias y monto para esta inscripción."
     }
@@ -694,7 +698,7 @@ export default function RegisterCoupleForm({
       return "Debes adjuntar un comprobante para registrar tu pareja."
     }
 
-    return null
+    return validateInscriptionProof(paymentProofFile)
   }
 
   const validateTransferProofRequirements = () => {
@@ -719,7 +723,7 @@ export default function RegisterCoupleForm({
     (selectedCompanionId && players.find((player) => player.id === selectedCompanionId)) ||
     null
 
-  const isTransferStepReady = !transferProofEnabled || (!!paymentProofFile && !transferConfigInvalid)
+  const isTransferStepReady = !transferProofEnabled || (!!paymentProofFile && !transferConfigInvalid && !isPreparingProof)
   const isTermsStepReady = !requireTermsAcceptance || termsAccepted
 
   const renderTermsAcceptance = () => {
@@ -745,7 +749,7 @@ export default function RegisterCoupleForm({
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{stepLabel}</p>
           <h3 className="text-base font-semibold text-slate-900">Transferi y subi el comprobante</h3>
           <p className="text-sm text-slate-700">
-            Cuando adjuntas el comprobante, la inscripcion queda registrada.
+            Seleccioná el comprobante y confirmá la inscripción con el botón de abajo.
           </p>
         </div>
       </div>
@@ -788,16 +792,12 @@ export default function RegisterCoupleForm({
           type="file"
           accept=".jpg,.jpeg,.png,.webp,.pdf"
           className="sr-only"
+          disabled={isSubmitting || isCheckingPhones || isUpdatingPhones}
+          aria-label="Seleccionar comprobante de transferencia"
           onChange={(event) => {
             const file = event.target.files?.[0] || null
-            setPaymentProofFile(file)
-            if (transferConfigInvalid) {
-              setPaymentProofError("El organizador no configuró correctamente alias y monto para esta inscripción.")
-            } else if (file) {
-              setPaymentProofError(null)
-            } else {
-              setPaymentProofError("Debes adjuntar un comprobante para registrar tu pareja.")
-            }
+            event.target.value = ""
+            if (file) void handleProofSelection(file)
           }}
         />
 
@@ -810,23 +810,23 @@ export default function RegisterCoupleForm({
           }`}
         >
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-            {paymentProofFile ? <CheckCircle2 className="h-6 w-6" /> : <Upload className="h-6 w-6" />}
+            {isPreparingProof ? <Loader2 className="h-6 w-6 animate-spin" /> : paymentProofFile ? <CheckCircle2 className="h-6 w-6" /> : <Upload className="h-6 w-6" />}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">
-              {paymentProofFile ? "Comprobante cargado" : "Subir comprobante"}
+            <p className="text-sm font-semibold text-slate-900" role="status">
+              {isPreparingProof ? "Preparando comprobante…" : paymentProofFile ? "Comprobante seleccionado" : "Seleccionar comprobante"}
             </p>
-            <p className="text-xs text-slate-600">JPG, PNG, WEBP o PDF</p>
+            <p className="text-xs text-slate-600">JPG, PNG, WEBP o PDF · Hasta 4 MB. Las imágenes grandes se optimizan automáticamente.</p>
             {paymentProofFile && (
               <p className="mt-1 max-w-full break-all text-xs font-medium text-emerald-700">
-                {paymentProofFile.name}
+                {paymentProofFile.name} · {(paymentProofFile.size / 1_000_000).toLocaleString("es-AR", { maximumFractionDigits: 2 })} MB
               </p>
             )}
           </div>
         </label>
 
         {paymentProofError && (
-          <p className="text-sm font-medium text-red-600">
+          <p className="text-sm font-medium text-red-600" role="alert">
             {paymentProofError}
           </p>
         )}
