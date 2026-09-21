@@ -79,6 +79,12 @@ const getStatusBadge = (status: BillingStatus) => {
   return <Badge className="bg-amber-100 text-amber-800">Pendiente</Badge>
 }
 
+const formatTournamentStatus = (status: string) => {
+  if (status === "BRACKET_PHASE") return "Fase de llaves"
+  if (status === "ZONE_PHASE") return "Fase de zonas"
+  return status.replaceAll("_", " ")
+}
+
 type Confirmation =
   | { kind: "settings" }
   | { kind: "week" }
@@ -288,10 +294,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     document.text(`Cuota ${installment.installmentNumber} de ${collection.installments.length} — ${formatCurrency(installment.amountArs)}`, 14, 51)
     document.text(`Saldo pendiente luego de esta cuota: ${formatCurrency(remainingBalance)}`, 14, 59)
     autoTable(document, {
-      head: [["Torneo", "Club", "Parejas", "Importe"]],
+      head: [["Torneo", "Club", "Estado", "Parejas", "Importe"]],
       body: collection.tournaments.map((tournament) => [
         tournament.tournamentName,
         tournament.clubName,
+        formatTournamentStatus(tournament.tournamentStatus),
         tournament.billableUnits,
         formatCurrency(tournament.amountArs),
       ]),
@@ -331,10 +338,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     document.text(`Padel FV · Organizador: ${collection.organizerLabel}`, 14, 26)
     document.text(`Total: ${formatCurrency(collection.totalAmountArs)} · Saldo: ${formatCurrency(collection.balanceArs)}`, 14, 33)
     autoTable(document, {
-      head: [["Torneo", "Club", "Parejas", "Importe"]],
+      head: [["Torneo", "Club", "Estado", "Parejas", "Importe"]],
       body: collection.tournaments.map((tournament) => [
         tournament.tournamentName,
         tournament.clubName,
+        formatTournamentStatus(tournament.tournamentStatus),
         tournament.billableUnits,
         formatCurrency(tournament.amountArs),
       ]),
