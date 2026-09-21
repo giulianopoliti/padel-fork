@@ -236,11 +236,6 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
       throw new Error("Uno o más torneos ya pertenecen a un cobro")
     }
 
-    const organizerIds = Array.from(new Set(selectedItems.map((item) => item.organizerId).filter(Boolean)))
-    if (organizerIds.length !== 1 || !selectedItems.every((item) => item.organizerLabel)) {
-      throw new Error("Todos los torneos deben pertenecer al mismo organizador")
-    }
-
     const installments = [...parsed.installments].sort((a, b) => a.installmentNumber - b.installmentNumber)
     if (installments.some((installment, index) => installment.installmentNumber !== index + 1)) {
       throw new Error("Las cuotas deben numerarse consecutivamente desde 1")
@@ -253,8 +248,8 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
 
     const { data, error } = await supabaseAdmin.rpc("create_billing_collection", {
       p_organization_id: context.organizationId,
-      p_organizer_id: organizerIds[0],
-      p_organizer_label: selectedItems[0].organizerLabel!,
+      p_organizer_id: null,
+      p_organizer_label: context.tenantName,
       p_total_amount_ars: totalAmountArs,
       p_tournaments: selectedItems.map((item) => ({
         tournament_id: item.tournamentId,

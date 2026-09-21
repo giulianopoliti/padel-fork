@@ -224,14 +224,9 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const hasSelection = selectedPendingItems.length > 0
 
   const selectedTotalAmount = selectedPendingItems.reduce((sum, item) => sum + item.amountArs, 0)
-  const selectedOrganizerIds = Array.from(
-    new Set(selectedPendingItems.map((item) => item.organizerId).filter(Boolean)),
-  )
   const canCreateCollection =
     data.billingModel === "FV_LEAGUE" &&
-    selectedPendingItems.length > 0 &&
-    selectedOrganizerIds.length === 1 &&
-    selectedPendingItems.every((item) => item.organizerLabel)
+    selectedPendingItems.length > 0
 
   useEffect(() => {
     const availableIds = new Set(data.items.map((item) => item.tournamentId))
@@ -255,7 +250,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const handleCreateCollection = () => {
     const count = Number(installmentCount)
     if (!canCreateCollection || !Number.isInteger(count) || count < 1 || count > 24) {
-      toast({ title: "Cuotas inválidas", description: "Elegí entre 1 y 24 cuotas para un único organizador.", variant: "destructive" })
+      toast({ title: "Cuotas inválidas", description: "Elegí entre 1 y 24 cuotas.", variant: "destructive" })
       return
     }
 
@@ -766,16 +761,13 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
           <CardHeader>
             <CardTitle>Crear cobro en cuotas</CardTitle>
             <CardDescription>
-              El total se congela al crear el cobro. Todos los torneos elegidos deben ser del mismo organizador.
+              El total se congela al crear el cobro. Podés combinar torneos pendientes de Padel FV.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 md:flex-row md:items-end">
             <div className="min-w-0 flex-1">
               <p className="text-sm text-slate-500">Total seleccionado</p>
               <p className="text-2xl font-bold text-slate-900">{formatCurrency(selectedTotalAmount)}</p>
-              {selectedPendingItems.length > 0 && !canCreateCollection && (
-                <p className="mt-1 text-xs text-amber-700">Seleccioná torneos pendientes de un único organizador.</p>
-              )}
             </div>
             <div className="w-full space-y-2 md:w-40">
               <Label htmlFor="installment-count">Cantidad de cuotas</Label>

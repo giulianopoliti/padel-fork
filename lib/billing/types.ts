@@ -101,7 +101,7 @@ export interface BillingInstallment {
 
 export interface BillingCollection {
   id: string
-  organizerId: string
+  organizerId: string | null
   organizerLabel: string
   totalAmountArs: number
   amountPaidArs: number
