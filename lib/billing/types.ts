@@ -87,6 +87,7 @@ export interface BillingCollectionTournament {
   tournamentId: string
   tournamentName: string
   clubName: string
+  billableUnits: number
   amountArs: number
 }
 

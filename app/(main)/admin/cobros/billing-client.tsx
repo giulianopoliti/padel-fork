@@ -288,10 +288,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     document.text(`Cuota ${installment.installmentNumber} de ${collection.installments.length} — ${formatCurrency(installment.amountArs)}`, 14, 51)
     document.text(`Saldo pendiente luego de esta cuota: ${formatCurrency(remainingBalance)}`, 14, 59)
     autoTable(document, {
-      head: [["Torneo", "Club", "Importe"]],
+      head: [["Torneo", "Club", "Parejas", "Importe"]],
       body: collection.tournaments.map((tournament) => [
         tournament.tournamentName,
         tournament.clubName,
+        tournament.billableUnits,
         formatCurrency(tournament.amountArs),
       ]),
       startY: 68,
@@ -330,8 +331,13 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     document.text(`Padel FV · Organizador: ${collection.organizerLabel}`, 14, 26)
     document.text(`Total: ${formatCurrency(collection.totalAmountArs)} · Saldo: ${formatCurrency(collection.balanceArs)}`, 14, 33)
     autoTable(document, {
-      head: [["Torneo", "Club", "Importe"]],
-      body: collection.tournaments.map((tournament) => [tournament.tournamentName, tournament.clubName, formatCurrency(tournament.amountArs)]),
+      head: [["Torneo", "Club", "Parejas", "Importe"]],
+      body: collection.tournaments.map((tournament) => [
+        tournament.tournamentName,
+        tournament.clubName,
+        tournament.billableUnits,
+        formatCurrency(tournament.amountArs),
+      ]),
       startY: 42,
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [32, 51, 93] },

@@ -81,6 +81,7 @@ interface BillingCollectionTournamentRow {
   amount_ars: number
   tournament_name: string
   club_name: string
+  billable_units: number
 }
 
 interface BillingInstallmentRow {
@@ -242,7 +243,7 @@ const fetchTenantCollections = async (organizationId: string): Promise<BillingCo
   const [{ data: tournaments, error: tournamentsError }, { data: installments, error: installmentsError }] = await Promise.all([
     supabaseAdmin
       .from("billing_collection_tournaments")
-      .select("collection_id, tournament_id, amount_ars, tournament_name, club_name")
+      .select("collection_id, tournament_id, amount_ars, tournament_name, club_name, billable_units")
       .in("collection_id", collectionIds),
     supabaseAdmin
       .from("billing_collection_installments")
@@ -284,6 +285,7 @@ const fetchTenantCollections = async (organizationId: string): Promise<BillingCo
       tournamentId: tournament.tournament_id,
       tournamentName: tournament.tournament_name,
       clubName: tournament.club_name,
+      billableUnits: tournament.billable_units,
       amountArs: tournament.amount_ars,
     })),
     installments: (installmentsByCollection.get(collection.id) || []).map((installment): BillingInstallment => ({

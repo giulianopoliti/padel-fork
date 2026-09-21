@@ -256,6 +256,7 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
         amount_ars: item.amountArs,
         tournament_name: item.tournamentName,
         club_name: item.clubName,
+        billable_units: item.billableUnits,
       })),
       p_installments: installments.map((installment) => ({
         installment_number: installment.installmentNumber,
