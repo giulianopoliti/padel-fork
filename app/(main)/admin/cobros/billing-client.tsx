@@ -33,12 +33,15 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { useToast } from "@/components/ui/use-toast"
 import {
   markTpeWeekPaid,
+  createBillingCollection,
+  issueBillingInstallment,
+  registerBillingInstallmentPayment,
   setTournamentBillingStatus,
   setTournamentsBillingStatus,
   updateBillingSettings,
 } from "@/app/api/admin/billing/actions"
 import { addDaysToDateOnly } from "@/lib/billing/rules"
-import type { BillingDashboardData, BillingItem, BillingStatus } from "@/lib/billing/types"
+import type { BillingCollection, BillingDashboardData, BillingInstallment, BillingItem, BillingStatus } from "@/lib/billing/types"
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("es-AR", {
@@ -91,6 +94,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const [statusFilter, setStatusFilter] = useState<"ALL" | BillingStatus>("ALL")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTournamentIds, setSelectedTournamentIds] = useState<string[]>([])
+  const [installmentCount, setInstallmentCount] = useState("2")
   const [fvAmountUpTo16, setFvAmountUpTo16] = useState(String(data.settings.fvAmountUpTo16))
   const [fvAmountOver16, setFvAmountOver16] = useState(String(data.settings.fvAmountOver16))
   const [tpeAmountPerPlayer, setTpeAmountPerPlayer] = useState(
@@ -220,6 +224,14 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const hasSelection = selectedPendingItems.length > 0
 
   const selectedTotalAmount = selectedPendingItems.reduce((sum, item) => sum + item.amountArs, 0)
+  const selectedOrganizerIds = Array.from(
+    new Set(selectedPendingItems.map((item) => item.organizerId).filter(Boolean)),
+  )
+  const canCreateCollection =
+    data.billingModel === "FV_LEAGUE" &&
+    selectedPendingItems.length > 0 &&
+    selectedOrganizerIds.length === 1 &&
+    selectedPendingItems.every((item) => item.organizerLabel)
 
   useEffect(() => {
     const availableIds = new Set(data.items.map((item) => item.tournamentId))
@@ -229,6 +241,122 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const handleNavigateWeek = (days: number) => {
     if (!data.weekStart) return
     router.push(`/admin/cobros?week=${addDaysToDateOnly(data.weekStart, days)}`)
+  }
+
+  const buildEqualInstallments = (totalAmount: number, count: number) => {
+    const baseAmount = Math.floor(totalAmount / count)
+    const remainder = totalAmount % count
+    return Array.from({ length: count }, (_, index) => ({
+      installmentNumber: index + 1,
+      amountArs: baseAmount + (index < remainder ? 1 : 0),
+    }))
+  }
+
+  const handleCreateCollection = () => {
+    const count = Number(installmentCount)
+    if (!canCreateCollection || !Number.isInteger(count) || count < 1 || count > 24) {
+      toast({ title: "Cuotas inválidas", description: "Elegí entre 1 y 24 cuotas para un único organizador.", variant: "destructive" })
+      return
+    }
+
+    startTransition(async () => {
+      const result = await createBillingCollection({
+        tournamentIds: selectedPendingItems.map((item) => item.tournamentId),
+        installments: buildEqualInstallments(selectedTotalAmount, count),
+      })
+      if (!result.success) {
+        toast({ title: "No se creó el cobro", description: result.error, variant: "destructive" })
+        return
+      }
+      toast({ title: "Cobro creado", description: `${count} cuotas persistidas por ${formatCurrency(selectedTotalAmount)}.` })
+      setSelectedTournamentIds([])
+      router.refresh()
+    })
+  }
+
+  const handleDownloadInstallmentPdf = async (collection: BillingCollection, installment: BillingInstallment) => {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ])
+    const document = new jsPDF({ unit: "mm", format: "a4" })
+    const remainingBalance = Math.max(0, collection.balanceArs - (installment.status === "PAID" ? 0 : installment.amountArs))
+    document.setFontSize(18)
+    document.text("Comprobante de cobro", 14, 18)
+    document.setFontSize(10)
+    document.setTextColor(75, 85, 99)
+    document.text(`Padel FV · Organizador: ${collection.organizerLabel}`, 14, 26)
+    document.text(`Cobro #${collection.id.slice(0, 8).toUpperCase()}`, 14, 32)
+    document.setTextColor(15, 23, 42)
+    document.setFontSize(12)
+    document.text(`Total del cobro: ${formatCurrency(collection.totalAmountArs)}`, 14, 43)
+    document.text(`Cuota ${installment.installmentNumber} de ${collection.installments.length} — ${formatCurrency(installment.amountArs)}`, 14, 51)
+    document.text(`Saldo pendiente luego de esta cuota: ${formatCurrency(remainingBalance)}`, 14, 59)
+    autoTable(document, {
+      head: [["Torneo", "Club", "Importe"]],
+      body: collection.tournaments.map((tournament) => [
+        tournament.tournamentName,
+        tournament.clubName,
+        formatCurrency(tournament.amountArs),
+      ]),
+      startY: 68,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [32, 51, 93] },
+    })
+    document.setFontSize(8)
+    document.setTextColor(107, 114, 128)
+    document.text(`Emitido el ${formatDate(new Date().toISOString())}`, 14, 287)
+    document.save(`cobro-${collection.id.slice(0, 8)}-cuota-${installment.installmentNumber}.pdf`)
+  }
+
+  const handleIssueAndDownloadInstallment = (collection: BillingCollection, installment: BillingInstallment) => {
+    startTransition(async () => {
+      const result = await issueBillingInstallment({ installmentId: installment.id })
+      if (!result.success) {
+        toast({ title: "No se emitió la cuota", description: result.error, variant: "destructive" })
+        return
+      }
+      await handleDownloadInstallmentPdf(collection, installment)
+      toast({ title: "PDF emitido", description: `Cuota ${installment.installmentNumber} lista para enviar.` })
+      router.refresh()
+    })
+  }
+
+  const handleDownloadCollectionPdf = async (collection: BillingCollection) => {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ])
+    const document = new jsPDF({ unit: "mm", format: "a4" })
+    document.setFontSize(18)
+    document.text("Cobro consolidado", 14, 18)
+    document.setFontSize(10)
+    document.setTextColor(75, 85, 99)
+    document.text(`Padel FV · Organizador: ${collection.organizerLabel}`, 14, 26)
+    document.text(`Total: ${formatCurrency(collection.totalAmountArs)} · Saldo: ${formatCurrency(collection.balanceArs)}`, 14, 33)
+    autoTable(document, {
+      head: [["Torneo", "Club", "Importe"]],
+      body: collection.tournaments.map((tournament) => [tournament.tournamentName, tournament.clubName, formatCurrency(tournament.amountArs)]),
+      startY: 42,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [32, 51, 93] },
+    })
+    document.save(`cobro-${collection.id.slice(0, 8)}-consolidado.pdf`)
+  }
+
+  const handleRegisterInstallmentPayment = (installment: BillingInstallment) => {
+    startTransition(async () => {
+      const result = await registerBillingInstallmentPayment({
+        installmentId: installment.id,
+        amountArs: installment.amountArs,
+      })
+      if (!result.success) {
+        toast({ title: "No se registró el pago", description: result.error, variant: "destructive" })
+        return
+      }
+      toast({ title: "Cuota cobrada", description: `${formatCurrency(installment.amountArs)} registrado.` })
+      router.refresh()
+    })
   }
 
   const handleSaveSettings = () => {
@@ -632,6 +760,99 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
           </div>
         </CardContent>
       </Card>
+
+      {data.billingModel === "FV_LEAGUE" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Crear cobro en cuotas</CardTitle>
+            <CardDescription>
+              El total se congela al crear el cobro. Todos los torneos elegidos deben ser del mismo organizador.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 md:flex-row md:items-end">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-slate-500">Total seleccionado</p>
+              <p className="text-2xl font-bold text-slate-900">{formatCurrency(selectedTotalAmount)}</p>
+              {selectedPendingItems.length > 0 && !canCreateCollection && (
+                <p className="mt-1 text-xs text-amber-700">Seleccioná torneos pendientes de un único organizador.</p>
+              )}
+            </div>
+            <div className="w-full space-y-2 md:w-40">
+              <Label htmlFor="installment-count">Cantidad de cuotas</Label>
+              <Input
+                id="installment-count"
+                type="number"
+                min={1}
+                max={24}
+                step={1}
+                value={installmentCount}
+                onChange={(event) => setInstallmentCount(event.target.value)}
+              />
+            </div>
+            <Button disabled={isPending || !canCreateCollection} onClick={handleCreateCollection}>
+              <ReceiptText className="mr-2 h-4 w-4" />
+              Crear cobro
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {data.billingModel === "FV_LEAGUE" && data.collections.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Cobros en cuotas</CardTitle>
+            <CardDescription>Saldo y estado persistidos por cada comprobante.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {data.collections.map((collection) => (
+              <div key={collection.id} className="rounded-lg border p-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-900">{collection.organizerLabel}</p>
+                    <p className="text-sm text-slate-500">{collection.tournaments.length} torneos · Total {formatCurrency(collection.totalAmountArs)}</p>
+                  </div>
+                  <Badge className={collection.status === "PAID" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>
+                    {collection.status === "PAID" ? "Cobro completo" : collection.status === "PARTIALLY_PAID" ? "Pago parcial" : "Pendiente"}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                  <p><span className="text-slate-500">Total:</span> {formatCurrency(collection.totalAmountArs)}</p>
+                  <p><span className="text-slate-500">Cobrado:</span> {formatCurrency(collection.amountPaidArs)}</p>
+                  <p><span className="text-slate-500">Saldo:</span> {formatCurrency(collection.balanceArs)}</p>
+                </div>
+                <Button className="mt-3" size="sm" variant="outline" onClick={() => handleDownloadCollectionPdf(collection)}>
+                  <Download className="mr-2 h-4 w-4" />
+                  PDF consolidado
+                </Button>
+                <div className="mt-4 space-y-2">
+                  {collection.installments.map((installment) => (
+                    <div key={installment.id} className="flex flex-col gap-2 rounded-md bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900">Cuota {installment.installmentNumber} de {collection.installments.length} — {formatCurrency(installment.amountArs)}</p>
+                        <p className="text-xs text-slate-500">{installment.status === "PAID" ? "Cobrada" : installment.status === "ISSUED" ? "Emitida" : "Pendiente de emisión"}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {installment.status !== "PAID" && (
+                          <Button size="sm" variant="outline" disabled={isPending} onClick={() => handleIssueAndDownloadInstallment(collection, installment)}>
+                            <Download className="mr-2 h-4 w-4" />
+                            {installment.status === "ISSUED" ? "Reemitir PDF" : "Emitir PDF"}
+                          </Button>
+                        )}
+                        {installment.status !== "PAID" && (
+                          <Button size="sm" disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleRegisterInstallmentPayment(installment)}>
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Registrar pago
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="hidden md:block">
         <CardHeader>

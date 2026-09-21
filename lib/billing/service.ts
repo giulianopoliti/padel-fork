@@ -13,7 +13,11 @@ import {
 } from "@/lib/billing/rules"
 import type {
   BillingChargeRow,
+  BillingCollection,
+  BillingCollectionStatus,
   BillingDashboardData,
+  BillingInstallment,
+  BillingInstallmentStatus,
   BillingInscription,
   BillingItem,
   BillingModel,
@@ -23,7 +27,7 @@ import type {
 } from "@/lib/billing/types"
 
 const TOURNAMENT_SELECT =
-  "id, name, type, status, created_at, start_date, organization_id, es_prueba, clubes(name)"
+  "id, name, type, status, created_at, start_date, organization_id, organizador_id, es_prueba, clubes(name)"
 
 const INSCRIPTION_SELECT = `
   tournament_id,
@@ -58,6 +62,35 @@ interface BillingSettingsRow {
   fv_amount_over_16: number
   tpe_amount_per_player: number
   updated_at: string
+}
+
+interface BillingCollectionRow {
+  id: string
+  organizer_id: string
+  organizer_label: string
+  total_amount_ars: number
+  amount_paid_ars: number
+  balance_ars: number
+  status: BillingCollectionStatus
+  created_at: string
+}
+
+interface BillingCollectionTournamentRow {
+  collection_id: string
+  tournament_id: string
+  amount_ars: number
+  tournament_name: string
+  club_name: string
+}
+
+interface BillingInstallmentRow {
+  id: string
+  collection_id: string
+  installment_number: number
+  amount_ars: number
+  status: BillingInstallmentStatus
+  issued_at: string | null
+  paid_at: string | null
 }
 
 const toBillingSettings = (row: BillingSettingsRow): BillingSettings => ({
@@ -195,6 +228,86 @@ const fetchTenantTournaments = async (context: BillingContext) => {
   return tournaments
 }
 
+const fetchTenantCollections = async (organizationId: string): Promise<BillingCollection[]> => {
+  const { data: collections, error: collectionsError } = await supabaseAdmin
+    .from("billing_collections")
+    .select("id, organizer_id, organizer_label, total_amount_ars, amount_paid_ars, balance_ars, status, created_at")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+  if (collectionsError) throw collectionsError
+
+  const rows = (collections || []) as unknown as BillingCollectionRow[]
+  if (rows.length === 0) return []
+  const collectionIds = rows.map((collection) => collection.id)
+  const [{ data: tournaments, error: tournamentsError }, { data: installments, error: installmentsError }] = await Promise.all([
+    supabaseAdmin
+      .from("billing_collection_tournaments")
+      .select("collection_id, tournament_id, amount_ars, tournament_name, club_name")
+      .in("collection_id", collectionIds),
+    supabaseAdmin
+      .from("billing_collection_installments")
+      .select("id, collection_id, installment_number, amount_ars, status, issued_at, paid_at")
+      .in("collection_id", collectionIds)
+      .order("installment_number", { ascending: true }),
+  ])
+  if (tournamentsError) throw tournamentsError
+  if (installmentsError) throw installmentsError
+
+  const collectionIdSet = new Set(collectionIds)
+  const tournamentsByCollection = new Map<string, BillingCollectionTournamentRow[]>()
+  const installmentsByCollection = new Map<string, BillingInstallmentRow[]>()
+
+  for (const tournament of (tournaments || []) as unknown as BillingCollectionTournamentRow[]) {
+    if (!collectionIdSet.has(tournament.collection_id)) continue
+    const current = tournamentsByCollection.get(tournament.collection_id) || []
+    current.push(tournament)
+    tournamentsByCollection.set(tournament.collection_id, current)
+  }
+
+  for (const installment of (installments || []) as unknown as BillingInstallmentRow[]) {
+    if (!collectionIdSet.has(installment.collection_id)) continue
+    const current = installmentsByCollection.get(installment.collection_id) || []
+    current.push(installment)
+    installmentsByCollection.set(installment.collection_id, current)
+  }
+
+  return rows.map((collection) => ({
+    id: collection.id,
+    organizerId: collection.organizer_id,
+    organizerLabel: collection.organizer_label,
+    totalAmountArs: collection.total_amount_ars,
+    amountPaidArs: collection.amount_paid_ars,
+    balanceArs: collection.balance_ars,
+    status: collection.status,
+    createdAt: collection.created_at,
+    tournaments: (tournamentsByCollection.get(collection.id) || []).map((tournament) => ({
+      tournamentId: tournament.tournament_id,
+      tournamentName: tournament.tournament_name,
+      clubName: tournament.club_name,
+      amountArs: tournament.amount_ars,
+    })),
+    installments: (installmentsByCollection.get(collection.id) || []).map((installment): BillingInstallment => ({
+      id: installment.id,
+      installmentNumber: installment.installment_number,
+      amountArs: installment.amount_ars,
+      status: installment.status,
+      issuedAt: installment.issued_at,
+      paidAt: installment.paid_at,
+    })),
+  }))
+}
+
+const fetchOrganizerLabels = async (organizerIds: string[]) => {
+  if (organizerIds.length === 0) return new Map<string, string>()
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, email")
+    .in("id", organizerIds)
+
+  if (error) throw error
+  return new Map((data || []).map((user) => [user.id, user.email || "Organizador sin email"]))
+}
+
 const getSnapshotFromStoredCharge = (charge: BillingChargeRow): BillingSnapshot => ({
   billingModel: charge.billing_model,
   billableUnits: charge.billable_units,
@@ -212,10 +325,14 @@ export const getTenantBillingDashboard = async (
   const settings = await getOrCreateBillingSettings(context)
   const week = context.billingModel === "TPE_PLAYER" ? getWeekRange(requestedWeekStart) : null
 
-  const [charges, tournaments] = await Promise.all([
+  const [charges, tournaments, collections] = await Promise.all([
     fetchTenantCharges(context.organizationId),
     fetchTenantTournaments(context),
+    context.billingModel === "FV_LEAGUE" ? fetchTenantCollections(context.organizationId) : Promise.resolve([]),
   ])
+  const organizerLabels = await fetchOrganizerLabels(
+    Array.from(new Set(tournaments.map((tournament) => tournament.organizador_id).filter(Boolean))) as string[],
+  )
   const chargeByTournament = new Map(charges.map((charge) => [charge.tournament_id, charge]))
 
   const visibleTournaments = tournaments.filter((tournament) => {
@@ -251,6 +368,10 @@ export const getTenantBillingDashboard = async (
 
     return {
       tournamentId: tournament.id,
+      organizerId: tournament.organizador_id,
+      organizerLabel: tournament.organizador_id
+        ? organizerLabels.get(tournament.organizador_id) || "Organizador sin email"
+        : null,
       tournamentName: tournament.name || "Torneo sin nombre",
       clubName: getClubName(tournament),
       tournamentStatus: tournament.status,
@@ -271,6 +392,7 @@ export const getTenantBillingDashboard = async (
     billingModel: context.billingModel,
     settings,
     items,
+    collections,
     weekStart: week?.start || null,
     weekEnd: week?.end || null,
   }

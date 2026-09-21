@@ -1,5 +1,7 @@
 export type BillingModel = "FV_LEAGUE" | "TPE_PLAYER"
 export type BillingStatus = "PENDING" | "PAID" | "DISMISSED"
+export type BillingCollectionStatus = "OPEN" | "PARTIALLY_PAID" | "PAID"
+export type BillingInstallmentStatus = "PENDING" | "ISSUED" | "PAID"
 
 export interface BillingSettings {
   organizationId: string
@@ -36,6 +38,7 @@ export interface BillingTournamentRow {
   created_at: string
   start_date: string | null
   organization_id: string | null
+  organizador_id: string | null
   es_prueba: boolean | null
 }
 
@@ -67,6 +70,8 @@ export interface BillingSnapshot {
 
 export interface BillingItem extends BillingSnapshot {
   tournamentId: string
+  organizerId: string | null
+  organizerLabel: string | null
   tournamentName: string
   clubName: string
   tournamentStatus: string
@@ -78,6 +83,35 @@ export interface BillingItem extends BillingSnapshot {
   isEligible: boolean
 }
 
+export interface BillingCollectionTournament {
+  tournamentId: string
+  tournamentName: string
+  clubName: string
+  amountArs: number
+}
+
+export interface BillingInstallment {
+  id: string
+  installmentNumber: number
+  amountArs: number
+  status: BillingInstallmentStatus
+  issuedAt: string | null
+  paidAt: string | null
+}
+
+export interface BillingCollection {
+  id: string
+  organizerId: string
+  organizerLabel: string
+  totalAmountArs: number
+  amountPaidArs: number
+  balanceArs: number
+  status: BillingCollectionStatus
+  createdAt: string
+  tournaments: BillingCollectionTournament[]
+  installments: BillingInstallment[]
+}
+
 export interface BillingDashboardData {
   tenantKey: "padel-fv" | "padel-elite"
   tenantName: string
@@ -85,6 +119,7 @@ export interface BillingDashboardData {
   billingModel: BillingModel
   settings: BillingSettings
   items: BillingItem[]
+  collections: BillingCollection[]
   weekStart: string | null
   weekEnd: string | null
 }
