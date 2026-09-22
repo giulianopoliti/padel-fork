@@ -722,7 +722,7 @@ export async function getPlayerUpcomingTournaments(
     }
     const tournaments = branding.key === "padel-fv"
       ? (await Promise.all([
-          getTenantUpcomingTournamentSummaries(24, { ...summaryOptions, tournamentType: "LONG" }),
+          getTenantUpcomingTournamentSummaries(null, { ...summaryOptions, tournamentType: "LONG" }),
           getTenantUpcomingTournamentSummaries(24, { ...summaryOptions, tournamentType: "AMERICAN" }),
         ])).flat()
       : await getTenantUpcomingTournamentSummaries(8, summaryOptions)

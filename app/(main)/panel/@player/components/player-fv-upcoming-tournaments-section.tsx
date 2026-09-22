@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Ticket, Users } from "lucide-react"
@@ -54,15 +54,21 @@ export default function PlayerFvUpcomingTournamentsSection({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [page, setPage] = useState(1)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   const upcomingGenderParam = searchParams.get("upcomingGender")
   const selectedGenderFilter: "all" | Gender.MALE | Gender.FEMALE | Gender.MIXED = isTournamentGenderFilter(upcomingGenderParam)
     ? upcomingGenderParam
     : "all"
   const totalPages = Math.max(1, Math.ceil(tournaments.length / ITEMS_PER_PAGE))
-  const paginatedTournaments = useMemo(() => {
+  const displayedTournaments = useMemo(() => {
+    if (!isAmerican) {
+      return tournaments.slice(0, page * ITEMS_PER_PAGE)
+    }
+
     const startIndex = (page - 1) * ITEMS_PER_PAGE
     return tournaments.slice(startIndex, startIndex + ITEMS_PER_PAGE)
-  }, [page, tournaments])
+  }, [isAmerican, page, tournaments])
+  const hasMoreLeagues = !isAmerican && displayedTournaments.length < tournaments.length
   const tournamentsHref = (() => {
     const params = new URLSearchParams({ type: tournamentType })
 
@@ -80,7 +86,26 @@ export default function PlayerFvUpcomingTournamentsSection({
     }
   }, [page, totalPages])
 
+  useEffect(() => {
+    const loadMoreNode = loadMoreRef.current
+
+    if (isAmerican || !hasMoreLeagues || !loadMoreNode) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setPage((currentPage) => Math.min(totalPages, currentPage + 1))
+        }
+      },
+      { rootMargin: "240px 0px" },
+    )
+
+    observer.observe(loadMoreNode)
+    return () => observer.disconnect()
+  }, [hasMoreLeagues, isAmerican, totalPages])
+
   const handleGenderFilterChange = (value: string) => {
+    setPage(1)
     const params = new URLSearchParams(searchParams.toString())
 
     if (value === "all") {
@@ -140,7 +165,7 @@ export default function PlayerFvUpcomingTournamentsSection({
       </div>
 
       <div className="grid gap-3 p-3 sm:p-4 md:grid-cols-2">
-        {paginatedTournaments.map((tournament) => {
+        {displayedTournaments.map((tournament) => {
           const priceLabel = formatPrice(tournament.price)
           const statusLabel = statusLabels[tournament.status] || tournament.status
           const tournamentType = tournament.type || "LONG"
@@ -263,10 +288,21 @@ export default function PlayerFvUpcomingTournamentsSection({
         })}
       </div>
 
-      {totalPages > 1 ? (
+      {!isAmerican ? (
+        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
+          <p className="text-xs text-brand-200 sm:text-sm">
+            Mostrando {displayedTournaments.length} de {tournaments.length} ligas
+          </p>
+          {hasMoreLeagues ? (
+            <div ref={loadMoreRef} className="h-4 w-10" aria-hidden="true" />
+          ) : (
+            <span className="text-xs font-medium text-court-200">Todas cargadas</span>
+          )}
+        </div>
+      ) : totalPages > 1 ? (
         <div className="flex flex-col gap-2 border-t border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-brand-200 sm:text-sm">
-            Mostrando {paginatedTournaments.length} de {tournaments.length} torneos
+            Mostrando {displayedTournaments.length} de {tournaments.length} torneos
           </p>
           <div className="flex items-center gap-2">
             <Button

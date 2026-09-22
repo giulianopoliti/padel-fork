@@ -73,7 +73,7 @@ interface TenantUpcomingTournamentSummaryOptions {
 }
 
 export async function getTenantTournamentSummaries(
-  limit: number = 12,
+  limit: number | null = 12,
   options: TenantTournamentSummaryOptions,
 ): Promise<PublicTournamentSummary[]> {
   const supabase = await createClient()
@@ -126,7 +126,7 @@ export async function getTenantTournamentSummaries(
     query = query.eq("gender", explicitGenderFilter)
   }
 
-  if (!shouldPrioritizeByGender) {
+  if (!shouldPrioritizeByGender && limit !== null) {
     query = query.limit(limit)
   }
 
@@ -138,7 +138,10 @@ export async function getTenantTournamentSummaries(
   }
 
   const orderedTournaments = shouldPrioritizeByGender
-    ? prioritizeTournamentsByGender(data || [], options.priorityGender).slice(0, limit)
+    ? (() => {
+        const prioritized = prioritizeTournamentsByGender(data || [], options.priorityGender)
+        return limit === null ? prioritized : prioritized.slice(0, limit)
+      })()
     : data || []
 
   const countsByTournament = await getTournamentCoupleCounts(
@@ -198,7 +201,7 @@ export async function getTenantTournamentSummaries(
 
 // Kept for player panels, which intentionally retain their broader active-tournament view.
 export async function getTenantUpcomingTournamentSummaries(
-  limit: number = 12,
+  limit: number | null = 12,
   options: TenantUpcomingTournamentSummaryOptions = {},
 ): Promise<PublicTournamentSummary[]> {
   const statuses = options.statusMode === "active"
