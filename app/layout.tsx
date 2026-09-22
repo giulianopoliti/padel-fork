@@ -1,7 +1,11 @@
 import "./globals.css"
+import { Barlow_Condensed, Space_Grotesk } from "next/font/google"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { getTenantBranding, getTenantCanonicalSiteUrl } from "@/config/tenant"
+
+const eliteDisplay = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-elite-display", display: "swap" })
+const eliteBody = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-elite-body", display: "swap" })
 
 const branding = getTenantBranding()
 
@@ -36,7 +40,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className="bg-slate-50">
+      <body className={`bg-slate-50 ${branding.key === "padel-elite" ? `${eliteDisplay.variable} ${eliteBody.variable}` : ""}`}>
         {children}
         <Analytics />
       </body>

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ChevronRight, Trophy } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import BrandLogo from "@/components/ui/brand-logo"
 import { getTenantBranding } from "@/config/tenant"
@@ -112,32 +112,19 @@ function PadelEliteHomeContent({
   ranking: TenantRankingPlayer[]
 }) {
   return (
-    <div className="tpe-page min-h-screen">
-      <section className="container mx-auto px-4 pb-10 pt-8 sm:px-6 lg:pt-12">
+    <div className="tpe-page min-h-screen !bg-[#f3f6fb] !bg-none font-elite-body text-[#19214f]">
+      <PadelFvImmersiveHero variant="padel-elite" />
+      <section id="proximos-torneos" className="container mx-auto scroll-mt-24 px-4 py-14 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-8 rounded-[2rem] border border-white/60 bg-white/70 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <p className="tpe-kicker mb-4">TPE Padel</p>
-                <BrandLogo variant="hero" />
-                <h1 className="mt-6 text-4xl font-black text-[var(--tpe-night)] sm:text-5xl">{branding.home.title}</h1>
-                <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-700 sm:text-lg">{branding.home.subtitle}</p>
-              </div>
-              <Button asChild size="lg" className="rounded-full bg-[var(--tpe-night)] px-8 py-6 text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-paper)] hover:bg-[var(--tpe-night-soft)]">
-                <Link href="/torneos">Ver torneos</Link>
-              </Button>
-            </div>
-          </div>
-
-          <SectionHeader title="Proximos torneos" />
-          <PublicTournamentList tournaments={upcomingTournaments} emptyTitle="Todavia no hay torneos publicados" emptyDescription="Cuando TPE Padel cargue la proxima fecha, vas a verla aca con categoria, horario, sede e inscripcion directa." showRegistration />
+          <SectionHeader title="Próximos torneos" />
+          <PublicTournamentList variant="editorial" tournaments={upcomingTournaments} emptyTitle="Todavia no hay torneos publicados" emptyDescription="Cuando TPE Padel cargue la proxima fecha, vas a verla aca con categoria, horario, sede e inscripcion directa." showRegistration />
         </div>
       </section>
 
-      <section className="container mx-auto px-4 pb-12 sm:px-6">
+      <section className="border-y border-[#19214f]/10 bg-[#e4edf7] px-4 py-14 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-6xl">
           <SectionHeader title="Torneos en curso" />
-          <PublicTournamentList tournaments={inProgressTournaments} emptyTitle="No hay torneos en curso" emptyDescription="Los torneos que ya esten en competencia apareceran aca." showRegistration />
+          <PublicTournamentList variant="editorial" tournaments={inProgressTournaments} emptyTitle="No hay torneos en curso" emptyDescription="Los torneos que ya esten en competencia apareceran aca." showRegistration />
         </div>
       </section>
 
@@ -149,12 +136,12 @@ function PadelEliteHomeContent({
 
 function SectionHeader({ title, dark = false }: { title: string; dark?: boolean }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className={dark ? "mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-court-300" : "tpe-kicker mb-2"}>Agenda</p>
-        <h2 className={dark ? "text-2xl font-black text-white sm:text-3xl" : "text-3xl font-black text-[var(--tpe-night)] sm:text-4xl"}>{title}</h2>
+        <p className={dark ? "mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-court-300" : "mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[#273170] before:h-2 before:w-6 before:rounded-full before:bg-[#adc94c]"}>Agenda</p>
+        <h2 className={dark ? "text-2xl font-black text-white sm:text-3xl" : "font-elite-display text-5xl font-semibold leading-none tracking-tight text-[var(--tpe-night)] sm:text-6xl"}>{title}</h2>
       </div>
-      <Button asChild variant="ghost" className={dark ? "text-court-300 hover:bg-white/10 hover:text-court-200" : "rounded-full px-0 text-sm font-black uppercase tracking-[0.14em] text-[var(--tpe-night)] hover:bg-transparent hover:text-[var(--tpe-night-soft)]"}>
+      <Button asChild variant="ghost" className={dark ? "text-court-300 hover:bg-white/10 hover:text-court-200" : "h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-[var(--tpe-night)] hover:bg-transparent hover:text-[var(--tpe-night-soft)]"}>
         <Link href="/torneos">Ver todos <ChevronRight className="ml-1 h-4 w-4" /></Link>
       </Button>
     </div>
@@ -170,23 +157,23 @@ function HomeRanking({ ranking, dark = false }: { ranking: TenantRankingPlayer[]
   return (
     <section className={sectionClassName}>
       <div className="container mx-auto px-4 sm:px-6">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className={dark ? "mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-court-300" : "tpe-kicker mb-2"}>Ranking</p>
-              <h2 className={`text-2xl font-black sm:text-3xl ${textClassName}`}>Top 5</h2>
+              <p className={dark ? "mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-court-300" : "mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[#273170] before:h-2 before:w-6 before:rounded-full before:bg-[#adc94c]"}>Ranking</p>
+              <h2 className={`font-elite-display text-5xl font-semibold tracking-tight sm:text-6xl ${textClassName}`}>Top 5</h2>
             </div>
-            <Button asChild variant="ghost" className={dark ? "text-court-300 hover:bg-white/10 hover:text-court-200" : "rounded-full px-0 text-sm font-black uppercase tracking-[0.14em] text-[var(--tpe-night)] hover:bg-transparent hover:text-[var(--tpe-night-soft)]"}>
+            <Button asChild variant="ghost" className={dark ? "text-court-300 hover:bg-white/10 hover:text-court-200" : "h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-[var(--tpe-night)] hover:bg-transparent hover:text-[var(--tpe-night-soft)]"}>
               <Link href="/ranking?page=1">Ver ranking</Link>
             </Button>
           </div>
 
-          <div className={`overflow-hidden rounded-[1.5rem] ${cardClassName}`}>
+          <div className={`overflow-hidden rounded-3xl ${cardClassName}`}>
             {ranking.length === 0 ? <p className={`px-6 py-10 text-center ${mutedClassName}`}>Todavia no hay jugadores rankeados.</p> : ranking.map((player, index) => (
               <Link key={player.id} href={`/ranking/${player.id}`} className={`flex items-center justify-between gap-4 border-b px-5 py-4 transition hover:bg-black/5 last:border-b-0 ${dark ? "border-white/10" : "border-slate-100"}`}>
                 <div className="flex min-w-0 items-center gap-4">
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black ${index < 3 ? "bg-court-500 text-brand-900" : dark ? "bg-white/10 text-white" : "bg-slate-100 text-slate-700"}`}>
-                    {index < 3 ? <Trophy className="h-4 w-4" /> : index + 1}
+                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-elite-display text-3xl font-semibold ${index < 3 ? "bg-[#19214f] text-[#d4e985]" : dark ? "bg-white/10 text-white" : "bg-slate-100 text-slate-700"}`}>
+                    {String(index + 1).padStart(2, "0")}
                   </span>
                   <div className="min-w-0">
                     <p className={`truncate font-bold ${textClassName}`}>{[player.first_name, player.last_name].filter(Boolean).join(" ") || "Jugador"}</p>

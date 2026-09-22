@@ -19,7 +19,9 @@ const transitionDuration = 280
 
 type VideoIndex = 0 | 1
 
-export function PadelFvImmersiveHero() {
+export function PadelFvImmersiveHero({ variant = "padel-fv" }: { variant?: "padel-fv" | "padel-elite" }) {
+  const isElite = variant === "padel-elite"
+  const agendaHref = isElite ? "#proximos-torneos" : "#proximos-americanos"
   const sectionRef = useRef<HTMLElement>(null)
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([])
   const activeIndexRef = useRef<VideoIndex>(0)
@@ -148,9 +150,10 @@ export function PadelFvImmersiveHero() {
   return (
     <section
       ref={sectionRef}
-      data-padel-fv-hero
+      data-padel-fv-hero={!isElite || undefined}
+      data-immersive-hero
       aria-labelledby="padel-fv-hero-title"
-      className="relative isolate -mt-20 min-h-[100svh] overflow-hidden bg-[#0b1933] pt-20 text-white"
+      className={`relative isolate -mt-20 min-h-[100svh] overflow-hidden bg-[#0b1933] pt-20 text-white ${isElite ? "font-sans" : ""}`}
     >
       <div className="absolute inset-0" aria-hidden="true">
         {prefersReducedMotion ? (
@@ -194,17 +197,17 @@ export function PadelFvImmersiveHero() {
       <div className="absolute inset-x-0 top-0 h-48 bg-[linear-gradient(180deg,rgba(7,17,37,0.56)_0%,transparent_100%)]" aria-hidden="true" />
 
       <div className="container relative mx-auto flex min-h-[calc(100svh-5rem)] items-end px-4 pb-28 pt-28 sm:px-6 sm:pb-24 sm:pt-28 lg:items-center lg:py-24">
-        <div className="max-w-xl">
-          <p className="mb-5 text-xs font-black uppercase tracking-[0.24em] text-court-300 sm:text-sm">Organizadores de torneos de pádel</p>
-          <h1 id="padel-fv-hero-title" className="text-5xl font-black leading-[0.94] tracking-[-0.055em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.32)] sm:text-6xl lg:text-7xl xl:text-8xl">
-            Torneos que se viven de verdad.
+        <div className={isElite ? "mx-auto w-full max-w-6xl" : "max-w-xl"}>
+          <p className="mb-5 text-xs font-black uppercase tracking-[0.24em] text-court-300 sm:text-sm">{isElite ? "TPE PADEL · EL JUEGO NOS ENCUENTRA" : "Organizadores de torneos de pádel"}</p>
+          <h1 id="padel-fv-hero-title" className={isElite ? "max-w-3xl text-5xl font-semibold leading-[1.02] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl" : "text-5xl font-black leading-[0.94] tracking-[-0.055em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.32)] sm:text-6xl lg:text-7xl xl:text-8xl"}>
+            {isElite ? <>Tu próximo torneo.<br /><span className="text-[#c7dc77]">Tu mejor versión.</span></> : "Torneos que se viven de verdad."}
           </h1>
           <p className="mt-6 max-w-lg text-base font-semibold leading-7 text-white/90 drop-shadow-sm sm:text-lg sm:leading-8">
-            Organizamos cada competencia de principio a fin: inscripción, partidos, resultados y campeones.
+            {isElite ? "Encontrá tu categoría, elegí tu próxima fecha y viví la competencia con TPE Padel." : "Organizamos cada competencia de principio a fin: inscripción, partidos, resultados y campeones."}
           </p>
           <div className="mt-8">
-            <Button asChild className="h-12 rounded-full bg-court-400 px-6 text-base font-black text-[#10213f] shadow-[0_12px_32px_rgba(0,0,0,0.28)] hover:bg-court-300 focus-visible:ring-court-200">
-              <a href="#proximos-americanos">
+            <Button asChild className={isElite ? "h-12 rounded-md bg-[#c7dc77] px-6 text-sm font-semibold text-[#19214f] hover:bg-[#d5e79b] focus-visible:ring-white" : "h-12 rounded-full bg-court-400 px-6 text-base font-black text-[#10213f] shadow-[0_12px_32px_rgba(0,0,0,0.28)] hover:bg-court-300 focus-visible:ring-court-200"}>
+              <a href={agendaHref}>
                 Ver próximos torneos <ArrowUpRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </a>
             </Button>
@@ -213,7 +216,7 @@ export function PadelFvImmersiveHero() {
       </div>
 
       <a
-        href="#proximos-americanos"
+        href={agendaHref}
         className="absolute bottom-5 left-1/2 inline-flex -translate-x-1/2 flex-col items-center gap-1 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.16em] text-white/80 transition hover:text-court-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#101a35] sm:bottom-8 sm:text-xs sm:tracking-[0.18em]"
       >
         <span>Deslizá para explorar</span>

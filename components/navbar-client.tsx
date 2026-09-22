@@ -55,6 +55,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const branding = getTenantBranding()
   const isElite = branding.key === "padel-elite"
   const isFvHome = !isElite && pathname === "/"
+  const isEliteHome = isElite && pathname === "/"
 
   useEffect(() => {
     if (!isFvHome) {
@@ -102,18 +103,24 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const contextualRegisterHref = isTournamentDetailPage ? `/register?redirectTo=${encodeURIComponent(pathname)}` : "/register"
   const isFvHomeOverHero = isFvHome && isFvHeroVisible
   const isFvDarkNavbar = !isElite
-  const headerClassName = isElite
+  const headerClassName = isEliteHome
+    ? "sticky top-0 z-50 border-b border-white/10 bg-[#19214f]/85 font-elite-body backdrop-blur-md"
+    : isElite
     ? "sticky top-0 z-50 bg-gray-950/95 shadow-md backdrop-blur"
     : isFvHomeOverHero
       ? "sticky top-0 z-50 border-b border-white/10 bg-[#0b1933]/95 shadow-[0_8px_24px_rgba(8,16,31,0.18)] backdrop-blur lg:bg-[#0b1933]/78 transition-colors duration-200"
       : "sticky top-0 z-50 border-b border-white/10 bg-[#0b1933] shadow-[0_8px_24px_rgba(8,16,31,0.18)]"
-  const activeDesktopClassName = isElite
+  const activeDesktopClassName = isEliteHome
+    ? "bg-white/10 text-[#d4e985]"
+    : isElite
     ? "bg-blue-600 text-white font-medium"
     : "relative h-full px-1 text-sm font-semibold text-white after:absolute after:bottom-0 after:left-1/2 after:h-[3px] after:w-7 after:-translate-x-1/2 after:rounded-full after:bg-court-500"
-  const inactiveDesktopClassName = isElite
+  const inactiveDesktopClassName = isEliteHome
+    ? "rounded-full text-slate-200 hover:bg-white/10 hover:text-white"
+    : isElite
     ? "text-gray-300 hover:bg-gray-800 hover:text-white"
     : "h-full px-1 text-sm font-medium text-slate-300 hover:text-white"
-  const activeMobileClassName = isElite ? "bg-blue-600 text-white" : "border-l-2 border-court-500 bg-white/5 text-white"
+  const activeMobileClassName = isEliteHome ? "rounded-full bg-white/10 text-[#c7dc77]" : isElite ? "bg-blue-600 text-white" : "border-l-2 border-court-500 bg-white/5 text-white"
   const inactiveMobileClassName = isElite
     ? "text-gray-300 hover:bg-gray-800 hover:text-white"
     : "border-l-2 border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
@@ -148,11 +155,11 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
                 <Link
                   key={link.path}
                   href={link.path}
-                  className={isElite ? `flex items-center space-x-2 px-5 py-2.5 rounded-full text-base transition-all duration-200 ${
+                  className={isElite ? `flex items-center space-x-2 px-5 py-2.5 ${isEliteHome ? "rounded-full font-elite-display text-xl font-semibold tracking-[0.02em]" : "rounded-full text-base"} transition-all duration-200 ${
                     isActive ? activeDesktopClassName : inactiveDesktopClassName
                   }` : `flex items-center gap-2 transition-colors ${isActive ? activeDesktopClassName : inactiveDesktopClassName}`}
                 >
-                  <IconComponent className={isElite ? "h-5 w-5" : "h-4 w-4"} />
+                  <IconComponent className={isEliteHome ? "h-4 w-4 opacity-70" : isElite ? "h-5 w-5" : "h-4 w-4"} />
                   <span>{link.label}</span>
                 </Link>
               )
@@ -169,7 +176,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
                 <Button variant="ghost" size="sm" className={loginButtonClassName} asChild>
                   <Link href={contextualLoginHref}>Iniciar sesión</Link>
                 </Button>
-                <Button size="sm" className={isElite ? "bg-blue-600 px-4 py-2 text-base text-white transition-all duration-200 hover:bg-blue-700" : "h-10 rounded-control bg-court-500 px-5 text-sm font-bold text-brand-900 transition-colors hover:bg-court-400"} asChild>
+                <Button size="sm" className={isEliteHome ? "rounded-full bg-[#c7dc77] px-5 text-sm font-bold text-[#19214f] hover:bg-[#d4e985]" : isElite ? "bg-blue-600 px-4 py-2 text-base text-white transition-all duration-200 hover:bg-blue-700" : "h-10 rounded-control bg-court-500 px-5 text-sm font-bold text-brand-900 transition-colors hover:bg-court-400"} asChild>
                   <Link href={contextualRegisterHref}>Crear cuenta</Link>
                 </Button>
               </div>
@@ -199,7 +206,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
                       key={link.path}
                       href={link.path}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={isElite ? `flex items-center space-x-3 px-4 py-3 rounded-elevated text-base transition-all duration-200 ${
+                      className={isElite ? `flex items-center space-x-3 px-4 py-3 ${isEliteHome ? "rounded-full font-elite-display text-2xl font-semibold" : "rounded-elevated text-base"} transition-all duration-200 ${
                         isActive ? activeMobileClassName : inactiveMobileClassName
                       }` : `flex min-h-14 items-center gap-3 px-4 text-base font-semibold transition-colors ${isActive ? activeMobileClassName : inactiveMobileClassName}`}
                     >
@@ -220,7 +227,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
                     <Button variant="ghost" className={isElite ? `w-full justify-start text-base transition-all duration-200 ${inactiveMobileClassName}` : "w-full justify-center text-base font-semibold text-slate-100 hover:bg-transparent hover:text-white"} asChild>
                       <Link href={contextualLoginHref}>Iniciar sesión</Link>
                     </Button>
-                    <Button className={isElite ? "w-full bg-blue-600 text-base text-white transition-all duration-200 hover:bg-blue-700" : "h-11 w-full rounded-control bg-court-500 text-base font-bold text-brand-900 transition-colors hover:bg-court-400"} asChild>
+                    <Button className={isEliteHome ? "w-full rounded-full bg-[#c7dc77] text-[#19214f] hover:bg-[#d5e79b]" : isElite ? "w-full bg-blue-600 text-base text-white transition-all duration-200 hover:bg-blue-700" : "h-11 w-full rounded-control bg-court-500 text-base font-bold text-brand-900 transition-colors hover:bg-court-400"} asChild>
                       <Link href={contextualRegisterHref}>Crear cuenta</Link>
                     </Button>
                   </div>

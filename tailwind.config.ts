@@ -12,6 +12,10 @@ const config = {
   prefix: "",
   theme: {
     extend: {
+      fontFamily: {
+        "elite-display": ["var(--font-elite-display)", "sans-serif"],
+        "elite-body": ["var(--font-elite-body)", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
