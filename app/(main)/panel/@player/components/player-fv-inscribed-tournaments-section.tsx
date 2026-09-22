@@ -6,6 +6,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Swords, Trophy
 import type { InscribedTournament } from "@/app/api/panel/actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
 import { formatFvDateLabel as formatDateLabel, formatMatchDateTime, formatRoundLabel, formatTimeLabel } from "./panel-formatters"
 
 interface PlayerFvInscribedTournamentsSectionProps {
@@ -41,18 +42,14 @@ export default function PlayerFvInscribedTournamentsSection({
 
   if (tournaments.length === 0) {
     return (
-      <section className="rounded-display-lg border border-dashed border-white/20 bg-brand-600 px-5 py-6 text-center sm:px-8">
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-court-500/10 text-court-300">
-          <Trophy className="h-8 w-8" />
+      <section className="flex items-center gap-3 rounded-display border border-white/10 bg-white/[0.035] px-4 py-3 sm:px-5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-court-500/10 text-court-300">
+          <Trophy className="h-5 w-5" aria-hidden="true" />
         </div>
-        <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-court-300">Mis torneos inscriptos</p>
-        <h2 className="text-2xl font-black text-white sm:text-3xl">Todavia no tenes inscripciones confirmadas</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm text-brand-200 sm:text-base">
-          Cuando te anotes en un torneo, aca vas a ver rapido la fecha, la sede y con quien jugas.
-        </p>
-        <Button asChild className="mt-6 h-11 rounded-full bg-court-500 px-6 text-base font-semibold text-brand-900 hover:bg-court-400">
-          <Link href="/torneos">Buscar torneos</Link>
-        </Button>
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-white sm:text-base">Todavía no tenés torneos inscriptos</h2>
+          <p className="mt-0.5 text-sm text-brand-200">Tus próximas inscripciones van a aparecer acá.</p>
+        </div>
       </section>
     )
   }
@@ -70,6 +67,10 @@ export default function PlayerFvInscribedTournamentsSection({
           const tournamentType = tournament.type || null
           const hideVenue = Boolean(tournament.hide_venue)
           const venueLabel = [tournament.club?.name, tournament.club?.address].filter(Boolean).join(" - ")
+          const mapsUrl = buildGoogleMapsSearchUrl({
+            name: tournament.club?.name,
+            address: tournament.club?.address,
+          })
           const agenda = inscription.agenda
           const scheduledMatch = agenda?.scheduled_matches[0]
           const availability = agenda?.availability
@@ -114,6 +115,7 @@ export default function PlayerFvInscribedTournamentsSection({
                         icon={<MapPin className="h-4 w-4 text-white" />}
                         label="Sede"
                         value={venueLabel}
+                        href={mapsUrl}
                       />
                     ) : null}
                     <InfoBlock
@@ -277,10 +279,12 @@ function InfoBlock({
   icon,
   label,
   value,
+  href,
 }: {
   icon: ReactNode
   label: string
   value: string
+  href?: string | null
 }) {
   return (
     <div className="border-t border-white/10 py-3">
@@ -288,7 +292,19 @@ function InfoBlock({
         <div className="mt-0.5">{icon}</div>
         <div>
           <p className="text-xs font-medium text-brand-200">{label}</p>
-          <p className="mt-1 text-sm font-semibold leading-5 text-white">{value}</p>
+          {href ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Abrir ${value} en Google Maps`}
+              className="mt-1 block text-sm font-semibold leading-5 text-white underline decoration-court-400/50 underline-offset-4 transition-colors hover:text-court-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-400"
+            >
+              {value}
+            </a>
+          ) : (
+            <p className="mt-1 text-sm font-semibold leading-5 text-white">{value}</p>
+          )}
         </div>
       </div>
     </div>

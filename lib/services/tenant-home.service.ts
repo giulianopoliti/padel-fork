@@ -69,6 +69,7 @@ interface TenantUpcomingTournamentSummaryOptions {
   genderFilter?: TournamentGenderFilter | null
   priorityGender?: string | null
   statusMode?: "upcoming" | "active"
+  tournamentType?: "LONG" | "AMERICAN"
 }
 
 export async function getTenantTournamentSummaries(
@@ -208,6 +209,7 @@ export async function getTenantUpcomingTournamentSummaries(
     genderFilter: options.genderFilter,
     priorityGender: options.priorityGender,
     statuses,
+    tournamentType: options.tournamentType,
   })
 }
 

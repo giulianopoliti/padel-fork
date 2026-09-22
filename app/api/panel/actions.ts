@@ -715,11 +715,17 @@ export async function getPlayerUpcomingTournaments(
     const supabase = await createClient()
     const branding = getTenantBranding()
     const explicitGenderFilter = isTournamentGenderFilter(options.genderFilter) ? options.genderFilter : null
-    const tournaments = await getTenantUpcomingTournamentSummaries(8, {
+    const summaryOptions = {
       genderFilter: explicitGenderFilter,
       priorityGender: explicitGenderFilter ? null : options.playerGender ?? null,
-      statusMode: branding.key === "padel-fv" ? "active" : "upcoming",
-    })
+      statusMode: branding.key === "padel-fv" ? "active" as const : "upcoming" as const,
+    }
+    const tournaments = branding.key === "padel-fv"
+      ? (await Promise.all([
+          getTenantUpcomingTournamentSummaries(24, { ...summaryOptions, tournamentType: "LONG" }),
+          getTenantUpcomingTournamentSummaries(24, { ...summaryOptions, tournamentType: "AMERICAN" }),
+        ])).flat()
+      : await getTenantUpcomingTournamentSummaries(8, summaryOptions)
 
     if (tournaments.length === 0) {
       return { upcomingTournaments: [] }

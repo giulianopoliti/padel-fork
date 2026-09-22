@@ -199,7 +199,8 @@ function PadelFvPlayerPanel({
           <div className="space-y-6">
             <PlayerFvNextMatchSection nextMatches={nextMatches} />
             <PlayerFvInscribedTournamentsSection tournaments={inscribedTournaments} />
-            <PlayerFvUpcomingTournamentsSection tournaments={upcomingTournaments} />
+            <PlayerFvUpcomingTournamentsSection tournaments={upcomingTournaments} tournamentType="AMERICAN" />
+            <PlayerFvUpcomingTournamentsSection tournaments={upcomingTournaments} tournamentType="LONG" />
           </div>
         </div>
       </section>
