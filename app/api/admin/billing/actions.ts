@@ -20,6 +20,7 @@ const installmentSchema = z.object({
 
 const createCollectionSchema = z.object({
   tournamentIds: z.array(z.string().uuid()).min(1).max(100),
+  maintenanceAmountPerInstallmentArs: amountSchema,
   installments: z.array(installmentSchema).min(1).max(24),
 })
 
@@ -243,9 +244,15 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
       throw new Error("Las cuotas deben numerarse consecutivamente desde 1")
     }
 
-    const totalAmountArs = selectedItems.reduce((total, item) => total + item.amountArs, 0)
+    const tournamentSubtotalArs = selectedItems.reduce((total, item) => total + item.amountArs, 0)
+    const totalAmountArs =
+      tournamentSubtotalArs
+      + parsed.maintenanceAmountPerInstallmentArs * installments.length
+    if (!Number.isSafeInteger(totalAmountArs) || totalAmountArs > 2_000_000_000) {
+      throw new Error("El total del cobro supera el importe máximo permitido")
+    }
     if (installments.reduce((total, installment) => total + installment.amountArs, 0) !== totalAmountArs) {
-      throw new Error("La suma de las cuotas debe coincidir con el total del cobro")
+      throw new Error("La suma de las cuotas debe coincidir con torneos y mantenimiento")
     }
 
     const { data, error } = await supabaseAdmin.rpc("create_billing_collection", {
@@ -253,6 +260,7 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
       p_organizer_id: null,
       p_organizer_label: context.tenantName,
       p_total_amount_ars: totalAmountArs,
+      p_maintenance_amount_per_installment_ars: parsed.maintenanceAmountPerInstallmentArs,
       p_tournaments: selectedItems.map((item) => ({
         tournament_id: item.tournamentId,
         amount_ars: item.amountArs,

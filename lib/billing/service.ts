@@ -68,6 +68,8 @@ interface BillingCollectionRow {
   id: string
   organizer_id: string
   organizer_label: string
+  tournament_subtotal_ars: number
+  maintenance_amount_per_installment_ars: number
   total_amount_ars: number
   amount_paid_ars: number
   balance_ars: number
@@ -233,7 +235,9 @@ const fetchTenantTournaments = async (context: BillingContext) => {
 const fetchTenantCollections = async (organizationId: string): Promise<BillingCollection[]> => {
   const { data: collections, error: collectionsError } = await supabaseAdmin
     .from("billing_collections")
-    .select("id, organizer_id, organizer_label, total_amount_ars, amount_paid_ars, balance_ars, status, created_at")
+    .select(
+      "id, organizer_id, organizer_label, tournament_subtotal_ars, maintenance_amount_per_installment_ars, total_amount_ars, amount_paid_ars, balance_ars, status, created_at",
+    )
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
   if (collectionsError) throw collectionsError
@@ -277,6 +281,8 @@ const fetchTenantCollections = async (organizationId: string): Promise<BillingCo
     id: collection.id,
     organizerId: collection.organizer_id,
     organizerLabel: collection.organizer_label,
+    tournamentSubtotalArs: collection.tournament_subtotal_ars,
+    maintenanceAmountPerInstallmentArs: collection.maintenance_amount_per_installment_ars,
     totalAmountArs: collection.total_amount_ars,
     amountPaidArs: collection.amount_paid_ars,
     balanceArs: collection.balance_ars,

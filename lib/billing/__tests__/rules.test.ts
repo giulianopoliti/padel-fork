@@ -1,4 +1,5 @@
 import {
+  buildBillingInstallments,
   calculateBillingSnapshot,
   countBillableCouples,
   countBillablePlayers,
@@ -41,6 +42,20 @@ const coupleInscription = (
 })
 
 describe("billing rules", () => {
+  it("adds a flexible maintenance amount to every installment", () => {
+    expect(buildBillingInstallments(100_001, 3, 45_000)).toEqual([
+      { installmentNumber: 1, amountArs: 78_334 },
+      { installmentNumber: 2, amountArs: 78_334 },
+      { installmentNumber: 3, amountArs: 78_333 },
+    ])
+    expect(
+      buildBillingInstallments(100_001, 3, 0).reduce(
+        (total, installment) => total + installment.amountArs,
+        0,
+      ),
+    ).toBe(100_001)
+  })
+
   it("applies the FV lower tier through 16 couples and upper tier at 17", () => {
     const sixteen = Array.from({ length: 16 }, (_, index) => coupleInscription(index))
     const seventeen = [...sixteen, coupleInscription(16)]

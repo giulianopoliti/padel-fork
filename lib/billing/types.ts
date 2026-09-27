@@ -105,6 +105,8 @@ export interface BillingCollection {
   id: string
   organizerId: string | null
   organizerLabel: string
+  tournamentSubtotalArs: number
+  maintenanceAmountPerInstallmentArs: number
   totalAmountArs: number
   amountPaidArs: number
   balanceArs: number

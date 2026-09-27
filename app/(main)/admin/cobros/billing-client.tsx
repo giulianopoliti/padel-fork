@@ -42,7 +42,7 @@ import {
   setTournamentsBillingStatus,
   updateBillingSettings,
 } from "@/app/api/admin/billing/actions"
-import { addDaysToDateOnly } from "@/lib/billing/rules"
+import { addDaysToDateOnly, buildBillingInstallments } from "@/lib/billing/rules"
 import type { BillingCollection, BillingDashboardData, BillingInstallment, BillingItem, BillingStatus } from "@/lib/billing/types"
 
 const formatCurrency = (amount: number) =>
@@ -104,6 +104,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTournamentIds, setSelectedTournamentIds] = useState<string[]>([])
   const [installmentCount, setInstallmentCount] = useState("2")
+  const [maintenanceAmountPerInstallment, setMaintenanceAmountPerInstallment] = useState("0")
   const [fvAmountUpTo16, setFvAmountUpTo16] = useState(String(data.settings.fvAmountUpTo16))
   const [fvAmountOver16, setFvAmountOver16] = useState(String(data.settings.fvAmountOver16))
   const [tpeAmountPerPlayer, setTpeAmountPerPlayer] = useState(
@@ -233,9 +234,24 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const hasSelection = selectedPendingItems.length > 0
 
   const selectedTotalAmount = selectedPendingItems.reduce((sum, item) => sum + item.amountArs, 0)
+  const parsedInstallmentCount = Number(installmentCount)
+  const parsedMaintenanceAmount = Number(maintenanceAmountPerInstallment)
+  const isCollectionConfigurationValid =
+    Number.isInteger(parsedInstallmentCount) &&
+    parsedInstallmentCount >= 1 &&
+    parsedInstallmentCount <= 24 &&
+    Number.isSafeInteger(parsedMaintenanceAmount) &&
+    parsedMaintenanceAmount >= 0
+  const selectedMaintenanceTotal = isCollectionConfigurationValid
+    ? parsedMaintenanceAmount * parsedInstallmentCount
+    : 0
+  const selectedCollectionTotal = selectedTotalAmount + selectedMaintenanceTotal
   const canCreateCollection =
     data.billingModel === "FV_LEAGUE" &&
-    selectedPendingItems.length > 0
+    selectedPendingItems.length > 0 &&
+    isCollectionConfigurationValid &&
+    Number.isSafeInteger(selectedCollectionTotal) &&
+    selectedCollectionTotal <= 2_000_000_000
 
   useEffect(() => {
     const availableIds = new Set(data.items.map((item) => item.tournamentId))
@@ -247,33 +263,46 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     router.push(`/admin/cobros?week=${addDaysToDateOnly(data.weekStart, days)}`)
   }
 
-  const buildEqualInstallments = (totalAmount: number, count: number) => {
-    const baseAmount = Math.floor(totalAmount / count)
-    const remainder = totalAmount % count
-    return Array.from({ length: count }, (_, index) => ({
-      installmentNumber: index + 1,
-      amountArs: baseAmount + (index < remainder ? 1 : 0),
-    }))
-  }
-
   const handleCreateCollection = () => {
     const count = Number(installmentCount)
-    if (!canCreateCollection || !Number.isInteger(count) || count < 1 || count > 24) {
+    const maintenanceAmount = Number(maintenanceAmountPerInstallment)
+    if (!Number.isInteger(count) || count < 1 || count > 24) {
       toast({ title: "Cuotas inválidas", description: "Elegí entre 1 y 24 cuotas.", variant: "destructive" })
+      return
+    }
+    if (!Number.isSafeInteger(maintenanceAmount) || maintenanceAmount < 0) {
+      toast({
+        title: "Mantenimiento inválido",
+        description: "Ingresá un importe entero en pesos, o 0 para no agregarlo.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!canCreateCollection) {
+      toast({
+        title: "No se puede crear el cobro",
+        description: "Seleccioná torneos pendientes y revisá que el total sea válido.",
+        variant: "destructive",
+      })
       return
     }
 
     startTransition(async () => {
       const result = await createBillingCollection({
         tournamentIds: selectedPendingItems.map((item) => item.tournamentId),
-        installments: buildEqualInstallments(selectedTotalAmount, count),
+        maintenanceAmountPerInstallmentArs: maintenanceAmount,
+        installments: buildBillingInstallments(selectedTotalAmount, count, maintenanceAmount),
       })
       if (!result.success) {
         toast({ title: "No se creó el cobro", description: result.error, variant: "destructive" })
         return
       }
-      toast({ title: "Cobro creado", description: `${count} cuotas persistidas por ${formatCurrency(selectedTotalAmount)}.` })
+      toast({
+        title: "Cobro creado",
+        description: `${count} cuotas persistidas por ${formatCurrency(selectedCollectionTotal)}.`,
+      })
       setSelectedTournamentIds([])
+      setMaintenanceAmountPerInstallment("0")
       router.refresh()
     })
   }
@@ -294,8 +323,23 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     document.setTextColor(15, 23, 42)
     document.setFontSize(12)
     document.text(`Total del cobro: ${formatCurrency(collection.totalAmountArs)}`, 14, 43)
-    document.text(`Cuota ${installment.installmentNumber} de ${collection.installments.length} — ${formatCurrency(installment.amountArs)}`, 14, 51)
-    document.text(`Saldo pendiente luego de esta cuota: ${formatCurrency(remainingBalance)}`, 14, 59)
+    document.text(`Subtotal de torneos: ${formatCurrency(collection.tournamentSubtotalArs)}`, 14, 51)
+    document.text(
+      `Parte de torneos en esta cuota: ${formatCurrency(installment.amountArs - collection.maintenanceAmountPerInstallmentArs)}`,
+      14,
+      59,
+    )
+    document.text(
+      `Mantenimiento en esta cuota: ${formatCurrency(collection.maintenanceAmountPerInstallmentArs)}`,
+      14,
+      67,
+    )
+    document.text(
+      `Cuota ${installment.installmentNumber} de ${collection.installments.length}: ${formatCurrency(installment.amountArs)}`,
+      14,
+      75,
+    )
+    document.text(`Saldo pendiente luego de esta cuota: ${formatCurrency(remainingBalance)}`, 14, 83)
     autoTable(document, {
       head: [["Torneo", "Club", "Estado", "Parejas", "Importe"]],
       body: collection.tournaments.map((tournament) => [
@@ -305,7 +349,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         tournament.billableUnits,
         formatCurrency(tournament.amountArs),
       ]),
-      startY: 68,
+      startY: 92,
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [32, 51, 93] },
     })
@@ -339,7 +383,17 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     document.setFontSize(10)
     document.setTextColor(75, 85, 99)
     document.text(`Padel FV · Organizador: ${collection.organizerLabel}`, 14, 26)
-    document.text(`Total: ${formatCurrency(collection.totalAmountArs)} · Saldo: ${formatCurrency(collection.balanceArs)}`, 14, 33)
+    document.text(`Subtotal de torneos: ${formatCurrency(collection.tournamentSubtotalArs)}`, 14, 33)
+    document.text(
+      `Mantenimiento: ${formatCurrency(collection.maintenanceAmountPerInstallmentArs)} × ${collection.installments.length} cuotas = ${formatCurrency(collection.maintenanceAmountPerInstallmentArs * collection.installments.length)}`,
+      14,
+      39,
+    )
+    document.text(
+      `Total: ${formatCurrency(collection.totalAmountArs)} · Saldo: ${formatCurrency(collection.balanceArs)}`,
+      14,
+      45,
+    )
     autoTable(document, {
       head: [["Torneo", "Club", "Estado", "Parejas", "Importe"]],
       body: collection.tournaments.map((tournament) => [
@@ -349,7 +403,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         tournament.billableUnits,
         formatCurrency(tournament.amountArs),
       ]),
-      startY: 42,
+      startY: 52,
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [32, 51, 93] },
     })
@@ -804,10 +858,16 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
               El total se congela al crear el cobro. Podés combinar torneos pendientes de Padel FV.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4 md:flex-row md:items-end">
+          <CardContent className="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem_14rem_auto] md:items-end">
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-slate-500">Total seleccionado</p>
-              <p className="text-2xl font-bold text-slate-900">{formatCurrency(selectedTotalAmount)}</p>
+              <p className="text-sm text-slate-500">Subtotal de torneos</p>
+              <p className="text-xl font-semibold text-slate-900">{formatCurrency(selectedTotalAmount)}</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Mantenimiento total: {formatCurrency(selectedMaintenanceTotal)}
+              </p>
+              <p className="text-2xl font-bold text-slate-900">
+                Total: {formatCurrency(selectedCollectionTotal)}
+              </p>
             </div>
             <div className="w-full space-y-2 md:w-40">
               <Label htmlFor="installment-count">Cantidad de cuotas</Label>
@@ -820,6 +880,21 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 value={installmentCount}
                 onChange={(event) => setInstallmentCount(event.target.value)}
               />
+            </div>
+            <div className="w-full space-y-2">
+              <Label htmlFor="maintenance-per-installment">Mantenimiento por cuota (ARS)</Label>
+              <Input
+                id="maintenance-per-installment"
+                type="number"
+                min={0}
+                max={2_000_000_000}
+                step={1}
+                inputMode="numeric"
+                value={maintenanceAmountPerInstallment}
+                onChange={(event) => setMaintenanceAmountPerInstallment(event.target.value)}
+                placeholder="Ej. equivalente a USD 45"
+              />
+              <p className="text-xs text-slate-500">Opcional. Ingresalo ya convertido a pesos.</p>
             </div>
             <Button disabled={isPending || !canCreateCollection} onClick={handleCreateCollection}>
               <ReceiptText className="mr-2 h-4 w-4" />
@@ -847,7 +922,9 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                     {collection.status === "PAID" ? "Cobro completo" : collection.status === "PARTIALLY_PAID" ? "Pago parcial" : "Pendiente"}
                   </Badge>
                 </div>
-                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+                  <p><span className="text-slate-500">Torneos:</span> {formatCurrency(collection.tournamentSubtotalArs)}</p>
+                  <p><span className="text-slate-500">Mantenimiento/cuota:</span> {formatCurrency(collection.maintenanceAmountPerInstallmentArs)}</p>
                   <p><span className="text-slate-500">Total:</span> {formatCurrency(collection.totalAmountArs)}</p>
                   <p><span className="text-slate-500">Cobrado:</span> {formatCurrency(collection.amountPaidArs)}</p>
                   <p><span className="text-slate-500">Saldo:</span> {formatCurrency(collection.balanceArs)}</p>
@@ -873,6 +950,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                     <div key={installment.id} className="flex flex-col gap-2 rounded-md bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
                       <div>
                         <p className="font-medium text-slate-900">Cuota {installment.installmentNumber} de {collection.installments.length} — {formatCurrency(installment.amountArs)}</p>
+                        {collection.maintenanceAmountPerInstallmentArs > 0 && (
+                          <p className="text-xs text-slate-500">
+                            Incluye {formatCurrency(collection.maintenanceAmountPerInstallmentArs)} de mantenimiento
+                          </p>
+                        )}
                         <p className="text-xs text-slate-500">{installment.status === "PAID" ? "Cobrada" : installment.status === "ISSUED" ? "Emitida" : "Pendiente de emisión"}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">

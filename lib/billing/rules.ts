@@ -35,6 +35,23 @@ const TPE_ELIGIBLE_STATUSES = new Set([
 export const getBillingModelForTenant = (tenantKey: "padel-fv" | "padel-elite"): BillingModel =>
   tenantKey === "padel-fv" ? "FV_LEAGUE" : "TPE_PLAYER"
 
+export const buildBillingInstallments = (
+  tournamentSubtotalArs: number,
+  installmentCount: number,
+  maintenanceAmountPerInstallmentArs: number,
+) => {
+  const baseAmount = Math.floor(tournamentSubtotalArs / installmentCount)
+  const remainder = tournamentSubtotalArs % installmentCount
+
+  return Array.from({ length: installmentCount }, (_, index) => ({
+    installmentNumber: index + 1,
+    amountArs:
+      baseAmount
+      + (index < remainder ? 1 : 0)
+      + maintenanceAmountPerInstallmentArs,
+  }))
+}
+
 export const isTournamentEligibleForBilling = (
   tournament: Pick<BillingTournamentRow, "type" | "status" | "es_prueba">,
   model: BillingModel,
