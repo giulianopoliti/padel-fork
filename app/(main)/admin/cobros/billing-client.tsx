@@ -14,6 +14,7 @@ import {
   Save,
   Search,
   Settings2,
+  Trash2,
   XCircle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -33,6 +34,7 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { useToast } from "@/components/ui/use-toast"
 import {
   markTpeWeekPaid,
+  cancelBillingCollection,
   createBillingCollection,
   issueBillingInstallment,
   registerBillingInstallmentPayment,
@@ -90,6 +92,7 @@ type Confirmation =
   | { kind: "week" }
   | { kind: "item"; item: BillingItem; status: BillingStatus }
   | { kind: "bulk"; items: BillingItem[]; status: "PAID" | "DISMISSED" }
+  | { kind: "collection"; collection: BillingCollection }
   | null
 
 export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
@@ -468,6 +471,21 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         return
       }
 
+      if (current.kind === "collection") {
+        const result = await cancelBillingCollection({ collectionId: current.collection.id })
+        if (!result.success) {
+          toast({ title: "No se pudo cancelar el cobro", description: result.error, variant: "destructive" })
+          return
+        }
+        toast({
+          title: "Cobro cancelado",
+          description: `${result.releasedTournaments} torneos volvieron a quedar disponibles.`,
+        })
+        setSelectedTournamentIds([])
+        router.refresh()
+        return
+      }
+
       const result = await setTournamentsBillingStatus({
         tournamentIds: current.items.map((item) => item.tournamentId),
         requestedStatus: current.status,
@@ -518,6 +536,14 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         description: `Se actualizarán ${confirmation.items.length} torneos por ${formatCurrency(total)} en total.`,
         confirmText: statusLabels[confirmation.status],
         destructive: confirmation.status === "DISMISSED",
+      }
+    }
+    if (confirmation.kind === "collection") {
+      return {
+        title: "Cancelar cobro en cuotas",
+        description: `Se eliminarán este cobro, sus ${confirmation.collection.installments.length} cuotas y la asociación con ${confirmation.collection.tournaments.length} torneos. Los torneos volverán a quedar disponibles. Esta acción no se puede deshacer y será bloqueada si existe algún pago registrado.`,
+        confirmText: "Cancelar cobro",
+        destructive: true,
       }
     }
     return {
@@ -826,10 +852,22 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                   <p><span className="text-slate-500">Cobrado:</span> {formatCurrency(collection.amountPaidArs)}</p>
                   <p><span className="text-slate-500">Saldo:</span> {formatCurrency(collection.balanceArs)}</p>
                 </div>
-                <Button className="mt-3" size="sm" variant="outline" onClick={() => handleDownloadCollectionPdf(collection)}>
-                  <Download className="mr-2 h-4 w-4" />
-                  PDF consolidado
-                </Button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleDownloadCollectionPdf(collection)}>
+                    <Download className="mr-2 h-4 w-4" />
+                    PDF consolidado
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={isPending || collection.amountPaidArs > 0}
+                    onClick={() => setConfirmation({ kind: "collection", collection })}
+                    title={collection.amountPaidArs > 0 ? "No se puede cancelar un cobro con pagos registrados" : undefined}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Cancelar cobro
+                  </Button>
+                </div>
                 <div className="mt-4 space-y-2">
                   {collection.installments.map((installment) => (
                     <div key={installment.id} className="flex flex-col gap-2 rounded-md bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">

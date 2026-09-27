@@ -25,6 +25,8 @@ const createCollectionSchema = z.object({
 
 const issueInstallmentSchema = z.object({ installmentId: z.string().uuid() })
 
+const cancelCollectionSchema = z.object({ collectionId: z.string().uuid() })
+
 const registerPaymentSchema = z.object({
   installmentId: z.string().uuid(),
   amountArs: amountSchema.positive(),
@@ -272,6 +274,32 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
   } catch (error) {
     console.error("[billing] Error creating collection:", error)
     return { success: false as const, error: error instanceof Error ? error.message : "No se pudo crear el cobro" }
+  }
+}
+
+export const cancelBillingCollection = async (input: z.infer<typeof cancelCollectionSchema>) => {
+  try {
+    await verifyAdmin()
+    const { collectionId } = cancelCollectionSchema.parse(input)
+    const context = await getBillingContext()
+    if (context.billingModel !== "FV_LEAGUE") {
+      throw new Error("La cancelación de cobros en cuotas sólo está disponible en Padel FV")
+    }
+
+    const { data, error } = await supabaseAdmin.rpc("cancel_billing_collection", {
+      p_collection_id: collectionId,
+      p_organization_id: context.organizationId,
+    })
+    if (error) throw new Error(error.message)
+
+    revalidatePath("/admin/cobros")
+    return { success: true as const, releasedTournaments: Number(data) }
+  } catch (error) {
+    console.error("[billing] Error canceling collection:", error)
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "No se pudo cancelar el cobro",
+    }
   }
 }
 

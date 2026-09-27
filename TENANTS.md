@@ -104,6 +104,17 @@ Un `git push` deploya el codigo en los proyectos Vercel que esten conectados a e
 
 Las migraciones viven en `supabase/migrations/` y son comunes a ambos tenants. Crear una migracion no la aplica automaticamente a ninguna base remota.
 
+Cuando se pushean cambios de migraciones o `supabase/config.toml` a `main`, GitHub Actions ejecuta automaticamente el workflow `.github/workflows/supabase-migrations.yml` en este orden:
+
+```txt
+1. Valida y migra Supabase FV    (bfmaqrythlwbfjuqumom)
+2. Verifica que FV no tenga migraciones pendientes
+3. Valida y migra Supabase Elite (lzowflvgnspjdbvdxliy)
+4. Verifica que Elite no tenga migraciones pendientes
+```
+
+Elite depende del resultado exitoso de FV, por lo que las dos bases nunca se migran en paralelo. Cada job usa el GitHub Environment de su tenant, compara el `SUPABASE_PROJECT_REF` secreto con el ref esperado y ejecuta un `--dry-run` antes de escribir.
+
 El destino de estos comandos lo define el proyecto linkeado por Supabase CLI:
 
 ```bash
@@ -118,7 +129,7 @@ cat supabase/.temp/project-ref
 supabase migration list --linked
 ```
 
-Flujo recomendado:
+Flujo local/manual recomendado para diagnosticos o emergencias:
 
 1. Probar la migracion localmente con `supabase db reset`.
 2. Linkear el Supabase de FV y correr `supabase db push`.
@@ -137,4 +148,6 @@ supabase migration list --linked
 supabase db push
 ```
 
-Regla corta: `git push` actualiza codigo en Vercel; `supabase db push` actualiza esquema en el Supabase linkeado en ese momento.
+El workflow tambien se puede ejecutar manualmente eligiendo `padel-fv`, `padel-elite` o `both`. La opcion `both` conserva el mismo orden FV → Elite.
+
+Regla corta: un `git push` a `main` despliega el codigo mediante Vercel y, si incluye cambios en migraciones, GitHub Actions actualiza secuencialmente los dos Supabase. Los comandos manuales `supabase db push` siguen apuntando al proyecto linkeado localmente y deben reservarse para emergencias.
