@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { Eye, EyeOff, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { MIN_PASSWORD_LENGTH } from "@/lib/auth-password-errors"
 type PasswordField = "confirm" | "current" | "new"
 
 export const PasswordChangeForm = () => {
+  const idPrefix = useId()
   const { toast } = useToast()
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -29,6 +30,7 @@ export const PasswordChangeForm = () => {
   }
 
   const handleChangePassword = async () => {
+    if (isSubmitting) return
     setError(null)
 
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -94,7 +96,7 @@ export const PasswordChangeForm = () => {
     {
       autoComplete: "current-password",
       field: "current",
-      id: "currentPassword",
+      id: `${idPrefix}-currentPassword`,
       label: "Contraseña actual",
       onChange: setCurrentPassword,
       placeholder: "Ingresa tu contraseña actual",
@@ -103,7 +105,7 @@ export const PasswordChangeForm = () => {
     {
       autoComplete: "new-password",
       field: "new",
-      id: "newPassword",
+      id: `${idPrefix}-newPassword`,
       label: "Nueva contraseña",
       onChange: setNewPassword,
       placeholder: `Mínimo ${MIN_PASSWORD_LENGTH} caracteres`,
@@ -112,7 +114,7 @@ export const PasswordChangeForm = () => {
     {
       autoComplete: "new-password",
       field: "confirm",
-      id: "confirmNewPassword",
+      id: `${idPrefix}-confirmNewPassword`,
       label: "Confirmar nueva contraseña",
       onChange: setConfirmPassword,
       placeholder: "Repite la nueva contraseña",
@@ -124,7 +126,7 @@ export const PasswordChangeForm = () => {
     <div
       className="space-y-4"
       onKeyDown={(event) => {
-        if (event.key === "Enter") {
+        if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
           event.preventDefault()
           void handleChangePassword()
         }

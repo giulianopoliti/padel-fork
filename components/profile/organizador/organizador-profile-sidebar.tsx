@@ -27,6 +27,11 @@ const menuItems = [
     title: "Miembros",
     icon: Users,
   },
+  {
+    id: "security",
+    title: "Seguridad",
+    icon: Shield,
+  },
 ]
 
 export function OrganizadorProfileSidebar({ activeSection, onSectionChange }: OrganizadorProfileSidebarProps) {

@@ -11,10 +11,11 @@ import { OrganizationDataSection } from "@/components/profile/organizador/organi
 import { OrganizationClubsSection } from "@/components/profile/organizador/organization-clubs-section"
 import { OrganizationMembersSection } from "@/components/profile/organizador/organization-members-section"
 import { OrganizationGallerySection } from "@/components/profile/organizador/organization-gallery-section"
+import { OrganizationSecuritySection } from "@/components/profile/organizador/organization-security-section"
 import { getOrganizadorProfile, completeOrganizadorProfile, setFeaturedClub, type OrganizadorFormState } from "@/app/(main)/edit-profile/organizador-actions"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building2, Users, ImageIcon } from "lucide-react"
+import { Building2, Users, ImageIcon, Shield } from "lucide-react"
 
 interface OrganizadorProfileData {
   id?: string
@@ -106,6 +107,10 @@ export default function EditOrganizadorProfilePage() {
   }, [formState, toast, router, fetchData])
 
   const renderActiveSection = () => {
+    if (activeSection === "security") {
+      return <OrganizationSecuritySection userEmail={organizadorProfileData?.email} />
+    }
+
     if (isFetchingData || !organizadorProfileData) {
       return (
         <div className="flex items-center justify-center h-64">
@@ -178,6 +183,12 @@ export default function EditOrganizadorProfilePage() {
 
   const getSectionInfo = () => {
     switch (activeSection) {
+      case "security":
+        return {
+          title: "Seguridad de la Cuenta",
+          description: "Actualiza la contraseña de acceso de tu cuenta de organizador.",
+          badge: "Seguridad",
+        }
       case "organization":
         return {
           title: "Información de la Organización",
@@ -253,7 +264,7 @@ export default function EditOrganizadorProfilePage() {
             <div className="lg:hidden">
               <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
                 <div className="overflow-x-auto">
-                  <TabsList className="w-full inline-flex h-auto p-1 bg-gray-100 rounded-none border-b border-gray-200">
+                  <TabsList className="min-w-full w-max inline-flex h-auto p-1 bg-gray-100 rounded-none border-b border-gray-200">
                     <TabsTrigger
                       value="organization"
                       className="flex flex-col items-center gap-1 py-3 px-4 data-[state=active]:bg-white data-[state=active]:text-blue-600 whitespace-nowrap"
@@ -281,6 +292,13 @@ export default function EditOrganizadorProfilePage() {
                     >
                       <Users className="h-4 w-4" />
                       <span className="text-xs font-medium">Miembros</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="security"
+                      className="flex flex-col items-center gap-1 py-3 px-4 data-[state=active]:bg-white data-[state=active]:text-blue-600 whitespace-nowrap"
+                    >
+                      <Shield className="h-4 w-4" />
+                      <span className="text-xs font-medium">Seguridad</span>
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -416,6 +434,14 @@ export default function EditOrganizadorProfilePage() {
                     </form>
                   )}
                 </TabsContent>
+                <TabsContent value="security" className="p-4 space-y-6 mt-0">
+                  <div className="mb-4">
+                    <Badge className="mb-2 px-3 py-1 bg-blue-100 text-blue-800 border-0 text-xs">Seguridad</Badge>
+                    <h2 className="text-xl font-bold text-gray-900 mb-1">Seguridad de la Cuenta</h2>
+                    <p className="text-sm text-gray-600">Actualiza la contraseña de acceso de tu cuenta de organizador.</p>
+                  </div>
+                  <OrganizationSecuritySection userEmail={organizadorProfileData?.email} />
+                </TabsContent>
               </Tabs>
             </div>
 
@@ -427,7 +453,7 @@ export default function EditOrganizadorProfilePage() {
                 <p className="text-gray-600 max-w-2xl">{sectionInfo.description}</p>
               </div>
 
-              {activeSection !== "clubs" && activeSection !== "gallery" ? (
+              {activeSection !== "clubs" && activeSection !== "gallery" && activeSection !== "security" ? (
                 <form action={formAction} className="max-w-3xl space-y-6">
                   {organizadorProfileData?.role && <input type="hidden" name="role" defaultValue={organizadorProfileData.role} />}
                   <div className="bg-white rounded-surface border border-gray-200 p-6">{renderActiveSection()}</div>
