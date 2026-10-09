@@ -3,6 +3,8 @@ import RegistrationControlForm from '../components/RegistrationControlForm'
 import InscriptionAutomationForm from '../components/InscriptionAutomationForm'
 import { getTournamentSettingsData } from '../components/settings-data'
 import { SettingsSectionHeader, SettingsShellCard } from '../components/settings-shell'
+import { createClient } from '@/utils/supabase/server'
+import { buildTournamentCapacitySummary, getTournamentCoupleCount } from '@/lib/services/tournament-capacity.service'
 
 interface SettingsInscripcionesPageProps {
   params: Promise<{
@@ -21,6 +23,9 @@ export default async function SettingsInscripcionesPage({
   }
 
   const { tournament } = settingsData
+  const supabase = await createClient()
+  const currentParticipants = await getTournamentCoupleCount(supabase, tournament.id)
+  const capacity = buildTournamentCapacitySummary(tournament.max_participants, currentParticipants)
 
   return (
     <div className="space-y-6">
@@ -56,6 +61,7 @@ export default async function SettingsInscripcionesPage({
             initialRegistrationLocked={tournament.registration_locked || false}
             initialBracketStatus={tournament.bracket_status || 'NOT_STARTED'}
             currentStatus={tournament.status || 'NOT_STARTED'}
+            capacity={capacity}
           />
         </SettingsShellCard>
 

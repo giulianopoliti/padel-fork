@@ -167,7 +167,7 @@ export default function OrganizadorDashboard({
 
       <Separator className="my-8" />
 
-      {/* Sección: Mis Jugadores */}
+      {/* Sección: Directorio de jugadores */}
       <section aria-labelledby="players-heading">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -176,11 +176,11 @@ export default function OrganizadorDashboard({
             </div>
             <div>
               <h2 id="players-heading" className="text-2xl font-bold">
-                Mis Jugadores
+                Jugadores
               </h2>
               <p className="text-sm text-muted-foreground">
                 {totalPlayers > 0
-                  ? `Mostrando top 10 de ${totalPlayers} jugadores por puntos`
+                  ? `${totalPlayers} jugadores en el directorio`
                   : 'No hay jugadores registrados'
                 }
               </p>

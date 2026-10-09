@@ -37,4 +37,23 @@ describe('LONG player navigation', () => {
     expect(titles).toContain('Inscripciones')
     expect(titles).toContain('Configuración')
   })
+
+  it.each(['NOT_STARTED', 'CANCELED'])('keeps inscriptions available to organizers when status is %s', (status) => {
+    // Management access remains available even when public inscriptions are hidden.
+    const items = getLongNavigationItems('ORGANIZADOR', false, true, false, status, true)
+
+    expect(items.map(item => item.href)).toEqual(['', '/schedules', '/inscriptions', '/settings'])
+  })
+
+  it('does not expose inscriptions without access before the tournament starts', () => {
+    const items = getLongNavigationItems('ORGANIZADOR', false, true, false, 'NOT_STARTED', false)
+
+    expect(items.map(item => item.href)).not.toContain('/inscriptions')
+  })
+
+  it.each(['PUBLIC', 'PLAYER'])('keeps hidden inscriptions out of %s navigation before the tournament starts', (role) => {
+    const items = getLongNavigationItems(role, false, false, false, 'NOT_STARTED', false)
+
+    expect(items.map(item => item.href)).toEqual([''])
+  })
 })

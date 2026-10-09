@@ -12,7 +12,7 @@ interface RegistrationControlRequest {
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -40,7 +40,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message: `Cannot control registrations during ${tournament.status} phase`
+          message: `No se pueden modificar las inscripciones en la fase ${tournament.status}.`
         },
         { status: 400 }
       )
@@ -54,7 +54,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message: 'Cannot open registrations when bracket is already generated'
+          message: 'No se pueden abrir las inscripciones porque la llave ya está generada.'
         },
         { status: 400 }
       )
@@ -67,7 +67,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message: 'Cannot open registrations when tournament is full'
+          message: `El cupo está completo: hay ${currentParticipants} parejas inscriptas y el máximo es ${capacity.maxParticipants}. Aumentá el cupo en la configuración general o eliminá una inscripción para reabrirlas.`
         },
         { status: 400 }
       )

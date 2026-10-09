@@ -39,6 +39,7 @@ type PlayerSearchMatchType =
 
 export interface SearchPlayersOptions {
   searchTerm?: string
+  searchField?: "identity" | "email" | "phone"
   page?: number
   pageSize?: number
 }
@@ -99,7 +100,7 @@ async function fetchPlayersByIds(playerIds: string[]): Promise<PlayerSearchRecor
   return players
 }
 
-async function fetchTournamentDirectoryPlayers(gender?: string | null): Promise<PlayerSearchRecord[]> {
+async function fetchTournamentDirectoryPlayers(gender?: string | null, includeTestPlayers = false): Promise<PlayerSearchRecord[]> {
   const players: PlayerSearchRecord[] = []
   let from = 0
 
@@ -107,10 +108,10 @@ async function fetchTournamentDirectoryPlayers(gender?: string | null): Promise<
     let query = supabaseAdmin
       .from("players")
       .select(PLAYER_DIRECTORY_SELECT)
-      .eq("es_prueba", false)
       .order("id", { ascending: true })
       .range(from, from + DATABASE_PAGE_SIZE - 1)
 
+    if (!includeTestPlayers) query = query.eq("es_prueba", false)
     if (gender) query = query.eq("gender", gender)
 
     const { data, error } = await query
@@ -370,13 +371,18 @@ function scorePlayerMatch(
 export function applyRobustPlayerSearch({
   players,
   searchTerm,
+  searchField = "identity",
   page = 1,
   pageSize = 20,
   excludePlayerIds = [],
 }: SearchOptionsWithPlayers) {
   const safePage = Math.max(1, page)
   const safePageSize = Math.max(1, Math.min(200, pageSize))
-  const normalizedSearch = normalizeSearchTerm(searchTerm)
+  const normalizedSearch = searchField === "phone"
+    ? normalizeDniLoose(searchTerm)
+    : searchField === "email"
+      ? (searchTerm || "").trim().toLowerCase()
+      : normalizeSearchTerm(searchTerm)
   const searchTokens = tokenize(normalizedSearch)
 
   const excludedIds = new Set(excludePlayerIds)
@@ -384,13 +390,23 @@ export function applyRobustPlayerSearch({
     .filter((player) => !excludedIds.has(player.id))
     .map((player) => ({ player, score: 0, matchType: "none" }))
 
-  if (normalizedSearch) {
-    scored = scored
-      .map((entry) => ({
-        ...entry,
-        ...scorePlayerMatch(entry.player, normalizedSearch, searchTokens),
-      }))
-      .filter((entry) => entry.score > 0)
+  if (normalizedSearch || (searchField === "phone" && searchTerm?.trim())) {
+    if (searchField === "phone") {
+      scored = scored.filter((entry) =>
+        normalizedSearch.length > 0 && normalizeDniLoose(entry.player.phone).includes(normalizedSearch)
+      )
+    } else if (searchField === "email") {
+      scored = scored.filter((entry) =>
+        (entry.player.users?.email || "").trim().toLowerCase().includes(normalizedSearch)
+      )
+    } else {
+      scored = scored
+        .map((entry) => ({
+          ...entry,
+          ...scorePlayerMatch(entry.player, normalizedSearch, searchTokens),
+        }))
+        .filter((entry) => entry.score > 0)
+    }
   }
 
   scored.sort((a, b) => {
@@ -446,13 +462,14 @@ export async function searchPlayersByOrganization({
 
 export async function searchPlayersGlobally({
   searchTerm,
+  searchField = "identity",
   page = 1,
   pageSize = 20,
   categoryFilter = "all",
 }: {
   categoryFilter?: string
 } & SearchPlayersOptions) {
-  const players = await fetchTournamentDirectoryPlayers()
+  const players = await fetchTournamentDirectoryPlayers(null, true)
   const filteredByCategory = players.filter((player) =>
     categoryFilter === "all" ? true : player.category_name === categoryFilter
   )
@@ -460,6 +477,7 @@ export async function searchPlayersGlobally({
   return applyRobustPlayerSearch({
     players: filteredByCategory,
     searchTerm,
+    searchField,
     page,
     pageSize,
   })

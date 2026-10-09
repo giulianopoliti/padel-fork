@@ -73,6 +73,7 @@ export interface TournamentFormatZoneRules {
 }
 
 export interface TournamentFormatConfigV2 {
+  bonuses?: Partial<Record<BracketKey, { enabled: boolean; champion: number; finalist: number }>>
   version: 2
   presetId: TournamentFormatPresetId
   baseType: BaseTournamentType

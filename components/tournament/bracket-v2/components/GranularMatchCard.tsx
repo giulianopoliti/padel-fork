@@ -30,6 +30,7 @@ import { useBracketDragOperations } from '../hooks/useBracketDragOperations'
 import { useBracketDragDrop } from '../context/bracket-drag-context'
 import { useMatchManagement } from '../hooks/useMatchManagement'
 import { ByeActionsDropdown } from './ByeActionsDropdown'
+import { WinnerPhotoMenu } from '@/components/tournament/winner-photo-menu'
 import { SameZonePlaceholderConflictBadge, ZoneConflictBadge } from './ZoneConflictBadge'
 import { useZoneMatchHistory, havePlayedInZone } from '../hooks/useZoneMatchHistory'
 import { resolveCoupleIds } from '../utils/couple-resolver'
@@ -588,6 +589,7 @@ export function GranularMatchCard({
             className="min-h-[2.5rem] p-1.5"
           />
           {renderDisqualificationMenu(couple1, couple1Name)}
+          {!isEditMode && <div className="absolute right-1 top-1 z-30"><WinnerPhotoMenu matchId={match.id} round={match.round} matchStatus={match.status} matchWinnerId={match.winner_id} coupleId={couple1?.id} /></div>}
         </div>
 
         <div className="flex items-center justify-center py-0.5">
@@ -620,6 +622,7 @@ export function GranularMatchCard({
             className="min-h-[2.5rem] p-1.5"
           />
           {renderDisqualificationMenu(couple2, couple2Name)}
+          {!isEditMode && <div className="absolute right-1 top-1 z-30"><WinnerPhotoMenu matchId={match.id} round={match.round} matchStatus={match.status} matchWinnerId={match.winner_id} coupleId={couple2?.id} /></div>}
         </div>
 
         <div className="mt-auto space-y-1 border-t border-slate-100 pt-1.5">

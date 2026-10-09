@@ -214,7 +214,7 @@ export const getLongNavigationItems = (
   ]
 
   const visibleItems = baseItems.filter(item =>
-    (isTournamentActive || item.href === '' || item.href === '/schedules') &&
+    (isTournamentActive || item.href === '' || item.href === '/schedules' || item.href === '/inscriptions') &&
     (item.href !== '/inscriptions' || canAccessInscriptions) &&
     (canViewParticipantPages || !item.requiresParticipantVisibility)
   )

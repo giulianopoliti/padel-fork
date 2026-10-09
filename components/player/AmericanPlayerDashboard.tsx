@@ -15,7 +15,6 @@ import { useUser } from '@/contexts/user-context'
 import type { TournamentPublicInfo } from '@/lib/tournaments/public-tournament-details'
 import { Gender } from '@/types'
 import {
-  getAmericanPlayerTournamentData,
   AmericanPlayerTournamentData,
   getAmericanRoundDisplayName,
   getAmericanOpponentCoupleName,
@@ -57,6 +56,7 @@ export default function AmericanPlayerDashboard({
   const [registrationCancelled, setRegistrationCancelled] = useState(false)
 
   useEffect(() => {
+    const controller = new AbortController()
     const fetchPlayerData = async () => {
       if (!userDetails?.player_id) {
         setError('No se pudo obtener información del jugador')
@@ -66,17 +66,27 @@ export default function AmericanPlayerDashboard({
 
       try {
         setLoading(true)
-        const data = await getAmericanPlayerTournamentData(userDetails.player_id, tournamentId)
-        setPlayerData(data)
+        setError(null)
+        const response = await fetch(`/api/tournaments/${tournamentId}/player-overview`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+        const result = await response.json()
+        if (!response.ok || !result.data) {
+          throw new Error(result.error || 'No se pudo consultar tu inscripción.')
+        }
+        setPlayerData(result.data)
       } catch (err) {
+        if (controller.signal.aborted) return
         console.error('Error fetching american player tournament data:', err)
-        setError('Error al cargar los datos del torneo')
+        setError(err instanceof Error ? err.message : 'Error al cargar los datos del torneo')
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       }
     }
 
     fetchPlayerData()
+    return () => controller.abort()
   }, [tournamentId, userDetails?.player_id])
 
   if (loading) {

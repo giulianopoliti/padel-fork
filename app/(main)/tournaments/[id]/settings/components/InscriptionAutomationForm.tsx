@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useMemo, useRef, useState, type ReactNode } from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -21,7 +22,7 @@ interface InscriptionAutomationFormProps {
   initialTransferAmount: number | null
 }
 
-type SaveState = "idle" | "saving" | "saved" | "error"
+type SaveState = "idle" | "dirty" | "saving" | "saved" | "error"
 
 interface PersistPatch {
   validate_inscriptions?: boolean
@@ -35,6 +36,9 @@ interface PersistPatch {
 }
 
 function StatusBadge({ state }: { state: SaveState }) {
+  if (state === "dirty") {
+    return <Badge variant="outline" className="border-amber-300 text-amber-800">Cambios sin guardar</Badge>
+  }
   if (state === "saving") {
     return (
       <Badge variant="secondary" className="gap-1">
@@ -131,15 +135,13 @@ export default function InscriptionAutomationForm({
   const [publicStatus, setPublicStatus] = useState<SaveState>("idle")
   const [fewSlotsStatus, setFewSlotsStatus] = useState<SaveState>("idle")
   const [checkboxStatus, setCheckboxStatus] = useState<SaveState>("idle")
-  const [transferToggleStatus, setTransferToggleStatus] = useState<SaveState>("idle")
   const [messagesStatus, setMessagesStatus] = useState<SaveState>("idle")
   const [transferFieldsStatus, setTransferFieldsStatus] = useState<SaveState>("idle")
   const [transferFieldsError, setTransferFieldsError] = useState<string | null>(null)
 
   const { toast } = useToast()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hydratedRef = useRef(false)
-  const lastSavedTransferRef = useRef({
+  const transferSaveInFlight = useRef(false)
+  const [savedTransfer, setSavedTransfer] = useState({
     alias: initialTransferAlias || "",
     amount:
       initialTransferAmount !== null && initialTransferAmount !== undefined
@@ -150,8 +152,16 @@ export default function InscriptionAutomationForm({
   const parsedTransferAmount = useMemo(() => {
     if (!transferAmount) return null
     const value = Number(transferAmount)
-    return Number.isNaN(value) ? null : value
+    return Number.isFinite(value) ? value : null
   }, [transferAmount])
+
+  const transferFieldsChanged =
+    transferAlias !== savedTransfer.alias || transferAmount !== savedTransfer.amount
+  const transferFieldsValid = !!transferAlias.trim() && parsedTransferAmount !== null && parsedTransferAmount > 0
+  const isSavingTransfer = transferFieldsStatus === "saving"
+  const transferStatus = transferFieldsStatus === "saving" || transferFieldsStatus === "error"
+    ? transferFieldsStatus
+    : transferFieldsChanged ? "dirty" : transferFieldsStatus
 
   const persistSettings = async (
     patch: PersistPatch,
@@ -338,100 +348,48 @@ export default function InscriptionAutomationForm({
     }
   }
 
-  const handleTransferToggle = async (checked: boolean) => {
-    setEnableTransferProof(checked)
+  const handleSaveTransfer = async (enabled: boolean): Promise<void> => {
+    if (transferSaveInFlight.current || (enabled && !transferFieldsValid)) return
 
+    transferSaveInFlight.current = true
+    setTransferFieldsError(null)
+    const wasEnabled = enableTransferProof
+    const alias = transferAlias.trim()
+    const amount = parsedTransferAmount
     const result = await persistSettings(
-      { enable_transfer_proof: checked },
+      enabled
+        ? { enable_transfer_proof: true, transfer_alias: alias, transfer_amount: amount }
+        : { enable_transfer_proof: false },
       {
-        onStart: () => setTransferToggleStatus("saving"),
-        onSuccess: () => setTransferToggleStatus("saved"),
+        onStart: () => setTransferFieldsStatus("saving"),
+        onSuccess: () => {
+          setEnableTransferProof(enabled)
+          setTransferFieldsStatus("saved")
+          if (enabled) {
+            setTransferAlias(alias)
+            setTransferAmount(String(amount))
+            setSavedTransfer({ alias, amount: String(amount) })
+          }
+        },
         onError: (message) => {
-          setTransferToggleStatus("error")
-          setEnableTransferProof((current) => !current)
-          toast({
-            title: "No se pudo actualizar la transferencia",
-            description: message,
-            variant: "destructive",
-          })
+          setTransferFieldsStatus("error")
+          setTransferFieldsError(message)
         },
       }
     )
+    transferSaveInFlight.current = false
 
     if (result.success) {
       toast({
-        title: checked ? "Transferencia con comprobante activada" : "Transferencia con comprobante desactivada",
-        description: checked
-          ? "Ahora debes completar alias y monto para los jugadores."
-          : "Los jugadores ya no veran alias, importe ni carga de comprobante.",
+        title: enabled
+          ? wasEnabled ? "Datos de transferencia actualizados" : "Transferencia con comprobante habilitada"
+          : "Transferencia con comprobante deshabilitada",
+        description: enabled
+          ? "Los jugadores verán el alias y el importe guardados al inscribirse."
+          : "Los jugadores ya no verán alias, importe ni carga de comprobante.",
       })
     }
   }
-
-  useEffect(() => {
-    if (!hydratedRef.current) {
-      hydratedRef.current = true
-      return
-    }
-
-    const aliasChanged = transferAlias !== lastSavedTransferRef.current.alias
-    const amountChanged = transferAmount !== lastSavedTransferRef.current.amount
-
-    if (!aliasChanged && !amountChanged) {
-      return
-    }
-
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-    }
-
-    if (enableTransferProof) {
-      if (!transferAlias.trim()) {
-        setTransferFieldsStatus("error")
-        setTransferFieldsError("Completa el alias para usar esta funcionalidad.")
-        return
-      }
-
-      if (parsedTransferAmount === null || parsedTransferAmount <= 0) {
-        setTransferFieldsStatus("error")
-        setTransferFieldsError("Indica un importe mayor a 0.")
-        return
-      }
-    }
-
-    setTransferFieldsError(null)
-    setTransferFieldsStatus("saving")
-
-    debounceRef.current = setTimeout(async () => {
-      const result = await persistSettings(
-        {
-          transfer_alias: transferAlias.trim() || null,
-          transfer_amount: transferAmount ? Number(transferAmount) : null,
-        },
-        {
-          onStart: () => setTransferFieldsStatus("saving"),
-          onSuccess: () => setTransferFieldsStatus("saved"),
-          onError: (message) => {
-            setTransferFieldsStatus("error")
-            setTransferFieldsError(message)
-          },
-        }
-      )
-
-      if (result.success) {
-        lastSavedTransferRef.current = {
-          alias: transferAlias,
-          amount: transferAmount,
-        }
-      }
-    }, 650)
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-    }
-  }, [enableTransferProof, parsedTransferAmount, transferAlias, transferAmount, tournamentId])
 
   return (
     <div className="space-y-8">
@@ -653,8 +611,8 @@ export default function InscriptionAutomationForm({
           <SettingCard
         icon={<Landmark className="h-4 w-4 text-amber-600" />}
         title="Transferencia con comprobante"
-        description="Los jugadores veran alias, importe y podran adjuntar comprobante desde el popup de inscripcion."
-        status={transferToggleStatus === "saving" ? "saving" : transferFieldsStatus === "error" ? "error" : transferToggleStatus === "saved" || transferFieldsStatus === "saved" ? "saved" : "idle"}
+        description="Completá los datos de pago y habilitá la carga de comprobantes para este torneo."
+        status={transferStatus}
       >
         <div className="space-y-4 rounded-elevated border border-amber-200 bg-amber-50/60 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -664,40 +622,48 @@ export default function InscriptionAutomationForm({
                   variant={enableTransferProof ? "default" : "secondary"}
                   className={enableTransferProof ? "bg-amber-600 hover:bg-amber-600" : ""}
                 >
-                  {enableTransferProof ? "Activa" : "Inactiva"}
+                  {enableTransferProof ? "Habilitada" : "Deshabilitada"}
                 </Badge>
-                <span className="text-sm font-medium text-slate-900">Alias, importe y carga de comprobante</span>
+                <span className="text-sm font-medium text-slate-900">
+                  {enableTransferProof ? "Los jugadores deben adjuntar su comprobante" : "Prepará los datos de la transferencia"}
+                </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Al activarla, la inscripcion queda registrada cuando el jugador adjunta el comprobante.
+                {enableTransferProof
+                  ? "Podés editar los datos. Los jugadores verán los cambios cuando los guardes."
+                  : "Indicá el alias de destino y el importe por pareja. Después pulsá Habilitar."}
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Label htmlFor="transfer-proof" className="text-sm font-medium">
-                Activar transferencia
-              </Label>
-              <Switch
-                id="transfer-proof"
-                checked={enableTransferProof}
-                onCheckedChange={handleTransferToggle}
-                disabled={transferToggleStatus === "saving"}
-              />
-            </div>
           </div>
 
-          <div className="grid gap-4 rounded-elevated border bg-white p-4 md:grid-cols-2">
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (enableTransferProof && !transferFieldsChanged) return
+              void handleSaveTransfer(true)
+            }}
+          >
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="transfer-alias">Alias</Label>
               <Input
                 id="transfer-alias"
                 value={transferAlias}
-                onChange={(event) => setTransferAlias(event.target.value)}
+                onChange={(event) => {
+                  setTransferAlias(event.target.value)
+                  setTransferFieldsError(null)
+                  setTransferFieldsStatus("idle")
+                }}
                 placeholder="alias.del.club"
-                disabled={transferFieldsStatus === "saving"}
+                autoComplete="off"
+                required
+                aria-describedby="transfer-alias-help"
+                disabled={isSavingTransfer}
               />
-              <p className="text-xs text-muted-foreground">
-                Se muestra al jugador exactamente como lo escribas aqui.
+              <p id="transfer-alias-help" className="text-xs text-muted-foreground">
+                Alias de la cuenta que recibirá el pago.
               </p>
             </div>
 
@@ -706,23 +672,53 @@ export default function InscriptionAutomationForm({
               <Input
                 id="transfer-amount"
                 type="number"
-                min="0"
+                min="0.01"
                 step="0.01"
+                inputMode="decimal"
                 value={transferAmount}
-                onChange={(event) => setTransferAmount(event.target.value)}
+                onChange={(event) => {
+                  setTransferAmount(event.target.value)
+                  setTransferFieldsError(null)
+                  setTransferFieldsStatus("idle")
+                }}
                 placeholder="15000"
-                disabled={transferFieldsStatus === "saving"}
+                required
+                aria-describedby="transfer-amount-help"
+                disabled={isSavingTransfer}
               />
-              <p className="text-xs text-muted-foreground">
-                Se guarda automaticamente al dejar de escribir.
+              <p id="transfer-amount-help" className="text-xs text-muted-foreground">
+                Total por pareja en pesos argentinos. Debe ser mayor a $0.
               </p>
             </div>
           </div>
 
+          <div className="flex flex-col gap-3 border-t border-amber-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-600" aria-live="polite">
+              {!transferFieldsValid
+                ? `Completá el alias y un importe mayor a $0 para ${enableTransferProof ? "guardar los cambios" : "habilitar"}.`
+                : transferFieldsChanged
+                  ? "Los datos se guardarán cuando confirmes."
+                  : enableTransferProof
+                    ? "Los datos de pago están guardados."
+                    : "Todo listo para habilitar la transferencia con comprobante."}
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              {enableTransferProof && (
+                <Button type="button" variant="outline" disabled={isSavingTransfer} onClick={() => void handleSaveTransfer(false)}>
+                  Deshabilitar
+                </Button>
+              )}
+              <Button type="submit" disabled={isSavingTransfer || !transferFieldsValid || (enableTransferProof && !transferFieldsChanged)}>
+                {isSavingTransfer ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando…</> : enableTransferProof ? "Guardar cambios" : "Habilitar"}
+              </Button>
+            </div>
+          </div>
+          </form>
+
           {enableTransferProof && (
             <Alert className="border-amber-200 bg-white">
               <AlertDescription className="text-amber-950">
-                Flujo del jugador: primero elige companero, despues ve alias e importe, sube el comprobante y la inscripcion queda registrada.
+                El jugador elige compañero, ve los datos de transferencia y adjunta el comprobante para confirmar su inscripción.
               </AlertDescription>
             </Alert>
           )}

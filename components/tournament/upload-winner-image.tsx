@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Camera, Upload, X, Trophy, CheckCircle, ArrowLeft } from "lucide-react"
-import { uploadTournamentWinnerImage } from "@/app/api/tournaments/actions"
+import { uploadWinnerPhoto } from "@/app/api/tournaments/winner-photo-actions"
 
 interface UploadWinnerImageProps {
   tournamentId: string
@@ -14,6 +14,7 @@ interface UploadWinnerImageProps {
   onImageUploaded?: (url: string) => void
   showCancelButton?: boolean
   onCancel?: () => void
+  winnerMatch?: { matchId: string; winnerId: string }
 }
 
 export default function UploadWinnerImage({
@@ -23,6 +24,7 @@ export default function UploadWinnerImage({
   onImageUploaded,
   showCancelButton = false,
   onCancel,
+  winnerMatch,
 }: UploadWinnerImageProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(existingImageUrl || null)
@@ -39,7 +41,7 @@ export default function UploadWinnerImage({
     if (!file) return
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
       setError('Tipo de archivo no permitido. Solo se permiten imágenes (JPG, PNG, WEBP).')
       return
@@ -63,7 +65,7 @@ export default function UploadWinnerImage({
       reader.readAsDataURL(file)
 
       // Upload file
-      const result = await uploadTournamentWinnerImage(tournamentId, file)
+      const result = await uploadWinnerPhoto(tournamentId, file, winnerMatch)
 
       if (result.success && result.url) {
         setUploadSuccess(true)
@@ -135,7 +137,8 @@ export default function UploadWinnerImage({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="Seleccionar foto de los ganadores"
             onChange={handleFileChange}
             className="hidden"
             disabled={isUploading}
@@ -228,4 +231,4 @@ export default function UploadWinnerImage({
       </CardContent>
     </Card>
   )
-} 
+}

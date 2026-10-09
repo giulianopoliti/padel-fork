@@ -13,6 +13,11 @@ import { useToast } from '@/components/ui/use-toast'
 import { PaginationControl } from '@/components/ui/pagination'
 
 const PAGE_SIZE = 10
+const SEARCH_INPUT_CONFIG = {
+  identity: { placeholder: 'Buscar por nombre, apellido o DNI...', label: 'Nombre, apellido o DNI del jugador', inputMode: 'text' },
+  email: { placeholder: 'Buscar por correo electrónico...', label: 'Correo electrónico del jugador', inputMode: 'email' },
+  phone: { placeholder: 'Buscar por teléfono...', label: 'Teléfono del jugador', inputMode: 'tel' },
+} as const
 
 interface PlayerData {
   id: string
@@ -51,6 +56,7 @@ export default function PlayersSectionClient({
 }: PlayersSectionClientProps) {
   const [players, setPlayers] = useState(initialPlayers)
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchField, setSearchField] = useState<keyof typeof SEARCH_INPUT_CONFIG>('identity')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [isSearching, setIsSearching] = useState(false)
   const [total, setTotal] = useState(totalPlayers)
@@ -66,7 +72,7 @@ export default function PlayersSectionClient({
   // Debounce del searchTerm (300ms)
   const debouncedSearch = useDebounce(searchTerm, 300)
 
-  // Función de búsqueda via Edge Function
+  // Búsqueda en el directorio completo del tenant.
   const performSearch = useCallback(async (
     search: string,
     category: string,
@@ -78,6 +84,7 @@ export default function PlayersSectionClient({
 
       const result = await searchPlayersOrganization({
         searchTerm: search,
+        searchField,
         page,
         pageSize: PAGE_SIZE,
         categoryFilter: category,
@@ -108,7 +115,7 @@ export default function PlayersSectionClient({
     } finally {
       if (searchId === latestSearchIdRef.current) setIsSearching(false)
     }
-  }, [organizationId, toast])
+  }, [organizationId, searchField, toast])
 
   // Effect para búsqueda en tiempo real
   useEffect(() => {
@@ -148,11 +155,26 @@ export default function PlayersSectionClient({
       )}
       {/* Búsqueda y Filtros */}
       <div className="flex flex-col md:flex-row gap-4">
+        <Select
+          value={searchField}
+          onValueChange={(value: keyof typeof SEARCH_INPUT_CONFIG) => setSearchField(value)}
+        >
+          <SelectTrigger className="w-full md:w-[230px]" aria-label="Buscar jugadores por">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="identity">Nombre, apellido o DNI</SelectItem>
+            <SelectItem value="email">Correo electrónico</SelectItem>
+            <SelectItem value="phone">Teléfono</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
-            placeholder="Buscar por nombre, apellido o DNI..."
+            placeholder={SEARCH_INPUT_CONFIG[searchField].placeholder}
+            aria-label={SEARCH_INPUT_CONFIG[searchField].label}
+            inputMode={SEARCH_INPUT_CONFIG[searchField].inputMode}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -166,7 +188,7 @@ export default function PlayersSectionClient({
           value={categoryFilter}
           onValueChange={setCategoryFilter}
         >
-          <SelectTrigger className="w-full md:w-[200px]">
+          <SelectTrigger className="w-full md:w-[200px]" aria-label="Filtrar jugadores por categoría">
             <SelectValue placeholder="Categoría" />
           </SelectTrigger>
           <SelectContent>

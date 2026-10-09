@@ -51,6 +51,7 @@ const ROUND_CONFIG: Record<Round, { displayName: string }> = {
 
 interface LongScheduleViewProps {
   tournamentId: string
+  onMatchUpdate?: () => void
 }
 
 // Componente interno con acceso al contexto de drag & drop
@@ -713,7 +714,7 @@ function LongScheduleViewContent({
   )
 }
 
-export default function LongScheduleView({ tournamentId }: LongScheduleViewProps) {
+export default function LongScheduleView({ tournamentId, onMatchUpdate }: LongScheduleViewProps) {
 
   // Estados locales
   const [selectedRound, setSelectedRound] = useState<Round | 'all'>('8VOS')
@@ -802,7 +803,7 @@ export default function LongScheduleView({ tournamentId }: LongScheduleViewProps
         roundSchedulingLoading={roundSchedulingLoading}
         roundSchedulingError={roundSchedulingError}
         isLoading={isLoading}
-        refetchAll={refetchAll}
+        refetchAll={() => { refetchAll(); onMatchUpdate?.() }}
         clubes={clubes}
         isGoldSilverFormat={isGoldSilverFormat}
         activeBracketKey={activeBracketKey}

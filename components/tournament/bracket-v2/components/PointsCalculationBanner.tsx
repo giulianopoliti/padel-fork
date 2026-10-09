@@ -32,23 +32,24 @@ export function PointsCalculationBanner({
 
     onPointsCalculated()
     setShowDialog(false)
+    router.refresh()
   }
 
   return (
     <>
       <Card className="border mb-4">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <Trophy className="h-5 w-5 text-amber-500" />
               <div>
                 <p className="text-sm font-medium">Torneo finalizado</p>
                 <p className="text-xs text-muted-foreground">
-                  La final terminó. Ya podés aplicar los puntos del torneo.
+                  Elegí si querés revisar y aplicar los puntos o recategorizar jugadores.
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 onClick={() => router.push(`/tournaments/${tournamentId}/recategorize-players`)}
                 size="sm"

@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server"
+import { WINNER_PHOTO_STATUSES } from '@/lib/tournaments/winner-photo'
 import { getTenantBranding } from "@/config/tenant"
 import { getTenantOrganization } from "@/lib/services/tenant-organization.service"
 import { getTournamentCategoryDisplay } from "@/lib/services/tournament-category-config"
@@ -26,6 +27,7 @@ export interface TenantRankingPlayer {
 
 export interface TenantRecentWinner {
   id: string
+  bracketKey: 'MAIN' | 'GOLD' | 'SILVER'
   seoSlug: string | null
   tournamentName: string
   category: string | null
@@ -264,9 +266,8 @@ async function getTenantRecentWinners(organizationId: string): Promise<TenantRec
       clubes(name)
     `)
     .eq("organization_id", organizationId)
-    .in("status", ["FINISHED", "FINISHED_POINTS_PENDING", "FINISHED_POINTS_CALCULATED"])
+    .in("status", [...WINNER_PHOTO_STATUSES])
     .neq("is_draft", true)
-    .not("winner_id", "is", null)
     .gte("end_date", thirtyDaysAgo.toISOString())
     .lte("end_date", now.toISOString())
     .order("end_date", { ascending: false })
@@ -276,8 +277,19 @@ async function getTenantRecentWinners(organizationId: string): Promise<TenantRec
     return []
   }
 
-  const winnerIds = (tournaments || [])
-    .map((tournament: any) => tournament.winner_id)
+  const tournamentIds = (tournaments || []).map((tournament: any) => tournament.id)
+  if (!tournamentIds.length) return []
+  const [{ data: finals, error: finalsError }, { data: photos, error: photosError }] = await Promise.all([
+    supabase.from('matches').select('id, tournament_id, bracket_key, winner_id')
+      .in('tournament_id', tournamentIds).eq('round', 'FINAL').eq('status', 'FINISHED').not('winner_id', 'is', null),
+    supabase.from('tournament_winner_photos').select('tournament_id, bracket_key, match_id, winner_id, image_url').in('tournament_id', tournamentIds),
+  ])
+  if (finalsError || photosError) {
+    console.error('Error fetching cup winner photos:', finalsError || photosError)
+    return []
+  }
+  const winnerIds = (finals || [])
+    .map((final) => final.winner_id)
     .filter((winnerId: string | null): winnerId is string => Boolean(winnerId))
 
   if (winnerIds.length === 0) {
@@ -301,30 +313,35 @@ async function getTenantRecentWinners(organizationId: string): Promise<TenantRec
   const coupleById = new Map((couples || []).map((couple: any) => [couple.id, couple]))
 
   return (tournaments || []).flatMap((tournament: any): TenantRecentWinner[] => {
-    const couple = coupleById.get(tournament.winner_id)
-    if (!couple || !tournament.end_date) return []
+    return (finals || []).filter((final) => final.tournament_id === tournament.id).flatMap((final): TenantRecentWinner[] => {
+      if (final.bracket_key !== 'MAIN' && final.bracket_key !== 'GOLD' && final.bracket_key !== 'SILVER') return []
+      const couple = coupleById.get(final.winner_id)
+      if (!couple || !tournament.end_date) return []
 
-    const player1 = Array.isArray(couple.player1) ? couple.player1[0] : couple.player1
-    const player2 = Array.isArray(couple.player2) ? couple.player2[0] : couple.player2
-    const club = Array.isArray(tournament.clubes) ? tournament.clubes[0] : tournament.clubes
+      const player1 = Array.isArray(couple.player1) ? couple.player1[0] : couple.player1
+      const player2 = Array.isArray(couple.player2) ? couple.player2[0] : couple.player2
+      const club = Array.isArray(tournament.clubes) ? tournament.clubes[0] : tournament.clubes
+      const photo = photos?.find((item) => item.tournament_id === tournament.id && item.bracket_key === final.bracket_key && item.match_id === final.id && item.winner_id === final.winner_id)
 
-    return [{
-      id: tournament.id,
-      seoSlug: tournament.seo_slug || null,
-      tournamentName: tournament.name || "Torneo",
-      category: getTournamentCategoryDisplay(tournament),
-      clubName: club?.name || null,
-      endDate: tournament.end_date,
-      winnerImageUrl: tournament.winner_image_url || null,
-      player1: {
-        name: [player1?.first_name, player1?.last_name].filter(Boolean).join(" ") || "Jugador/a",
-        profileImageUrl: player1?.profile_image_url || null,
-      },
-      player2: {
-        name: [player2?.first_name, player2?.last_name].filter(Boolean).join(" ") || "Jugador/a",
-        profileImageUrl: player2?.profile_image_url || null,
-      },
-    }]
+      return [{
+        id: tournament.id,
+        bracketKey: final.bracket_key,
+        seoSlug: tournament.seo_slug || null,
+        tournamentName: tournament.name || "Torneo",
+        category: getTournamentCategoryDisplay(tournament),
+        clubName: club?.name || null,
+        endDate: tournament.end_date,
+        winnerImageUrl: photo?.image_url || (final.bracket_key !== 'SILVER' && final.winner_id === tournament.winner_id ? tournament.winner_image_url : null),
+        player1: {
+          name: [player1?.first_name, player1?.last_name].filter(Boolean).join(" ") || "Jugador/a",
+          profileImageUrl: player1?.profile_image_url || null,
+        },
+        player2: {
+          name: [player2?.first_name, player2?.last_name].filter(Boolean).join(" ") || "Jugador/a",
+          profileImageUrl: player2?.profile_image_url || null,
+        },
+      }]
+    })
   })
 }
 

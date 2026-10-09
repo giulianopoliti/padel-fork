@@ -5,6 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PlayerScore } from '@/types';
+import type { TournamentBonuses } from '@/lib/tournaments/finalization';
+import type { BracketKey } from '@/types/tournament-format-v2';
 import { Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
@@ -17,6 +19,7 @@ interface PointsReviewDialogProps {
 
 interface PointsPreview {
   playerScores: PlayerScore[];
+  bonuses?: TournamentBonuses;
   totalMatches: number;
   tournamentType: 'AMERICAN' | 'LONG';
   config: {
@@ -38,7 +41,9 @@ export function PointsReviewDialog({
 
   // Cargar preview de puntos al abrir el diálogo
   React.useEffect(() => {
-    if (isOpen && !pointsPreview) {
+    if (isOpen) {
+      setPointsPreview(null);
+      setIsConfirmed(false);
       loadPointsPreview();
     }
   }, [isOpen]);
@@ -125,12 +130,12 @@ export function PointsReviewDialog({
                         {score.bonus ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className={`ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${score.bonus === 40 ? 'bg-green-600 text-white' : 'bg-yellow-500 text-white'}`}>
+                              <span className={`ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-900`}>
                                 +{score.bonus}
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {score.bonus === 40 ? 'Bonus por ganar el torneo' : 'Bonus por llegar a la final'}
+                              Bono configurado para campeón o finalista de su copa
                             </TooltipContent>
                           </Tooltip>
                         ) : null}
@@ -146,9 +151,15 @@ export function PointsReviewDialog({
               </Table>
             </div>
 
-            <p className="mt-2 text-xs text-muted-foreground">
-              Bonus final: +{pointsPreview.config.bonusChampion} pts para cada jugador de la pareja campeona y +{pointsPreview.config.bonusFinalist} pts para cada jugador de la pareja finalista.
-            </p>
+            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+              {pointsPreview.bonuses ? Object.entries(pointsPreview.bonuses).map(([key, bonus]) => (
+                <p key={key}>
+                  {{ MAIN: 'Torneo', GOLD: 'Copa Oro', SILVER: 'Copa Plata' }[key as BracketKey]}: {bonus?.enabled
+                    ? `campeón +${bonus.champion} y finalista +${bonus.finalist} puntos por jugador.`
+                    : 'sin bonos.'}
+                </p>
+              )) : <p>Campeón +{pointsPreview.config.bonusChampion} y finalista +{pointsPreview.config.bonusFinalist} puntos.</p>}
+            </div>
 
             <div className="flex items-center space-x-2 py-4">
               <Checkbox 

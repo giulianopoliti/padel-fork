@@ -155,6 +155,7 @@ export default function LongBracketView({ tournamentId, onMatchUpdate }: LongBra
 
   const handleDataRefresh = () => {
     console.log('Long Bracket - Data refreshed')
+    onMatchUpdate?.()
     refetch()
   }
 

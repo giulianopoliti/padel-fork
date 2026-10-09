@@ -2,6 +2,7 @@
 
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
 import { getTenantBranding } from '@/config/tenant';
+import { uploadWinnerPhoto } from './winner-photo-actions';
 import { revalidatePath } from 'next/cache';
 import { linkTournamentClubs } from '@/lib/services/tournaments/club-links';
 import { getUser } from '@/app/api/users';
@@ -1874,28 +1875,6 @@ export async function updateMatchResult({ matchId, result_couple1, result_couple
       }
     }
 
-    // Verificar si es la final y actualizar estado del torneo
-    if (updatedMatch.round === 'FINAL' && updatedMatch.status === 'FINISHED') {
-      console.log('[updateMatchResult] 🏆 Final completada. Actualizando estado del torneo...');
-      
-      // Solo actualizamos el estado a FINISHED_POINTS_PENDING y el ganador
-      // Los puntos se calcularán cuando el club los revise y confirme
-      const { error: tournamentUpdateError } = await supabase
-        .from('tournaments')
-        .update({ 
-          status: 'FINISHED_POINTS_PENDING',
-          winner_id: finalWinnerId,
-          end_date: new Date().toISOString()
-        })
-        .eq('id', tournamentId);
-
-      if (tournamentUpdateError) {
-        console.error('[updateMatchResult] Error actualizando torneo:', tournamentUpdateError);
-      } else {
-        console.log('[updateMatchResult] ✅ Torneo finalizado. Esperando revisión de puntos por el club.');
-      }
-    }
-
     // Revalidar rutas
     if (tournamentId) {
       revalidatePath(`/tournaments/${tournamentId}`);
@@ -2560,25 +2539,11 @@ export async function advanceToNextStageAction(tournamentId: string) {
       };
     }
     
-    // Paso 4: Si es la final, marcar torneo como terminado
+    // Completar la final no cierra el torneo; el organizador decide cuándo finalizarlo.
     if (currentRoundInfo.currentRound === "FINAL") {
-      const finalMatch = currentRoundMatches[0];
-      if (finalMatch?.winner_id) {
-        await supabase
-          .from('tournaments')
-          .update({ 
-            status: 'FINISHED', 
-            winner_id: finalMatch.winner_id,
-            end_date: new Date().toISOString()
-          })
-          .eq('id', tournamentId);
-        
-        console.log(`[advanceToNextStageAction] 🏆 Torneo finalizado. Ganador: ${finalMatch.winner_id}`);
-        revalidatePath(`/tournaments/${tournamentId}`);
-        return { success: true, message: "Torneo finalizado exitosamente.", isFinal: true };
-      }
+      return { success: true, message: "Finales completadas. Podés finalizar el torneo desde Llaves.", isFinal: true };
     }
-    
+
     // Paso 5: Avanzar ganadores a la siguiente ronda
     if (currentRoundInfo.nextRound) {
       const advanceResult = await advanceWinnersToNextRound(
@@ -3684,67 +3649,8 @@ export async function removeCoupleFromTournament(tournamentId: string, coupleId:
 /**
  * Upload winner image for a tournament
  */
-export async function uploadTournamentWinnerImage(tournamentId: string, file: File) {
-  const supabase = await createClient();
-
-  try {
-    // Verify user has permission to upload (tournament owner or organization member)
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error('User not authenticated:', userError?.message);
-      return { success: false, error: 'Usuario no autenticado' };
-    }
-
-    // Check tournament permissions using centralized function
-    const permissions = await checkTournamentPermissions(user.id, tournamentId);
-    if (!permissions.hasPermission) {
-      return {
-        success: false,
-        error: permissions.reason || 'No tienes permisos para subir imágenes a este torneo'
-      };
-    }
-
-    // Generate file path: tournaments/{tournamentId}/winner.{extension}
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${tournamentId}/winner.${fileExtension}`;
-    
-    // Upload file to storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('tournaments')
-      .upload(fileName, file, {
-        upsert: true // Replace if exists
-      });
-
-    if (uploadError) {
-      console.error('Error uploading winner image:', uploadError);
-      return { success: false, error: uploadError.message };
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('tournaments')
-      .getPublicUrl(fileName);
-
-    // Update tournament record with winner image URL
-    const { error: updateError } = await supabase
-      .from('tournaments')
-      .update({ winner_image_url: publicUrl })
-      .eq('id', tournamentId);
-
-    if (updateError) {
-      console.error('Error updating tournament winner image URL:', updateError);
-      return { success: false, error: updateError.message };
-    }
-
-    // Revalidate relevant paths
-    revalidatePath(`/my-tournaments/${tournamentId}`);
-    revalidatePath(`/tournaments/${tournamentId}`);
-
-    return { success: true, url: publicUrl };
-  } catch (error) {
-    console.error('Unexpected error uploading winner image:', error);
-    return { success: false, error: 'Error inesperado al subir la imagen' };
-  }
+export async function uploadTournamentWinnerImage(tournamentId: string, file: File, expected?: { matchId: string; winnerId: string }) {
+  return uploadWinnerPhoto(tournamentId, file, expected);
 }
 
 /**

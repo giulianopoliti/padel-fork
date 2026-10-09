@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
+import { PanelAccessError } from "./components/panel-access-error"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -15,14 +16,13 @@ export default async function DashboardPage() {
 
   const { data: userData, error } = await supabase
     .from("users")
-    .select("*")
+    .select("role")
     .eq("id", user.id)
     .single()
 
   if (error || !userData) {
-    await supabase.auth.signOut()
-    redirect("/login")
-    return null
+    console.error("[PanelPage] Could not load user role", { code: error?.code, message: error?.message, missingUser: !userData })
+    return <PanelAccessError />
   }
 
   if (!["CLUB", "PLAYER", "COACH", "ORGANIZADOR"].includes(userData.role || "")) {

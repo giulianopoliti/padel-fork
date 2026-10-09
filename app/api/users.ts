@@ -113,6 +113,8 @@ export async function getRankedPlayers({
     gender?: "MALE" | "FEMALE";
 } = {}) {
     try {
+        const supabase = await createClient();
+
         // Validar parÃƒÆ’Ã‚Â¡metros de entrada
         const validatedPage = Math.max(1, page);
         const validatedPageSize = Math.min(100, Math.max(1, pageSize)); // Limitar tamaÃƒÆ’Ã‚Â±o de pÃƒÆ’Ã‚Â¡gina

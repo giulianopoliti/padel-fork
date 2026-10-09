@@ -14,13 +14,19 @@ interface RegistrationControlFormProps {
   initialRegistrationLocked?: boolean
   initialBracketStatus?: string
   currentStatus?: string
+  capacity?: {
+    currentParticipants: number
+    maxParticipants: number | null
+    isFull: boolean
+  }
 }
 
 export default function RegistrationControlForm({
   tournamentId,
   initialRegistrationLocked = false,
   initialBracketStatus = "NOT_STARTED",
-  currentStatus = "NOT_STARTED"
+  currentStatus = "NOT_STARTED",
+  capacity,
 }: RegistrationControlFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [registrationLocked, setRegistrationLocked] = useState(initialRegistrationLocked)
@@ -57,11 +63,11 @@ export default function RegistrationControlForm({
         }),
       })
 
-      if (!response.ok) {
-        throw new Error('Error updating registration status')
-      }
-
       const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'No se pudo actualizar el estado de inscripciones.')
+      }
 
       if (result.success) {
         setRegistrationLocked(!registrationLocked)
@@ -82,7 +88,9 @@ export default function RegistrationControlForm({
       console.error('Error updating registration status:', error)
       toast({
         title: "Error",
-        description: "No se pudo actualizar el estado de inscripciones. Intenta nuevamente.",
+        description: error instanceof Error
+          ? error.message
+          : "No se pudo actualizar el estado de inscripciones. Intenta nuevamente.",
         variant: "destructive"
       })
     } finally {
@@ -149,7 +157,7 @@ export default function RegistrationControlForm({
               id="registration-toggle"
               checked={!registrationLocked}
               onCheckedChange={handleToggleRegistration}
-              disabled={isLoading || !canControlRegistration || isBracketGenerated}
+              disabled={isLoading || !canControlRegistration || isBracketGenerated || (registrationLocked && capacity?.isFull)}
             />
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </div>
@@ -157,6 +165,17 @@ export default function RegistrationControlForm({
       </div>
 
       {/* Info Alerts */}
+      {capacity?.isFull && (
+        <Alert>
+          <Users className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Cupo completo:</strong> Hay {capacity.currentParticipants} parejas inscriptas
+            y el cupo es de {capacity.maxParticipants}. Para abrir las inscripciones, aumentá el
+            cupo en la configuración general o eliminá una inscripción.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {isBracketGenerated && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />

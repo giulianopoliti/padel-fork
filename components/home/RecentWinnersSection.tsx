@@ -4,6 +4,7 @@ import { CalendarDays, ChevronRight, MapPin } from "lucide-react"
 import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import type { TenantRecentWinner } from "@/lib/services/tenant-home.service"
+import { getBracketLabelByKey } from '@/lib/services/bracket-key-policy'
 
 interface RecentWinnersSectionProps {
   winners: TenantRecentWinner[]
@@ -45,7 +46,7 @@ export function RecentWinnersSection({ winners }: RecentWinnersSectionProps) {
 
                 return (
                   <Link
-                    key={winner.id}
+                    key={`${winner.id}-${winner.bracketKey}`}
                     href={getPublicTournamentHref(winner)}
                     aria-label={`Ver resultados de ${winner.tournamentName}`}
                     className="group flex overflow-hidden rounded-display-lg border border-white/10 bg-[#101a31] shadow-[0_16px_36px_rgba(7,12,28,0.18)] transition hover:-translate-y-1 hover:border-court-300/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#182b52]"
@@ -95,6 +96,7 @@ export function RecentWinnersSection({ winners }: RecentWinnersSectionProps) {
                           <p className="truncate">{winner.player2.name}</p>
                         </div>
                         <p className="mt-4 line-clamp-1 text-sm font-bold text-court-300">{winner.tournamentName}</p>
+                        {winner.bracketKey !== 'MAIN' && <p className="mt-1 text-xs font-bold text-white">{getBracketLabelByKey(winner.bracketKey)}</p>}
                         <p className="mt-1 text-sm text-slate-300">{winner.category || "Categoría no informada"}</p>
 
                         <div className="mt-auto flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-sm">

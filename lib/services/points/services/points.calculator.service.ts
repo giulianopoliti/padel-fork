@@ -15,6 +15,7 @@ import {
   TournamentType
 } from '../types';
 import { getActiveDisqualificationMatchIds } from '@/lib/services/tournament-disqualifications';
+import { getTournamentBonuses, loadTournamentFinalization } from '@/lib/tournaments/finalization';
 
 export class PointsCalculatorService {
   /**
@@ -32,6 +33,11 @@ export class PointsCalculatorService {
     supabase: any
   ): Promise<PointsCalculationResult> {
     console.log(`[PointsCalculator] Starting calculation for tournament ${tournamentId}`);
+
+    const finalization = await loadTournamentFinalization(supabase, tournamentId);
+    if (finalization.tournament.status !== 'FINISHED_POINTS_PENDING' || !finalization.allMatchesFinished) {
+      throw new Error(finalization.reason || 'Primero finalizá el torneo antes de calcular puntos.');
+    }
 
     // 1. Get tournament type
     const { data: tournament, error: tournamentError } = await supabase
@@ -60,16 +66,12 @@ export class PointsCalculatorService {
     // 4. Get all finished matches
     const { data: matches, error: matchesError } = await supabase
       .from('matches')
-      .select(`
-        *,
-        couple1:couples!matches_couple1_id_fkey(*, player1:players!couples_player1_id_fkey(*), player2:players!couples_player2_id_fkey(*)),
-        couple2:couples!matches_couple2_id_fkey(*, player1:players!couples_player1_id_fkey(*), player2:players!couples_player2_id_fkey(*))
-      `)
+      .select('id, type, round, bracket_key, status, winner_id, couple1_id, couple2_id')
       .eq('tournament_id', tournamentId)
       .eq('status', 'FINISHED');
 
     if (matchesError) {
-      throw new Error('Error fetching matches');
+      throw new Error(`Error fetching matches (${matchesError.code}): ${matchesError.message}`);
     }
 
     const disqualifiedMatchIds = await getActiveDisqualificationMatchIds(tournamentId, supabase);
@@ -126,7 +128,8 @@ export class PointsCalculatorService {
       matches,
       playerPoints,
       config,
-      supabase
+      supabase,
+      getTournamentBonuses(finalization.tournament, finalization.bracketKeys)
     );
 
     // 7. Build result with player updates

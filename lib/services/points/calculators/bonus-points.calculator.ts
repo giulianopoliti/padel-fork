@@ -5,6 +5,8 @@
  */
 
 import { TournamentPointsConfig, BonusApplicationResult } from '../types';
+import type { TournamentBonuses } from '@/lib/tournaments/finalization';
+import type { BracketKey } from '@/types/tournament-format-v2';
 
 export class BonusPointsCalculator {
   /**
@@ -20,7 +22,8 @@ export class BonusPointsCalculator {
     matches: any[],
     playerPoints: Map<string, { earned: number; bonus: number }>,
     config: TournamentPointsConfig,
-    supabase: any
+    supabase: any,
+    bonuses?: TournamentBonuses
   ): Promise<BonusApplicationResult> {
     const result: BonusApplicationResult = {
       championIds: [],
@@ -28,70 +31,34 @@ export class BonusPointsCalculator {
       bonusApplied: false
     };
 
-    // Find the final match
-    const finalMatch = matches.find((m: any) => m.round === 'FINAL');
-
-    if (!finalMatch || !finalMatch.winner_id) {
-      console.warn('[BonusPointsCalculator] No final match found or no winner');
-      return result;
-    }
-
-    const winnerCoupleId = finalMatch.winner_id;
-    const loserCoupleId =
-      finalMatch.couple1_id === winnerCoupleId
-        ? finalMatch.couple2_id
-        : finalMatch.couple1_id;
-
-    // Get winner couple (champion)
-    const { data: winnerCouple, error: winnerError } = await supabase
-      .from('couples')
-      .select(`
-        id,
-        player1:players!couples_player1_id_fkey(id, first_name, last_name),
-        player2:players!couples_player2_id_fkey(id, first_name, last_name)
-      `)
-      .eq('id', winnerCoupleId)
-      .single();
-
-    // Get loser couple (finalist)
-    const { data: finalistCouple, error: finalistError } = await supabase
-      .from('couples')
-      .select(`
-        id,
-        player1:players!couples_player1_id_fkey(id, first_name, last_name),
-        player2:players!couples_player2_id_fkey(id, first_name, last_name)
-      `)
-      .eq('id', loserCoupleId)
-      .single();
-
-    if (winnerError || finalistError || !winnerCouple || !finalistCouple) {
-      console.error('[BonusPointsCalculator] Error fetching final couples');
-      return result;
-    }
-
-    // Apply champion bonus
-    [winnerCouple.player1, winnerCouple.player2].forEach((p: any) => {
-      if (p && p.id && playerPoints.has(p.id)) {
-        const points = playerPoints.get(p.id)!;
-        points.bonus += config.bonusChampion;
-        result.championIds.push(p.id);
-      }
-    });
-
-    // Apply finalist bonus
-    [finalistCouple.player1, finalistCouple.player2].forEach((p: any) => {
-      if (p && p.id && playerPoints.has(p.id)) {
-        const points = playerPoints.get(p.id)!;
-        points.bonus += config.bonusFinalist;
-        result.finalistIds.push(p.id);
-      }
-    });
-
-    result.bonusApplied = true;
-
-    console.log(
-      `[BonusPointsCalculator] Applied bonuses: ${result.championIds.length} champions (+${config.bonusChampion}), ${result.finalistIds.length} finalists (+${config.bonusFinalist})`
+    const finals = matches.filter((match: any) =>
+      match.type === 'ELIMINATION' && match.round === 'FINAL' && match.status === 'FINISHED' && match.winner_id
     );
+    for (const final of finals) {
+      const key = (final.bracket_key || 'MAIN') as BracketKey;
+      const bonus = bonuses ? bonuses[key] : {
+        enabled: key !== 'SILVER', champion: config.bonusChampion, finalist: config.bonusFinalist,
+      };
+      if (!bonus?.enabled) continue;
+      const loserId = final.couple1_id === final.winner_id ? final.couple2_id : final.couple1_id;
+      for (const [coupleId, points, ids] of [
+        [final.winner_id, bonus.champion, result.championIds],
+        [loserId, bonus.finalist, result.finalistIds],
+      ] as [string | null, number, string[]][]) {
+        if (!coupleId || points === 0) continue;
+        const { data: couple, error } = await supabase.from('couples')
+          .select('id, player1_id, player2_id').eq('id', coupleId).single();
+        if (error || !couple) throw new Error('No se pudieron obtener los jugadores para los bonos de la final.');
+        for (const playerId of [couple.player1_id, couple.player2_id]) {
+          if (!playerId) continue;
+          const current = playerPoints.get(playerId) ?? { earned: 0, bonus: 0 };
+          current.bonus += points;
+          playerPoints.set(playerId, current);
+          ids.push(playerId);
+        }
+        result.bonusApplied = true;
+      }
+    }
 
     return result;
   }

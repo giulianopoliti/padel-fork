@@ -30,6 +30,7 @@ async function searchPlayerDirectory(body: Record<string, unknown>): Promise<Pla
 
 export async function searchPlayersOrganization(params: {
   searchTerm?: string
+  searchField?: "identity" | "email" | "phone"
   page?: number
   pageSize?: number
   categoryFilter?: string

@@ -4,7 +4,6 @@ import { createClient } from "@/utils/supabase/server"
 import { checkTournamentAccess } from "@/utils/tournament-permissions"
 import {
   PlayerSearchRecord,
-  searchPlayersByOrganization,
   searchPlayersGlobally,
   searchPlayersForTournament,
 } from "@/lib/services/player-search-service"
@@ -12,6 +11,7 @@ import {
 const searchRequestSchema = z.object({
   scope: z.enum(["organization", "tournament"]),
   searchTerm: z.string().trim().max(120).optional().default(""),
+  searchField: z.enum(["identity", "email", "phone"]).optional().default("identity"),
   page: z.number().int().min(1).max(1000).optional().default(1),
   pageSize: z.number().int().min(1).max(100).optional().default(20),
   organizationId: z.string().uuid().optional(),
@@ -81,16 +81,12 @@ export async function POST(request: Request) {
 
       const searchParams = {
         searchTerm: params.searchTerm,
+        searchField: params.searchField,
         page: params.page,
         pageSize: params.pageSize,
         categoryFilter: params.categoryFilter,
       }
-      const result = params.searchTerm.trim()
-        ? await searchPlayersGlobally(searchParams)
-        : await searchPlayersByOrganization({
-          ...searchParams,
-          organizationId: params.organizationId,
-        })
+      const result = await searchPlayersGlobally(searchParams)
 
       return NextResponse.json({ success: true, ...result })
     }

@@ -9,6 +9,7 @@ import LongScheduleView from './LongScheduleView'
 import { LongBracketGenerator } from '@/components/tournament/long/LongBracketGenerator'
 import PublicBracketTreeView from '@/components/tournament/bracket-v2/components/PublicBracketTreeView'
 import { PointsCalculationBanner } from '@/components/tournament/bracket-v2/components/PointsCalculationBanner'
+import { FinalizeTournamentControl } from '@/components/tournament/bracket-v2/components/FinalizeTournamentControl'
 import { useTournament } from '@/hooks/use-tournament'
 import { useTournamentFinalization } from '@/components/tournament/bracket-v2/hooks/useTournamentFinalization'
 import BackFromBracketButton from '../../settings/components/BackFromBracketButton'
@@ -97,7 +98,7 @@ export default function BracketContainer({
   const finalization = useTournamentFinalization(tournamentId)
 
   const isInOrFinishedBracketPhase = ACTIVE_BRACKET_STATUSES.includes(tournament?.status ?? '')
-  const shouldShowReadOnlyView = !isOwner || tournament?.status === 'FINISHED_POINTS_CALCULATED'
+  const shouldShowReadOnlyView = !isOwner || finalization.status === 'FINISHED_POINTS_CALCULATED' || tournament?.status === 'FINISHED_POINTS_CALCULATED'
 
   // Loading state
   if (isLoading) {
@@ -160,6 +161,7 @@ export default function BracketContainer({
   // Bracket activo o finalizado: mostrar interfaz de gestión
   return (
     <div className="min-w-0 overflow-x-hidden">
+      {isOwner && <div className="px-4 pt-3 lg:px-6"><FinalizeTournamentControl tournamentId={tournamentId} finalization={finalization} /></div>}
       {/* Banner de puntos (solo cuando el torneo está finalizado y hay puntos pendientes) */}
       {isOwner && finalization.canShowPointsCalculation && (
         <div className="px-4 lg:px-6 pt-3">
@@ -230,7 +232,7 @@ export default function BracketContainer({
               onMatchUpdate={() => finalization.refetch()}
             />
           ) : (
-            <LongScheduleView tournamentId={tournamentId} />
+            <LongScheduleView tournamentId={tournamentId} onMatchUpdate={finalization.refetch} />
           )}
         </div>
       </div>

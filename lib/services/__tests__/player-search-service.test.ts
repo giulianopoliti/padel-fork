@@ -1,11 +1,13 @@
 jest.mock("@/lib/supabase-admin", () => ({
-  supabaseAdmin: {},
+  supabaseAdmin: { from: jest.fn() },
 }))
 
 import {
   applyRobustPlayerSearch,
   PlayerSearchRecord,
+  searchPlayersGlobally,
 } from "@/lib/services/player-search-service"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 
 const player = (
   id: string,
@@ -24,6 +26,55 @@ const player = (
 })
 
 describe("applyRobustPlayerSearch", () => {
+  it.each(["+54 (11) 1234-5678", "541112345678", "1234-5678", "(11) 1234"])(
+    "busca por teléfono completo o parcial ignorando el formato: %s",
+    (searchTerm) => {
+      const result = applyRobustPlayerSearch({
+        players: [
+          player("phone", "Ana", "Pérez", { phone: "+54 11 1234-5678" }),
+          player("dni", "Pedro", "Gómez", { dni: "541112345678", phone: null }),
+          player("other", "Luis", "Díaz", { phone: "555-9999" }),
+        ],
+        searchTerm,
+        searchField: "phone",
+      })
+      expect(result.players.map(({ id }) => id)).toEqual(["phone"])
+    },
+  )
+
+  it("no devuelve jugadores al buscar un teléfono sin dígitos", () => {
+    const result = applyRobustPlayerSearch({
+      players: [player("phone", "Ana", "Pérez", { phone: "12345678" })],
+      searchTerm: "+ ( ) -",
+      searchField: "phone",
+    })
+    expect(result.total).toBe(0)
+  })
+
+  it("busca por correo completo o parcial sin distinguir mayúsculas", () => {
+    const candidates = [
+      player("email", "Ana", "Pérez", { users: { email: "Ana.Perez+padel@Example.com" } }),
+      player("name-only", "Example", "Com"),
+      player("unlinked", "Ana", "Pérez", { users: null }),
+    ]
+    for (const searchTerm of [" ANA.PEREZ+PADEL@EXAMPLE.COM ", "+padel@", "example.com"]) {
+      const result = applyRobustPlayerSearch({ players: candidates, searchTerm, searchField: "email" })
+      expect(result.players.map(({ id }) => id)).toEqual(["email"])
+    }
+  })
+
+  it("conserva los signos del correo para evitar coincidencias incorrectas", () => {
+    const result = applyRobustPlayerSearch({
+      players: [
+        player("dot", "Ana", "Pérez", { users: { email: "ana.perez@example.com" } }),
+        player("dash", "Ana", "Pérez", { users: { email: "ana-perez@example.com" } }),
+      ],
+      searchTerm: "ana.perez@",
+      searchField: "email",
+    })
+    expect(result.players.map(({ id }) => id)).toEqual(["dot"])
+  })
+
   const players = [
     player("juan", "Juan", "Pérez", { dni: "12.345.678", score: 10 }),
     player("jose", "José María", "García", { score: 200 }),
@@ -134,5 +185,35 @@ describe("applyRobustPlayerSearch", () => {
 
     expect(result.players).toHaveLength(0)
     expect(result.total).toBe(0)
+  })
+})
+
+describe("searchPlayersGlobally", () => {
+  it("recorre todo el directorio sin filtrar por organización o inscripciones", async () => {
+    const firstDatabasePage = Array.from({ length: 1000 }, (_, index) =>
+      player(`player-${index}`, "Jugador", `${index}`),
+    )
+    const target = player("target", "Sin", "Organización", {
+      users: { email: "fuera@example.com" }, category_name: "7ma",
+    })
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      range: jest.fn()
+        .mockResolvedValueOnce({ data: firstDatabasePage, error: null })
+        .mockResolvedValueOnce({ data: [target], error: null }),
+    }
+    ;(supabaseAdmin.from as jest.Mock).mockReturnValue(query)
+
+    const result = await searchPlayersGlobally({
+      searchTerm: "FUERA@", searchField: "email", categoryFilter: "7ma", pageSize: 10,
+    })
+
+    expect(result.players.map(({ id }) => id)).toEqual(["target"])
+    expect(result.total).toBe(1)
+    expect(query.range.mock.calls).toEqual([[0, 999], [1000, 1999]])
+    expect(query.eq).not.toHaveBeenCalled()
+    expect((supabaseAdmin.from as jest.Mock).mock.calls.every(([table]) => table === "players")).toBe(true)
   })
 })

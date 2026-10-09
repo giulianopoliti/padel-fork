@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
+import { PanelAccessError } from "./components/panel-access-error"
 
 export const dynamic = "force-dynamic"
 
@@ -29,13 +30,13 @@ export default async function DashboardLayout({
 
   const { data: userData, error } = await supabase
     .from("users")
-    .select("*")
+    .select("role")
     .eq("id", user.id)
     .single()
 
   if (error || !userData) {
-    await supabase.auth.signOut()
-    redirect("/login")
+    console.error("[PanelLayout] Could not load user role", { code: error?.code, message: error?.message, missingUser: !userData })
+    return <PanelAccessError />
   }
 
   return (

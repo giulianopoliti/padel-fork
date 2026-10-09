@@ -34,6 +34,7 @@ import { BracketDragDropProvider, useBracketDragDrop } from './context/bracket-d
 import { useBracketDragOperations } from './hooks/useBracketDragOperations'
 import { useTournamentFinalization } from './hooks/useTournamentFinalization'
 import { PointsCalculationBanner } from './components/PointsCalculationBanner'
+import { FinalizeTournamentControl } from './components/FinalizeTournamentControl'
 import ReadOnlyBracketTab from '../read-only-bracket-tab'
 import { Trophy } from 'lucide-react'
 import BackFromBracketButton from '@/app/(main)/tournaments/[id]/settings/components/BackFromBracketButton'
@@ -119,6 +120,14 @@ function BracketVisualizationV2Internal({
    * Hook de finalización de torneo
    */
   const finalization = useTournamentFinalization(tournamentId)
+  const matchStatusSignature = bracketData?.matches.map(match => `${match.id}:${match.status}:${match.winner_id}`).join('|')
+  const previousMatchStatusSignature = React.useRef<string | undefined>(undefined)
+  React.useEffect(() => {
+    if (previousMatchStatusSignature.current !== undefined && previousMatchStatusSignature.current !== matchStatusSignature) {
+      void finalization.refetch()
+    }
+    previousMatchStatusSignature.current = matchStatusSignature
+  }, [matchStatusSignature, finalization.refetch])
   const [missingCoupleRepairLoading, setMissingCoupleRepairLoading] = React.useState(false)
   const [missingCoupleRepairError, setMissingCoupleRepairError] = React.useState<string | null>(null)
 
@@ -381,7 +390,7 @@ function BracketVisualizationV2Internal({
   }
 
   // ✅ NUEVA FUNCIONALIDAD: Si los puntos ya están calculados, mostrar vista read-only
-  if (tournamentStatus === 'FINISHED_POINTS_CALCULATED') {
+  if (tournamentStatus === 'FINISHED_POINTS_CALCULATED' || finalization.status === 'FINISHED_POINTS_CALCULATED') {
     return (
       <div className="space-y-6">
         {/* Vista read-only del bracket */}
@@ -392,6 +401,7 @@ function BracketVisualizationV2Internal({
 
   return (
     <div className="bracket-v2-container">
+      {isOwner && <FinalizeTournamentControl tournamentId={tournamentId} finalization={finalization} onFinalized={onDataRefresh} />}
       {bracketMode === 'GOLD_SILVER' && (
         <div className="mb-6 flex w-full max-w-md gap-2 rounded-surface border border-slate-200 bg-slate-50 p-1">
           <Button

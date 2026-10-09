@@ -5,7 +5,7 @@ import { getCategories } from "@/lib/services/players/players.service"
 import { getTenantBranding } from "@/config/tenant"
 import { getTpeRestrictionPlayers } from "@/lib/services/tpe-registration-restrictions"
 import TpeRegistrationRestrictionsPanel from "@/app/(main)/panel/@organizador/components/tpe-registration-restrictions-panel"
-import { searchPlayersByOrganization } from "@/lib/services/player-search-service"
+import { searchPlayersGlobally } from "@/lib/services/player-search-service"
 
 export const dynamic = 'force-dynamic'
 
@@ -101,14 +101,13 @@ export default async function OrganizadorDashboardPage() {
 
   const tournamentsWithMetrics: TournamentWithMetrics[] = result?.tournaments || []
 
-  // 5. Jugadores que participaron en torneos de la organización.
+  // 5. Directorio completo de jugadores del tenant.
   let players: PlayerData[] = []
   let totalPlayers = 0
   let playersError: unknown = null
 
   try {
-    const playerSearch = await searchPlayersByOrganization({
-      organizationId,
+    const playerSearch = await searchPlayersGlobally({
       page: 1,
       pageSize: 10,
     })

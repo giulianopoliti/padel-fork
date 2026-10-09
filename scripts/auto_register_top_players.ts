@@ -4,8 +4,6 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createClient } from "@supabase/supabase-js";
 
-dotenv.config({ path: path.join(process.cwd(), ".env.local") });
-
 interface TournamentRow {
   id: string;
   name: string;
@@ -27,6 +25,7 @@ interface PlayerRow {
 }
 
 interface ScriptOptions {
+  envFile: string;
   tournamentId?: string;
   couplesCount?: number;
   dryRun: boolean;
@@ -34,10 +33,20 @@ interface ScriptOptions {
 }
 
 function parseArgs(argv: string[]): ScriptOptions {
-  const options: ScriptOptions = { dryRun: false, help: false };
+  const options: ScriptOptions = { envFile: ".env.local", dryRun: false, help: false };
   const positional: string[] = [];
 
-  for (const arg of argv) {
+  for (let index = 0; index < argv.length; index++) {
+    const arg = argv[index];
+    if (arg === "--env-file" || arg.startsWith("--env-file=")) {
+      const envFile = arg === "--env-file" ? argv[++index] : arg.slice("--env-file=".length);
+      if (!envFile?.trim() || envFile.startsWith("--")) {
+        throw new Error("Debes indicar un archivo para --env-file.");
+      }
+      options.envFile = envFile.trim();
+      continue;
+    }
+
     if (arg === "--dry-run") {
       options.dryRun = true;
       continue;
@@ -113,10 +122,12 @@ async function main() {
   if (opts.help) {
     console.log(`
 Uso:
-  npm run auto-register-top-couples -- <tournamentId> [couplesCount] [--dry-run]
+  npm run auto-register-top-couples -- <tournamentId> [couplesCount] [--dry-run] [--env-file=<archivo>]
   npm run auto-register-top-couples -- --couples=6 --dry-run
+  npm run auto-register-top-couples -- <tournamentId> 5 --env-file=.env.padel-fv.local --dry-run
 
 Opciones:
+  --env-file=<archivo> Archivo de entorno (default: .env.local)
   --count=<n>   Alias de --couples=<n>
   --couples=<n> Cantidad de parejas a inscribir (default: 6)
   --dry-run     Muestra seleccionados sin insertar
@@ -125,20 +136,30 @@ Opciones:
     return;
   }
 
-  const { tournamentId, couplesCount } = await askMissingValues(opts);
+  const envPath = path.resolve(process.cwd(), opts.envFile);
+  const envResult = dotenv.config({ path: envPath, override: true, quiet: true });
+  if (envResult.error) {
+    throw new Error(`No se pudo cargar el archivo de entorno: ${envPath}`);
+  }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Read both credentials from the same file to avoid mixing tenant connections.
+  const supabaseUrl = envResult.parsed?.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = envResult.parsed?.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Faltan variables de entorno: NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY");
+    throw new Error(`Faltan NEXT_PUBLIC_SUPABASE_URL y/o SUPABASE_SERVICE_ROLE_KEY en ${opts.envFile}`);
   }
+
+  const supabaseHost = new URL(supabaseUrl).host;
+  const { tournamentId, couplesCount } = await askMissingValues(opts);
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
   console.log("\n=== Inscripcion automatica de top parejas ===");
+  console.log(`Archivo de entorno: ${opts.envFile}`);
+  console.log(`Conexion Supabase: ${supabaseHost}`);
   console.log(`Torneo: ${tournamentId}`);
   console.log(`Cantidad de parejas objetivo: ${couplesCount}`);
   console.log(`Modo: ${opts.dryRun ? "DRY RUN (sin inserts)" : "EJECUCION REAL"}\n`);
@@ -147,10 +168,17 @@ Opciones:
     .from("tournaments")
     .select("id, name, type, status, registration_locked, gender, category_name")
     .eq("id", tournamentId)
-    .single<TournamentRow>();
+    .maybeSingle<TournamentRow>();
 
-  if (tournamentError || !tournament) {
-    throw new Error(`No se pudo cargar el torneo (${tournamentId}): ${tournamentError?.message || "not found"}`);
+  if (tournamentError) {
+    throw new Error(`No se pudo cargar el torneo (${tournamentId}) en ${supabaseHost}: ${tournamentError.message}`);
+  }
+
+  if (!tournament) {
+    throw new Error(
+      `El torneo ${tournamentId} no existe en ${supabaseHost} (archivo ${opts.envFile}). ` +
+      "Verifica el ID del torneo y el entorno. Para elegir otra base usa --env-file=<archivo>.",
+    );
   }
 
   if (!["AMERICAN", "LONG"].includes(tournament.type)) {

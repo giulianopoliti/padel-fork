@@ -868,32 +868,8 @@ export async function POST(
       }
     }
 
-    // 🏆 NUEVA LÓGICA: Verificar si se completó la final y finalizar torneo
-    let tournamentFinalized = false
-    if (newStatus === 'FINISHED' && matchData.round === 'FINAL') {
-      console.log(`🏆 [update-result] Final match completed. Finalizing tournament...`)
-      
-      try {
-        const { error: tournamentUpdateError } = await supabase
-          .from('tournaments')
-          .update({ 
-            status: 'FINISHED_POINTS_PENDING',
-            winner_id: result.winner_id,
-            end_date: new Date().toISOString()
-          })
-          .eq('id', tournamentId)
-
-        if (tournamentUpdateError) {
-          console.error(`❌ [update-result] Error finalizing tournament:`, tournamentUpdateError)
-        } else {
-          console.log(`✅ [update-result] Tournament finalized successfully. Status: FINISHED_POINTS_PENDING`)
-          tournamentFinalized = true
-        }
-      } catch (finalizationError) {
-        console.error(`❌ [update-result] Tournament finalization failed:`, finalizationError)
-        // No fallar la actualización del match por esto
-      }
-    }
+    // El cierre del torneo es una acción manual independiente del resultado.
+    const tournamentFinalized = false
 
     return NextResponse.json({
       success: true,

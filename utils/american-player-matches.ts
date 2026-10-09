@@ -3,7 +3,7 @@
  * Adaptado de player-matches.ts para el formato de torneo americano
  */
 
-import { createClient } from '@/utils/supabase/client'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface AmericanPlayerMatch {
   id: string
@@ -70,9 +70,9 @@ export interface AmericanPlayerTournamentData {
  */
 export async function getAmericanPlayerTournamentData(
   playerId: string,
-  tournamentId: string
+  tournamentId: string,
+  supabase: SupabaseClient
 ): Promise<AmericanPlayerTournamentData> {
-  const supabase = createClient()
 
   try {
     // 1. Obtener total de parejas inscriptas en el torneo
@@ -84,7 +84,7 @@ export async function getAmericanPlayerTournamentData(
 
     // 2. Verificar si el jugador está registrado en el torneo
     // Buscar inscripciones donde el player esté como player1_id o player2_id en la pareja
-    const { data: inscriptions } = await supabase
+    const { data: inscriptions, error: inscriptionError } = await supabase
       .from('inscriptions')
       .select(`
         id,
@@ -96,6 +96,8 @@ export async function getAmericanPlayerTournamentData(
         )
       `)
       .eq('tournament_id', tournamentId)
+
+    if (inscriptionError) throw inscriptionError
 
     if (!inscriptions || inscriptions.length === 0) {
       return {
@@ -110,8 +112,8 @@ export async function getAmericanPlayerTournamentData(
 
     // Encontrar la inscripción donde el player está en la pareja
     const playerInscription = inscriptions.find(inscription => {
-      const couple = inscription.couples as any
-      return couple.player1_id === playerId || couple.player2_id === playerId
+      const couple = Array.isArray(inscription.couples) ? inscription.couples[0] : inscription.couples
+      return couple?.player1_id === playerId || couple?.player2_id === playerId
     })
 
     if (!playerInscription) {
@@ -185,6 +187,7 @@ export async function getAmericanPlayerTournamentData(
       .neq('status', 'DRAFT')  // Excluir partidos borrador
       .or(`couple1_id.eq.${playerCoupleId},couple2_id.eq.${playerCoupleId}`)
       .order('created_at', { ascending: true })
+      .returns<AmericanPlayerMatch[]>()
 
     if (error) {
       console.error('Error fetching american player matches:', error)
@@ -213,14 +216,7 @@ export async function getAmericanPlayerTournamentData(
 
   } catch (error) {
     console.error('Error in getAmericanPlayerTournamentData:', error)
-    return {
-      isRegistered: false,
-      nextMatch: null,
-      zoneMatches: [],
-      bracketMatches: [],
-      playerCoupleId: null,
-      totalCouplesInTournament: 0
-    }
+    throw error
   }
 }
 

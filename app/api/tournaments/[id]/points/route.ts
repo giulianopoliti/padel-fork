@@ -6,6 +6,7 @@ import {
   processTournamentPoints
 } from '@/lib/services/points';
 import { checkTournamentPermissions } from '@/utils/tournament-permissions';
+import { loadTournamentFinalization } from '@/lib/tournaments/finalization';
 
 export async function GET(
   request: Request,
@@ -62,6 +63,11 @@ export async function GET(
       );
     }
 
+    const finalization = await loadTournamentFinalization(supabase, tournamentId);
+    if (!finalization.allMatchesFinished) {
+      return NextResponse.json({ error: finalization.reason }, { status: 409 });
+    }
+
     // Calcular preview de puntos usando nuevo servicio
     const calculation = await calculateTournamentPoints(tournamentId, supabase);
 
@@ -77,6 +83,7 @@ export async function GET(
       })),
       totalMatches: calculation.totalMatches,
       tournamentType: calculation.tournamentType,
+      bonuses: finalization.bonuses,
       config: {
         bonusChampion: calculation.config.bonusChampion,
         bonusFinalist: calculation.config.bonusFinalist
@@ -146,6 +153,11 @@ export async function POST(
         { error: 'El torneo no está en estado de revisión de puntos' },
         { status: 400 }
       );
+    }
+
+    const finalization = await loadTournamentFinalization(supabase, tournamentId);
+    if (!finalization.allMatchesFinished) {
+      return NextResponse.json({ error: finalization.reason }, { status: 409 });
     }
 
     // Procesar y aplicar puntos

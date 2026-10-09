@@ -31,8 +31,7 @@ export class PointsApplicationService {
       // 3. Save tournament history
       await this.saveTournamentHistory(result, supabase);
 
-      // 4. Recategorize players (if needed)
-      await this.recategorizePlayersIfNeeded(result.tournamentId, supabase);
+      // La recategorización se ejecuta por decisión del organizador desde su pantalla.
 
       console.log(
         `[PointsApplication] Successfully applied points for ${result.playerUpdates.length} players`

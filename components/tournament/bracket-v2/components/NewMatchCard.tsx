@@ -1,5 +1,6 @@
 import { Trophy, Zap, Calendar, Clock, MapPin } from "lucide-react"
 import Link from "next/link"
+import { WinnerPhotoMenu } from '@/components/tournament/winner-photo-menu'
 
 // Types matching database structure
 interface BracketMatch {
@@ -295,6 +296,7 @@ export function NewMatchCard({ match, points, sets = [], tournamentType = 'AMERI
                 </div>
               </div>
               <div className="flex items-center gap-2 ml-2">
+                <WinnerPhotoMenu matchId={match.id} round={match.round} matchStatus={match.status} matchWinnerId={match.winner_id} coupleId={match.couple1_id} />
                 {parsedSets.length > 0 && isFinished && (
                   <div className="flex gap-1">
                     {parsedSets.map((set, idx) => (
@@ -365,6 +367,7 @@ export function NewMatchCard({ match, points, sets = [], tournamentType = 'AMERI
                 </div>
               </div>
               <div className="flex items-center gap-2 ml-2">
+                <WinnerPhotoMenu matchId={match.id} round={match.round} matchStatus={match.status} matchWinnerId={match.winner_id} coupleId={match.couple2_id} />
                 {parsedSets.length > 0 && isFinished && (
                   <div className="flex gap-1">
                     {parsedSets.map((set, idx) => (
