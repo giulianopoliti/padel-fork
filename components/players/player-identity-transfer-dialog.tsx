@@ -137,7 +137,7 @@ export const PlayerIdentityTransferDialog = ({
         <DialogHeader>
           <DialogTitle>Resolver jugador duplicado</DialogTitle>
           <DialogDescription>
-            Busca la cuenta por email y transferila al jugador que conserva las inscripciones de tu organizacion.
+            Busca la cuenta por email y transferila al jugador correcto del directorio completo.
           </DialogDescription>
         </DialogHeader>
 

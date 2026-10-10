@@ -10,7 +10,7 @@ import {
   type PlayerIdentityCandidate,
   type PlayerTournamentReference,
 } from '@/lib/player-identity-transfer'
-import { searchPlayersByOrganization } from '@/lib/services/player-search-service'
+import { searchPlayersGlobally } from '@/lib/services/player-search-service'
 
 type OrganizerContext = {
   userId: string
@@ -163,8 +163,7 @@ export const searchOrganizationIdentityTargets = async (searchInput: string) => 
   try {
     const context = await getOrganizerContext()
     const search = z.string().trim().min(2).max(80).parse(searchInput)
-    const result = await searchPlayersByOrganization({
-      organizationId: context.organizationId,
+    const result = await searchPlayersGlobally({
       searchTerm: search,
       page: 1,
       pageSize: 50,
@@ -173,12 +172,10 @@ export const searchOrganizationIdentityTargets = async (searchInput: string) => 
     const candidates = await Promise.all(result.players.map(async (player) => {
       const tournaments = await getPlayerTournaments(player.id)
       const ownTournaments = tournaments.filter((tournament) => tournament.organizationId === context.organizationId)
-      return ownTournaments.length > 0
-        ? normalizePlayer(player as PlayerRow, ownTournaments)
-        : null
+      return normalizePlayer(player as PlayerRow, ownTournaments)
     }))
 
-    return { success: true, players: candidates.filter((player): player is PlayerIdentityCandidate => player !== null).slice(0, 15) }
+    return { success: true, players: candidates.slice(0, 15) }
   } catch (error) {
     return { success: false, players: [], error: error instanceof Error ? error.message : 'Error buscando jugadores' }
   }
@@ -227,9 +224,6 @@ export const transferPlayerIdentity = async (rawInput: unknown) => {
 
     if (hasExternalTournamentHistory(sourceTournaments, context.organizationId)) {
       return { success: false, error: 'El jugador origen tiene historial fuera de tu organizacion. Debe resolverlo un administrador.' }
-    }
-    if (!targetTournaments.some((tournament) => tournament.organizationId === context.organizationId)) {
-      return { success: false, error: 'El jugador destino no esta inscripto en torneos de tu organizacion' }
     }
 
     const { data: audit, error: auditError } = await supabaseAdmin

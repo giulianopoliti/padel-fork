@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 import { getCategories } from "@/lib/services/players/players.service"
-import { searchPlayersByOrganization } from "@/lib/services/player-search-service"
+import { searchPlayersGlobally } from "@/lib/services/player-search-service"
 import PlayersManagementClient from "./components/players-management-client"
 
 export const dynamic = 'force-dynamic'
@@ -39,9 +39,8 @@ export default async function MyPlayersPage() {
 
   const organizationId = orgMember.organizacion_id
 
-  // 3. Fetch initial data de participantes históricos de la organización.
-  const playersResult = await searchPlayersByOrganization({
-    organizationId,
+  // 3. Cargar el mismo directorio completo que usa la búsqueda del panel.
+  const playersResult = await searchPlayersGlobally({
     page: 1,
     pageSize: 20,
   })

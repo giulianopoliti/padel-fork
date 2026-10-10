@@ -189,6 +189,28 @@ describe("applyRobustPlayerSearch", () => {
 })
 
 describe("searchPlayersGlobally", () => {
+  it("lista todos los jugadores sin búsqueda y permite paginar sin filtros implícitos", async () => {
+    const players = [
+      player("registered", "Ana", "A", { category_name: "7ma" }),
+      player("unregistered", "Beto", "B", { category_name: null }),
+      player("test-player", "Carla", "C"),
+    ]
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      range: jest.fn().mockResolvedValue({ data: players, error: null }),
+    }
+    ;(supabaseAdmin.from as jest.Mock).mockReturnValue(query)
+
+    const result = await searchPlayersGlobally({ searchTerm: "", page: 2, pageSize: 2 })
+
+    expect(result.total).toBe(3)
+    expect(result.players.map(({ id }) => id)).toEqual(["test-player"])
+    expect(query.eq).not.toHaveBeenCalled()
+    expect(supabaseAdmin.from).toHaveBeenCalledWith("players")
+  })
+
   it("recorre todo el directorio sin filtrar por organización o inscripciones", async () => {
     const firstDatabasePage = Array.from({ length: 1000 }, (_, index) =>
       player(`player-${index}`, "Jugador", `${index}`),
