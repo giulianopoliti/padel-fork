@@ -1,4 +1,3 @@
-import { InscriptionPaymentPanel } from '@/components/tournament/inscription-payment-panel';
 import React from 'react';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
@@ -207,7 +206,6 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
 
   return (
     <>
-    {user && accessCheck.accessLevel === 'FULL_MANAGEMENT' && <InscriptionPaymentPanel tournamentId={tournamentId} managerSummary />}
     <InscriptionsClient 
       tournament={serializedTournament}
       coupleInscriptions={coupleInscriptions}

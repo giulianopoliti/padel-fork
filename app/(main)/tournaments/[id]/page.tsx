@@ -1,4 +1,3 @@
-import { InscriptionPaymentPanel } from '@/components/tournament/inscription-payment-panel';
 import React from 'react';
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
 import { notFound } from 'next/navigation';
@@ -266,7 +265,6 @@ export async function TournamentPageById({ tournamentId }: { tournamentId: strin
 
     return (
       <>
-      {user && access.accessLevel === 'FULL_MANAGEMENT' && <InscriptionPaymentPanel tournamentId={tournamentId} managerSummary />}
       <LongTournamentView
         tournamentId={tournamentId}
         tournament={clientTournament}
@@ -281,7 +279,6 @@ export async function TournamentPageById({ tournamentId }: { tournamentId: strin
   // ➜ SISTEMA AMERICANO: Overview con props V2
   return (
     <>
-    {user && access.accessLevel === 'FULL_MANAGEMENT' && <InscriptionPaymentPanel tournamentId={tournamentId} managerSummary />}
     <AmericanTournamentOverview
       tournamentId={tournamentId}
       tournament={clientTournament}

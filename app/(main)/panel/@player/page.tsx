@@ -21,6 +21,7 @@ import PlayerFvUpcomingTournamentsSection from "./components/player-fv-upcoming-
 import LegacyPlayerDashboard from "@/app/(main)/panel-cpa/@player/page"
 import { isTournamentGenderFilter } from "@/lib/tournaments/gender-filtering"
 import SponsorMarquee from "@/components/sponsor-marquee"
+import { PlayerFvPanelHero } from "./components/player-fv-panel-hero"
 
 export const dynamic = "force-dynamic"
 
@@ -160,41 +161,10 @@ function PadelFvPlayerPanel({
 }: PlayerPanelProps) {
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#162545_0%,#192b50_42%,#152340_100%)] text-white [--ring:68_95%_45%]">
+      <PlayerFvPanelHero firstName={firstName} categoryName={categoryName} />
       <section className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
         <div className="mx-auto max-w-6xl">
           <SponsorMarquee compact tone="dark" className="mb-5 rounded-display border-white/10 bg-white/[0.035]" />
-          <div className="mb-5 rounded-display-lg border border-white/10 bg-[linear-gradient(135deg,rgba(32,51,93,0.98)_0%,rgba(23,36,71,0.98)_100%)] px-5 py-4 sm:px-6">
-            <div className="flex flex-col gap-4 py-2 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-3xl">
-                <p className="mb-1 text-xs font-medium text-court-200">
-                  Panel jugador
-                </p>
-                <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                  Mi agenda competitiva
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-brand-200 sm:text-base">
-                  Hola {firstName}. Seguí tus partidos y elegí tu próximo torneo.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                {categoryName ? (
-                  <Badge className="w-fit border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/5">
-                    Categoria {categoryName}
-                  </Badge>
-                ) : null}
-                <Button
-                  asChild
-                  className="h-11 rounded-full border border-white/20 bg-white/5 px-6 text-sm font-bold text-white hover:bg-white/10"
-                >
-                  <Link href="/torneos">
-                    Ver torneos
-                    <ChevronRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
 
           <div className="space-y-6">
             <PlayerFvNextMatchSection nextMatches={nextMatches} />

@@ -54,25 +54,36 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const headerRef = useRef<HTMLElement>(null)
   const branding = getTenantBranding()
   const isElite = branding.key === "padel-elite"
-  const isFvHome = !isElite && pathname === "/"
+  const isFvHeroPage = !isElite && (pathname === "/" || pathname === "/panel")
 
   useEffect(() => {
-    if (!isFvHome) {
+    if (!isFvHeroPage) {
       setIsFvHeroVisible(false)
       return
     }
 
-    const hero = document.querySelector("[data-padel-fv-hero]")
-    if (!hero) return
-
+    setIsFvHeroVisible(false)
     const observer = new IntersectionObserver(
       ([entry]) => setIsFvHeroVisible(entry.isIntersecting),
       { threshold: 0.12 },
     )
 
-    observer.observe(hero)
-    return () => observer.disconnect()
-  }, [isFvHome])
+    const handleHeroMount = () => {
+      const hero = document.querySelector("[data-padel-fv-hero], [data-fv-player-panel-hero]")
+      if (!hero) return false
+      observer.observe(hero)
+      return true
+    }
+    // The player page may stream in after the navbar has mounted.
+    const mountObserver = new MutationObserver(() => {
+      if (handleHeroMount()) mountObserver.disconnect()
+    })
+    if (!handleHeroMount()) mountObserver.observe(document.body, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      mountObserver.disconnect()
+    }
+  }, [isFvHeroPage, pathname])
 
   useEffect(() => {
     if (!mobileMenuOpen) {
@@ -100,11 +111,11 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const isTournamentDetailPage = (pathname?.startsWith("/tournaments/") && pathname !== "/tournaments") || pathname?.startsWith("/torneos/")
   const contextualLoginHref = isTournamentDetailPage ? `/login?redirectTo=${encodeURIComponent(pathname)}` : "/login"
   const contextualRegisterHref = isTournamentDetailPage ? `/register?redirectTo=${encodeURIComponent(pathname)}` : "/register"
-  const isFvHomeOverHero = isFvHome && isFvHeroVisible
+  const isFvOverHero = isFvHeroPage && isFvHeroVisible
   const isFvDarkNavbar = !isElite
   const headerClassName = isElite
     ? "sticky top-0 z-50 bg-gray-950/95 shadow-md backdrop-blur"
-    : isFvHomeOverHero
+    : isFvOverHero
       ? "sticky top-0 z-50 border-b border-white/10 bg-[#0b1933]/95 shadow-[0_8px_24px_rgba(8,16,31,0.18)] backdrop-blur lg:bg-[#0b1933]/78 transition-colors duration-200"
       : "sticky top-0 z-50 border-b border-white/10 bg-[#0b1933] shadow-[0_8px_24px_rgba(8,16,31,0.18)]"
   const activeDesktopClassName = isElite

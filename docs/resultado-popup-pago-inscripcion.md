@@ -44,3 +44,21 @@ node supabase/tests/resumable-payment-concurrency.mjs
 ```
 
 `supabase/tests/payment-popup-browser.mjs` requiere el servidor TPE local en el puerto 3100 y Playwright disponible (se puede indicar `PLAYWRIGHT_MODULE_PATH`). Rechaza hosts remotos, usa cuentas/archivos sintéticos con mensajes deshabilitados y elimina únicamente sus propios fixtures en `finally`. El estado de permisos de `players` debe permitir el flujo anterior para repetir el alta inicial; el script no cambia esos permisos por su cuenta.
+
+## Ajuste de imágenes pesadas
+
+El selector ahora admite imágenes originales de hasta 20 MB para que lleguen al compresor existente. La compresión se realiza localmente al confirmar la subida, con estado «Preparando imagen…». El archivo final y el servidor mantienen el límite de 4 MB; los PDF siguen limitados a 4 MB y no se convierten. No se agregaron dependencias ni se cambiaron calidades, dimensiones o fallback del compresor; se agregó un límite de entrada antes de asignar recursos del navegador.
+
+Verificación del ajuste: 47 pruebas focalizadas pasan. `supabase/tests/proof-compression-browser.mjs` ejecuta los helpers reales en Chrome con Canvas nativo: PNG sintético de 5.709.079 bytes → JPEG de 973.671 bytes en 381 ms, conservando 1800 × 1200 píxeles y texto legible, sin peticiones HTTP. La prueba completa del popup con esta imagen se dejó disponible con `PAYMENT_TEST_COMPRESSION_ONLY=1`, pero su ejecución en esta sesión quedó interferida por compilaciones concurrentes de Next.js; la medición confirmada corresponde al compresor ejecutado directamente en Chrome. No se publicó este ajuste.
+
+## Ajuste de acciones visibles y cierre
+
+Los botones Copiar, Ver comprobante, Eliminar comprobante y Quitar selección tienen fondo, borde e identificación visible; los tres primeros también incorporan iconos. El selector de archivo diferencia visualmente su botón. El pie del popup muestra «Cerrar», deshabilitado sólo mientras guarda/sube. Tras guardar se oculta la acción de subida sin archivo seleccionado; elegir un archivo nuevo muestra «Reemplazar comprobante» cuando existe uno guardado.
+
+Prueba real de navegador con `PAYMENT_TEST_UI_ONLY=1`, contra una copia aislada de la aplicación: verificación de fondos sin hover, carga inicial, reemplazo, cierre después de cada operación y vista móvil de 390 px. Pasó. Se preparó temporalmente el permiso local de lectura de `players` descrito arriba y se restauró al terminar; no se modificaron permisos remotos. Capturas en `%TEMP%/padel-payment-popup/actions-desktop.png` y `actions-mobile.png`. Sin despliegue.
+
+## Popup propio del organizador
+
+Por pedido posterior, el acceso de las filas del organizador abre `OrganizerInscriptionPaymentDialog`, separado del popup del jugador. Conserva el diseño y las acciones, con textos «El jugador paga en efectivo» y «El jugador paga por transferencia», y confirmaciones referidas a la inscripción de la pareja. Ambos comparten el editor y la lógica de carga, revisión y reemplazo; los permisos continúan definidos por la respuesta del servidor.
+
+Verificado en Chrome contra el entorno local: apertura de cada popup por su rol, textos de efectivo y transferencia, cierre del borrador del organizador sin guardar, carga y reemplazo de comprobante y vista móvil. También pasan las 6 pruebas focalizadas de acceso al pago y registro. La comprobación global con TypeScript no pudo completar por falta de memoria; los tres componentes transpilan sin errores. Sin despliegue ni cambios remotos.

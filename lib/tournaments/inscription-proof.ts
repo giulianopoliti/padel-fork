@@ -1,5 +1,7 @@
 // Leave room for multipart fields below the hosting provider's request limit.
 export const MAX_INSCRIPTION_PROOF_BYTES = 4_000_000
+// Local selection limit only. The server still accepts at most 4 MB.
+export const MAX_INSCRIPTION_PROOF_IMAGE_SOURCE_BYTES = 20_000_000
 export const INSCRIPTION_PROOF_SIZE_ERROR =
   'El comprobante supera los 4 MB. Elegí una imagen más liviana o un PDF de hasta 4 MB.'
 
@@ -17,5 +19,14 @@ export const validateInscriptionProof = (file: Pick<File, 'size' | 'type'>): str
   }
   if (file.size === 0) return 'El comprobante está vacío. Elegí otro archivo.'
   if (file.size > MAX_INSCRIPTION_PROOF_BYTES) return INSCRIPTION_PROOF_SIZE_ERROR
+  return null
+}
+
+export const validateInscriptionProofSelection = (file: Pick<File, 'size' | 'type'>): string | null => {
+  if (file.type === 'application/pdf') return validateInscriptionProof(file)
+  if (!ALLOWED_INSCRIPTION_PROOF_TYPES.has(file.type) || file.size === 0) return validateInscriptionProof(file)
+  if (file.size > MAX_INSCRIPTION_PROOF_IMAGE_SOURCE_BYTES) {
+    return 'La imagen supera los 20 MB. Elegí una copia más liviana para poder prepararla.'
+  }
   return null
 }

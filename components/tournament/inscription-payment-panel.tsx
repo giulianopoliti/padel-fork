@@ -1,7 +1,6 @@
 'use client'
 
 import useSWR from 'swr'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useUser } from '@/contexts/user-context'
 import { fetchRegistrationJson } from '@/lib/tournaments/registration-diagnostics'
@@ -29,17 +28,16 @@ export const PaymentCompact = ({ tournamentId, inscription, tournamentName, mana
   </div>
 }
 
-export const InscriptionPaymentPanel = ({ tournamentId, inscriptionId, managerSummary = false, managerRow = false }: {
-  tournamentId: string; inscriptionId?: string; managerSummary?: boolean; managerRow?: boolean
+export const InscriptionPaymentPanel = ({ tournamentId, inscriptionId, managerRow = false }: {
+  tournamentId: string; inscriptionId?: string; managerRow?: boolean
 }) => {
   const { user } = useUser()
-  const url = `/api/tournaments/${tournamentId}/inscriptions/payment${managerSummary || managerRow ? '?list=1' : inscriptionId ? `?inscriptionId=${inscriptionId}` : ''}`
+  const url = `/api/tournaments/${tournamentId}/inscriptions/payment${managerRow ? '?list=1' : inscriptionId ? `?inscriptionId=${inscriptionId}` : ''}`
   const { data, error, mutate } = useSWR(user ? [url, user.id] : null, ([endpoint]) => paymentFetcher(endpoint))
   const inscription = managerRow ? data?.inscriptions?.find(row => row.id === inscriptionId) : data?.inscription
   if (!user) return null
   if (error && !data) return <div role="alert" className="text-sm">No se pudo consultar el pago. <Button variant="outline" onClick={() => void mutate().catch(() => {})}>Reintentar</Button></div>
   if (!data) return <p role="status" className="text-sm">Consultando inscripción…</p>
-  if (managerSummary) return data.incompleteCount ? <p className="text-sm text-amber-800">Hay {data.incompleteCount} inscripciones pendientes de comprobante. <Link className="underline" href={`/tournaments/${tournamentId}/inscriptions`}>Ver inscripciones</Link></p> : null
   if (!inscription) return null
   return <PaymentCompact tournamentId={tournamentId} inscription={inscription} tournamentName={data.tournamentName} manager={managerRow} />
 }

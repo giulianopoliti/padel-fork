@@ -68,4 +68,10 @@ describe('image preparation browser failures and compression', () => {
     await expect(prepareInscriptionProof(file(5_000_000))).rejects.toThrow('4 MB')
     expect(revoke).toHaveBeenCalled()
   })
+
+  it('rejects excessive originals before allocating a browser image or canvas', async () => {
+    await expect(prepareInscriptionProof(file(20_000_001))).rejects.toThrow('20 MB')
+    expect(URL.createObjectURL).not.toHaveBeenCalled()
+    expect(canvas.toBlob).not.toHaveBeenCalled()
+  })
 })

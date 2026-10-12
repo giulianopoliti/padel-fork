@@ -1,6 +1,6 @@
 import {
-  ALLOWED_INSCRIPTION_PROOF_TYPES,
   validateInscriptionProof,
+  validateInscriptionProofSelection,
 } from './inscription-proof'
 
 const TARGET_BYTES = 1_000_000
@@ -29,9 +29,8 @@ const encodeJpeg = (canvas: HTMLCanvasElement, quality: number, timeoutMs: numbe
   })
 
 export const prepareInscriptionProof = async (file: File): Promise<File> => {
-  if (!ALLOWED_INSCRIPTION_PROOF_TYPES.has(file.type) || file.size === 0) {
-    throw new Error(validateInscriptionProof(file)!)
-  }
+  const selectionError = validateInscriptionProofSelection(file)
+  if (selectionError) throw new Error(selectionError)
 
   // PDFs and already small images are sent unchanged.
   if (file.type === 'application/pdf' || file.size <= TARGET_BYTES) {

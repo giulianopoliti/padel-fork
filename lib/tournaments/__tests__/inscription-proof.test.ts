@@ -1,4 +1,4 @@
-import { MAX_INSCRIPTION_PROOF_BYTES, validateInscriptionProof } from '../inscription-proof'
+import { MAX_INSCRIPTION_PROOF_BYTES, MAX_INSCRIPTION_PROOF_IMAGE_SOURCE_BYTES, validateInscriptionProof, validateInscriptionProofSelection } from '../inscription-proof'
 import { prepareInscriptionProof } from '../prepare-inscription-proof'
 import { submitInscriptionProof } from '../submit-inscription-proof'
 
@@ -36,6 +36,17 @@ describe('inscription proof validation and submission', () => {
     const pdf = makeFile(2_000_000, 'application/pdf')
     expect(await prepareInscriptionProof(image)).toBe(image)
     expect(await prepareInscriptionProof(pdf)).toBe(pdf)
+  })
+
+  it('permits heavy image selection for compression while retaining the server and PDF limits', () => {
+    const image = makeFile(8_000_000)
+    expect(validateInscriptionProofSelection(image)).toBeNull()
+    expect(validateInscriptionProof(image)).toContain('4 MB')
+    expect(validateInscriptionProofSelection(makeFile(MAX_INSCRIPTION_PROOF_IMAGE_SOURCE_BYTES))).toBeNull()
+    expect(validateInscriptionProofSelection(makeFile(MAX_INSCRIPTION_PROOF_IMAGE_SOURCE_BYTES + 1))).toContain('20 MB')
+    expect(validateInscriptionProofSelection(makeFile(8_000_000, 'application/pdf'))).toContain('4 MB')
+    expect(validateInscriptionProofSelection(makeFile(0))).toContain('vacío')
+    expect(validateInscriptionProofSelection(makeFile(100, 'image/heic'))).toContain('Formato')
   })
 
   it('rejects oversized PDFs before any network request', async () => {

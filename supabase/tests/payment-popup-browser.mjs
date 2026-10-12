@@ -2,7 +2,7 @@
 // Uses synthetic accounts/receipts, disables messages, cleans only its own fixtures.
 import { createRequire } from 'node:module'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import assert from 'node:assert/strict'
@@ -74,7 +74,7 @@ try {
   const page = await contexts[0].newPage()
   page.setDefaultTimeout(45000)
   const pageErrors = []
-  page.on('pageerror', error => pageErrors.push(error.message))
+  page.on('pageerror', error => { pageErrors.push(error.message); console.error('Browser error:', error.message) })
   await page.goto(`${baseUrl}/tournaments/${tid}`)
   let dialog = await openPayment(page)
   assert.equal(await page.getByRole('dialog').count(), 1)
@@ -88,9 +88,109 @@ try {
   assert.equal((await read()).payment_proof_path, before.payment_proof_path)
   await dialog.getByRole('button', { name: 'Subir comprobante', exact: true }).click()
   await dialog.getByText('Cambios guardados.').waitFor()
+  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).waitFor()
+  assert.equal(await dialog.getByRole('button', { name: 'Cerrar', exact: true }).isEnabled(), true)
+  assert.equal(await dialog.getByRole('button', { name: 'Subir comprobante', exact: true }).count(), 0)
   assert.equal(posts, 1)
   objects.add((await read()).payment_proof_path)
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click()
+  if (process.env.PAYMENT_TEST_UI_ONLY === '1') {
+    dialog = await openPayment(page)
+    assert.equal(await dialog.getAttribute('data-payment-audience'), 'player')
+    await dialog.getByText('Abonás por transferencia al organizador.', { exact: true }).waitFor()
+    for (const name of ['Copiar', 'Ver comprobante', 'Eliminar comprobante', 'Cerrar']) {
+      const button = dialog.getByRole('button', { name, exact: true })
+      const background = await button.evaluate(element => getComputedStyle(element).backgroundColor)
+      assert.notEqual(background, 'rgba(0, 0, 0, 0)', `${name} must have a visible background before hovering`)
+    }
+    await dialog.screenshot({ path: path.join(artifacts, 'actions-desktop.png') })
+    await dialog.locator('input[type=file]').setInputFiles({ ...pdf, name: 'replacement.pdf' })
+    assert.equal(await dialog.getByRole('button', { name: 'Reemplazar comprobante', exact: true }).isEnabled(), true)
+    assert.equal(await dialog.getByRole('button', { name: 'Subir comprobante', exact: true }).count(), 0)
+    await dialog.getByRole('button', { name: 'Reemplazar comprobante', exact: true }).click()
+    await dialog.getByText('Cambios guardados.').waitFor()
+    assert.equal(await dialog.getByRole('button', { name: 'Reemplazar comprobante', exact: true }).count(), 0)
+    assert.equal(await dialog.getByRole('button', { name: 'Cerrar', exact: true }).isEnabled(), true)
+    objects.add((await read()).payment_proof_path)
+    await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click()
+    await page.getByRole('dialog').waitFor({ state: 'hidden' })
+    const mobile = await contexts[1].newPage()
+    mobile.setDefaultTimeout(60000)
+    await mobile.goto(`${baseUrl}/tournaments/${tid}`)
+    const mobileDialog = await openPayment(mobile)
+    await mobileDialog.getByRole('button', { name: 'Cerrar', exact: true }).scrollIntoViewIfNeeded()
+    await mobileDialog.screenshot({ path: path.join(artifacts, 'actions-mobile.png') })
+    const box = await mobileDialog.boundingBox()
+    assert.ok(box.x >= 0 && box.x + box.width <= 391)
+    await mobileDialog.getByRole('button', { name: 'Cerrar', exact: true }).click()
+    await mobile.getByRole('dialog').waitFor({ state: 'hidden' })
+    await checked(admin.from('users').update({ role: 'ADMIN' }).eq('id', users[1]))
+    await mobile.goto(`${baseUrl}/tournaments/${tid}/inscriptions`)
+    await mobile.getByRole('button', { name: 'Ver comprobante', exact: true }).first().click()
+    const organizerDialog = mobile.getByRole('dialog')
+    await organizerDialog.getByText('El jugador paga por transferencia.', { exact: true }).waitFor()
+    assert.equal(await organizerDialog.getAttribute('data-payment-audience'), 'organizer')
+    assert.equal(await organizerDialog.getByText('Abonás por transferencia al organizador.', { exact: true }).count(), 0)
+    await organizerDialog.getByRole('radio', { name: 'Efectivo', exact: true }).check()
+    await organizerDialog.getByText('El jugador paga en efectivo.', { exact: true }).waitFor()
+    assert.equal(await organizerDialog.getByText('Abonás en efectivo al organizador.', { exact: true }).count(), 0)
+    await organizerDialog.screenshot({ path: path.join(artifacts, 'organizer-mobile.png') })
+    await organizerDialog.getByRole('button', { name: 'Cerrar', exact: true }).click()
+    await mobile.getByRole('dialog').waitFor({ state: 'hidden' })
+    assert.equal((await read()).payment_method, 'TRANSFER', 'Closing an organizer draft must not save it')
+    assert.deepEqual(pageErrors, [])
+    console.log('PASS: separate player/organizer dialogs, role-specific cash/transfer copy, organizer close without saving.')
+    console.log('PASS: visible button backgrounds without hover, upload/replacement labels, close after saving, no disabled replacement after success, desktop/mobile layout and close action.')
+  } else if (process.env.PAYMENT_TEST_COMPRESSION_ONLY === '1') {
+    dialog = await openPayment(page)
+    const imageBase64 = await page.evaluate(() => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 1800; canvas.height = 1200
+      const context = canvas.getContext('2d')
+      const pixels = context.createImageData(canvas.width, canvas.height)
+      let seed = 123456
+      for (let index = 0; index < pixels.data.length; index += 4) {
+        for (let color = 0; color < 3; color += 1) {
+          seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+          pixels.data[index + color] = seed >>> 24
+        }
+        pixels.data[index + 3] = 255
+      }
+      context.putImageData(pixels, 0, 0)
+      context.fillStyle = 'white'; context.fillRect(250, 350, 1300, 400)
+      context.fillStyle = 'black'; context.font = '42px Arial'
+      context.fillText('Comprobante de prueba local', 300, 430)
+      context.fillText('Importe: $15.000 - Operación 123456789', 300, 520)
+      context.fillText('Sin datos bancarios reales', 300, 610)
+      return canvas.toDataURL('image/png').split(',')[1]
+    })
+    const original = Buffer.from(imageBase64, 'base64')
+    assert.ok(original.length > 4_000_000 && original.length <= 20_000_000)
+    await dialog.locator('input[type=file]').setInputFiles({ name: 'heavy-receipt.png', mimeType: 'image/png', buffer: original })
+    await dialog.getByAltText('Vista previa del comprobante seleccionado').waitFor()
+    assert.equal(posts, 1, 'Heavy image selection must not upload')
+    assert.equal((await read()).payment_proof_path, [...objects][0])
+    await dialog.getByRole('button', { name: 'Reemplazar comprobante', exact: true }).click()
+    await dialog.getByText(/Cambios guardados\. Imagen reducida/).waitFor()
+    const saved = await read()
+    objects.add(saved.payment_proof_path)
+    const download = await admin.storage.from('inscription-proofs').download(saved.payment_proof_path)
+    if (download.error) throw download.error
+    assert.ok(download.data.size <= 4_000_000 && download.data.size < original.length)
+    assert.equal(download.data.type, 'image/jpeg')
+    const savedBytes = Buffer.from(await download.data.arrayBuffer())
+    writeFileSync(path.join(artifacts, 'compressed-receipt.jpg'), savedBytes)
+    const savedBase64 = savedBytes.toString('base64')
+    const dimensions = await page.evaluate(async encoded => {
+      const image = new Image()
+      image.src = `data:image/jpeg;base64,${encoded}`
+      await image.decode()
+      return [image.naturalWidth, image.naturalHeight]
+    }, savedBase64)
+    assert.deepEqual(dimensions, [1800, 1200])
+    await dialog.screenshot({ path: path.join(artifacts, 'compression.png') })
+    console.log(`PASS: real heavy PNG ${original.length} bytes -> stored JPEG ${download.data.size} bytes; dimensions 1800x1200 retained, text preview, selection without upload, original proof preserved until confirmation.`)
+  } else {
   // Second member, mobile layout, same inscription and current server state.
   assert.equal((await getPayment(contexts[1])).id, before.id)
   const mobile = await contexts[1].newPage()
@@ -164,7 +264,7 @@ try {
   assert.equal(await page.getByRole('dialog').count(), 1)
   await page.getByRole('dialog').getByText('Tu inscripción está guardada y conserva el cupo.').waitFor()
   await page.keyboard.press('Escape')
-  // Manager's row opens the one shared popup; no inline upload fields.
+  // Manager's row opens the organizer popup; no inline upload fields.
   await checked(admin.from('users').update({ role: 'ADMIN' }).eq('id', users[1]))
   await mobile.goto(`${baseUrl}/tournaments/${tid}/inscriptions`)
   await mobile.getByRole('button', { name: 'Pendiente de comprobante', exact: true }).first().waitFor()
@@ -181,6 +281,11 @@ try {
   assert.deepEqual(pageErrors, [])
   console.log('PASS: desktop/mobile, both members, explicit PDF upload, replacement, removal, both payment changes, close without saving, reload, full /torneos, /panel, initial registration and manager row.')
   console.log(`Screenshots: ${artifacts}`)
+  }
+} catch (error) {
+  const page = contexts[0]?.pages()[0]
+  if (page) await page.screenshot({ path: path.join(artifacts, 'failure.png'), fullPage: true }).catch(() => {})
+  throw error
 } finally {
   await browser?.close()
   // Only this fixture; actual Storage deletion happens after confirmed row deletion.
