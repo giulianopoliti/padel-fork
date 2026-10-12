@@ -21,6 +21,7 @@ interface RoundSelectorProps {
   availableRounds: Round[]
   roundStats?: Record<string, { total: number; completed: number }>
   className?: string
+  compact?: boolean
 }
 
 const ROUND_CONFIG: Record<Round, { displayName: string; icon: React.ReactNode }> = {
@@ -37,7 +38,8 @@ export default function RoundSelector({
   onRoundChange,
   availableRounds,
   roundStats,
-  className = ''
+  className = '',
+  compact = false
 }: RoundSelectorProps) {
 
   // Construir información de rounds con estadísticas
@@ -74,7 +76,7 @@ export default function RoundSelector({
         value={selectedRound}
         onValueChange={(value) => onRoundChange(value as Round | 'all')}
       >
-        <SelectTrigger className="w-64">
+        <SelectTrigger aria-label="Seleccionar ronda" className="w-64 max-w-full">
           <SelectValue placeholder="Seleccionar ronda" />
         </SelectTrigger>
         <SelectContent>
@@ -154,7 +156,7 @@ export default function RoundSelector({
       </Select>
 
       {/* Indicador de ronda actual */}
-      {selectedRound !== 'all' && (
+      {!compact && selectedRound !== 'all' && (
         <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-surface px-3 py-1">
           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           <span className="text-sm text-blue-800 font-medium">

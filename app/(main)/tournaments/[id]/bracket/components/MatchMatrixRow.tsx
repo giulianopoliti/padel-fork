@@ -406,7 +406,7 @@ export default function MatchMatrixRow({
             <TableCell
               key={`${couple1?.id}-${slot.id}`}
               className={cn(
-                "text-center border-r border-slate-200 px-2 py-1.5 transition-all duration-200",
+                "text-center border-r border-slate-200 px-1.5 py-1 transition-all duration-200",
                 {
                   'bg-blue-50 ring-1 ring-blue-200': slot1DragState.isBeingDragged,
                   'bg-green-50 ring-1 ring-green-200': slot1DragState.isDropTarget,
@@ -583,7 +583,7 @@ export default function MatchMatrixRow({
             <TableCell
               key={`${couple2?.id}-${slot.id}`}
               className={cn(
-                "text-center border-r border-slate-200 px-2 py-1.5 transition-all duration-200",
+                "text-center border-r border-slate-200 px-1.5 py-1 transition-all duration-200",
                 {
                   'bg-blue-50 ring-1 ring-blue-200': slot2DragState.isBeingDragged,
                   'bg-green-50 ring-1 ring-green-200': slot2DragState.isDropTarget,

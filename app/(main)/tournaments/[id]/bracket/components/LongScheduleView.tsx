@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -407,94 +407,21 @@ function LongScheduleViewContent({
   // Handlers ya están definidos arriba en el componente original
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
 
-      {/* Header informativo */}
-      <div className="bg-white rounded-surface border border-slate-200 p-6">
-        <div className="flex items-start gap-4">
-          <div className="bg-blue-100 p-2 rounded-surface">
-            <Calendar className="h-5 w-5 text-blue-600" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">
-              Vista de Programación - Matriz Compacta
-            </h2>
-            <p className="text-slate-600 text-sm mb-4">
-              Visualización matricial con disponibilidad de parejas y programación de horarios inline.
-            </p>
-
-            <Alert className="bg-green-50 border-green-200">
-              <Trophy className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                <strong>✅ Características clave:</strong> Cada match = 2 filas (pareja 1 + pareja 2) •
-                Time slots horizontales • Disponibilidad inline • Programación rápida • Carga de resultados
-              </AlertDescription>
-            </Alert>
-          </div>
-        </div>
-      </div>
-
-      {/* Round selector */}
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Selección de Ronda</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RoundSelector
-            selectedRound={selectedRound}
-            onRoundChange={setSelectedRound}
-            availableRounds={availableRounds}
-            roundStats={roundStats}
-          />
-        </CardContent>
-      </Card>
-
-      {isGoldSilverFormat && selectedRound !== 'all' && (
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Copa de Llave</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={activeBracketKey === 'GOLD' ? 'default' : 'outline'}
-                onClick={() => setActiveBracketKey('GOLD')}
-              >
-                Copa de Oro
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={activeBracketKey === 'SILVER' ? 'default' : 'outline'}
-                onClick={() => setActiveBracketKey('SILVER')}
-              >
-                Copa de Plata
-              </Button>
-              <Badge variant="outline">
-                {activeBracketKey === 'GOLD' ? 'Mostrando Oro' : 'Mostrando Plata'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Controles de reorganización */}
-      {selectedRound !== 'all' && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-slate-900 mb-1">
-                  Reorganización de Parejas
-                </h3>
-                <p className="text-xs text-slate-600">
-                  Arrastra parejas entre matches de la misma ronda para optimizar horarios
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <RoundSelector
+              selectedRound={selectedRound}
+              onRoundChange={setSelectedRound}
+              availableRounds={availableRounds}
+              roundStats={roundStats}
+              compact
+              className="min-w-0 flex-wrap"
+            />
+            {selectedRound !== 'all' && (
+              <div className="flex flex-wrap items-center gap-2">
                 {!isEditMode ? (
                   <TooltipProvider>
                     <Tooltip>
@@ -506,7 +433,7 @@ function LongScheduleViewContent({
                           className="border-blue-300 text-blue-700 hover:bg-blue-50"
                         >
                           <Edit3 className="h-4 w-4 mr-2" />
-                          🔄 Reorganizar Parejas
+                          Reorganizar parejas
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -549,36 +476,68 @@ function LongScheduleViewContent({
                     )}
                   </div>
                 )}
+                {canManageAvailability && roundTimeSlots.length > 0 && (
+                  <Button type="button" size="sm" variant={manualAvailabilityEnabled ? 'default' : 'outline'}
+                    disabled={isEditMode || roundSchedulingLoading} aria-pressed={manualAvailabilityEnabled}
+                    onClick={() => setManualAvailabilityEnabled(value => !value)}>
+                    <Edit3 className="mr-2 h-4 w-4" />
+                    {manualAvailabilityEnabled ? 'Finalizar carga manual' : 'Cargar disponibilidad manual'}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          {manualAvailabilityEnabled && <p className="text-xs text-slate-600">Marcá un horario para agregar disponibilidad y una nota opcional. Al desmarcar vuelve a sin datos.</p>}
+          {isGoldSilverFormat && selectedRound !== 'all' && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
+              <span className="text-xs font-medium text-slate-600">Copa:</span>
+              <Button
+                type="button"
+                size="sm"
+                variant={activeBracketKey === 'GOLD' ? 'default' : 'outline'}
+                onClick={() => setActiveBracketKey('GOLD')}
+              >
+                Copa de Oro
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={activeBracketKey === 'SILVER' ? 'default' : 'outline'}
+                onClick={() => setActiveBracketKey('SILVER')}
+              >
+                Copa de Plata
+              </Button>
+              <Badge variant="outline">
+                {activeBracketKey === 'GOLD' ? 'Mostrando Oro' : 'Mostrando Plata'}
+              </Badge>
+            </div>
+          )}
+          {/* Indicador de operaciones pendientes */}
+          {dragState.pendingOperations.length > 0 && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-surface">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <span className="text-sm text-blue-800 font-medium">
+                  {dragState.pendingOperations.length} intercambio(s) pendiente(s)
+                </span>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  No guardado
+                </Badge>
               </div>
             </div>
+          )}
 
-            {/* Indicador de operaciones pendientes */}
-            {dragState.pendingOperations.length > 0 && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-surface">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm text-blue-800 font-medium">
-                    {dragState.pendingOperations.length} intercambio(s) pendiente(s)
-                  </span>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    No guardado
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            {/* Info de modo edición */}
-            {isEditMode && (
-              <Alert className="mt-3 bg-blue-50 border-blue-200">
-                <Zap className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  <strong>Modo Edición Activo:</strong> Arrastra filas completas de parejas entre matches de <Badge variant="default">{selectedRound}</Badge>. Solo matches pendientes pueden ser reorganizados.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          {/* Info de modo edición */}
+          {isEditMode && (
+            <Alert className="mt-3 bg-blue-50 border-blue-200">
+              <Zap className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>Modo Edición Activo:</strong> Arrastra filas completas de parejas entre matches de <Badge variant="default">{selectedRound}</Badge>. Solo matches pendientes pueden ser reorganizados.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Estadísticas de la ronda seleccionada */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -648,36 +607,7 @@ function LongScheduleViewContent({
             Ve a <strong>Gestión de Fechas</strong> para crear fechas y horarios para esta ronda.
           </AlertDescription>
         </Alert>
-      ) : selectedRound !== 'all' && roundTimeSlots.length > 0 ? (
-        <Alert className="border-green-200 bg-green-50">
-          <Info className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
-            <strong>✅ Datos cargados:</strong> {roundFechas.length} fecha(s) con {roundTimeSlots.length} horario(s) disponibles para {ROUND_CONFIG[selectedRound as Round]?.displayName}.
-          </AlertDescription>
-        </Alert>
       ) : null}
-
-      {/* Debug info durante desarrollo */}
-      {process.env.NODE_ENV === 'development' && selectedRound !== 'all' && (
-        <Alert className="border-gray-200 bg-gray-50">
-          <Info className="h-4 w-4 text-gray-600" />
-          <AlertDescription className="text-gray-800">
-            <strong>🔍 Debug:</strong> Round={selectedRound}, Fechas={roundFechas.length}, TimeSlots={roundTimeSlots.length}, Loading={roundSchedulingLoading}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {canManageAvailability && selectedRound !== 'all' && roundTimeSlots.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" size="sm" variant={manualAvailabilityEnabled ? 'default' : 'outline'}
-            disabled={isEditMode || roundSchedulingLoading} aria-pressed={manualAvailabilityEnabled}
-            onClick={() => setManualAvailabilityEnabled(value => !value)}>
-            <Edit3 className="mr-2 h-4 w-4" />
-            {manualAvailabilityEnabled ? 'Finalizar carga manual' : 'Cargar disponibilidad manual'}
-          </Button>
-          {manualAvailabilityEnabled && <p className="text-xs text-slate-600">Marcá un horario para agregar disponibilidad y una nota opcional. Al desmarcar vuelve a sin datos.</p>}
-        </div>
-      )}
 
       <ScheduleMatrix
         matches={filteredMatches}
@@ -716,32 +646,7 @@ function LongScheduleViewContent({
         />
       )}
 
-      {/* Info de funcionalidades */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm font-medium text-slate-700">Matriz Compacta</span>
-            </div>
-            <p className="text-xs text-slate-600">
-              Cada match = 2 filas con disponibilidad de parejas visible inline
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm font-medium text-slate-700">Programación Rápida</span>
-            </div>
-            <p className="text-xs text-slate-600">
-              Programa horarios directamente desde la matriz con el modal integrado
-            </p>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }

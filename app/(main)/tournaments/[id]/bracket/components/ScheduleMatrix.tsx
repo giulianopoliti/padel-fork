@@ -229,7 +229,7 @@ export default function ScheduleMatrix({
 
                   {/* Columnas de time slots - Reducido el ancho */}
                   {timeSlots.map(slot => (
-                    <TableHead key={slot.id} className="w-28 min-w-28 max-w-28 px-2 py-2 text-center border-r border-slate-200">
+                    <TableHead key={slot.id} className="w-[104px] min-w-[104px] max-w-[104px] px-1.5 py-1.5 text-center border-r border-slate-200">
                       <div className="space-y-1">
                         <div className="text-xs font-medium text-slate-700">
                           {formatTimeSlotHeader(slot.date)}
