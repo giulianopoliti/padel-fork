@@ -6314,7 +6314,7 @@ export async function approveInscription(inscriptionId: string): Promise<{
   // Obtener la inscripcion
   const { data: inscription, error: fetchError } = await supabase
     .from('inscriptions')
-    .select('id, tournament_id, is_pending, payment_proof_status, couple_id')
+    .select('id, tournament_id, is_pending, couple_id')
     .eq('id', inscriptionId)
     .single();
   

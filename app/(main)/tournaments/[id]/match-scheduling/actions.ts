@@ -1667,6 +1667,7 @@ export async function updateOrganizerCoupleAvailability(
       }
     }
 
+    revalidatePath(`/tournaments/${tournamentId}/bracket`)
     revalidatePath(`/tournaments/${tournamentId}/schedules`)
     revalidatePath(`/tournaments/${tournamentId}/match-scheduling`)
 

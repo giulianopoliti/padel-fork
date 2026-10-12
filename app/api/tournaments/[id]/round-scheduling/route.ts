@@ -111,6 +111,8 @@ export async function GET(
     const normalizedTimeSlots = (timeSlots || []).map(slot => ({
       id: slot.id,
       fecha_id: slot.fecha_id,
+      slot_type: slot.slot_type,
+      is_system: slot.is_system,
       date: slot.date,
       start_time: slot.start_time,
       end_time: slot.end_time,

@@ -60,6 +60,7 @@ end $$;
 do $$
 declare test payment_test_ids%rowtype; i public.inscriptions%rowtype; before_row jsonb;
   path1 text; path2 text; original_revision integer; original_review timestamptz;
+  zid uuid; mid uuid; before_match jsonb;
 begin
   select * into strict test from payment_test_ids;
   select * into strict i from public.inscriptions where id=test.inscription_id;
@@ -93,12 +94,15 @@ begin
   -- Registration approval must leave the file pending and individual payments unpaid.
   update public.inscriptions set is_pending=false where id=i.id returning * into i;
   if i.payment_proof_status<>'PENDING_REVIEW' then raise exception 'FAIL: inscription approval reviewed proof'; end if;
-  insert into public.zones(tournament_id,name) values(test.tournament_id,'Review preservation');
+  insert into public.zones(tournament_id,name) values(test.tournament_id,'Review preservation') returning id into zid;
+  insert into public.matches(tournament_id,zone_id,couple1_id,couple2_id,es_prueba) values(test.tournament_id,zid,i.couple_id,null,true) returning id into mid;
+  select to_jsonb(m) into before_match from public.matches m where id=mid;
   before_row := to_jsonb(i)-array['payment_proof_status','payment_reviewed_at','payment_reviewed_by','payment_revision'];
   select * into strict i from public.approve_inscription_proof(i.id,test.tournament_id,i.payment_revision,path2,test.user_id);
   if to_jsonb(i)-array['payment_proof_status','payment_reviewed_at','payment_reviewed_by','payment_revision'] <> before_row then raise exception 'FAIL: unrelated data changed'; end if;
   if exists(select 1 from public.inscription_payments where inscription_id=i.id and has_paid) then raise exception 'FAIL: approval marked player paid'; end if;
   if not exists(select 1 from public.zones where tournament_id=test.tournament_id and name='Review preservation') then raise exception 'FAIL: zones lost'; end if;
+  if (select to_jsonb(m) from public.matches m where id=mid) is distinct from before_match then raise exception 'FAIL: match changed'; end if;
   if has_function_privilege('authenticated','public.approve_inscription_proof(uuid,uuid,integer,text,uuid)','execute') or
     has_function_privilege('anon','public.approve_inscription_proof(uuid,uuid,integer,text,uuid)','execute') then raise exception 'FAIL: public RPC access'; end if;
   -- Prepare a player-owned unreviewed record for direct-write attempts.
@@ -126,4 +130,4 @@ begin
 end $$;
 reset role;
 rollback;
-\echo 'PASS: independent approval, metadata, unchanged fields/payments/zones, duplicate/stale requests, and protected direct writes.'
+\echo 'PASS: independent approval, metadata, unchanged fields/payments/zones/matches, duplicate/stale requests, and protected direct writes.'

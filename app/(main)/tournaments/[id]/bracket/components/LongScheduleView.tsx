@@ -75,6 +75,7 @@ function LongScheduleViewContent({
   roundSchedulingError,
   isLoading,
   refetchAll,
+  refetchRoundScheduling,
   clubes,
   isGoldSilverFormat,
   activeBracketKey,
@@ -98,12 +99,28 @@ function LongScheduleViewContent({
   roundSchedulingLoading: boolean
   roundSchedulingError: any
   isLoading: boolean
+  refetchRoundScheduling: () => Promise<void>
   refetchAll: () => void
   clubes: Club[]
   isGoldSilverFormat: boolean
   activeBracketKey: BracketKey
   setActiveBracketKey: (key: BracketKey) => void
 }) {
+
+  const [manualAvailabilityEnabled, setManualAvailabilityEnabled] = useState(false)
+  const { data: permissions } = useSWR<{ hasPermission: boolean }>(
+    `/api/tournaments/${tournamentId}/permissions`,
+    async (url: string) => {
+      const response = await fetch(url)
+      if (!response.ok) return { hasPermission: false }
+      return response.json()
+    }
+  )
+  const canManageAvailability = permissions?.hasPermission === true
+
+  useEffect(() => {
+    setManualAvailabilityEnabled(false)
+  }, [selectedRound, activeBracketKey, isEditMode])
 
   // Hook del contexto de drag & drop
   const { state: dragState } = useBracketDragDrop()
@@ -363,6 +380,7 @@ function LongScheduleViewContent({
       toast.error('Selecciona una ronda específica para reorganizar parejas')
       return
     }
+    setManualAvailabilityEnabled(false)
     setIsEditMode(true)
     toast.success(`Modo edición activado para ${ROUND_CONFIG[selectedRound as Round]?.displayName}`)
   }
@@ -649,6 +667,18 @@ function LongScheduleViewContent({
         </Alert>
       )}
 
+      {canManageAvailability && selectedRound !== 'all' && roundTimeSlots.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" size="sm" variant={manualAvailabilityEnabled ? 'default' : 'outline'}
+            disabled={isEditMode || roundSchedulingLoading} aria-pressed={manualAvailabilityEnabled}
+            onClick={() => setManualAvailabilityEnabled(value => !value)}>
+            <Edit3 className="mr-2 h-4 w-4" />
+            {manualAvailabilityEnabled ? 'Finalizar carga manual' : 'Cargar disponibilidad manual'}
+          </Button>
+          {manualAvailabilityEnabled && <p className="text-xs text-slate-600">Marcá un horario para agregar disponibilidad y una nota opcional. Al desmarcar vuelve a sin datos.</p>}
+        </div>
+      )}
+
       <ScheduleMatrix
         matches={filteredMatches}
         timeSlots={roundTimeSlots}
@@ -657,9 +687,11 @@ function LongScheduleViewContent({
         onLoadResult={handleLoadResult}
         loading={isLoading}
         tournamentId={tournamentId}
-        isOwner={true} // TODO: Get from permissions
+        isOwner={canManageAvailability}
         dragEnabled={isEditMode}
         isEditMode={isEditMode}
+        manualAvailabilityEnabled={manualAvailabilityEnabled}
+        onAvailabilitySaved={refetchRoundScheduling}
         pendingOperations={dragState.pendingOperations}
       />
 
@@ -774,7 +806,8 @@ export default function LongScheduleView({ tournamentId, onMatchUpdate }: LongSc
     roundSchedulingLoading,
     roundSchedulingError,
     isLoading,
-    refetchAll
+    refetchAll,
+    refetchRoundScheduling
   } = useLongBracketData(tournamentId, {
     selectedRound: selectedRound === 'all' ? undefined : selectedRound,
     selectedRoundType: selectedRound !== 'all' ? ROUND_TO_ENUM_MAP[selectedRound] : undefined,
@@ -804,6 +837,7 @@ export default function LongScheduleView({ tournamentId, onMatchUpdate }: LongSc
         roundSchedulingError={roundSchedulingError}
         isLoading={isLoading}
         refetchAll={() => { refetchAll(); onMatchUpdate?.() }}
+        refetchRoundScheduling={refetchRoundScheduling}
         clubes={clubes}
         isGoldSilverFormat={isGoldSilverFormat}
         activeBracketKey={activeBracketKey}

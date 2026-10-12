@@ -1,25 +1,18 @@
 'use client'
 
 import React, { useMemo } from 'react'
+import AvailabilityCell, { type AvailabilitySlot, type SaveAvailability } from './AvailabilityCell'
 import { TableRow, TableCell } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { Calendar, Trophy, Clock, Users, Play, GripVertical } from 'lucide-react'
+import { Calendar, Trophy, Play, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import DraggableCoupleSlot from './DraggableCoupleSlot'
 import { useBracketDragOperations } from '@/components/tournament/bracket-v2/hooks/useBracketDragOperations'
 import { getMatchPreviewInfo } from '@/components/tournament/bracket-v2/utils/preview-operations'
 import type { BracketMatchV2 } from '@/components/tournament/bracket-v2/types/bracket-types'
 import { toast } from 'sonner'
 
-interface TimeSlot {
+interface TimeSlot extends AvailabilitySlot {
   id: string
   date: string
   start_time: string
@@ -48,6 +41,9 @@ interface MatchMatrixRowProps {
   isOwner?: boolean
   dragEnabled?: boolean
   isEditMode?: boolean
+  manualAvailabilityEnabled?: boolean
+  availabilitySaving?: boolean
+  onSaveAvailability: SaveAvailability
   pendingOperations?: BracketSwapOperation[]
 }
 
@@ -62,6 +58,9 @@ export default function MatchMatrixRow({
   isOwner = false,
   dragEnabled = true,
   isEditMode = false,
+  manualAvailabilityEnabled = false,
+  availabilitySaving = false,
+  onSaveAvailability,
   pendingOperations = []
 }: MatchMatrixRowProps) {
 
@@ -345,7 +344,7 @@ export default function MatchMatrixRow({
         }
       >
         {/* Nombre Pareja 1 + Badge (solo en primera pareja) */}
-        <TableCell className="border-r border-slate-200 bg-slate-50 sticky left-0 z-10 p-3">
+        <TableCell className="border-r border-slate-200 bg-slate-50 sticky left-0 z-10 px-3 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {/* Drag handle visual */}
@@ -407,7 +406,7 @@ export default function MatchMatrixRow({
             <TableCell
               key={`${couple1?.id}-${slot.id}`}
               className={cn(
-                "text-center border-r border-slate-200 p-4 transition-all duration-200",
+                "text-center border-r border-slate-200 px-2 py-1.5 transition-all duration-200",
                 {
                   'bg-blue-50 ring-1 ring-blue-200': slot1DragState.isBeingDragged,
                   'bg-green-50 ring-1 ring-green-200': slot1DragState.isDropTarget,
@@ -415,71 +414,23 @@ export default function MatchMatrixRow({
                 }
               )}
             >
-              <div className="space-y-1">
-                {isAvailable !== null ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="inline-block">
-                          <Checkbox
-                            checked={isAvailable}
-                            disabled
-                            className={cn(
-                              'mx-auto cursor-help',
-                              isAvailable ? 'data-[state=checked]:bg-green-600' : 'border-red-300'
-                            )}
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      {(notes || isAvailable) && (
-                        <TooltipContent
-                          side="top"
-                          className="bg-white border-gray-200 text-slate-900 shadow-lg max-w-xs"
-                        >
-                          <div className="space-y-1">
-                            <div className="font-medium text-xs">
-                              {slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)}
-                            </div>
-                            <div className="text-xs text-slate-600">
-                              {slot.date && new Date(slot.date.split('T')[0].split('-').map(Number).join('-')).toLocaleDateString('es-ES', {
-                                weekday: 'short',
-                                day: 'numeric',
-                                month: 'short'
-                              })}
-                            </div>
-                            {notes && (
-                              <div className="text-xs text-blue-600 border-t border-gray-200 pt-1 mt-1">
-                                <strong>Nota:</strong> {notes}
-                              </div>
-                            )}
-                          </div>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <div className="mx-auto w-4 h-4 rounded border border-slate-300 bg-slate-100"></div>
-                )}
-
-                {/* Mini indicador de horario para referencia visual */}
-                <div className="text-xs text-gray-500">
-                  {slot.start_time.substring(0, 5)}
-                </div>
-              </div>
+              <AvailabilityCell coupleId={couple1?.id} coupleName={couple1?.name} slot={slot}
+                available={isAvailable} notes={notes} editable={manualAvailabilityEnabled}
+                saving={availabilitySaving} onSave={onSaveAvailability} />
             </TableCell>
           )
         })}
 
         {/* Acciones (rowspan 2 para cubrir ambas parejas) */}
         <TableCell rowSpan={2} className="text-center border-l-2 border-slate-300 bg-slate-50">
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Button
               size="sm"
               variant="outline"
               onClick={() => onScheduleMatch(match.id)}
               disabled={!canSchedule}
               className={cn(
-                'w-full text-xs',
+                'h-7 w-full text-xs',
                 canSchedule && 'border-blue-300 text-blue-700 hover:bg-blue-50'
               )}
             >
@@ -493,7 +444,7 @@ export default function MatchMatrixRow({
               onClick={() => onLoadResult(match.id)}
               disabled={!canLoadResult && !isCompleted}
               className={cn(
-                'w-full text-xs',
+                'h-7 w-full text-xs',
                 canLoadResult && 'bg-blue-600 hover:bg-blue-700 text-white',
                 isCompleted && 'bg-green-600 hover:bg-green-700 text-white'
               )}
@@ -547,7 +498,7 @@ export default function MatchMatrixRow({
       {/* Fila 2: Pareja 2 */}
       <TableRow
         className={cn(
-          'border-b-4 border-slate-300 transition-all duration-200', // Separador más grueso entre matches
+          'border-b-2 border-slate-300 transition-all duration-200', // Separador más grueso entre matches
           // Color base según si está programado o no
           isScheduled
             ? (matchIndex % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100')
@@ -585,7 +536,7 @@ export default function MatchMatrixRow({
         }
       >
         {/* Nombre Pareja 2 (sin badge) */}
-        <TableCell className="border-r border-slate-200 bg-slate-50 sticky left-0 z-10 p-3">
+        <TableCell className="border-r border-slate-200 bg-slate-50 sticky left-0 z-10 px-3 py-2">
           <div className="flex items-center gap-2">
             {/* Drag handle visual */}
             {isEditMode && slot2DragState.canDrag && (
@@ -632,7 +583,7 @@ export default function MatchMatrixRow({
             <TableCell
               key={`${couple2?.id}-${slot.id}`}
               className={cn(
-                "text-center border-r border-slate-200 p-4 transition-all duration-200",
+                "text-center border-r border-slate-200 px-2 py-1.5 transition-all duration-200",
                 {
                   'bg-blue-50 ring-1 ring-blue-200': slot2DragState.isBeingDragged,
                   'bg-green-50 ring-1 ring-green-200': slot2DragState.isDropTarget,
@@ -640,57 +591,9 @@ export default function MatchMatrixRow({
                 }
               )}
             >
-              <div className="space-y-1">
-                {isAvailable !== null ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="inline-block">
-                          <Checkbox
-                            checked={isAvailable}
-                            disabled
-                            className={cn(
-                              'mx-auto cursor-help',
-                              isAvailable ? 'data-[state=checked]:bg-green-600' : 'border-red-300'
-                            )}
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      {(notes || isAvailable) && (
-                        <TooltipContent
-                          side="top"
-                          className="bg-white border-gray-200 text-slate-900 shadow-lg max-w-xs"
-                        >
-                          <div className="space-y-1">
-                            <div className="font-medium text-xs">
-                              {slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)}
-                            </div>
-                            <div className="text-xs text-slate-600">
-                              {slot.date && new Date(slot.date.split('T')[0].split('-').map(Number).join('-')).toLocaleDateString('es-ES', {
-                                weekday: 'short',
-                                day: 'numeric',
-                                month: 'short'
-                              })}
-                            </div>
-                            {notes && (
-                              <div className="text-xs text-blue-600 border-t border-gray-200 pt-1 mt-1">
-                                <strong>Nota:</strong> {notes}
-                              </div>
-                            )}
-                          </div>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <div className="mx-auto w-4 h-4 rounded border border-slate-300 bg-slate-100"></div>
-                )}
-
-                {/* Mini indicador de horario para referencia visual */}
-                <div className="text-xs text-gray-500">
-                  {slot.start_time.substring(0, 5)}
-                </div>
-              </div>
+              <AvailabilityCell coupleId={couple2?.id} coupleName={couple2?.name} slot={slot}
+                available={isAvailable} notes={notes} editable={manualAvailabilityEnabled}
+                saving={availabilitySaving} onSave={onSaveAvailability} />
             </TableCell>
           )
         })}

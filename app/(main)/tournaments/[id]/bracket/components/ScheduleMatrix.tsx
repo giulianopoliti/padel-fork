@@ -1,6 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useRef, useState } from 'react'
+import AvailabilityCell, { type AvailabilitySlot, type SaveAvailability } from './AvailabilityCell'
+import { updateOrganizerCoupleAvailability } from '../../match-scheduling/actions'
+import { toast } from 'sonner'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
@@ -9,7 +12,7 @@ import MatchMatrixRow from './MatchMatrixRow'
 import type { BracketMatchV2 } from '@/components/tournament/bracket-v2/types/bracket-types'
 
 // Reutilizar tipos del sistema de match scheduling existente
-interface TimeSlot {
+interface TimeSlot extends AvailabilitySlot {
   id: string
   date: string
   start_time: string
@@ -39,11 +42,13 @@ interface ScheduleMatrixProps {
   isOwner?: boolean
   dragEnabled?: boolean
   isEditMode?: boolean
+  manualAvailabilityEnabled?: boolean
+  onAvailabilitySaved?: () => Promise<void>
   pendingOperations?: BracketSwapOperation[]
 }
 
 // Helper para formatear días con horario completo
-const formatTimeSlotHeader = (dateString: string, startTime: string, endTime: string): string => {
+const formatTimeSlotHeader = (dateString: string): string => {
   // Fix timezone issue: parse date components directly to avoid UTC interpretation
   const [year, month, day] = dateString.split('T')[0].split('-').map(Number)
   const date = new Date(year, month - 1, day)
@@ -52,7 +57,7 @@ const formatTimeSlotHeader = (dateString: string, startTime: string, endTime: st
   const dayStr = String(day).padStart(2, '0')
   const monthStr = String(month).padStart(2, '0')
 
-  return `${days[date.getDay()]} ${dayStr}/${monthStr} ${startTime.substring(0, 5)} - ${endTime.substring(0, 5)}`
+  return `${days[date.getDay()]} ${dayStr}/${monthStr}`
 }
 
 export default function ScheduleMatrix({
@@ -67,8 +72,34 @@ export default function ScheduleMatrix({
   isOwner = false,
   dragEnabled = true,
   isEditMode = false,
+  manualAvailabilityEnabled = false,
+  onAvailabilitySaved,
   pendingOperations = []
 }: ScheduleMatrixProps) {
+
+  const [availabilitySaving, setAvailabilitySaving] = useState(false)
+  const savingRef = useRef(false)
+  const handleSaveAvailability: SaveAvailability = async (coupleId, timeSlotId, isAvailable, notes) => {
+    if (savingRef.current || !manualAvailabilityEnabled || !isOwner || isEditMode) return false
+    savingRef.current = true
+    setAvailabilitySaving(true)
+    try {
+      const result = await updateOrganizerCoupleAvailability({ coupleId, timeSlotId, isAvailable, notes })
+      if (!result.success) {
+        toast.error(result.error || 'No se pudo guardar la disponibilidad')
+        return false
+      }
+      await onAvailabilitySaved?.()
+      toast.success(isAvailable ? 'Disponibilidad guardada' : 'Disponibilidad removida')
+      return true
+    } catch {
+      toast.error('No se pudo actualizar la disponibilidad. Reintentá la operación.')
+      return false
+    } finally {
+      savingRef.current = false
+      setAvailabilitySaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -131,6 +162,26 @@ export default function ScheduleMatrix({
                       </div>
                     </div>
 
+                    {manualAvailabilityEnabled && isOwner && !isEditMode && (
+                      <div className="space-y-3">
+                        {[match.participants?.slot1?.couple, match.participants?.slot2?.couple].filter(couple => !!couple).map(couple => (
+                          <div key={couple!.id} className="space-y-2">
+                            <p className="text-xs font-medium">{couple!.name}</p>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                              {timeSlots.map(slot => {
+                                const item = availability.find(value => value.couple_id === couple!.id && value.time_slot_id === slot.id)
+                                return <div key={slot.id} className="rounded border p-2 text-center">
+                                  <div className="text-xs">{formatTimeSlotHeader(slot.date)}</div>
+                                  <div className="text-[11px] text-slate-500">{slot.start_time.slice(0, 5)}–{slot.end_time.slice(0, 5)}</div>
+                                  <AvailabilityCell coupleId={couple!.id} coupleName={couple!.name} slot={slot} available={item?.is_available ?? null} notes={item?.notes || null} editable saving={availabilitySaving} onSave={handleSaveAvailability} />
+                                </div>
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Actions */}
                     <div className="flex gap-2">
                       <Button
@@ -178,10 +229,13 @@ export default function ScheduleMatrix({
 
                   {/* Columnas de time slots - Reducido el ancho */}
                   {timeSlots.map(slot => (
-                    <TableHead key={slot.id} className="text-center min-w-28 border-r border-slate-200">
+                    <TableHead key={slot.id} className="w-28 min-w-28 max-w-28 px-2 py-2 text-center border-r border-slate-200">
                       <div className="space-y-1">
                         <div className="text-xs font-medium text-slate-700">
-                          {formatTimeSlotHeader(slot.date, slot.start_time, slot.end_time)}
+                          {formatTimeSlotHeader(slot.date)}
+                        </div>
+                        <div className="whitespace-nowrap text-[11px] leading-4 text-slate-500">
+                          {slot.start_time.slice(0, 5)}–{slot.end_time.slice(0, 5)}
                         </div>
                         {slot.court && (
                           <div className="text-xs text-slate-500">
@@ -214,6 +268,9 @@ export default function ScheduleMatrix({
                     isOwner={isOwner}
                     dragEnabled={dragEnabled}
                     isEditMode={isEditMode}
+                    manualAvailabilityEnabled={manualAvailabilityEnabled && isOwner && !isEditMode}
+                    availabilitySaving={availabilitySaving}
+                    onSaveAvailability={handleSaveAvailability}
                     pendingOperations={pendingOperations}
                   />
                 ))}

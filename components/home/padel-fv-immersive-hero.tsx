@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 
 const heroMedia = {
-  mobile: "/tenants/padel-fv/hero/fv-circuito-vertical",
-  desktop: "/tenants/padel-fv/hero/fv-circuito-desktop",
+  mobile: "/tenants/padel-fv/hero/fv-circuito-vertical-compatible",
+  desktop: "/tenants/padel-fv/hero/fv-circuito-desktop-compatible",
 } as const
 
 export const PadelFvImmersiveHero = () => {
@@ -14,9 +14,11 @@ export const PadelFvImmersiveHero = () => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const userPausedRef = useRef(false)
   const videoFailedRef = useRef(false)
+  const lastProgressTimeRef = useRef(0)
   const [media, setMedia] = useState<string | null>(null)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isBuffering, setIsBuffering] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
 
   useEffect(() => {
@@ -26,6 +28,8 @@ export const PadelFvImmersiveHero = () => {
     const handleViewportChange = () => {
       setMedia(desktopQuery.matches ? heroMedia.desktop : heroMedia.mobile)
       setIsPlaying(false)
+      setIsBuffering(false)
+      lastProgressTimeRef.current = 0
       videoFailedRef.current = false
       setVideoFailed(false)
     }
@@ -66,10 +70,30 @@ export const PadelFvImmersiveHero = () => {
     }, { threshold: 0.2 })
 
     observer.observe(section)
+    let previousTime = video.currentTime
+    let secondsWithoutProgress = 0
+    const progressTimer = window.setInterval(() => {
+      if (video.paused || !inViewport || document.hidden) {
+        secondsWithoutProgress = 0
+        previousTime = video.currentTime
+        return
+      }
+      if (Math.abs(video.currentTime - previousTime) > 0.05) {
+        secondsWithoutProgress = 0
+        previousTime = video.currentTime
+        return
+      }
+      secondsWithoutProgress += 1
+      if (secondsWithoutProgress >= 8) {
+        setIsPlaying(false)
+        setIsBuffering(true)
+      }
+    }, 1000)
     document.addEventListener("visibilitychange", handlePlayback)
     video.addEventListener("canplay", handlePlayback)
     return () => {
       cancelled = true
+      window.clearInterval(progressTimer)
       observer.disconnect()
       document.removeEventListener("visibilitychange", handlePlayback)
       video.removeEventListener("canplay", handlePlayback)
@@ -81,23 +105,29 @@ export const PadelFvImmersiveHero = () => {
     const video = videoRef.current
     if (!video) return
 
-    if (!video.paused && !videoFailedRef.current) {
+    if (isPlaying && !videoFailedRef.current) {
       userPausedRef.current = true
       video.pause()
+      setIsPlaying(false)
+      setIsBuffering(false)
       return
     }
 
     userPausedRef.current = false
-    if (videoFailedRef.current) {
+    if (videoFailedRef.current || isBuffering) {
       videoFailedRef.current = false
       setVideoFailed(false)
       video.load()
+      lastProgressTimeRef.current = 0
     }
+    setIsBuffering(true)
     video.muted = true
     // Keep play inside the click handler so mobile browsers retain user activation.
-    void video.play().catch(() => {
+    void video.play().catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return
       userPausedRef.current = true
       setIsPlaying(false)
+      setIsBuffering(false)
     })
   }
 
@@ -105,12 +135,28 @@ export const PadelFvImmersiveHero = () => {
     videoFailedRef.current = true
     setVideoFailed(true)
     setIsPlaying(false)
+    setIsBuffering(false)
+  }
+
+  const handleVideoProgress = () => {
+    const video = videoRef.current
+    if (!video || video.paused || video.currentTime <= 0) return
+    if (Math.abs(video.currentTime - lastProgressTimeRef.current) < 0.02) return
+    lastProgressTimeRef.current = video.currentTime
+    setIsPlaying(true)
+    setIsBuffering(false)
+  }
+
+  const handleVideoWaiting = () => {
+    setIsPlaying(false)
+    setIsBuffering(true)
   }
 
   return (
     <section
       ref={sectionRef}
       data-padel-fv-hero
+      data-video-status={videoFailed ? "error" : isBuffering ? "buffering" : isPlaying ? "playing" : "paused"}
       aria-labelledby="padel-fv-hero-title"
       className="relative isolate -mt-20 min-h-[100svh] overflow-hidden bg-[#0b1933] pt-20 text-white"
     >
@@ -136,8 +182,9 @@ export const PadelFvImmersiveHero = () => {
             playsInline
             loop
             preload="auto"
-            onPlaying={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
+            onTimeUpdate={handleVideoProgress}
+            onWaiting={handleVideoWaiting}
+            onPause={() => { setIsPlaying(false); setIsBuffering(false) }}
             onError={handleVideoError}
             className={`absolute inset-0 h-full w-full object-cover ${videoFailed ? "opacity-0" : "opacity-100"}`}
             tabIndex={-1}
@@ -173,7 +220,7 @@ export const PadelFvImmersiveHero = () => {
         <button
           type="button"
           onClick={handleTogglePlayback}
-          aria-label={videoFailed ? "Reintentar video de fondo" : isPlaying ? "Pausar video de fondo" : "Reproducir video de fondo"}
+          aria-label={videoFailed || isBuffering ? "Reintentar video de fondo" : isPlaying ? "Pausar video de fondo" : "Reproducir video de fondo"}
           aria-pressed={!isPlaying}
           className="absolute bottom-5 right-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-black/20 text-white/90 backdrop-blur-sm transition hover:bg-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 sm:bottom-8 sm:right-6"
         >

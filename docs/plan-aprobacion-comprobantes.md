@@ -1,7 +1,7 @@
 # Plan: aprobar comprobantes de forma independiente
 
 Fecha: 12 de octubre de 2026.
-Estado: propuesto; no implementado.
+Estado: implementado y verificado localmente. Migración remota y despliegue pendientes.
 
 ## Objetivo
 

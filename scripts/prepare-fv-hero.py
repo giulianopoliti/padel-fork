@@ -54,16 +54,22 @@ with tempfile.TemporaryDirectory(prefix="fv-hero-") as temporary:
         previous = f"x{index}"
     length = sum(durations) - 4 * fade
     # Crossfade back into clip one; start/end at the same point for a seamless loop.
-    filters.append(f"[{previous}]trim=start={fade}:duration={length:.6f},setpts=PTS-STARTPTS,format=yuv420p[final]")
-    portrait = destination / "fv-circuito-vertical.mp4"
+    filters.append(f"[{previous}]trim=start={fade}:duration={length:.6f},setpts=PTS-STARTPTS,scale=480:854,fps=24,setsar=1,format=yuv420p[final]")
+    portrait = destination / "fv-circuito-vertical-compatible.mp4"
     run([*inputs, "-filter_complex", ";".join(filters), "-map", "[final]",
-         "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "22",
+         "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "25",
+         "-profile:v", "baseline", "-level:v", "3.1", "-r", "24", "-fps_mode", "cfr",
+         "-g", "48", "-keyint_min", "24", "-maxrate", "850k", "-bufsize", "1700k",
+         "-video_track_timescale", "12288",
          "-movflags", "+faststart", str(portrait)])
 
-    landscape = destination / "fv-circuito-desktop.mp4"
+    landscape = destination / "fv-circuito-desktop-compatible.mp4"
     run(["-i", str(portrait), "-filter_complex",
          "[0:v]split=2[bg][fg];[bg]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,gblur=sigma=28[back];[fg]scale=-2:720,format=yuva420p,geq=lum='lum(X,Y)':cb='cb(X,Y)':cr='cr(X,Y)':a='255*min(1,min(X/36,(W-1-X)/36))'[front];[back][front]overlay=x=main_w-overlay_w-96:y=0,setsar=1[out]",
-         "-map", "[out]", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+         "-map", "[out]", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "25",
+         "-profile:v", "baseline", "-level:v", "3.1", "-r", "24", "-fps_mode", "cfr",
+         "-g", "48", "-keyint_min", "24", "-maxrate", "900k", "-bufsize", "1800k",
+         "-video_track_timescale", "12288",
          "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(landscape)])
 
     for asset in [portrait, landscape]:
