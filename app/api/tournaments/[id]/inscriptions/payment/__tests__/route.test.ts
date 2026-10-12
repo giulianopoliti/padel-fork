@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/server'
 import { getUserDetails } from '@/utils/db/getUserDetails'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { registerCoupleForTournament } from '@/app/api/tournaments/actions'
-import { uploadInscriptionProof, deleteInscriptionProof } from '@/lib/services/inscription-proofs'
+import { uploadInscriptionProof, deleteInscriptionProof, scheduleInscriptionProofCleanup } from '@/lib/services/inscription-proofs'
 import { reconcileCompleteInscriptions } from '@/lib/services/registration/reconcile-complete-inscriptions'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import { sendTournamentMessage } from '@/lib/services/messages'
@@ -84,6 +84,13 @@ describe('resumable inscription payments', () => {
     })
     jest.mocked(supabaseAdmin.rpc).mockImplementation((async (_name: string, params: any) => {
       if (rejectUpdate || !inscription) return { data: null, error: null } as never
+      if (_name === 'approve_inscription_proof') {
+        if (params.p_path !== inscription.payment_proof_path) return { data: null, error: { code: '40001' } } as never
+        if (inscription.payment_revision === params.p_revision + 1 && inscription.payment_proof_status === 'APPROVED') return { data: [inscription], error: null } as never
+        if (params.p_revision !== inscription.payment_revision) return { data: null, error: { code: '40001' } } as never
+        inscription = { ...inscription, payment_proof_status: 'APPROVED', payment_reviewed_at: '2026-10-12T19:00:00Z', payment_reviewed_by: params.p_reviewer, payment_revision: inscription.payment_revision + 1 }
+        return (commitWithError ? { data: null, error: { code: 'TransportError' } } : { data: [inscription], error: null }) as never
+      }
       if (params.p_revision !== inscription.payment_revision) return { data: null, error: { code: '40001' } } as never
       if (!params.p_manager && inscription.payment_proof_status === 'APPROVED') return { data: null, error: { code: '42501' } } as never
       const op = params.p_operation
@@ -103,6 +110,69 @@ describe('resumable inscription payments', () => {
     jest.mocked(deleteInscriptionProof).mockResolvedValue({ success: true })
   })
   afterEach(() => jest.restoreAllMocks())
+
+  const prepareApproval = () => {
+    jest.mocked(getUserDetails).mockResolvedValue({ role: 'ADMIN' } as never)
+    jest.mocked(checkTournamentPermissions).mockResolvedValue({ hasPermission: true })
+    inscription!.payment_proof_path = 'original'
+    inscription!.payment_proof_status = 'PENDING_REVIEW'
+  }
+  it.each([true, false])('approves a proof without changing inscription approval (%s)', async pending => {
+    prepareApproval()
+    inscription!.is_pending = pending
+    const response = await run('approve-proof', { inscriptionId: 'inscription', revision: '0', reviewer: 'forged' })
+    expect(response.status).toBe(200)
+    expect(inscription).toMatchObject({ is_pending: pending, payment_proof_path: 'original', payment_proof_status: 'APPROVED', payment_reviewed_by: 'user', payment_revision: 1 })
+    expect(reconcileCompleteInscriptions).not.toHaveBeenCalled()
+    expect(scheduleInscriptionProofCleanup).not.toHaveBeenCalled()
+    expect(uploadInscriptionProof).not.toHaveBeenCalled()
+    expect(sendTournamentMessage).not.toHaveBeenCalled()
+  })
+  it('rejects player approval even when the player owns the proof', async () => {
+    inscription!.payment_proof_path = 'original'; inscription!.payment_proof_status = 'PENDING_REVIEW'
+    expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(403)
+    expect(supabaseAdmin.rpc).not.toHaveBeenCalled()
+  })
+  it('rejects an organizer without permission for this tournament', async () => {
+    prepareApproval()
+    jest.mocked(checkTournamentPermissions).mockResolvedValue({ hasPermission: false })
+    expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(403)
+  })
+  it.each(['', '-1', '1.5', 'NaN', '9007199254740992'])('rejects invalid approval revision %s', async revision => {
+    prepareApproval()
+    expect((await run('approve-proof', { inscriptionId: 'inscription', revision })).status).toBe(400)
+    expect(supabaseAdmin.rpc).not.toHaveBeenCalled()
+  })
+  it('requires an explicit inscription and revision', async () => {
+    prepareApproval()
+    expect((await run('approve-proof', { inscriptionId: 'inscription' })).status).toBe(400)
+    expect((await run('approve-proof', { revision: '0' })).status).toBe(400)
+  })
+  it('rejects proof approval without a saved file', async () => {
+    prepareApproval(); inscription!.payment_proof_path = null
+    expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(400)
+  })
+  it('confirms a committed approval after losing the RPC response', async () => {
+    prepareApproval(); commitWithError = true
+    expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(200)
+    expect(inscription!.payment_revision).toBe(1)
+  })
+  it('does not approve a concurrent replacement', async () => {
+    prepareApproval()
+    jest.mocked(supabaseAdmin.rpc).mockImplementationOnce(async () => {
+      inscription!.payment_revision = 1; inscription!.payment_proof_path = 'replacement'
+      return { data: null, error: { code: '40001' } } as never
+    })
+    expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(409)
+    expect(inscription!.payment_proof_status).toBe('PENDING_REVIEW')
+  })
+  it('accepts a duplicate approval without overwriting the reviewer', async () => {
+    prepareApproval()
+    expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(200)
+    inscription!.payment_reviewed_by = 'first-organizer'
+    expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(200)
+    expect(inscription).toMatchObject({ payment_revision: 1, payment_reviewed_by: 'first-organizer' })
+  })
 
   it('shares the organizer payment list without exposing storage paths to players', async () => {
     const request = new NextRequest(`${endpoint}?list=1`)

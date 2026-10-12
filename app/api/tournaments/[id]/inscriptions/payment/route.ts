@@ -9,12 +9,13 @@ import { uploadInscriptionProof, scheduleInscriptionProofCleanup } from '@/lib/s
 import { createRegistrationTrace } from '@/lib/tournaments/registration-log'
 import { MAX_INSCRIPTION_PROOF_BYTES, validateInscriptionProof } from '@/lib/tournaments/inscription-proof'
 import { reconcileCompleteInscriptions } from '@/lib/services/registration/reconcile-complete-inscriptions'
+import type { ProofApprovalArgs } from '@/lib/tournaments/payment-types'
 
 type RouteContext = { params: Promise<{ id: string }> }
 class PaymentContextError extends Error {
   constructor(message: string, readonly status: number) { super(message) }
 }
-const columns = 'id, couple_id, player_id, payment_method, payment_proof_path, payment_proof_status, payment_proof_uploaded_at, payment_alias_snapshot, payment_amount_snapshot, is_pending, payment_revision'
+const columns = 'id, couple_id, player_id, payment_method, payment_proof_path, payment_proof_status, payment_proof_uploaded_at, payment_alias_snapshot, payment_amount_snapshot, payment_reviewed_at, payment_reviewed_by, is_pending, payment_revision'
 const loadContext = async (request: NextRequest, context: RouteContext, trace: ReturnType<typeof createRegistrationTrace>) => {
   const { id: tournamentId } = await context.params
   trace.tournament(tournamentId)
@@ -44,7 +45,7 @@ const loadContext = async (request: NextRequest, context: RouteContext, trace: R
     if (data && !manager && !owns) throw new PaymentContextError('No tenés permiso para esta inscripción.', 403)
     return data
   }
-  return { trace, tournamentId, tournament, profile, manager, ownCouples: ownCouples.data || [], findInscription }
+  return { trace, tournamentId, tournament, profile, manager, userId: user.id, ownCouples: ownCouples.data || [], findInscription }
 }
 
 const present = (inscription: Record<string, any> | null) => inscription ? {
@@ -52,6 +53,7 @@ const present = (inscription: Record<string, any> | null) => inscription ? {
   proofStatus: inscription.payment_proof_status, isPending: inscription.is_pending,
   alias: inscription.payment_alias_snapshot, amount: inscription.payment_amount_snapshot,
   revision: inscription.payment_revision, uploadedAt: inscription.payment_proof_uploaded_at,
+  reviewedAt: inscription.payment_reviewed_at,
   individual: !inscription.couple_id,
 } : null
 
@@ -94,6 +96,9 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
     trace.step('read-form')
     const form = await request.formData()
     const operation = String(form.get('operation') || 'attach')
+    if (operation === 'approve-proof' && !form.get('inscriptionId')) {
+      return trace.reply({ success: false, message: 'Elegí la inscripción antes de aprobar.' }, 400, 'inscription_id_missing')
+    }
     let inscription = await ctx.findInscription(String(form.get('inscriptionId') || '') || null, operation === 'reserve')
     if (operation === 'reserve') {
       if (profile.role !== 'PLAYER' || !profile.player_id) return trace.reply({ success: false, message: 'Necesitás un perfil de jugador.' }, 403, 'player_required')
@@ -121,6 +126,29 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
       }
     } else if (!inscription) {
       return trace.reply({ success: false, message: 'La inscripción ya no existe. Revisá el torneo.' }, 404, 'inscription_missing')
+    } else if (operation === 'approve-proof') {
+      if (!ctx.manager) return trace.reply({ success: false, message: 'Sólo el organizador puede aprobar el comprobante.' }, 403, 'permission_denied')
+      const revisionText = form.get('revision')
+      const revision = Number(revisionText)
+      if (!form.get('inscriptionId') || typeof revisionText !== 'string' || !/^\d+$/.test(revisionText) || !Number.isSafeInteger(revision)) {
+        return trace.reply({ success: false, message: 'Actualizá el pago antes de aprobar.' }, 400, 'revision_missing')
+      }
+      if (!inscription.payment_proof_path || !['PENDING_REVIEW', 'APPROVED'].includes(inscription.payment_proof_status)) {
+        return trace.reply({ success: false, message: 'No hay un comprobante pendiente de revisión.' }, 400, 'proof_not_pending')
+      }
+      const path = inscription.payment_proof_path
+      trace.step('approve-proof')
+      const { data, error } = await supabaseAdmin.rpc('approve_inscription_proof', {
+        p_id: inscription.id, p_tournament_id: tournamentId, p_revision: revision,
+        p_path: path, p_reviewer: ctx.userId,
+      } satisfies ProofApprovalArgs)
+      if (error || !data?.[0]) {
+        const saved = await ctx.findInscription(inscription.id)
+        if (saved && saved.payment_revision === revision + 1 && saved.payment_proof_path === path &&
+          saved.payment_proof_status === 'APPROVED' && saved.payment_reviewed_at) inscription = saved
+        else return trace.reply({ success: false, message: 'El comprobante cambió o no se pudo confirmar. Consultá el estado antes de aprobar.' },
+          error?.code === '42501' ? 403 : error?.code === 'P0002' ? 404 : error?.code === '22023' ? 400 : 409, 'proof_approval_unconfirmed', error)
+      } else inscription = data[0]
     } else if (['cash', 'transfer', 'attach', 'replace', 'remove'].includes(operation)) {
       // Compatibility for the previous attach-only endpoint. New edits always carry a revision.
       if (operation === 'attach' && inscription.payment_proof_path && !form.has('revision')) {
@@ -166,7 +194,9 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
       scheduleInscriptionProofCleanup()
     } else return trace.reply({ success: false, message: 'Acción inválida.' }, 400, 'operation_invalid')
 
-    try { await reconcileCompleteInscriptions(tournamentId) } catch (error) { trace.log('zone_reconciliation_deferred', 'error', error) }
+    if (operation !== 'approve-proof') {
+      try { await reconcileCompleteInscriptions(tournamentId) } catch (error) { trace.log('zone_reconciliation_deferred', 'error', error) }
+    }
     if ((operation === 'attach' || operation === 'cash') && inscription) {
       try {
         const { sendTournamentMessage } = await import('@/lib/services/messages')

@@ -8,7 +8,17 @@ export type PaymentInscription = {
   amount?: number | null
   revision: number
   uploadedAt?: string | null
+  reviewedAt?: string | null
   individual?: boolean
+}
+
+// Explicit RPC boundary while database.types.ts remains the repository fallback.
+export type ProofApprovalArgs = {
+  p_id: string
+  p_tournament_id: string
+  p_revision: number
+  p_path: string
+  p_reviewer: string
 }
 
 export type PaymentData = {

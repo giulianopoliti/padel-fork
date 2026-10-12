@@ -28,7 +28,7 @@ export type PaymentDialogCopy = {
 }
 const secondaryActionClasses = 'min-h-10 border-slate-300 bg-slate-100 font-semibold text-slate-900 hover:bg-slate-200 hover:text-slate-900'
 
-export const InscriptionPaymentEditor = ({ target, copy }: { target: PaymentTarget; copy: PaymentDialogCopy }) => {
+export const InscriptionPaymentEditor = ({ target, copy, allowProofApproval = false }: { target: PaymentTarget; copy: PaymentDialogCopy; allowProofApproval?: boolean }) => {
   const { user } = useUser()
   const url = `/api/tournaments/${target.tournamentId}/inscriptions/payment?inscriptionId=${target.inscriptionId}`
   const { data, error, mutate } = useSWR(user ? [url, user.id] : null, ([endpoint]) => paymentFetcher(endpoint))
@@ -39,6 +39,7 @@ export const InscriptionPaymentEditor = ({ target, copy }: { target: PaymentTarg
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [approving, setApproving] = useState(false)
   const [preparing, setPreparing] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [uncertain, setUncertain] = useState(false)
@@ -66,10 +67,11 @@ export const InscriptionPaymentEditor = ({ target, copy }: { target: PaymentTarg
       setMessage(null)
     } catch { setMessage('No se pudo consultar. Tu selección sigue disponible en este navegador.') }
   }
-  const handleSave = async (operation: 'attach' | 'replace' | 'remove' | 'cash' | 'transfer') => {
+  const handleSave = async (operation: 'attach' | 'replace' | 'remove' | 'cash' | 'transfer' | 'approve-proof') => {
     if (inFlight.current || !data || !inscription || uncertain) return
     inFlight.current = true
     setBusy(true); setMessage(null); setConfirm(null)
+    setApproving(operation === 'approve-proof')
     const attemptId = createRegistrationAttemptId()
     let submitted = false
     let preparedProof: File | undefined
@@ -90,7 +92,7 @@ export const InscriptionPaymentEditor = ({ target, copy }: { target: PaymentTarg
       if (!response.ok || !result.success) throw new Error(result.message || 'No se pudo guardar el pago.')
       await mutate({ ...data, inscription: result.inscription }, { revalidate: false })
       setMethod(result.inscription.method); setFile(null); setDraftRevision(null); setUncertain(false)
-      setMessage(preparedProof && file && preparedProof.size < file.size
+      setMessage(operation === 'approve-proof' ? 'Comprobante aprobado.' : preparedProof && file && preparedProof.size < file.size
         ? `Cambios guardados. Imagen reducida de ${(file.size / 1_000_000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} MB a ${Math.ceil(preparedProof.size / 1000).toLocaleString('es-AR')} KB.`
         : 'Cambios guardados.')
       // Revalidate all compact summaries, batches and organizer rows, with no private public cache.
@@ -101,7 +103,7 @@ export const InscriptionPaymentEditor = ({ target, copy }: { target: PaymentTarg
       // A response error is not evidence that the write was rolled back.
       if (submitted) { setUncertain(true); try { await mutate() } catch {} }
       setMessage(registrationErrorMessage(failure instanceof Error ? failure.message : 'No se pudo confirmar el resultado.', attemptId))
-    } finally { inFlight.current = false; setPreparing(false); setBusy(false) }
+    } finally { inFlight.current = false; setPreparing(false); setBusy(false); setApproving(false) }
   }
   const closeAction = <DialogClose asChild><Button type="button" variant="outline" className={secondaryActionClasses} disabled={busy}>Cerrar</Button></DialogClose>
   if (error && !data) return <div className="space-y-4"><p role="alert">No se pudo consultar la inscripción.</p><div className="flex flex-wrap gap-2"><Button variant="outline" className={secondaryActionClasses} onClick={() => void handleRefresh()}>Reintentar</Button>{closeAction}</div></div>
@@ -136,6 +138,9 @@ export const InscriptionPaymentEditor = ({ target, copy }: { target: PaymentTarg
       {inscription.hasProof && <div className="space-y-2">
         <Button variant="outline" className={secondaryActionClasses} disabled={busy} onClick={() => void openInscriptionProof(target.tournamentId, inscription.id).catch(e => setMessage(e.message))}><ExternalLink aria-hidden="true" />Ver comprobante</Button>
         <p className="text-sm text-slate-600">{inscription.proofStatus === 'APPROVED' ? 'Comprobante aprobado' : 'Pendiente de revisión'}</p>
+        {allowProofApproval && data.manager && inscription.proofStatus === 'PENDING_REVIEW' && <Button type="button" className="min-h-11 bg-green-700 font-semibold text-white hover:bg-green-800" disabled={busy || Boolean(file) || changed || Boolean(confirm) || uncertain || conflict} onClick={() => void handleSave('approve-proof')}>
+          {approving ? 'Aprobando…' : 'Aprobar comprobante'}
+        </Button>}
         {canEdit && !changed && <Button variant="outline" className="min-h-10 border-red-200 bg-red-50 font-semibold text-red-700 hover:bg-red-100 hover:text-red-800" disabled={busy || uncertain || conflict} onClick={() => { setDraftRevision(previous => previous ?? inscription.revision); setConfirm('remove') }}><Trash2 aria-hidden="true" />Eliminar comprobante</Button>}
       </div>}
       {canEdit && !changed && <label className="block space-y-2 text-sm font-medium"><span>{file ? 'Cambiar archivo' : inscription.hasProof ? 'Reemplazar archivo' : 'Seleccionar comprobante'}</span>
@@ -165,7 +170,7 @@ export const InscriptionPaymentEditor = ({ target, copy }: { target: PaymentTarg
     {conflict && <p role="alert" className="text-sm">El pago cambió mientras editabas. Consultá el estado antes de guardar; tu selección local se conserva.</p>}
     <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
       <DialogClose asChild><Button type="button" variant={file || changed || uncertain || conflict || confirm ? 'outline' : 'default'} className={file || changed || uncertain || conflict || confirm ? `${secondaryActionClasses} min-h-11` : 'min-h-11 font-semibold'} disabled={busy}>Cerrar</Button></DialogClose>
-      {uncertain || conflict ? <Button variant="outline" className={secondaryActionClasses} onClick={() => void handleRefresh()}>Consultar antes de reintentar</Button> : canEdit && (file || changed || busy) && !confirm && <Button className="min-h-11 font-semibold" disabled={busy} onClick={handleSubmit}>
+      {uncertain || conflict ? <Button variant="outline" className={secondaryActionClasses} onClick={() => void handleRefresh()}>Consultar antes de reintentar</Button> : canEdit && (file || changed || busy) && !approving && !confirm && <Button className="min-h-11 font-semibold" disabled={busy} onClick={handleSubmit}>
         {busy ? preparing ? 'Preparando imagen…' : file ? 'Subiendo…' : 'Guardando…' : changed ? 'Guardar cambios' : inscription.hasProof ? 'Reemplazar comprobante' : 'Subir comprobante'}
       </Button>}
     </div>

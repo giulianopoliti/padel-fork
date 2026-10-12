@@ -29,7 +29,7 @@ export const OrganizerInscriptionPaymentDialog = ({ target, open, onOpenChange, 
         <DialogTitle className="text-xl">Pago de la inscripción</DialogTitle>
         <DialogDescription>{target.tournamentName || 'Revisá la forma de pago del jugador y su comprobante.'}</DialogDescription>
       </DialogHeader>
-      <InscriptionPaymentEditor target={target} copy={organizerCopy} />
+      <InscriptionPaymentEditor target={target} copy={organizerCopy} allowProofApproval />
     </DialogContent>
   </Dialog>
 )

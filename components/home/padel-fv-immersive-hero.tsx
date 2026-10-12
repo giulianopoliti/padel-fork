@@ -12,9 +12,11 @@ const heroMedia = {
 export const PadelFvImmersiveHero = () => {
   const sectionRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const userPausedRef = useRef(false)
+  const videoFailedRef = useRef(false)
   const [media, setMedia] = useState<string | null>(null)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(true)
-  const [isPaused, setIsPaused] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
 
   useEffect(() => {
@@ -23,6 +25,8 @@ export const PadelFvImmersiveHero = () => {
     const handleMotionChange = () => setPrefersReducedMotion(motionQuery.matches)
     const handleViewportChange = () => {
       setMedia(desktopQuery.matches ? heroMedia.desktop : heroMedia.mobile)
+      setIsPlaying(false)
+      videoFailedRef.current = false
       setVideoFailed(false)
     }
 
@@ -42,13 +46,18 @@ export const PadelFvImmersiveHero = () => {
     if (!section || !video) return
 
     let inViewport = false
+    let cancelled = false
     const handlePlayback = () => {
-      if (!inViewport || document.hidden || prefersReducedMotion || isPaused || videoFailed) {
+      if (!inViewport || document.hidden || prefersReducedMotion || userPausedRef.current || videoFailedRef.current) {
         video.pause()
         return
       }
-      void video.play().catch(() => {
-        // Keep the poster visible when the browser blocks muted autoplay.
+      video.muted = true
+      void video.play().catch((error: unknown) => {
+        // Effect cleanup can abort a pending play; that is not an autoplay denial.
+        if (cancelled || (error instanceof DOMException && error.name === "AbortError")) return
+        userPausedRef.current = true
+        setIsPlaying(false)
       })
     }
     const observer = new IntersectionObserver(([entry]) => {
@@ -60,14 +69,43 @@ export const PadelFvImmersiveHero = () => {
     document.addEventListener("visibilitychange", handlePlayback)
     video.addEventListener("canplay", handlePlayback)
     return () => {
+      cancelled = true
       observer.disconnect()
       document.removeEventListener("visibilitychange", handlePlayback)
       video.removeEventListener("canplay", handlePlayback)
       video.pause()
     }
-  }, [media, prefersReducedMotion, isPaused, videoFailed])
+  }, [media, prefersReducedMotion])
 
-  const handleTogglePlayback = () => setIsPaused((paused) => !paused)
+  const handleTogglePlayback = () => {
+    const video = videoRef.current
+    if (!video) return
+
+    if (!video.paused && !videoFailedRef.current) {
+      userPausedRef.current = true
+      video.pause()
+      return
+    }
+
+    userPausedRef.current = false
+    if (videoFailedRef.current) {
+      videoFailedRef.current = false
+      setVideoFailed(false)
+      video.load()
+    }
+    video.muted = true
+    // Keep play inside the click handler so mobile browsers retain user activation.
+    void video.play().catch(() => {
+      userPausedRef.current = true
+      setIsPlaying(false)
+    })
+  }
+
+  const handleVideoError = () => {
+    videoFailedRef.current = true
+    setVideoFailed(true)
+    setIsPlaying(false)
+  }
 
   return (
     <section
@@ -88,7 +126,7 @@ export const PadelFvImmersiveHero = () => {
             className="absolute inset-0 h-full w-full object-cover"
           />
         </picture>
-        {media && !prefersReducedMotion && !videoFailed && (
+        {media && !prefersReducedMotion && (
           <video
             key={media}
             ref={videoRef}
@@ -98,8 +136,10 @@ export const PadelFvImmersiveHero = () => {
             playsInline
             loop
             preload="auto"
-            onError={() => setVideoFailed(true)}
-            className="absolute inset-0 h-full w-full object-cover"
+            onPlaying={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onError={handleVideoError}
+            className={`absolute inset-0 h-full w-full object-cover ${videoFailed ? "opacity-0" : "opacity-100"}`}
             tabIndex={-1}
             aria-hidden="true"
           />
@@ -129,15 +169,15 @@ export const PadelFvImmersiveHero = () => {
         </div>
       </div>
 
-      {media && !prefersReducedMotion && !videoFailed && (
+      {media && !prefersReducedMotion && (
         <button
           type="button"
           onClick={handleTogglePlayback}
-          aria-label={isPaused ? "Reproducir video de fondo" : "Pausar video de fondo"}
-          aria-pressed={isPaused}
-          className="absolute bottom-5 right-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-black/20 text-white/90 backdrop-blur-sm transition hover:bg-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 sm:bottom-8 sm:right-6"
+          aria-label={videoFailed ? "Reintentar video de fondo" : isPlaying ? "Pausar video de fondo" : "Reproducir video de fondo"}
+          aria-pressed={!isPlaying}
+          className="absolute bottom-5 right-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-black/20 text-white/90 backdrop-blur-sm transition hover:bg-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 sm:bottom-8 sm:right-6"
         >
-          {isPaused ? <Play className="h-4 w-4" aria-hidden="true" /> : <Pause className="h-4 w-4" aria-hidden="true" />}
+          {isPlaying ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
         </button>
       )}
 

@@ -6339,12 +6339,6 @@ export async function approveInscription(inscriptionId: string): Promise<{
       is_pending: false,
     };
 
-    if (inscription.payment_proof_status === 'PENDING_REVIEW') {
-      approvalPayload.payment_proof_status = 'APPROVED';
-      approvalPayload.payment_reviewed_at = new Date().toISOString();
-      approvalPayload.payment_reviewed_by = user.id;
-    }
-
     const { error: updateError } = await supabase
       .from('inscriptions')
       .update(approvalPayload)
