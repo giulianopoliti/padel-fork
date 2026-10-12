@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { InscriptionPaymentPanel } from '@/components/tournament/inscription-payment-panel'
 import { Trophy, Users, UserPlus, AlertCircle, Calendar, CheckCircle } from 'lucide-react'
 
 import CancelRegistrationButton from '@/components/tournament/player/cancel-registration-button'
@@ -173,6 +174,7 @@ export default function AmericanPlayerDashboard({
               <Users className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
                 <strong>¡Estás inscripto!</strong> Puedes ver tu progreso y próximos partidos.
+                <div className="mt-3"><InscriptionPaymentPanel tournamentId={tournamentId} /></div>
               </AlertDescription>
             </Alert>
 

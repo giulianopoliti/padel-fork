@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 
 import { checkPlayersPhones } from "@/app/api/players/actions"
+import { createRegistrationTrace } from '@/lib/tournaments/registration-log'
 
 interface CheckPhonesBody {
   player1Id?: string
@@ -8,30 +9,31 @@ interface CheckPhonesBody {
 }
 
 export async function POST(request: NextRequest) {
+  const trace = createRegistrationTrace(request.headers, 'check-phones')
   try {
+    trace.step('read-form')
     const body = (await request.json()) as CheckPhonesBody
 
     if (!body.player1Id || !body.player2Id) {
-      return NextResponse.json(
+      return trace.reply(
         {
           success: false,
           error: "Se requieren ambos jugadores para verificar teléfonos.",
         },
-        { status: 400 },
+        400, 'players_missing',
       )
     }
 
+    trace.step('check-phones')
     const result = await checkPlayersPhones(body.player1Id, body.player2Id)
-    return NextResponse.json(result)
+    return trace.reply(result, result.success ? 200 : 400, result.success ? 'complete' : result.code || 'phone_check_failed')
   } catch (error) {
-    console.error("[check-phones] Unexpected error:", error)
-
-    return NextResponse.json(
+    return trace.reply(
       {
         success: false,
-        error: error instanceof Error ? error.message : "No se pudieron verificar los teléfonos.",
+        error: "No se pudieron verificar los teléfonos.",
       },
-      { status: 500 },
+      500, 'unexpected_failure', error,
     )
   }
 }

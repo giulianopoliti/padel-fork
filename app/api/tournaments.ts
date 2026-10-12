@@ -284,7 +284,11 @@ export async function getTournamentById(id: string) {
             category: getTournamentCategoryDisplay(tournamentData) || '',
             gender: tournamentData.gender || "MALE",
             status: tournamentData.status || "NOT_STARTED",
-            type: tournamentData.type || "AMERICAN"
+            type: tournamentData.type || "AMERICAN",
+            price: tournamentData.price ?? null,
+            enableTransferProof: Boolean(tournamentData.enable_transfer_proof),
+            transferAlias: tournamentData.transfer_alias ?? null,
+            transferAmount: tournamentData.transfer_amount ?? null
         };
 
         return tournament;
@@ -327,6 +331,9 @@ export async function getUpcomingTournamentsForHome(limit: number = 3) {
                 award,
                 hide_venue,
                 enable_public_inscriptions,
+                enable_transfer_proof,
+                transfer_alias,
+                transfer_amount,
                 show_public_inscriptions,
                 registration_locked,
                 bracket_status,
@@ -398,6 +405,9 @@ export async function getUpcomingTournamentsForHome(limit: number = 3) {
                 price: rawTournament.price || null,
                 award: rawTournament.award || null,
                 enablePublicInscriptions: Boolean(rawTournament.enable_public_inscriptions),
+                enableTransferProof: Boolean(rawTournament.enable_transfer_proof),
+                transferAlias: rawTournament.transfer_alias ?? null,
+                transferAmount: rawTournament.transfer_amount ?? null,
                 showPublicInscriptions: Boolean(rawTournament.show_public_inscriptions),
                 registrationLocked: rawTournament.registration_locked,
                 bracketStatus: rawTournament.bracket_status,
@@ -491,6 +501,9 @@ export async function getTournamentsOptimized({
                 award,
                 hide_venue,
                 enable_public_inscriptions,
+                enable_transfer_proof,
+                transfer_alias,
+                transfer_amount,
                 show_public_inscriptions,
                 registration_locked,
                 bracket_status,
@@ -620,6 +633,9 @@ export async function getTournamentsOptimized({
                 price: rawTournament.price || null,
                 award: rawTournament.award || null,
                 enablePublicInscriptions: Boolean(rawTournament.enable_public_inscriptions),
+                enableTransferProof: Boolean(rawTournament.enable_transfer_proof),
+                transferAlias: rawTournament.transfer_alias ?? null,
+                transferAmount: rawTournament.transfer_amount ?? null,
                 showPublicInscriptions: Boolean(rawTournament.show_public_inscriptions),
                 registrationLocked: rawTournament.registration_locked,
                 bracketStatus: rawTournament.bracket_status,

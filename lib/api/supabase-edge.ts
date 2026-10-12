@@ -9,10 +9,10 @@ type PlayerSearchResponse = {
   error?: string
 }
 
-async function searchPlayerDirectory(body: Record<string, unknown>): Promise<PlayerSearchResponse> {
+async function searchPlayerDirectory(body: Record<string, unknown>, attemptId?: string): Promise<PlayerSearchResponse> {
   const response = await fetch('/api/players/search', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(attemptId ? { 'x-registration-attempt': attemptId } : {}) },
     body: JSON.stringify(body),
   })
 
@@ -88,6 +88,6 @@ export async function searchTournamentPlayers(params: {
   page?: number
   pageSize?: number
   excludePlayerIds?: string[]
-}) {
-  return searchPlayerDirectory({ scope: 'tournament', ...params })
+}, attemptId?: string) {
+  return searchPlayerDirectory({ scope: 'tournament', ...params }, attemptId)
 }

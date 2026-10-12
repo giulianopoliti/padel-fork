@@ -63,6 +63,8 @@ export interface RegisterCoupleRequest {
   isOrganizerRegistration?: boolean
   termsAccepted?: boolean
   allowBlockedPlayerOverride?: boolean
+  attemptId?: string
+  paymentMethod?: 'TRANSFER' | 'CASH'
 }
 
 export interface RegisterNewPlayersRequest {
@@ -148,6 +150,8 @@ export interface Tournament {
   category_config?: TournamentCategoryConfig | null
   status: string
   validate_inscriptions: boolean
+  enable_transfer_proof?: boolean
+  allow_cash_payment?: boolean
   format_config?: {
     version?: number
     zoneMode?: string
@@ -155,6 +159,7 @@ export interface Tournament {
 }
 
 export interface RegistrationContext {
+  trace?: ReturnType<typeof import('@/lib/tournaments/registration-log').createRegistrationTrace>
   tournament: Tournament
   user: {
     id: string

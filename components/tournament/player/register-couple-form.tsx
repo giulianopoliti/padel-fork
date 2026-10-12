@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import useSWR from "swr"
+import { paymentFetcher } from "@/components/tournament/inscription-payment-panel"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -9,7 +11,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
-import { registerCoupleForTournament } from "@/app/api/tournaments/actions"
 import { useUser } from "@/contexts/user-context"
 import { Search, UserPlus, AlertCircle, Users, User, Phone, CreditCard, Loader2, Upload, CheckCircle2 } from "lucide-react"
 import { Gender } from "@/types"
@@ -19,9 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { TPE_TERMS_PATH } from "@/lib/tpe/terms"
-import { validateInscriptionProof } from "@/lib/tournaments/inscription-proof"
-import { prepareInscriptionProof } from "@/lib/tournaments/prepare-inscription-proof"
-import { submitInscriptionProof } from "@/lib/tournaments/submit-inscription-proof"
+import { createRegistrationAttemptId, fetchRegistrationJson, registrationErrorMessage, reportRegistrationClientError, type RegistrationClientStage } from '@/lib/tournaments/registration-diagnostics'
+
+interface RegistrationDiagnostics { attemptId: string; tournamentId: string }
 
 // Define the PlayerInfo interface locally
 interface PlayerInfo {
@@ -68,33 +69,41 @@ const parseJsonResponse = async <T,>(response: Response, fallbackMessage: string
   const responseText = await response.text()
 
   if (!responseText) {
-    return {} as T
+    throw new Error(fallbackMessage)
   }
 
   try {
-    return JSON.parse(responseText) as T
+    const payload = JSON.parse(responseText)
+    if (!payload || typeof payload.success !== 'boolean') throw new Error(fallbackMessage)
+    return payload as T
   } catch (error) {
     console.error("[RegisterCoupleForm] Invalid JSON response", {
       url: response.url,
       status: response.status,
-      bodyPreview: responseText.slice(0, 250),
-      error,
     })
     throw new Error(fallbackMessage)
   }
 }
 
-const postJson = async <T,>(url: string, body: unknown, fallbackMessage: string) => {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  })
+const postJson = async <T,>(url: string, body: unknown, fallbackMessage: string, diagnostics: RegistrationDiagnostics, stage: RegistrationClientStage) => {
+  let status: number | undefined
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        'x-registration-attempt': diagnostics.attemptId,
+      },
+      body: JSON.stringify(body),
+    })
 
-  const payload = await parseJsonResponse<T>(response, fallbackMessage)
-  return { response, payload }
+    status = response.status
+    const payload = await parseJsonResponse<T>(response, fallbackMessage)
+    return { response, payload }
+  } catch {
+    reportRegistrationClientError({ ...diagnostics, stage, status, code: status === undefined ? 'request_failed' : 'response_unreadable' })
+    throw new Error(registrationErrorMessage(fallbackMessage, diagnostics.attemptId))
+  }
 }
 
 const requestCreatePlayerForCouple = async (body: {
@@ -107,11 +116,12 @@ const requestCreatePlayerForCouple = async (body: {
     phone?: string | null
     forceCreateNew?: boolean
   }
-}): Promise<CreatePlayerForCoupleResponse> => {
+}, diagnostics: RegistrationDiagnostics): Promise<CreatePlayerForCoupleResponse> => {
   const { response, payload } = await postJson<CreatePlayerForCoupleResponse>(
     "/api/players/create-for-couple",
     body,
     "El servidor devolvió una respuesta inválida al crear el compañero.",
+    diagnostics, 'create-player',
   )
 
   if (!response.ok && !payload.success) {
@@ -127,11 +137,12 @@ const requestCreatePlayerForCouple = async (body: {
 const requestCheckPlayersPhones = async (body: {
   player1Id: string
   player2Id: string
-}): Promise<CheckPhonesResponse> => {
+}, diagnostics: RegistrationDiagnostics): Promise<CheckPhonesResponse> => {
   const { payload } = await postJson<CheckPhonesResponse>(
     "/api/players/check-phones",
     body,
     "El servidor devolvió una respuesta inválida al verificar los teléfonos.",
+    diagnostics, 'check-phones',
   )
 
   return payload
@@ -140,11 +151,12 @@ const requestCheckPlayersPhones = async (body: {
 const requestUpdatePlayerPhone = async (body: {
   playerId: string
   phone: string
-}): Promise<UpdatePhoneResponse> => {
+}, diagnostics: RegistrationDiagnostics): Promise<UpdatePhoneResponse> => {
   const { payload } = await postJson<UpdatePhoneResponse>(
     "/api/players/update-phone",
     body,
     "El servidor devolvió una respuesta inválida al actualizar el teléfono.",
+    diagnostics, 'update-phone',
   )
 
   return payload
@@ -175,6 +187,7 @@ type SearchFormValues = z.infer<typeof searchFormSchema>
 interface RegisterCoupleFormProps {
   tournamentId: string
   onComplete: (success: boolean) => void
+  onPaymentReady?: (inscriptionId: string) => void
   players: PlayerInfo[]
   tournamentGender: Gender
   transferConfig?: {
@@ -188,16 +201,28 @@ interface RegisterCoupleFormProps {
 export default function RegisterCoupleForm({
   tournamentId,
   onComplete,
+  onPaymentReady,
   players,
   tournamentGender,
   transferConfig,
   requireTermsAcceptance = false,
 }: RegisterCoupleFormProps) {
+  const { user: contextUser, userDetails } = useUser()
+  const paymentUrl = `/api/tournaments/${tournamentId}/inscriptions/payment`
+  const { data: paymentData, error: paymentError, mutate: refreshPayment } = useSWR(contextUser ? [paymentUrl, contextUser.id] : null, ([endpoint]) => paymentFetcher(endpoint))
+  const [savedInscriptionId, setSavedInscriptionId] = useState<string | null>(null)
+  const handedOff = useRef(false)
+  useEffect(() => {
+    if (!savedInscriptionId || handedOff.current) return
+    handedOff.current = true
+    if (onPaymentReady) onPaymentReady(savedInscriptionId)
+    else onComplete(true)
+  }, [savedInscriptionId, onComplete, onPaymentReady])
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER' | 'NONE'>(transferConfig?.enabled ? 'TRANSFER' : 'NONE')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [selectedCompanionId, setSelectedCompanionId] = useState<string | null>(null)
-  const { user: contextUser, userDetails } = useUser()
   
   // Estados para verificacion de telefonos
   const [isCheckingPhones, setIsCheckingPhones] = useState(false)
@@ -214,10 +239,12 @@ export default function RegisterCoupleForm({
   const phoneFormRef = useRef<HTMLDivElement | null>(null)
   const player1PhoneInputRef = useRef<HTMLInputElement | null>(null)
   const player2PhoneInputRef = useRef<HTMLInputElement | null>(null)
-  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
-  const [paymentProofError, setPaymentProofError] = useState<string | null>(null)
-  const [isPreparingProof, setIsPreparingProof] = useState(false)
-  const proofSelectionVersion = useRef(0)
+  const attemptIdRef = useRef<string | null>(null)
+  const diagnostics = (): RegistrationDiagnostics => {
+    attemptIdRef.current ??= createRegistrationAttemptId()
+    return { attemptId: attemptIdRef.current, tournamentId }
+  }
+  const withCode = (message: string) => registrationErrorMessage(message, diagnostics().attemptId)
   const phoneCheckInFlight = useRef(false)
   const registrationInFlight = useRef(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -227,28 +254,7 @@ export default function RegisterCoupleForm({
   const transferAmount = transferConfig?.amount ?? null
   const transferConfigInvalid = transferProofEnabled && (!transferAlias || transferAmount === null || transferAmount <= 0)
 
-  useEffect(() => () => { proofSelectionVersion.current += 1 }, [])
 
-  const handleProofSelection = async (file: File | null): Promise<void> => {
-    const version = ++proofSelectionVersion.current
-    setPaymentProofFile(null)
-    setPaymentProofError(null)
-    setIsPreparingProof(!!file)
-    if (!file) return
-
-    try {
-      const preparedFile = await prepareInscriptionProof(file)
-      if (version !== proofSelectionVersion.current) return
-      setPaymentProofFile(preparedFile)
-    } catch (error) {
-      if (version !== proofSelectionVersion.current) return
-      setPaymentProofError(error instanceof Error ? error.message : "No se pudo preparar el comprobante.")
-    } finally {
-      if (version === proofSelectionVersion.current) setIsPreparingProof(false)
-    }
-  }
-
-  // Formulario para registrar nuevo jugador
   const playerForm = useForm<PlayerFormValues>({
     resolver: zodResolver(playerFormSchema),
     defaultValues: {
@@ -292,7 +298,6 @@ export default function RegisterCoupleForm({
     setIsSearching(true)
     setSearchResults([])
     try {
-      console.log('[RegisterCoupleForm] Searching with term:', data.searchTerm)
 
       // ✅ Llamar Edge Function para búsqueda optimizada
       const { searchTournamentPlayers } = await import('@/lib/api/supabase-edge')
@@ -301,7 +306,7 @@ export default function RegisterCoupleForm({
         tournamentId,
         page: 1,
         pageSize: 50
-      })
+      }, diagnostics().attemptId)
 
       if (result.success && result.players) {
         // Excluir al jugador logueado de los resultados
@@ -311,15 +316,14 @@ export default function RegisterCoupleForm({
         console.log('[RegisterCoupleForm] Found:', filteredResults.length, 'players')
         setSearchResults(filteredResults)
       } else {
-        console.warn('[RegisterCoupleForm] No players found or error:', result.error)
-        setSearchResults([])
+        throw new Error('search_failed')
       }
     } catch (error) {
-      console.error("Error al buscar jugadores:", error)
+      reportRegistrationClientError({ ...diagnostics(), stage: 'search', code: 'request_failed' })
       setSearchResults([])
       toast({
         title: "Error en la búsqueda",
-        description: "No se pudieron buscar jugadores. Intenta nuevamente.",
+        description: withCode("No se pudieron buscar jugadores. Intenta nuevamente."),
         variant: "destructive",
       })
     } finally {
@@ -362,12 +366,12 @@ export default function RegisterCoupleForm({
       const result = await requestCheckPlayersPhones({
         player1Id: userDetails.player_id,
         player2Id: companionId,
-      })
+      }, diagnostics())
 
       if (!result.success) {
         toast({
           title: "Error de verificación",
-          description: result.error || "No se pudo verificar los teléfonos",
+          description: withCode(result.error || "No se pudo verificar los teléfonos"),
           variant: "destructive",
         })
         return false
@@ -397,7 +401,7 @@ export default function RegisterCoupleForm({
       console.error("[RegisterCoupleForm] Error al verificar telefonos:", error)
       toast({
         title: "Error inesperado",
-        description: "Ocurrió un error al verificar los teléfonos",
+        description: withCode("Ocurrió un error al verificar los teléfonos"),
         variant: "destructive",
       })
       return false
@@ -436,11 +440,11 @@ export default function RegisterCoupleForm({
         const updateResult = await requestUpdatePlayerPhone({
           playerId: phoneCheckResult.player1.id,
           phone: player1Phone,
-        })
+        }, diagnostics())
         if (!updateResult.success) {
           toast({
             title: "Error al actualizar telefono",
-            description: updateResult.error || "No se pudo actualizar el telefono",
+            description: withCode(updateResult.error || "No se pudo actualizar el telefono"),
             variant: "destructive",
           })
           return
@@ -453,11 +457,11 @@ export default function RegisterCoupleForm({
         const updateResult = await requestUpdatePlayerPhone({
           playerId: phoneCheckResult.player2.id,
           phone: player2Phone,
-        })
+        }, diagnostics())
         if (!updateResult.success) {
           toast({
             title: "Error al actualizar telefono",
-            description: updateResult.error || "No se pudo actualizar el telefono",
+            description: withCode(updateResult.error || "No se pudo actualizar el telefono"),
             variant: "destructive",
           })
           return
@@ -470,7 +474,7 @@ export default function RegisterCoupleForm({
       console.error("[RegisterCoupleForm] Error al actualizar telefonos:", error)
       toast({
         title: "Error inesperado",
-        description: "Ocurrió un error al actualizar los teléfonos",
+        description: withCode("Ocurrió un error al actualizar los teléfonos"),
         variant: "destructive",
       })
     } finally {
@@ -530,10 +534,9 @@ export default function RegisterCoupleForm({
         toast({
           title: transferProofEnabled ? "Inscripción registrada" : "¡Pareja registrada!",
           description: transferProofEnabled
-            ? "La pareja quedó registrada y pendiente de revisión del organizador"
+            ? "Tu inscripción quedó guardada. Podés completar el comprobante desde aquí."
             : "Se ha registrado la pareja exitosamente",
         })
-        onComplete(true)
         return true
       }
 
@@ -547,10 +550,11 @@ export default function RegisterCoupleForm({
       })
       return false
     } catch {
+      reportRegistrationClientError({ ...diagnostics(), stage: 'registration', code: 'request_failed' })
       console.error('[RegisterCoupleForm]', { stage: 'registration' })
       toast({
         title: "No se pudo confirmar la inscripción",
-        description: "Revisá Mis torneos antes de reintentar. Los datos del formulario se conservaron.",
+        description: withCode("Revisá Mis torneos antes de reintentar. Los datos del formulario se conservaron."),
         variant: "destructive",
       })
       return false
@@ -574,15 +578,14 @@ export default function RegisterCoupleForm({
         phone: data.phone,
         forceCreateNew,
       },
-    })
+    }, diagnostics())
 
     if (!newPlayerResult.success || !newPlayerResult.playerId) {
       toast({
         title: "Error al crear jugador",
-        description: newPlayerResult.message || "No se pudo crear el nuevo jugador",
+        description: withCode(newPlayerResult.message || "No se pudo crear el nuevo jugador"),
         variant: "destructive",
       })
-      onComplete(false)
       return false
     }
 
@@ -625,7 +628,6 @@ export default function RegisterCoupleForm({
         description: error instanceof Error ? error.message : "Ocurrió un error al procesar la solicitud",
         variant: "destructive",
       })
-      onComplete(false)
     } finally {
       setIsSubmitting(false)
     }
@@ -643,67 +645,36 @@ export default function RegisterCoupleForm({
       return { success: false, error: "Debes aceptar los Términos y Condiciones para inscribirte." }
     }
 
-    if (transferProofEnabled) {
-      const validationError = getTransferProofValidationError()
-
-      if (validationError) {
-        setPaymentProofError(validationError)
-        return {
-          success: false,
-          error: validationError,
-        }
+    const body = new FormData()
+    body.set('operation', 'reserve')
+    body.set('player2Id', companionId)
+    body.set('method', paymentMethod)
+    body.set('termsAccepted', String(termsAccepted))
+    try {
+      const { response, data: result } = await fetchRegistrationJson(paymentUrl, { method: 'POST', headers: { 'x-registration-attempt': diagnostics().attemptId }, body })
+      if (!response.ok || !result.success || !result.inscription?.id) {
+        return { success: false, error: withCode(result.message || 'No se pudo guardar la inscripción.') }
       }
-
-      const proofFile = paymentProofFile
-      if (!proofFile) {
-        return {
-          success: false,
-          error: "Debes adjuntar un comprobante para registrar tu pareja.",
-        }
+      setSavedInscriptionId(result.inscription.id)
+      return { success: true }
+    } catch {
+      // A lost response is not a failed write. Check before another submission.
+      const saved = await paymentFetcher(paymentUrl)
+      if (saved.inscription) {
+        setSavedInscriptionId(saved.inscription.id)
+        return { success: true }
       }
-
-      return submitInscriptionProof({
-        tournamentId,
-        player1Id: userDetails.player_id,
-        player2Id: companionId,
-        termsAccepted,
-        file: proofFile,
-      })
+      throw new Error('No se pudo confirmar la inscripción.')
     }
-
-    console.log("[RegisterCoupleForm] Llamando registerCoupleForTournament")
-    console.log("Player IDs:", { player1Id: userDetails.player_id, player2Id: companionId })
-
-    return await registerCoupleForTournament(tournamentId, userDetails.player_id, companionId, false, termsAccepted)
-  }
-
-  const formatTransferAmount = (amount: number | null) => {
-    if (amount === null || Number.isNaN(Number(amount))) return "Monto no disponible"
-    return `$${Number(amount).toLocaleString("es-AR", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`
   }
 
   const getTransferProofValidationError = () => {
-    if (!transferProofEnabled) return null
-
-    if (isPreparingProof) return "Esperá a que termine de prepararse el comprobante."
-
-    if (transferConfigInvalid) {
-      return "El organizador no configuró correctamente alias y monto para esta inscripción."
-    }
-
-    if (!paymentProofFile) {
-      return "Debes adjuntar un comprobante para registrar tu pareja."
-    }
-
-    return validateInscriptionProof(paymentProofFile)
+    if (paymentMethod === 'CASH' || !transferProofEnabled) return null
+    return transferConfigInvalid ? 'El organizador debe configurar alias e importe antes de la inscripción.' : null
   }
 
   const validateTransferProofRequirements = () => {
     const validationError = getTransferProofValidationError()
-    setPaymentProofError(validationError)
 
     if (!validationError) {
       return true
@@ -723,7 +694,7 @@ export default function RegisterCoupleForm({
     (selectedCompanionId && players.find((player) => player.id === selectedCompanionId)) ||
     null
 
-  const isTransferStepReady = !transferProofEnabled || (!!paymentProofFile && !transferConfigInvalid && !isPreparingProof)
+  const isTransferStepReady = paymentMethod === 'CASH' || !transferConfigInvalid
   const isTermsStepReady = !requireTermsAcceptance || termsAccepted
 
   const renderTermsAcceptance = () => {
@@ -739,98 +710,21 @@ export default function RegisterCoupleForm({
     )
   }
 
-  const renderTransferProofStep = (stepLabel: string, inputId: string, companionName?: string | null) => (
-    <div className="space-y-3 rounded-display border border-emerald-200 bg-emerald-50/80 p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-elevated bg-emerald-600 text-white shadow-sm">
-          <CreditCard className="h-5 w-5" />
-        </div>
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{stepLabel}</p>
-          <h3 className="text-base font-semibold text-slate-900">Transferi y subi el comprobante</h3>
-          <p className="text-sm text-slate-700">
-            Seleccioná el comprobante y confirmá la inscripción con el botón de abajo.
-          </p>
-        </div>
-      </div>
-
-      {companionName && (
-        <div className="rounded-elevated border border-emerald-200 bg-white/90 px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Pareja seleccionada</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{companionName}</p>
-        </div>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-elevated border border-white/80 bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Alias</p>
-          <p className="mt-1 break-all text-base font-semibold text-slate-900">
-            {transferAlias || "No disponible"}
-          </p>
-        </div>
-        <div className="rounded-elevated border border-white/80 bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Importe</p>
-          <p className="mt-1 text-base font-semibold text-slate-900">
-            {formatTransferAmount(transferAmount)}
-          </p>
-        </div>
-      </div>
-
-      {transferConfigInvalid && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertTitle className="text-red-800">Configuracion incompleta</AlertTitle>
-          <AlertDescription className="text-red-700">
-            El organizador todavia no configuro correctamente el alias y el monto de esta inscripcion.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="space-y-3">
-        <input
-          id={inputId}
-          type="file"
-          accept=".jpg,.jpeg,.png,.webp,.pdf"
-          className="sr-only"
-          disabled={isSubmitting || isCheckingPhones || isUpdatingPhones}
-          aria-label="Seleccionar comprobante de transferencia"
-          onChange={(event) => {
-            const file = event.target.files?.[0] || null
-            event.target.value = ""
-            if (file) void handleProofSelection(file)
-          }}
-        />
-
-        <label
-          htmlFor={inputId}
-          className={`flex cursor-pointer items-center gap-3 rounded-display border-2 border-dashed bg-white px-4 py-4 text-left transition-colors ${
-            paymentProofError
-              ? "border-red-400 bg-red-50"
-              : "border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50"
-          }`}
-        >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-            {isPreparingProof ? <Loader2 className="h-6 w-6 animate-spin" /> : paymentProofFile ? <CheckCircle2 className="h-6 w-6" /> : <Upload className="h-6 w-6" />}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900" role="status">
-              {isPreparingProof ? "Preparando comprobante…" : paymentProofFile ? "Comprobante seleccionado" : "Seleccionar comprobante"}
-            </p>
-            <p className="text-xs text-slate-600">JPG, PNG, WEBP o PDF · Hasta 4 MB. Las imágenes grandes se optimizan automáticamente.</p>
-            {paymentProofFile && (
-              <p className="mt-1 max-w-full break-all text-xs font-medium text-emerald-700">
-                {paymentProofFile.name} · {(paymentProofFile.size / 1_000_000).toLocaleString("es-AR", { maximumFractionDigits: 2 })} MB
-              </p>
-            )}
-          </div>
+  const renderTransferProofStep = (_stepLabel: string, _inputId: string, _companionName?: string | null) => (
+    <div className="space-y-3 rounded-lg border p-4">
+      <p className="text-sm">Primero guardamos tu inscripción y reservamos el cupo. Después podés subir el comprobante.</p>
+      {paymentData?.settings.cash && (
+        <label className="block space-y-2 text-sm">
+          <span>Forma de pago</span>
+          <Select value={paymentMethod} onValueChange={(value: 'CASH' | 'TRANSFER' | 'NONE') => setPaymentMethod(value)}>
+            <SelectTrigger aria-label="Forma de pago"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {transferProofEnabled ? <SelectItem value="TRANSFER">Transferencia</SelectItem> : <SelectItem value="NONE">Inscribirme sin comprobante</SelectItem>}
+              <SelectItem value="CASH">Efectivo</SelectItem>
+            </SelectContent>
+          </Select>
         </label>
-
-        {paymentProofError && (
-          <p className="text-sm font-medium text-red-600" role="alert">
-            {paymentProofError}
-          </p>
-        )}
-      </div>
+      )}
     </div>
   )
 
@@ -942,6 +836,18 @@ export default function RegisterCoupleForm({
     )
   }
 
+  const existingId = savedInscriptionId || (paymentData?.inscription?.individual ? null : paymentData?.inscription?.id)
+  if (!paymentData && !savedInscriptionId) return paymentError
+    ? <div role="alert">No se pudo consultar tu inscripción. <Button onClick={() => void refreshPayment().catch(() => {})}>Reintentar</Button></div>
+    : <p role="status">Consultando inscripción…</p>
+  if (existingId) return (
+    <div className="space-y-4">
+      <p className="font-medium">Tu inscripción está guardada.</p>
+      <Button onClick={() => onPaymentReady ? onPaymentReady(existingId) : onComplete(true)}>Pago de la inscripción</Button>
+      <Button onClick={() => onComplete(true)}>Volver al torneo</Button>
+    </div>
+  )
+
   return (
     <Card className="w-full border-0 bg-transparent shadow-none">
       <CardContent className="space-y-4 p-0">
@@ -989,6 +895,7 @@ export default function RegisterCoupleForm({
                           />
                           <Button
                             type="submit"
+                            aria-label="Buscar compañero"
                             disabled={isSearching}
                             className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
                           >
@@ -1020,6 +927,9 @@ export default function RegisterCoupleForm({
                           : 'border-gray-200 hover:border-gray-300 hover:bg-slate-50'
                       }`}
                       onClick={() => handleSelectCompanion(player.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleSelectCompanion(player.id) } }}
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div>
@@ -1050,7 +960,7 @@ export default function RegisterCoupleForm({
 
             {selectedCompanionId && !showPhoneForm && (
               <div className="space-y-4 pt-4">
-                {transferProofEnabled && renderTransferProofStep(
+                {(transferProofEnabled || paymentData?.settings.cash) && renderTransferProofStep(
                   "Paso 3",
                   "payment-proof-search",
                   selectedCompanion
@@ -1082,7 +992,7 @@ export default function RegisterCoupleForm({
                     ) : isSubmitting ? (
                       "Procesando..."
                     ) : (
-                      transferProofEnabled ? "Registrar con comprobante" : "Registrar pareja"
+                      "Guardar inscripción"
                     )}
                   </Button>
                 </div>
@@ -1208,7 +1118,7 @@ export default function RegisterCoupleForm({
                   )}
                 />
 
-                {transferProofEnabled && renderTransferProofStep("Paso 3", "payment-proof-new")}
+                {(transferProofEnabled || paymentData?.settings.cash) && renderTransferProofStep("Paso 3", "payment-proof-new")}
 
                 {renderTermsAcceptance()}
 
@@ -1227,7 +1137,7 @@ export default function RegisterCoupleForm({
                     disabled={isSubmitting || !isTransferStepReady || !isTermsStepReady}
                     className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
                   >
-                    {isSubmitting ? "Procesando..." : "Crear y registrar pareja"}
+                    {isSubmitting ? "Procesando..." : "Guardar inscripción"}
                   </Button>
                 </div>
               </form>

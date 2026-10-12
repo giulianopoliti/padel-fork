@@ -1,4 +1,5 @@
 import { INSCRIPTION_PROOF_SIZE_ERROR, validateInscriptionProof } from './inscription-proof'
+import { createRegistrationAttemptId, registrationErrorMessage, reportRegistrationClientError } from './registration-diagnostics'
 
 export type ProofRegistrationResult =
   | { success: true }
@@ -13,9 +14,12 @@ export const submitInscriptionProof = async (params: {
   player2Id: string
   termsAccepted: boolean
   file: File
+  attemptId?: string
 }): Promise<ProofRegistrationResult> => {
+  const attemptId = params.attemptId || createRegistrationAttemptId()
+  const errorMessage = (message: string) => registrationErrorMessage(message, attemptId)
   const validationError = validateInscriptionProof(params.file)
-  if (validationError) return { success: false, error: validationError, stage: 'upload' }
+  if (validationError) return { success: false, error: errorMessage(validationError), stage: 'upload' }
 
   const formData = new FormData()
   formData.append('player1Id', params.player1Id)
@@ -28,12 +32,14 @@ export const submitInscriptionProof = async (params: {
     // Never retry this mutation automatically: a lost response may hide a saved inscription.
     const response = await fetch(`/api/tournaments/${params.tournamentId}/inscriptions/couple-with-proof`, {
       method: 'POST',
+      headers: { 'x-registration-attempt': attemptId },
       body: formData,
     })
     status = response.status
     if (status === 413) {
       console.warn('[inscription-proof]', { stage: 'upload', status, size: params.file.size, type: params.file.type })
-      return { success: false, error: INSCRIPTION_PROOF_SIZE_ERROR, stage: 'upload' }
+      reportRegistrationClientError({ attemptId, tournamentId: params.tournamentId, stage: 'submit-proof', code: 'request_rejected', status })
+      return { success: false, error: errorMessage(INSCRIPTION_PROOF_SIZE_ERROR), stage: 'upload' }
     }
 
     const payload: unknown = await response.json()
@@ -46,12 +52,14 @@ export const submitInscriptionProof = async (params: {
     return {
       success: false,
       stage,
-      error: typeof result.message === 'string' && result.message
+      error: errorMessage(typeof result.message === 'string' && result.message
         ? result.message
-        : UNCONFIRMED_MESSAGE,
+        : UNCONFIRMED_MESSAGE),
     }
   } catch {
+    reportRegistrationClientError({ attemptId, tournamentId: params.tournamentId, stage: 'submit-proof',
+      code: status === undefined ? 'request_failed' : 'response_unreadable', status })
     console.error('[inscription-proof]', { stage: 'upload-response', status, size: params.file.size, type: params.file.type })
-    return { success: false, error: UNCONFIRMED_MESSAGE, stage: 'upload' }
+    return { success: false, error: errorMessage(UNCONFIRMED_MESSAGE), stage: 'upload' }
   }
 }

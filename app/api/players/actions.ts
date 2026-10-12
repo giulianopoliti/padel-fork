@@ -10,6 +10,7 @@ import {
 import { normalizePlayerDni, sanitizeDniInput } from '@/lib/utils/player-dni';
 import { ExistingPlayerMatch, findExistingPlayerByIdentity } from '@/lib/utils/player-identity';
 import { createPlayerForCoupleService } from '@/lib/services/players/create-player-for-couple';
+import { registrationErrorDetails } from '@/lib/tournaments/registration-log';
 /**
  * Buscar jugadores existentes por nombre, apellido o DNI
  */
@@ -461,6 +462,7 @@ const toPlainServerActionResult = <T,>(value: T): T => {
  */
 export async function checkPlayersPhones(player1Id: string, player2Id: string): Promise<{
   success: boolean;
+  code?: string;
   player1: { id: string; firstName: string; lastName: string; phone: string | null; needsPhone: boolean } | null;
   player2: { id: string; firstName: string; lastName: string; phone: string | null; needsPhone: boolean } | null;
   bothHavePhone: boolean;
@@ -477,7 +479,7 @@ export async function checkPlayersPhones(player1Id: string, player2Id: string): 
     .in('id', [player1Id, player2Id]);
   
   if (error) {
-    console.error("[checkPlayersPhones] Error fetching players:", error);
+    console.error("[checkPlayersPhones] players_query_failed", registrationErrorDetails(error));
     return toPlainServerActionResult({ 
       success: false, 
       player1: null, 
@@ -485,7 +487,8 @@ export async function checkPlayersPhones(player1Id: string, player2Id: string): 
       bothHavePhone: false,
       atLeastOneHasPhone: false,
       noneHasPhone: true,
-      error: "No se pudieron obtener los datos de los jugadores" 
+      error: "No se pudieron obtener los datos de los jugadores",
+      code: 'players_query_failed'
     });
   }
   
@@ -497,7 +500,8 @@ export async function checkPlayersPhones(player1Id: string, player2Id: string): 
       bothHavePhone: false,
       atLeastOneHasPhone: false,
       noneHasPhone: true,
-      error: "No se encontraron ambos jugadores" 
+      error: "No se encontraron ambos jugadores",
+      code: 'players_not_found'
     });
   }
   
@@ -553,13 +557,15 @@ export async function updatePlayerPhone(playerId: string, phone: string): Promis
     return { success: false, error: "El telefono debe tener al menos 6 caracteres" };
   }
   
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('players')
     .update({ phone: phone.trim() })
-    .eq('id', playerId);
+    .eq('id', playerId)
+    .select('id')
+    .maybeSingle();
   
-  if (error) {
-    console.error("[updatePlayerPhone] Error updating player phone:", error);
+  if (error || !updated) {
+    console.error("[updatePlayerPhone] phone_update_unconfirmed", registrationErrorDetails(error));
     return { success: false, error: "No se pudo actualizar el telefono" };
   }
   

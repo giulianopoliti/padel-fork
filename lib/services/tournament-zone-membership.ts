@@ -1,6 +1,7 @@
 import { ZoneRulesSyncService } from '@/lib/services/zone-rules-sync.service'
 import { applyZoneMembershipChangesAtomically } from '@/lib/services/zone-position/atomic-position-persistence'
 import { createClientServiceRole } from '@/utils/supabase/server'
+import { scheduleInscriptionProofCleanup } from '@/lib/services/inscription-proofs'
 
 type SupabaseClientLike = any
 
@@ -254,6 +255,7 @@ export const removeTournamentCoupleMembership = async ({
     if (inscriptionError) {
       return { success: false, zonesCount: zoneIds.length, error: inscriptionError.message }
     }
+    scheduleInscriptionProofCleanup()
   } else if (zoneIds.length > 0) {
     try {
       const serviceClient = await createClientServiceRole()

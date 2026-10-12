@@ -5,6 +5,7 @@ import { Calendar, CheckCircle2, MapPin, Trophy, Users, XCircle } from "lucide-r
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher";
+import { InscriptionPaymentPanel } from '@/components/tournament/inscription-payment-panel';
 import TournamentHeroDetails from "@/components/tournament/TournamentHeroDetails";
 import TournamentPublicInfoCard from "@/components/tournament/TournamentPublicInfoCard";
 import { getTenantBranding } from "@/config/tenant";
@@ -198,10 +199,9 @@ export default function AmericanPublicView({
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
                   <p className="text-base font-semibold">
-                    {isPending
-                      ? PLAYER_INSCRIPTION_COPY.pendingTitle
-                      : PLAYER_INSCRIPTION_COPY.confirmedTitle}
+                    Ya estás inscripto
                   </p>
+                  <div className="mt-3"><InscriptionPaymentPanel tournamentId={tournamentId} /></div>
                 </div>
                 <p className="mt-2 text-sm text-emerald-50">
                   {isPending
@@ -211,7 +211,7 @@ export default function AmericanPublicView({
               </div>
             ) : null}
 
-            {isFull && !isCanceled ? (
+              {isFull && !isInscribed && !isCanceled ? (
               <div className="mt-8 max-w-md mx-auto">
                 <div className="rounded-surface border border-red-200/70 bg-red-600/90 p-4 text-white shadow-[0_0_28px_rgba(220,38,38,0.45)] backdrop-blur-sm">
                   <p className="text-base font-semibold">Cupo completo</p>

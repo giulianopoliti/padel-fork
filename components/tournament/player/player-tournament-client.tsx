@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { InscriptionPaymentPanel } from '@/components/tournament/inscription-payment-panel'
 import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -39,8 +40,7 @@ import {
   UserX,
   AlertTriangle
 } from "lucide-react"
-import RegisterPlayerForm from "./register-player-form"
-import RegisterCoupleForm from "./register-couple-form"
+import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { useUser } from "@/contexts/user-context"
 import { removePlayerFromTournament } from "@/app/api/tournaments/actions"
 import { toast } from "@/components/ui/use-toast"
@@ -62,6 +62,9 @@ interface Tournament {
   time?: string
   prize?: string
   description?: string
+  enableTransferProof?: boolean
+  transferAlias?: string | null
+  transferAmount?: number | null
   price?: number | null
   club?: {
     id: string
@@ -126,13 +129,9 @@ export default function PlayerTournamentClient({
   couples,
   allPlayersForSearch,
 }: PlayerTournamentClientProps) {
-  const [coupleDialogOpen, setCoupleDialogOpen] = useState(false)
-  const [soloDialogOpen, setSoloDialogOpen] = useState(false)
   const [isUnregistering, setIsUnregistering] = useState(false)
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const { user, userDetails } = useUser()
+  const { userDetails } = useUser()
 
   const isTournamentActive = tournament.status !== "NOT_STARTED"
   const millisecondsUntilStart = tournament.startDate
@@ -143,7 +142,6 @@ export default function PlayerTournamentClient({
     && millisecondsUntilStart !== null
     && millisecondsUntilStart >= 0
     && millisecondsUntilStart < 3 * 60 * 60 * 1000
-  const registerBaseHref = `/register?role=PLAYER&redirectTo=${encodeURIComponent(pathname)}`
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -184,14 +182,6 @@ export default function PlayerTournamentClient({
     }
   }
 
-  const handleRegistrationComplete = (success: boolean) => {
-    if (success) {
-      setCoupleDialogOpen(false)
-      setSoloDialogOpen(false)
-      router.refresh() // Recargar la página para mostrar los datos actualizados
-    }
-  }
-
   const isUserRegistered =
     !!userDetails?.player_id &&
     (
@@ -200,29 +190,6 @@ export default function PlayerTournamentClient({
         (couple) => couple.player_1_info?.id === userDetails.player_id || couple.player_2_info?.id === userDetails.player_id,
       )
     )
-
-  useEffect(() => {
-    const intent = searchParams.get("intent")
-
-    if (isTournamentActive || !user || isUserRegistered) {
-      return
-    }
-
-    if (intent === "individual") {
-      setSoloDialogOpen(true)
-    }
-
-    if (intent === "couple") {
-      setCoupleDialogOpen(true)
-    }
-
-    if (intent === "individual" || intent === "couple") {
-      const nextParams = new URLSearchParams(searchParams.toString())
-      nextParams.delete("intent")
-      const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname
-      router.replace(nextUrl, { scroll: false })
-    }
-  }, [isTournamentActive, isUserRegistered, pathname, router, searchParams, user])
 
   const handleUnregister = async () => {
     if (!userDetails?.player_id) {
@@ -431,76 +398,16 @@ export default function PlayerTournamentClient({
       {!isTournamentActive && (
         <div className="flex flex-wrap gap-4 justify-center">
           {!isUserRegistered ? (
-            <>
-              {/* Dialog para registro individual */}
-              <Dialog open={soloDialogOpen} onOpenChange={setSoloDialogOpen}>
-                {user ? (
-                  <DialogTrigger asChild>
-                    <Button
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
-                    >
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Inscribirme solo
-                    </Button>
-                  </DialogTrigger>
-                ) : (
-                  <Button
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
-                    onClick={() => router.push(`${registerBaseHref}&intent=individual`)}
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Inscribirme solo
-                  </Button>
-                )}
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle>Inscripción Individual</DialogTitle>
-                    <DialogDescription>
-                      Completa tu registro individual para el torneo {tournament.name}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <RegisterPlayerForm
-                    tournamentId={tournament.id}
-                    tournament={tournament}
-                    onComplete={handleRegistrationComplete}
-                  />
-                </DialogContent>
-              </Dialog>
-
-              {/* Dialog para registro de pareja */}
-              <Dialog open={coupleDialogOpen} onOpenChange={setCoupleDialogOpen}>
-                {user ? (
-                  <DialogTrigger asChild>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3">
-                      <Users className="mr-2 h-4 w-4" />
-                      Inscribir pareja
-                    </Button>
-                  </DialogTrigger>
-                ) : (
-                  <Button
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
-                    onClick={() => router.push(`${registerBaseHref}&intent=couple`)}
-                  >
-                    <Users className="mr-2 h-4 w-4" />
-                    Inscribir pareja
-                  </Button>
-                )}
-                <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Inscripción de Pareja</DialogTitle>
-                    <DialogDescription>
-                      Registra una pareja para el torneo {tournament.name}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <RegisterCoupleForm
-                    tournamentId={tournament.id}
-                    onComplete={handleRegistrationComplete}
-                    players={allPlayersForSearch}
-                    tournamentGender={tournament.gender as Gender}
-                  />
-                </DialogContent>
-              </Dialog>
-            </>
+            <PublicRegistrationLauncher
+              tournamentId={tournament.id}
+              tournamentName={tournament.name}
+              tournamentGender={tournament.gender || Gender.MALE}
+              tournamentPrice={tournament.price}
+              enableTransferProof={tournament.enableTransferProof}
+              transferAlias={tournament.transferAlias}
+              transferAmount={tournament.transferAmount}
+              buttonClassName="bg-blue-600 hover:bg-blue-700 text-white"
+            />
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-4">
               {/* Mensaje de confirmación */}
@@ -510,6 +417,7 @@ export default function PlayerTournamentClient({
               </div>
               
               {/* Botón eliminar inscripción */}
+              <InscriptionPaymentPanel tournamentId={tournament.id} />
               <Dialog>
                 <DialogTrigger asChild>
                   <Button

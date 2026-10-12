@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { createRegistrationTrace } from "@/lib/tournaments/registration-log"
 import { z } from "zod"
 import { createClient } from "@/utils/supabase/server"
 import { checkTournamentAccess } from "@/utils/tournament-permissions"
@@ -34,12 +34,13 @@ const redactPrivatePlayerFields = (player: PlayerSearchRecord): PlayerSearchReco
 })
 
 export async function POST(request: Request) {
+  const trace = createRegistrationTrace(request.headers, "search-players")
   try {
     const parsedBody = searchRequestSchema.safeParse(await request.json())
     if (!parsedBody.success) {
-      return NextResponse.json(
+      return trace.reply(
         { success: false, error: "Parámetros de búsqueda inválidos" },
-        { status: 400 },
+        400, "search_parameters_invalid",
       )
     }
 
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json({ success: false, error: "No autenticado" }, { status: 401 })
+      return trace.reply({ success: false, error: "No autenticado" }, 401, "session_unavailable", authError)
     }
 
     const { data: userData, error: userError } = await supabase
@@ -57,14 +58,16 @@ export async function POST(request: Request) {
       .single()
 
     if (userError || !userData) {
-      return NextResponse.json({ success: false, error: "Usuario no encontrado" }, { status: 403 })
+      return trace.reply({ success: false, error: "Usuario no encontrado" }, 403, "permission_denied")
     }
 
     const params = parsedBody.data
+    trace.tournament(params.tournamentId)
+    trace.step("search-players")
 
     if (params.scope === "organization") {
       if (!params.organizationId) {
-        return NextResponse.json({ success: false, error: "organizationId es requerido" }, { status: 400 })
+        return trace.reply({ success: false, error: "organizationId es requerido" }, 400, "search_parameters_invalid")
       }
 
       const { data: membership } = await supabase
@@ -76,7 +79,7 @@ export async function POST(request: Request) {
         .maybeSingle()
 
       if (!membership || userData.role !== "ORGANIZADOR") {
-        return NextResponse.json({ success: false, error: "Sin permisos para esta organización" }, { status: 403 })
+        return trace.reply({ success: false, error: "Sin permisos para esta organización" }, 403, 'organization_permission_denied')
       }
 
       const searchParams = {
@@ -88,11 +91,11 @@ export async function POST(request: Request) {
       }
       const result = await searchPlayersGlobally(searchParams)
 
-      return NextResponse.json({ success: true, ...result })
+      return trace.reply({ success: true, ...result }, 200, "complete")
     }
 
     if (!params.tournamentId) {
-      return NextResponse.json({ success: false, error: "tournamentId es requerido" }, { status: 400 })
+      return trace.reply({ success: false, error: "tournamentId es requerido" }, 400, "search_parameters_invalid")
     }
 
     const access = await checkTournamentAccess(user.id, params.tournamentId)
@@ -100,13 +103,13 @@ export async function POST(request: Request) {
     const isPlayerSearch = userData.role === "PLAYER"
 
     if (!canManageInscriptions && !isPlayerSearch && userData.role !== "ADMIN") {
-      return NextResponse.json({ success: false, error: "Sin permisos para buscar jugadores" }, { status: 403 })
+      return trace.reply({ success: false, error: "Sin permisos para buscar jugadores" }, 403, 'search_permission_denied')
     }
 
     if (isPlayerSearch && /^\s*\d/.test(params.searchTerm)) {
-      return NextResponse.json(
+      return trace.reply(
         { success: false, error: "Buscá a tu compañero por nombre o apellido" },
-        { status: 400 },
+        400, "search_parameters_invalid",
       )
     }
 
@@ -129,18 +132,17 @@ export async function POST(request: Request) {
       excludePlayerIds: Array.from(excludedIds),
     })
 
-    return NextResponse.json({
+    return trace.reply({
       success: true,
       ...result,
       players: isPlayerSearch
         ? result.players.map(redactPrivatePlayerFields)
         : result.players,
-    })
+    }, 200, "complete")
   } catch (error) {
-    console.error("[players/search] Unexpected error:", error)
-    return NextResponse.json(
+    return trace.reply(
       { success: false, error: "No se pudieron buscar jugadores" },
-      { status: 500 },
+      500, "search_failed", error,
     )
   }
 }

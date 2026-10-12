@@ -29,6 +29,7 @@ export const getTournamentSettingsData = cache(async (tournamentId: string) => {
       show_few_slots_alert,
       enable_payment_checkboxes,
       enable_transfer_proof,
+      allow_cash_payment,
       messages_enabled,
       transfer_alias,
       transfer_amount,

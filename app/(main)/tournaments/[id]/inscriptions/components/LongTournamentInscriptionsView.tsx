@@ -14,6 +14,10 @@ interface Tournament {
   status: string;
   gender: Gender;
   club_id: string;
+  price?: number | null;
+  enable_transfer_proof?: boolean;
+  transfer_alias?: string | null;
+  transfer_amount?: number | null;
 }
 
 interface PlayerInfo {
@@ -126,6 +130,11 @@ const LongTournamentInscriptionsView: React.FC<LongTournamentInscriptionsViewPro
             <TournamentCouplesTab
               coupleInscriptions={formattedCouples}
               tournamentId={tournament.id}
+              tournamentName={tournament.name}
+              tournamentPrice={tournament.price}
+              enableTransferProof={tournament.enable_transfer_proof}
+              transferAlias={tournament.transfer_alias}
+              transferAmount={tournament.transfer_amount}
               tournamentStatus={tournament.status}
               allPlayers={allPlayers}
               isOwner={true} // En torneos largos, asumimos permisos de gestión

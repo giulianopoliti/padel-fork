@@ -3,6 +3,7 @@ import { SupabaseProvider } from '@/components/supabase-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import '../globals.css'
 import { UserProvider } from '@/contexts/user-context'
+import { InscriptionPaymentProvider } from '@/components/tournament/inscription-payment-dialog'
 import { Toaster } from '@/components/ui/toaster'
 import Navbar from '@/components/navbar'
 import { SpeedInsights } from "@vercel/speed-insights/next"
@@ -70,10 +71,12 @@ export default async function MainLayout({
     <SupabaseProvider initialUser={initialUser}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
         <UserProvider initialUserDetails={serializedUserDetails}> 
+          <InscriptionPaymentProvider>
           <Navbar />
           {children}
           <Toaster />
           <SpeedInsights />
+          </InscriptionPaymentProvider>
         </UserProvider> 
       </ThemeProvider>
     </SupabaseProvider>

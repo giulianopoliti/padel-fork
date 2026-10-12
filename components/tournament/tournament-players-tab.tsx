@@ -8,11 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import RegisterPlayerForm from "./club/register-player-form"
-import { pairIndividualPlayers, removePlayerFromTournament, registerPlayerForTournament } from "@/app/api/tournaments/actions"
+import { pairIndividualPlayers, removePlayerFromTournament } from "@/app/api/tournaments/actions"
 import { useUser } from "@/contexts/user-context"
-import AuthRequiredDialog from "@/components/tournament/auth-required-dialog"
-import CoupleRegistrationAdvanced from "@/components/tournament/couple-registration-advanced"
-import RegisterCoupleForm from "@/components/tournament/player/register-couple-form"
+import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { useTournamentPermissions } from "@/hooks/use-tournament-permissions"
 import { Gender } from "@/types"
 import PlayerDetailsDialog from "@/components/tournament/player-details-dialog"
@@ -33,6 +31,8 @@ interface PlayerInfo {
 interface TournamentPlayersTabProps {
   individualInscriptions: PlayerInfo[]
   tournamentId: string
+  tournamentName?: string
+  tournamentPrice?: number | string | null
   tournamentStatus: string
   maxPlayers?: number
   allPlayers?: PlayerInfo[]
@@ -57,6 +57,8 @@ interface TournamentPlayersTabProps {
 export default function TournamentPlayersTab({
   individualInscriptions,
   tournamentId,
+  tournamentName = "este torneo",
+  tournamentPrice = null,
   tournamentStatus,
   maxPlayers = 32,
   allPlayers = [],
@@ -91,13 +93,8 @@ export default function TournamentPlayersTab({
   const [isPairing, setIsPairing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [recordLateWithdrawal, setRecordLateWithdrawal] = useState(false)
-  const [isRegisteringMyself, setIsRegisteringMyself] = useState(false)
-  const [showRegisterConfirmation, setShowRegisterConfirmation] = useState(false)
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false)
   const [isCancelingMyself, setIsCancelingMyself] = useState(false)
-  const [authDialogOpen, setAuthDialogOpen] = useState(false)
-  const [authIntent, setAuthIntent] = useState<"individual" | "couple">("individual")
-  const [registerCoupleDialogOpen, setRegisterCoupleDialogOpen] = useState(false)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [playerDetailsDialogOpen, setPlayerDetailsDialogOpen] = useState(false)
 
@@ -128,13 +125,9 @@ export default function TournamentPlayersTab({
     && millisecondsUntilStart !== null
     && millisecondsUntilStart >= 0
     && millisecondsUntilStart < 3 * 60 * 60 * 1000
-  const selfServiceRequiresCouple = enableTransferProof && !canManageTournament
 
   // Use isOwner from useTournamentPermissions to show/hide player details
   const canViewPlayerDetails = hasManagementPermissions
-  const registerBaseHref = `/register?role=PLAYER&redirectTo=${encodeURIComponent(`/tournaments/${tournamentId}`)}`
-  const registerHref = `${registerBaseHref}&intent=${authIntent}`
-  const loginHref = `/login?role=PLAYER&redirectTo=${encodeURIComponent(`/tournaments/${tournamentId}`)}&intent=${authIntent}`
 
   const handleRegisterSuccess = async (newPlayer?: PlayerInfo) => {
     setRegisterPlayerDialogOpen(false)
@@ -157,61 +150,6 @@ export default function TournamentPlayersTab({
           variant: "default"
         })
       }
-    }
-  }
-
-  const handleRegisterMyself = async () => {
-    if (!isPlayer || !userDetails.player_id) {
-      toast({
-        title: "Error de autenticación",
-        description: "Debes estar logueado como jugador para inscribirte.",
-        variant: "destructive"
-      })
-      return
-    }
-
-    setIsRegisteringMyself(true)
-    try {
-      // 🚀 First: Optimistic update for immediate UI feedback
-      const currentPlayerInfo = allPlayers.find(p => p.id === userDetails.player_id)
-      if (onPlayerAdded && currentPlayerInfo) {
-        await onPlayerAdded(currentPlayerInfo)
-      }
-
-      const result = await registerPlayerForTournament(tournamentId, userDetails.player_id, tournamentGender)
-
-      if (result.success) {
-        toast({
-          title: "¡Inscripción exitosa!",
-          description: "Te has inscrito exitosamente en el torneo.",
-          variant: "default"
-        })
-        setShowRegisterConfirmation(false)
-        // ✅ No more window.reload() - using optimistic update
-      } else {
-        // If server action failed, remove the optimistic update
-        if (onPlayerRemoved && userDetails.player_id) {
-          await onPlayerRemoved(userDetails.player_id)
-        }
-        toast({
-          title: "Error en la inscripción",
-          description: result.message || "No se pudo completar la inscripción.",
-          variant: "destructive"
-        })
-      }
-    } catch (error) {
-      console.error("Error registering myself:", error)
-      // If error occurred, remove the optimistic update
-      if (onPlayerRemoved && userDetails.player_id) {
-        await onPlayerRemoved(userDetails.player_id)
-      }
-      toast({
-        title: "Error inesperado",
-        description: "Ocurrió un error al inscribirte en el torneo.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsRegisteringMyself(false)
     }
   }
 
@@ -448,73 +386,6 @@ export default function TournamentPlayersTab({
     return `${firstName} ${lastName}`.trim() || "Jugador sin nombre"
   }
 
-  const handleRegisterMyselfClick = () => {
-    if (selfServiceRequiresCouple) {
-      handleRegisterCoupleClick()
-      return
-    }
-
-    if (!user) {
-      setAuthIntent("individual")
-      setAuthDialogOpen(true)
-      return
-    }
-    
-    if (!isPlayer) {
-      toast({
-        title: "Sin permisos para inscripción",
-        description: "Solo los jugadores pueden inscribirse individualmente.",
-        variant: "destructive"
-      })
-      return
-    }
-    
-    setShowRegisterConfirmation(true)
-  }
-
-  const handleRegisterCoupleClick = () => {
-    if (!user) {
-      setAuthIntent("couple")
-      setAuthDialogOpen(true)
-      return
-    }
-    
-    if (!isPlayer && userDetails?.role !== 'CLUB' && userDetails?.role !== 'ORGANIZADOR') {
-      toast({
-        title: "Sin permisos para inscripción",
-        description: "Solo los jugadores, clubes y organizadores pueden inscribir parejas.",
-        variant: "destructive"
-      })
-      return
-    }
-    
-    setRegisterCoupleDialogOpen(true)
-  }
-
-  const handleRegisterCoupleSuccess = async (wasSuccessful: boolean = true, newCouple?: any) => {
-    setRegisterCoupleDialogOpen(false)
-
-    // 🚀 Optimistic update instead of window.reload()
-    if (wasSuccessful && onCoupleAdded && newCouple) {
-      try {
-        await onCoupleAdded(newCouple)
-        toast({
-          title: "¡Pareja registrada!",
-          description: "La pareja se ha inscrito exitosamente en el torneo.",
-          variant: "default"
-        })
-      } catch (error) {
-        console.error('Error in optimistic couple update:', error)
-        // Fallback behavior if needed
-        toast({
-          title: "Pareja registrada",
-          description: "La pareja se inscribió correctamente. Los datos se sincronizarán en breve.",
-          variant: "default"
-        })
-      }
-    }
-  }
-
   const handlePlayerClick = (playerId: string) => {
     setSelectedPlayerId(playerId)
     setPlayerDetailsDialogOpen(true)
@@ -559,54 +430,17 @@ export default function TournamentPlayersTab({
             
             {!isRegistrationBlocked && !isPublicView && (
               <>
-                {isPlayer && !isPlayerAlreadyRegistered ? (
-                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    {!selfServiceRequiresCouple && (
-                      <Button
-                        onClick={handleRegisterMyselfClick}
-                        className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none py-3 sm:py-2"
-                        size="default"
-                        disabled={isMaxPlayersReached}
-                      >
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        <span className="hidden sm:inline">Inscribirme solo</span>
-                        <span className="sm:hidden">Inscribir jugador</span>
-                      </Button>
-                    )}
-                    <Button
-                      onClick={handleRegisterCoupleClick}
-                      className="bg-slate-900 hover:bg-slate-800 text-white flex-1 sm:flex-none py-3 sm:py-2"
-                      size="default"
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Inscribir pareja</span>
-                      <span className="sm:hidden">Inscribir pareja</span>
-                    </Button>
-                  </div>
-                ) : !user ? (
-                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    {!selfServiceRequiresCouple && (
-                      <Button
-                        onClick={handleRegisterMyselfClick}
-                        className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none py-3 sm:py-2"
-                        size="default"
-                        disabled={isMaxPlayersReached}
-                      >
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        <span className="hidden sm:inline">Inscribirme solo</span>
-                        <span className="sm:hidden">Inscribir jugador</span>
-                      </Button>
-                    )}
-                    <Button
-                      onClick={handleRegisterCoupleClick}
-                      className="bg-slate-900 hover:bg-slate-800 text-white flex-1 sm:flex-none py-3 sm:py-2"
-                      size="default"
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Inscribir pareja</span>
-                      <span className="sm:hidden">Inscribir pareja</span>
-                    </Button>
-                  </div>
+                {(isPlayer && !isPlayerAlreadyRegistered) || !user ? (
+                  <PublicRegistrationLauncher
+                    tournamentId={tournamentId}
+                    tournamentName={tournamentName}
+                    tournamentPrice={tournamentPrice}
+                    tournamentGender={tournamentGender}
+                    enableTransferProof={enableTransferProof}
+                    transferAlias={transferAlias}
+                    transferAmount={transferAmount}
+                    buttonClassName="bg-slate-900 hover:bg-slate-800 text-white"
+                  />
                 ) : isPlayer && isPlayerAlreadyRegistered ? (
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <div className="bg-green-50 border border-green-200 rounded-control px-3 py-2">
@@ -1071,57 +905,6 @@ export default function TournamentPlayersTab({
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de confirmación para inscribirse */}
-      <Dialog open={showRegisterConfirmation} onOpenChange={setShowRegisterConfirmation}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-green-600" />
-              ¿Confirmar inscripción?
-            </DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de que quieres inscribirte como jugador individual en este torneo?
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-4 bg-green-50 border border-green-200 rounded-control">
-            <h4 className="font-medium text-green-900 mb-2">Detalles de la inscripción:</h4>
-            <div className="space-y-1 text-sm text-green-800">
-              <p><strong>Modalidad:</strong> Jugador individual</p>
-              <p><strong>Podrás:</strong> Ser emparejado automáticamente por el club organizador</p>
-              <p><strong>Nota:</strong> También puedes inscribirte en pareja desde la pestaña "Parejas"</p>
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowRegisterConfirmation(false)}
-              disabled={isRegisteringMyself}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleRegisterMyself}
-              disabled={isRegisteringMyself}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              {isRegisteringMyself ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Inscribiéndome...
-                </>
-              ) : (
-                <>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Confirmar inscripción
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Diálogo de confirmación para cancelar inscripción */}
       <Dialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
         <DialogContent className="sm:max-w-[500px]">
@@ -1174,57 +957,6 @@ export default function TournamentPlayersTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Diálogo para inscribir pareja */}
-      <Dialog open={registerCoupleDialogOpen} onOpenChange={setRegisterCoupleDialogOpen}>
-        <DialogContent className={isPlayer ? "sm:max-w-[800px] max-h-[90vh] overflow-y-auto" : "sm:max-w-[1000px] max-h-[95vh] overflow-y-auto"}>
-          <DialogHeader>
-            <DialogTitle>
-              {isPlayer ? "Inscripción en Pareja" : "Inscripción de Parejas"}
-            </DialogTitle>
-            <DialogDescription>
-              {isPlayer 
-                ? "Registra una pareja para el torneo" 
-                : "Registre parejas de manera flexible: combine jugadores nuevos y existentes según sus necesidades"
-              }
-            </DialogDescription>
-          </DialogHeader>
-          
-          {isPlayer ? (
-            <RegisterCoupleForm
-              tournamentId={tournamentId}
-              onComplete={handleRegisterCoupleSuccess}
-              players={allPlayers}
-              tournamentGender={tournamentGender}
-              transferConfig={{
-                enabled: enableTransferProof,
-                alias: transferAlias,
-                amount: transferAmount,
-              }}
-            />
-          ) : (
-            <CoupleRegistrationAdvanced
-              tournamentId={tournamentId}
-              onComplete={handleRegisterCoupleSuccess}
-              players={allPlayers}
-              isClubMode={true}
-              userPlayerId={userDetails?.player_id || null}
-              tournamentGender={tournamentGender}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Diálogo de autenticación requerida */}
-      <AuthRequiredDialog
-        open={authDialogOpen}
-        onOpenChange={setAuthDialogOpen}
-        title="Necesitas iniciar sesión"
-        description="Para inscribirte en el torneo necesitas tener una cuenta activa como jugador."
-        actionText="inscribirte"
-        registerHref={registerHref}
-        loginHref={loginHref}
-      />
 
       {/* Diálogo de detalles del jugador */}
       {selectedPlayerId && (

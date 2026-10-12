@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 
 import { updatePlayerPhone } from "@/app/api/players/actions"
+import { createRegistrationTrace } from '@/lib/tournaments/registration-log'
 
 interface UpdatePhoneBody {
   playerId?: string
@@ -8,33 +9,32 @@ interface UpdatePhoneBody {
 }
 
 export async function POST(request: NextRequest) {
+  const trace = createRegistrationTrace(request.headers, 'update-phone')
   try {
+    trace.step('read-form')
     const body = (await request.json()) as UpdatePhoneBody
 
     if (!body.playerId) {
-      return NextResponse.json(
+      return trace.reply(
         {
           success: false,
           error: "Falta el jugador a actualizar.",
         },
-        { status: 400 },
+        400, 'player_missing',
       )
     }
 
+    trace.step('update-phone')
     const result = await updatePlayerPhone(body.playerId, body.phone || "")
 
-    return NextResponse.json(result, {
-      status: result.success ? 200 : 400,
-    })
+    return trace.reply(result, result.success ? 200 : 400, result.success ? 'complete' : 'phone_update_failed')
   } catch (error) {
-    console.error("[update-phone] Unexpected error:", error)
-
-    return NextResponse.json(
+    return trace.reply(
       {
         success: false,
-        error: error instanceof Error ? error.message : "No se pudo actualizar el teléfono.",
+        error: "No se pudo actualizar el teléfono.",
       },
-      { status: 500 },
+      500, 'unexpected_failure', error,
     )
   }
 }

@@ -1,4 +1,5 @@
 "use client"
+import { InscriptionPaymentPanel } from '@/components/tournament/inscription-payment-panel'
 
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -9,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/components/ui/use-toast"
 import CoupleRegistrationAdvanced from "@/components/tournament/couple-registration-advanced"
 import { Gender } from "@/types"
-import RegisterCoupleForm from "@/components/tournament/player/register-couple-form"
+import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { removeCoupleFromTournament, approveInscription, rejectInscription, updatePlayerPaymentStatus } from "@/app/api/tournaments/actions"
 import { useUser } from "@/contexts/user-context"
 import AuthRequiredDialog from "@/components/tournament/auth-required-dialog"
@@ -51,6 +52,8 @@ interface CoupleInfo {
 interface TournamentCouplesTabProps {
   coupleInscriptions: CoupleInfo[]
   tournamentId: string
+  tournamentName?: string
+  tournamentPrice?: number | string | null
   tournamentStatus: string
   allPlayers?: PlayerInfo[]
   isOwner?: boolean
@@ -73,6 +76,8 @@ interface TournamentCouplesTabProps {
 export default function TournamentCouplesTab({
   coupleInscriptions,
   tournamentId,
+  tournamentName = "este torneo",
+  tournamentPrice = null,
   tournamentStatus,
   allPlayers = [],
   isOwner = false,
@@ -103,7 +108,6 @@ export default function TournamentCouplesTab({
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [coupleToReject, setCoupleToReject] = useState<CoupleInfo | null>(null)
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
-  const [openingProofId, setOpeningProofId] = useState<string | null>(null)
 
   const { toast } = useToast()
   const { user, userDetails } = useUser()
@@ -134,7 +138,7 @@ export default function TournamentCouplesTab({
     && millisecondsUntilStart >= 0
     && millisecondsUntilStart < 3 * 60 * 60 * 1000
   const showPaymentCheckboxes = canManageTournament && enablePaymentCheckboxes
-  const showTransferProof = canManageTournament && enableTransferProof
+  const showTransferProof = canManageTournament
 
   // Use isOwner from useTournamentPermissions to show/hide player details
   const canViewPlayerDetails = isOwner
@@ -399,60 +403,6 @@ export default function TournamentCouplesTab({
     }
   }
 
-  const handleOpenProof = async (inscriptionId: string) => {
-    setOpeningProofId(inscriptionId)
-
-    try {
-      const response = await fetch(`/api/tournaments/${tournamentId}/inscriptions/${inscriptionId}/proof`)
-      const result = await response.json()
-
-      if (!response.ok || !result.success || !result.url) {
-        throw new Error(result.message || 'No se pudo abrir el comprobante')
-      }
-
-      window.open(result.url, '_blank', 'noopener,noreferrer')
-    } catch (error) {
-      console.error('[TournamentCouplesTab] Error opening proof:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'No se pudo abrir el comprobante',
-        variant: 'destructive'
-      })
-    } finally {
-      setOpeningProofId(null)
-    }
-  }
-
-  const formatMoney = (amount?: number | null) => {
-    if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return 'Sin monto'
-    return `$${Number(amount).toLocaleString('es-AR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`
-  }
-
-  const getProofBadgeClasses = (status?: CoupleInfo['payment_proof_status']) => {
-    switch (status) {
-      case 'APPROVED':
-        return 'bg-green-100 text-green-700 border-green-200'
-      case 'PENDING_REVIEW':
-        return 'bg-amber-100 text-amber-700 border-amber-200'
-      default:
-        return 'bg-slate-100 text-slate-600 border-slate-200'
-    }
-  }
-
-  const getProofBadgeText = (status?: CoupleInfo['payment_proof_status']) => {
-    switch (status) {
-      case 'APPROVED':
-        return 'Aprobado'
-      case 'PENDING_REVIEW':
-        return 'Pendiente'
-      default:
-        return 'No requerido'
-    }
-  }
-
   return (
     <>
       <div className="p-6 border-b border-gray-200 bg-slate-50">
@@ -465,14 +415,27 @@ export default function TournamentCouplesTab({
           </div>
 
           {!isRegistrationBlocked && (canManageTournament || isPlayer) && (
-            <Button
-              onClick={handleRegisterCoupleClick}
-              className="bg-slate-900 hover:bg-slate-800 text-white py-3 sm:py-2"
-              size="default"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Inscribir Pareja
-            </Button>
+            isPlayer ? (
+              <PublicRegistrationLauncher
+                tournamentId={tournamentId}
+                tournamentName={tournamentName}
+                tournamentPrice={tournamentPrice}
+                tournamentGender={tournamentGender}
+                enableTransferProof={enableTransferProof}
+                transferAlias={transferAlias}
+                transferAmount={transferAmount}
+                buttonClassName="bg-slate-900 hover:bg-slate-800 text-white"
+              />
+            ) : (
+              <Button
+                onClick={handleRegisterCoupleClick}
+                className="bg-slate-900 hover:bg-slate-800 text-white py-3 sm:py-2"
+                size="default"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Inscribir Pareja
+              </Button>
+            )
           )}
         </div>
       </div>
@@ -641,31 +604,7 @@ export default function TournamentCouplesTab({
                     )}
                     {showTransferProof && (
                       <TableCell className="text-center">
-                        <div className="space-y-2">
-                          <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${getProofBadgeClasses(couple.payment_proof_status)}`}>
-                            {getProofBadgeText(couple.payment_proof_status)}
-                          </span>
-                          <div className="text-xs text-slate-600">
-                            <div>{couple.payment_alias_snapshot || "Sin alias"}</div>
-                            <div>{formatMoney(couple.payment_amount_snapshot)}</div>
-                          </div>
-                          {couple.inscription_id &&
-                            couple.payment_proof_status &&
-                            couple.payment_proof_status !== 'NOT_REQUIRED' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenProof(couple.inscription_id!)}
-                              disabled={openingProofId === couple.inscription_id}
-                            >
-                              {openingProofId === couple.inscription_id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                'Ver'
-                              )}
-                            </Button>
-                            )}
-                        </div>
+                        {couple.inscription_id && <InscriptionPaymentPanel tournamentId={tournamentId} inscriptionId={couple.inscription_id} managerRow />}
                       </TableCell>
                     )}
                     {canManageTournament && (
@@ -756,42 +695,25 @@ export default function TournamentCouplesTab({
       </div>
 
       {/* Diálogo para inscribir pareja */}
-      <Dialog open={registerCoupleDialogOpen} onOpenChange={setRegisterCoupleDialogOpen}>
-        <DialogContent className={isPlayer ? "sm:max-w-[800px] max-h-[90vh] overflow-y-auto" : "sm:max-w-[1000px] max-h-[95vh] overflow-y-auto"}>
+      <Dialog open={!isPlayer && registerCoupleDialogOpen} onOpenChange={setRegisterCoupleDialogOpen}>
+        <DialogContent className="sm:max-w-[1000px] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isPlayer ? "Inscripción en Pareja" : "Sistema Avanzado de Inscripción de Parejas"}
+              Sistema Avanzado de Inscripción de Parejas
             </DialogTitle>
             <DialogDescription>
-              {isPlayer 
-                ? "Registra una pareja para el torneo" 
-                : "Registre parejas de manera flexible: combine jugadores nuevos y existentes según sus necesidades"
-              }
+              Registre parejas de manera flexible: combine jugadores nuevos y existentes según sus necesidades
             </DialogDescription>
           </DialogHeader>
           
-          {isPlayer ? (
-            <RegisterCoupleForm
-              tournamentId={tournamentId}
-              onComplete={handleRegisterSuccess}
-              players={allPlayers}
-              tournamentGender={tournamentGender}
-              transferConfig={{
-                enabled: enableTransferProof,
-                alias: transferAlias,
-                amount: transferAmount,
-              }}
-            />
-          ) : (
-            <CoupleRegistrationAdvanced
-              tournamentId={tournamentId}
-              onComplete={handleRegisterSuccess}
-              players={allPlayers}
-              isClubMode={true}
-              userPlayerId={null}
-              tournamentGender={tournamentGender}
-            />
-          )}
+          <CoupleRegistrationAdvanced
+            tournamentId={tournamentId}
+            onComplete={handleRegisterSuccess}
+            players={allPlayers}
+            isClubMode={true}
+            userPlayerId={null}
+            tournamentGender={tournamentGender}
+          />
         </DialogContent>
       </Dialog>
 

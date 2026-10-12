@@ -138,6 +138,7 @@ const tournamentSchema = z.object({
   end_time: z.string().optional(),
   max_participants: z.number().min(2, 'Minimo 2 parejas').max(64, 'Maximo 64 parejas').optional(),
   show_public_inscriptions: z.boolean().default(true),
+  allow_cash_payment: z.boolean().default(false),
   club_id: z.string().min(1, 'Selecciona un club'),
   extra_club_ids: z.array(z.string()).default([]),
   price: z.number().int('El precio debe ser un numero entero').min(0, 'El precio no puede ser negativo').max(MAX_TOURNAMENT_PRICE, 'El precio es demasiado alto').optional(),
@@ -385,6 +386,7 @@ export default function TournamentCreateForm() {
       end_time: '',
       max_participants: undefined,
       show_public_inscriptions: true,
+      allow_cash_payment: false,
       club_id: '',
       extra_club_ids: [],
       price: undefined,
@@ -865,6 +867,7 @@ export default function TournamentCreateForm() {
         end_date: data.type === 'LONG' && data.end_date ? formatDateTime(data.end_date) : null,
         max_participants: data.max_participants || null,
         show_public_inscriptions: data.show_public_inscriptions,
+        allow_cash_payment: data.allow_cash_payment,
         club_id: data.club_id,
         extra_club_ids: (data.extra_club_ids || []).filter((id) => id && id !== data.club_id),
         price: data.price ?? null,
@@ -1941,6 +1944,12 @@ export default function TournamentCreateForm() {
                             </FormItem>
                           )}
                         />
+                        <FormField control={form.control} name="allow_cash_payment" render={({ field }) => (
+                          <FormItem className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                            <div><FormLabel>Permitir efectivo</FormLabel><FormDescription>El jugador puede elegir efectivo sin comprobante. No se marca como cobrado.</FormDescription></div>
+                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                          </FormItem>
+                        )} />
                       </div>
 
                       {selectedPreset?.bracketMode !== 'NONE' && (

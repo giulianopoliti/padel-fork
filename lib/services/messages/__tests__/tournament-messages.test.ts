@@ -111,6 +111,25 @@ describe("sendTournamentMessage", () => {
     )
   })
 
+  it("waits for the proof before confirming an automatically approved reservation", async () => {
+    const tables = baseTables()
+    const inscription = { ...tables.inscriptions[0], payment_method: "TRANSFER", payment_proof_path: null as string | null }
+    const supabase = makeSupabase({ ...tables, inscriptions: [inscription] })
+    await sendTournamentMessage({ type: "INSCRIPTION_APPROVED_PLAYER", supabase, inscriptionId: inscription.id })
+    expect(sendTransactionalEmail).not.toHaveBeenCalled()
+    inscription.payment_proof_path = "saved/receipt.png"
+    await sendTournamentMessage({ type: "INSCRIPTION_APPROVED_PLAYER", supabase, inscriptionId: inscription.id })
+    expect(sendTransactionalEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it("tells the organizer when a reservation is missing its proof", async () => {
+    const tables = baseTables()
+    const inscription = { ...tables.inscriptions[0], payment_method: "TRANSFER", payment_proof_path: null }
+    const supabase = makeSupabase({ ...tables, inscriptions: [inscription] })
+    await sendTournamentMessage({ type: "INSCRIPTION_SUBMITTED_ADMIN", supabase, inscriptionId: inscription.id })
+    expect(sendTransactionalEmail).toHaveBeenCalledWith(expect.objectContaining({ text: expect.stringContaining("Falta comprobante (cupo reservado)") }))
+  })
+
   it("deduplicates organizer and tenant recipients for admin messages", async () => {
     const supabase = makeSupabase(
       baseTables({

@@ -12,6 +12,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { scheduleInscriptionProofCleanup } from '@/lib/services/inscription-proofs'
 import { createRegistrationStrategy, RegistrationStrategyError } from './registration-strategy.factory'
 import { validateMixedPairGender } from '@/lib/services/tournament-category-config'
 import { sendTournamentMessage } from '@/lib/services/messages'
@@ -33,6 +34,8 @@ import type {
 import { hasRealDni, sanitizeDniInput } from '@/lib/utils/player-dni'
 import { hasSameNormalizedPlayerName } from '@/lib/utils/player-identity'
 import { getTenantBranding } from '@/config/tenant'
+import { createRegistrationTrace, registrationErrorDetails } from '@/lib/tournaments/registration-log'
+import { reconcileCompleteInscriptions } from './reconcile-complete-inscriptions'
 import {
   assertTpePlayersCanRegister,
   recordTpeLateWithdrawal,
@@ -42,12 +45,6 @@ import {
 } from '@/lib/services/tpe-registration-restrictions'
 
 export class RegistrationService {
-  private supabase: any
-
-  constructor() {
-    // El supabase client se inicializa por request para mantener el contexto de auth
-  }
-
   // ===== MÉTODOS PÚBLICOS PRINCIPALES =====
 
   /**
@@ -57,28 +54,36 @@ export class RegistrationService {
    * @returns Resultado del registro con detalles específicos del tipo de torneo
    */
   async registerCouple(request: RegisterCoupleRequest): Promise<CoupleRegistrationResult> {
-    console.log(`[RegistrationService] Iniciando registro de pareja para torneo ${request.tournamentId}`)
+    const trace = createRegistrationTrace(new Headers(request.attemptId ? { 'x-registration-attempt': request.attemptId } : {}), 'register-couple')
+    trace.tournament(request.tournamentId)
 
     try {
       // Preparar contexto
-      const context = await this.prepareContext(request.tournamentId)
+      trace.step('registration-context')
+      const context = await this.prepareContext(request.tournamentId, trace)
       if (!context.success || !context.context) {
+        trace.log('context_rejected', 'warn')
         return { success: false, error: context.error }
       }
+      context.context.trace = trace
 
       // Obtener estrategia apropiada
       const strategy = this.getStrategy(context.context.tournament.type)
 
       // Validaciones adicionales antes de delegar
+      trace.step('validate-players')
       const validation = await this.validateCoupleRegistrationRequest(request, context.context)
       if (!validation.success) {
+        trace.log('player_validation_rejected', 'warn')
         return { success: false, error: validation.error }
       }
 
       // Delegar a la estrategia específica
       const result = await strategy.registerCouple(request, context.context)
+      if (!result.success) trace.log('registration_rejected', 'warn')
 
       if (result.success && result.inscriptionId && !request.isOrganizerRegistration) {
+        trace.step('record-terms')
         await recordTpeTermsAcceptance({
           tournamentType: context.context.tournament.type,
           tournamentId: request.tournamentId,
@@ -88,6 +93,7 @@ export class RegistrationService {
         })
       }
       if (result.success && request.isOrganizerRegistration && request.allowBlockedPlayerOverride) {
+        trace.step('record-override')
         await recordTpeBlockOverrides({
           tournamentType: context.context.tournament.type,
           tournamentId: request.tournamentId,
@@ -98,13 +104,15 @@ export class RegistrationService {
 
       // Log del resultado
       this.logRegistrationResult('registerCouple', request.tournamentId, result)
+      trace.step('registration-notices')
       await this.notifyInscriptionCreated(result.inscriptionId, context.context)
       await this.handleTournamentCapacitySideEffects(request.tournamentId, result.success)
+      trace.log(result.success ? 'complete' : 'rejected', result.success ? 'info' : 'warn')
 
       return result
 
     } catch (error) {
-      console.error('[RegistrationService] Error inesperado en registerCouple:', error)
+      trace.log('unexpected_failure', 'error', error)
       return { 
         success: false, 
         error: error instanceof RegistrationStrategyError ? 
@@ -303,6 +311,7 @@ export class RegistrationService {
         .maybeSingle()
 
       const result = await strategy.removeCouple(request, context.context)
+      if (result.success) scheduleInscriptionProofCleanup()
       if (result.success && couple && inscription) {
         const cancellationSource = context.context.user.role === 'PLAYER' ? 'PLAYER' : 'ORGANIZER'
         await recordTpeLateWithdrawal({
@@ -363,46 +372,48 @@ export class RegistrationService {
   /**
    * Prepara el contexto necesario para las operaciones de registro
    */
-  private async prepareContext(tournamentId: string): Promise<{
+  private async prepareContext(tournamentId: string, trace?: ReturnType<typeof createRegistrationTrace>): Promise<{
     success: boolean
     context?: RegistrationContext
     error?: string
   }> {
     try {
-      // Inicializar cliente Supabase para este request
-      this.supabase = await createClient()
+      // Keep the authenticated client local: this service is shared across requests.
+      const supabase = await createClient()
 
       // Obtener usuario autenticado
-      const { data: { user }, error: authError } = await this.supabase.auth.getUser()
+      trace?.step('authentication')
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError || !user) {
-        console.error('[RegistrationService] Error de autenticación:', authError?.message)
+        trace?.log('session_unavailable', 'warn', authError)
         return { success: false, error: 'Usuario no autenticado' }
       }
 
       // Obtener rol real del usuario
-      const { data: userProfile, error: userProfileError } = await this.supabase
+      trace?.step('profile')
+      const { data: userProfile, error: userProfileError } = await supabase
         .from('users')
         .select('role')
         .eq('id', user.id)
         .single()
 
       if (userProfileError) {
-        console.error('[RegistrationService] Error obteniendo perfil de usuario:', userProfileError?.message)
+        trace?.log('profile_unavailable', 'error', userProfileError)
         return { success: false, error: 'Error obteniendo perfil de usuario' }
       }
 
       const userRole = userProfile?.role || 'USER'
-      console.log(`[RegistrationService] Usuario autenticado: ${user.email}, Rol: ${userRole}`)
 
       // Obtener datos del torneo
-      const { data: tournament, error: tournamentError } = await this.supabase
+      trace?.step('tournament')
+      const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
-        .select('id, name, type, gender, category_name, category_config, status, validate_inscriptions, format_config')
+        .select('id, name, type, gender, category_name, category_config, status, validate_inscriptions, format_config, enable_transfer_proof, allow_cash_payment')
         .eq('id', tournamentId)
         .single()
 
       if (tournamentError || !tournament) {
-        console.error('[RegistrationService] Error obteniendo torneo:', tournamentError?.message)
+        trace?.log('tournament_unavailable', 'warn', tournamentError)
         return { success: false, error: 'Torneo no encontrado' }
       }
 
@@ -416,19 +427,22 @@ export class RegistrationService {
           category_name: tournament.category_name,
           category_config: tournament.category_config,
           status: tournament.status,
-          validate_inscriptions: tournament.validate_inscriptions ?? false
+          validate_inscriptions: tournament.validate_inscriptions ?? false,
+          enable_transfer_proof: tournament.enable_transfer_proof ?? false,
+          allow_cash_payment: tournament.allow_cash_payment ?? false,
+          format_config: tournament.format_config,
         },
         user: {
           id: user.id,
           role: userRole
         },
-        supabase: this.supabase
+        supabase
       }
 
       return { success: true, context }
 
     } catch (error) {
-      console.error('[RegistrationService] Error preparando contexto:', error)
+      trace?.log('context_failed', 'error', error)
       return { success: false, error: 'Error preparando contexto de registro' }
     }
   }
@@ -490,15 +504,21 @@ export class RegistrationService {
     context: RegistrationContext
   ): Promise<{ success: boolean; error?: string }> {
     // Validaciones básicas
+    if (request.paymentMethod === 'CASH' && !context.tournament.allow_cash_payment) {
+      return { success: false, error: 'Este torneo no permite efectivo.' }
+    }
     if (!request.player1Id || !request.player2Id) {
+      context.trace?.log('players_missing', 'warn')
       return { success: false, error: 'IDs de jugadores son requeridos' }
     }
 
     if (request.player1Id === request.player2Id) {
+      context.trace?.log('same_player_twice', 'warn')
       return { success: false, error: 'Un jugador no puede formar pareja consigo mismo' }
     }
 
     if (context.tournament.type === 'AMERICAN' && getTenantBranding().key === 'padel-elite' && !request.isOrganizerRegistration && !request.termsAccepted) {
+      context.trace?.log('terms_not_accepted', 'warn')
       return { success: false, error: 'Debes aceptar los Términos y Condiciones para inscribirte.' }
     }
 
@@ -508,16 +528,18 @@ export class RegistrationService {
       allowBlockedPlayerOverride: Boolean(request.isOrganizerRegistration && request.allowBlockedPlayerOverride),
     })
     if (!restrictionResult.success) {
+      context.trace?.log('player_restricted', 'warn')
       return { success: false, error: TPE_BLOCKED_REGISTRATION_MESSAGE }
     }
 
     // Validar que los jugadores existan
-    const { data: players } = await context.supabase
+    const { data: players, error: playersError } = await context.supabase
       .from('players')
       .select('id, gender')
       .in('id', [request.player1Id, request.player2Id])
 
-    if (!players || players.length !== 2) {
+    if (playersError || !players || players.length !== 2) {
+      context.trace?.log(playersError ? 'players_query_failed' : 'players_not_found', 'warn', playersError)
       return { success: false, error: 'Uno o ambos jugadores no existen' }
     }
 
@@ -531,6 +553,7 @@ export class RegistrationService {
     )
 
     if (!mixedValidation.success) {
+      context.trace?.log('gender_rejected', 'warn')
       return { success: false, error: mixedValidation.error }
     }
 
@@ -744,12 +767,20 @@ export class RegistrationService {
     if (shouldSync) {
       try {
         await syncTournamentCapacityRegistrationLock(tournamentId)
+        await reconcileCompleteInscriptions(tournamentId)
       } catch (error) {
         console.error('[RegistrationService] Error sincronizando cupo del torneo:', error)
       }
     }
 
-    this.revalidateTournamentRegistrationPaths(tournamentId)
+    try {
+      this.revalidateTournamentRegistrationPaths(tournamentId)
+    } catch (error) {
+      // Refresh failures do not undo a saved registration or cancellation.
+      console.error('[RegistrationService] refresh_failed_after_save', {
+        tournamentId, ...registrationErrorDetails(error),
+      })
+    }
   }
 
   private revalidateTournamentRegistrationPaths(tournamentId: string): void {

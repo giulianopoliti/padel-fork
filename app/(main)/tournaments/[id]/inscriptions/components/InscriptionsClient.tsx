@@ -60,6 +60,7 @@ interface CoupleInfo {
 interface Tournament {
   id: string;
   name: string;
+  price?: number | null;
   type: string;
   status: string;
   start_date?: string | null;
@@ -265,6 +266,8 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
                 <TournamentCouplesTab
                   coupleInscriptions={liveCoupleInscriptions || []}
                   tournamentId={tournamentId}
+                  tournamentName={tournament.name}
+                  tournamentPrice={tournament.price}
                   tournamentStatus={tournament.status}
                   allPlayers={allPlayers}
                   isOwner={isOwner}
@@ -290,6 +293,8 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
                 <TournamentPlayersTab
                   individualInscriptions={liveIndividualInscriptions || []}
                   tournamentId={tournamentId}
+                  tournamentName={tournament.name}
+                  tournamentPrice={tournament.price}
                   tournamentStatus={tournament.status}
                   allPlayers={allPlayers}
                   isPublicView={false}

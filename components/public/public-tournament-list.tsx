@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { useOwnPayments } from "@/hooks/use-own-payments"
+import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
 import { useRouter } from "next/navigation"
 import { CalendarDays, ChevronRight, Clock3, MapPin, Ticket } from "lucide-react"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
@@ -41,7 +43,7 @@ const genderLabels: Partial<Record<Gender, string>> = {
 
 const capitalizeWords = (value: string) => value.replace(/\b\w/g, (char) => char.toUpperCase())
 
-const formatDateLabel = (value: string | null) => {
+const formatDateLabel = (value: string | null | undefined) => {
   if (!value) return "Fecha a confirmar"
 
   return capitalizeWords(
@@ -54,7 +56,7 @@ const formatDateLabel = (value: string | null) => {
   )
 }
 
-const formatTimeLabel = (value: string | null) => {
+const formatTimeLabel = (value: string | null | undefined) => {
   if (!value) return "Horario a confirmar"
 
   return `${new Intl.DateTimeFormat("es-AR", {
@@ -90,6 +92,7 @@ export default function PublicTournamentList({
 }: PublicTournamentListProps) {
   const branding = getTenantBranding()
   const router = useRouter()
+  const payments = useOwnPayments(tournaments.map(tournament => tournament.id))
   const allowActivePhaseRegistration = branding.key === "padel-fv"
 
   if (tournaments.length === 0) {
@@ -130,6 +133,7 @@ export default function PublicTournamentList({
             typeof tournament.gender === "string"
               ? genderLabels[tournament.gender as Gender] || tournament.gender
               : "Categoria abierta"
+          const ownInscription = payments.inscriptions?.[tournament.id]
           const priceLabel = formatPrice(tournament.price)
           const categoryLabel = getCategoryLabel(tournament)
           const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
@@ -158,7 +162,7 @@ export default function PublicTournamentList({
                 router.push(tournamentHref)
               }}
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
+                if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
                   event.preventDefault()
                   router.push(tournamentHref)
                 }
@@ -218,7 +222,7 @@ export default function PublicTournamentList({
                   <Badge className="tpe-chip rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em]">
                     {statusLabel}
                   </Badge>
-                  {tournament.isFull ? (
+                  {tournament.isFull && !ownInscription ? (
                     <Badge className="rounded-full border border-red-200/90 bg-red-700 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-[0_0_22px_rgba(220,38,38,0.38)]">
                       Completo
                     </Badge>
@@ -238,7 +242,7 @@ export default function PublicTournamentList({
               </div>
 
               <div className="flex flex-col justify-between gap-3">
-                {canRegister ? (
+                {payments.loading ? <p role="status" className="text-sm">Consultando inscripción…</p> : payments.error ? <div role="alert" className="text-sm">No se pudo consultar tu inscripción. <Button variant="outline" onClick={() => void payments.retry().catch(() => {})}>Reintentar</Button></div> : ownInscription ? <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={ownInscription} /></div> : canRegister ? (
                   <PublicRegistrationLauncher
                     tournamentId={tournament.id}
                     tournamentName={tournament.name}

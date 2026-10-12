@@ -30,6 +30,7 @@ import { normalizePlayerDni } from '@/lib/utils/player-dni';
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity';
 import { ensureLongTournamentGeneralZone } from '@/lib/services/tournaments/long-general-zone';
 import { ensureAmericanSingleZone } from '@/lib/services/tournaments/american-single-zone';
+import { reconcileCompleteInscriptions } from '@/lib/services/registration/reconcile-complete-inscriptions';
 import {
   ensureCanonicalZoneMembership,
   removeTournamentCoupleMembership,
@@ -88,6 +89,7 @@ interface CreateTournamentData {
   award: string | null;
   format_config?: any;
   show_public_inscriptions?: boolean;
+  allow_cash_payment?: boolean;
 }
 
 // Interface for couple with extended stats used in sorting (extends the imported CoupleWithStats)
@@ -711,6 +713,7 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
       // Keep the tenant default when older clients do not send this setting.
       show_public_inscriptions:
         formData.show_public_inscriptions ?? (getTenantBranding().key !== 'padel-elite'),
+      allow_cash_payment: formData.allow_cash_payment === true,
       // Ensure date fields are correctly formatted if they come as strings
       start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
       end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
@@ -1383,11 +1386,13 @@ export async function registerCoupleForTournament(
   isOrganizerRegistration: boolean = false,
   termsAccepted: boolean = false,
   allowBlockedPlayerOverride: boolean = false,
+  attemptId?: string,
+  paymentMethod?: 'TRANSFER' | 'CASH',
 ): Promise<{ success: boolean; error?: string; inscription?: any }> {
   console.log(`[registerCoupleForTournament] 🔄 Refactorizado con Strategy Pattern - torneo ${tournamentId}`, { player1Id, player2Id, isOrganizerRegistration });
   
   // Usar la nueva implementación V2 con Strategy Pattern
-  return await registerCoupleForTournamentV2(tournamentId, player1Id, player2Id, isOrganizerRegistration, termsAccepted, allowBlockedPlayerOverride);
+  return await registerCoupleForTournamentV2(tournamentId, player1Id, player2Id, isOrganizerRegistration, termsAccepted, allowBlockedPlayerOverride, attemptId, paymentMethod);
 }
 
 /**
@@ -5928,6 +5933,8 @@ export async function registerCoupleForTournamentV2(
   isOrganizerRegistration: boolean = false,
   termsAccepted: boolean = false,
   allowBlockedPlayerOverride: boolean = false,
+  attemptId?: string,
+  paymentMethod?: 'TRANSFER' | 'CASH',
 ): Promise<{ success: boolean; error?: string; inscription?: any }> {
   console.log(`[registerCoupleForTournamentV2] 🎾 Usando Strategy Pattern para torneo ${tournamentId}`, { player1Id, player2Id, isOrganizerRegistration });
   
@@ -5942,6 +5949,8 @@ export async function registerCoupleForTournamentV2(
       isOrganizerRegistration,
       termsAccepted,
       allowBlockedPlayerOverride,
+      attemptId,
+      paymentMethod,
     });
     
     // Revalidar path para mantener comportamiento anterior
@@ -6348,11 +6357,8 @@ export async function approveInscription(inscriptionId: string): Promise<{
 
 
   if (inscription.couple_id) {
-    const zoneResult = await ensureAmericanSingleZone(inscription.tournament_id)
-    if (!zoneResult.success) {
-      console.error('[approveInscription] Error assigning single-zone membership:', zoneResult.error)
-      return { success: false, error: 'La inscripción fue aprobada, pero no se pudo actualizar la Zona General.' }
-    }
+    try { await reconcileCompleteInscriptions(inscription.tournament_id) }
+    catch { console.error('[approveInscription] zone_reconciliation_deferred') }
   }
 
   try {
@@ -6430,14 +6436,6 @@ export async function rejectInscription(inscriptionId: string): Promise<{
     }
   }
 
-  if (inscription.payment_proof_path) {
-    const { deleteInscriptionProof } = await import('@/lib/services/inscription-proofs');
-    const deleteProofResult = await deleteInscriptionProof(inscription.payment_proof_path);
-    if (!deleteProofResult.success) {
-      console.warn('[rejectInscription] Error al borrar comprobante:', deleteProofResult.error);
-    }
-  }
-  
   // Eliminar la inscripcion
   const { error: deleteError } = await supabase
     .from('inscriptions')
@@ -6450,6 +6448,8 @@ export async function rejectInscription(inscriptionId: string): Promise<{
   }
   
   console.log(`[rejectInscription] Inscripcion ${inscriptionId} rechazada exitosamente`);
+  const { scheduleInscriptionProofCleanup } = await import('@/lib/services/inscription-proofs');
+  scheduleInscriptionProofCleanup();
 
   try {
     await syncTournamentCapacityRegistrationLock(inscription.tournament_id)

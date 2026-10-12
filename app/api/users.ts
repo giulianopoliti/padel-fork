@@ -684,6 +684,11 @@ export const getUser = async (): Promise<User | null> => {
         price,
         status,
         enable_public_inscriptions,
+        enable_transfer_proof,
+        transfer_alias,
+        transfer_amount,
+        gender,
+        type,
         show_few_slots_alert
       `)
       .eq("club_id", clubId)
@@ -728,6 +733,11 @@ export const getUser = async (): Promise<User | null> => {
           price: tournament.price,
           status: tournament.status,
           enablePublicInscriptions: Boolean(tournament.enable_public_inscriptions),
+          enableTransferProof: Boolean(tournament.enable_transfer_proof),
+          transferAlias: tournament.transfer_alias ?? null,
+          transferAmount: tournament.transfer_amount ?? null,
+          gender: tournament.gender,
+          type: tournament.type,
           showFewSlotsAlert: tournament.show_few_slots_alert !== false,
           startDate: tournament.start_date || null,
           endDate: tournament.end_date || null,

@@ -9,6 +9,7 @@ interface InscriptionSettingsPayload {
   show_few_slots_alert: boolean
   enable_payment_checkboxes: boolean
   enable_transfer_proof: boolean
+  allow_cash_payment: boolean
   messages_enabled: boolean
   transfer_alias: string | null
   transfer_amount: number | null
@@ -21,6 +22,9 @@ export async function PATCH(
   try {
     const { id: tournamentId } = await params
     const payload = (await request.json()) as Partial<InscriptionSettingsPayload>
+    if (payload.allow_cash_payment !== undefined && typeof payload.allow_cash_payment !== 'boolean') {
+      return NextResponse.json({ success: false, message: 'La opción de efectivo debe ser verdadero o falso.' }, { status: 400 })
+    }
     const supabase = await createClient()
 
     const {
@@ -51,6 +55,7 @@ export async function PATCH(
         show_few_slots_alert,
         enable_payment_checkboxes,
         enable_transfer_proof,
+        allow_cash_payment,
         messages_enabled,
         transfer_alias,
         transfer_amount
@@ -112,6 +117,7 @@ export async function PATCH(
       show_few_slots_alert: showFewSlotsAlert,
       enable_payment_checkboxes: enablePaymentCheckboxes,
       enable_transfer_proof: enableTransferProof,
+      allow_cash_payment: payload.allow_cash_payment ?? currentTournament.allow_cash_payment ?? false,
       messages_enabled: messagesEnabled,
       transfer_alias: transferAlias,
       transfer_amount: transferAmount,
@@ -138,6 +144,15 @@ export async function PATCH(
         { success: false, message: updateError.message },
         { status: 500 }
       )
+    }
+
+    if (shouldApprovePendingInscriptions) {
+      try {
+        const { reconcileCompleteInscriptions } = await import('@/lib/services/registration/reconcile-complete-inscriptions')
+        await reconcileCompleteInscriptions(tournamentId)
+      } catch {
+        console.error('[inscription-settings] Zone reconciliation deferred after approval')
+      }
     }
 
     if (pendingInscriptionsToNotify && pendingInscriptionsToNotify.length > 0) {

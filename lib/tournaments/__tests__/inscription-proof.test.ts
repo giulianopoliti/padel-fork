@@ -75,6 +75,6 @@ describe('inscription proof validation and submission', () => {
 
   it.each(['upload', 'registration'])('preserves the %s error reported by the server', async (stage) => {
     fetchMock.mockResolvedValue(Response.json({ success: false, message: 'Mensaje específico', stage }, { status: 400 }))
-    expect(await submit()).toEqual({ success: false, error: 'Mensaje específico', stage })
+    expect(await submit()).toMatchObject({ success: false, error: expect.stringContaining('Mensaje específico Código:'), stage })
   })
 })

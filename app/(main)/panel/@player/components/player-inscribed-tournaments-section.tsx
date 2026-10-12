@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
 import { CalendarDays, ChevronRight, MapPin, Users } from "lucide-react"
 import type { InscribedTournament } from "@/app/api/panel/actions"
 import { Badge } from "@/components/ui/badge"
@@ -104,8 +105,9 @@ export default function PlayerInscribedTournamentsSection({
                 </div>
               </div>
 
-              <div className="flex items-end">
-                <Button
+              <div className="flex flex-col gap-3">
+                <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p>{inscription.payment && <PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={inscription.payment} />}</div>
+                  <Button
                   asChild
                   variant="outline"
                   className="w-full rounded-full border-white/20 bg-white/5 text-sm font-bold uppercase tracking-[0.14em] text-white hover:bg-white/10 hover:text-white"

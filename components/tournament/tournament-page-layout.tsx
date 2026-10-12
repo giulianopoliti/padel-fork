@@ -113,6 +113,8 @@ export default function TournamentPageLayout({
           <TournamentPlayersTab
             individualInscriptions={individualInscriptions}
             tournamentId={tournamentId}
+            tournamentName={tournament?.name}
+            tournamentPrice={tournament?.price}
             tournamentStatus={tournamentStatus}
             maxPlayers={maxPlayers}
             allPlayers={allPlayers}
@@ -132,6 +134,8 @@ export default function TournamentPageLayout({
           <TournamentCouplesTab
             coupleInscriptions={coupleInscriptions}
             tournamentId={tournamentId}
+            tournamentName={tournament?.name}
+            tournamentPrice={tournament?.price}
             tournamentStatus={tournamentStatus}
             allPlayers={allPlayers}
             isOwner={isOwner}

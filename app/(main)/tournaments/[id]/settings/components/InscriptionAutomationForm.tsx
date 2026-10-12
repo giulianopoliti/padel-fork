@@ -17,6 +17,7 @@ interface InscriptionAutomationFormProps {
   initialShowFewSlotsAlert: boolean
   initialEnablePaymentCheckboxes: boolean
   initialEnableTransferProof: boolean
+  initialAllowCashPayment?: boolean
   initialMessagesEnabled: boolean
   initialTransferAlias: string | null
   initialTransferAmount: number | null
@@ -30,6 +31,7 @@ interface PersistPatch {
   show_few_slots_alert?: boolean
   enable_payment_checkboxes?: boolean
   enable_transfer_proof?: boolean
+  allow_cash_payment?: boolean
   messages_enabled?: boolean
   transfer_alias?: string | null
   transfer_amount?: number | null
@@ -116,6 +118,7 @@ export default function InscriptionAutomationForm({
   initialShowFewSlotsAlert,
   initialEnablePaymentCheckboxes,
   initialEnableTransferProof,
+  initialAllowCashPayment = false,
   initialMessagesEnabled,
   initialTransferAlias,
   initialTransferAmount,
@@ -125,6 +128,8 @@ export default function InscriptionAutomationForm({
   const [showFewSlotsAlert, setShowFewSlotsAlert] = useState(initialShowFewSlotsAlert)
   const [enablePaymentCheckboxes, setEnablePaymentCheckboxes] = useState(initialEnablePaymentCheckboxes)
   const [enableTransferProof, setEnableTransferProof] = useState(initialEnableTransferProof)
+  const [allowCash, setAllowCash] = useState(initialAllowCashPayment)
+  const [cashStatus, setCashStatus] = useState<SaveState>('idle')
   const [messagesEnabled, setMessagesEnabled] = useState(initialMessagesEnabled)
   const [transferAlias, setTransferAlias] = useState(initialTransferAlias || "")
   const [transferAmount, setTransferAmount] = useState(
@@ -608,6 +613,22 @@ export default function InscriptionAutomationForm({
         </div>
           </SettingCard>
 
+          <SettingCard
+        icon={<Receipt className="h-4 w-4" />}
+        title="Permitir efectivo"
+        description="El jugador puede elegir efectivo sin adjuntar comprobante. No marca el pago como cobrado."
+        status={cashStatus}
+      >
+        <div className="flex items-center gap-3">
+          <Switch id="allow-cash" checked={allowCash} disabled={cashStatus === 'saving'} onCheckedChange={async checked => {
+            setCashStatus('saving')
+            const result = await persistSettings({ allow_cash_payment: checked })
+            if (result.success) { setAllowCash(checked); setCashStatus('saved') }
+            else { setCashStatus('error'); toast({ title: 'No se pudo guardar', description: result.message, variant: 'destructive' }) }
+          }} />
+          <Label htmlFor="allow-cash">Habilitar efectivo para este torneo</Label>
+        </div>
+          </SettingCard>
           <SettingCard
         icon={<Landmark className="h-4 w-4 text-amber-600" />}
         title="Transferencia con comprobante"

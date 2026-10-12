@@ -85,6 +85,9 @@ export type Tournament = {
   startDate: string
   endDate: string
   pre_tournament_image_url?: string | null
+  enableTransferProof?: boolean
+  transferAlias?: string | null
+  transferAmount?: number | null
   price?: number | null
   description?: string
   address?: string

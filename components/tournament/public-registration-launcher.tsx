@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { usePaymentDialog } from '@/components/tournament/inscription-payment-dialog'
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { User, UserPlus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -50,6 +51,13 @@ export default function PublicRegistrationLauncher({
   const searchParams = useSearchParams()
   const { user, userDetails, authState, refreshUserDetails } = useUser()
   const { toast } = useToast()
+  const openPayment = usePaymentDialog()
+  const pendingPaymentId = useRef<string | null>(null)
+  const handlePaymentReady = (inscriptionId: string) => {
+    pendingPaymentId.current = inscriptionId
+    setRegisterDialogOpen(false)
+    router.refresh()
+  }
 
   const redirectBase = useMemo(() => `/tournaments/${tournamentId}`, [tournamentId])
 
@@ -140,7 +148,13 @@ export default function PublicRegistrationLauncher({
       </Button>
 
       <Dialog open={registerDialogOpen} onOpenChange={setRegisterDialogOpen}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto" onCloseAutoFocus={event => {
+          if (!pendingPaymentId.current) return
+          event.preventDefault()
+          const inscriptionId = pendingPaymentId.current
+          pendingPaymentId.current = null
+          openPayment({ tournamentId, tournamentName, inscriptionId })
+        }}>
           <DialogHeader>
             <DialogTitle>Inscripción al torneo</DialogTitle>
             <DialogDescription>
@@ -168,6 +182,7 @@ export default function PublicRegistrationLauncher({
               <RegisterCoupleForm
                 tournamentId={tournamentId}
                 onComplete={handleRegistrationComplete}
+                onPaymentReady={handlePaymentReady}
                 players={[]}
                 tournamentGender={tournamentGender}
                 transferConfig={{

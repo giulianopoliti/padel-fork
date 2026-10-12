@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { useOwnPayments } from "@/hooks/use-own-payments"
+import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
 import { useRouter } from "next/navigation"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { Badge } from "@/components/ui/badge"
@@ -135,6 +137,7 @@ export function PublicTournamentCards({
   surface = "dark",
 }: PublicTournamentCardsProps) {
   const router = useRouter()
+  const payments = useOwnPayments(tournaments.map(tournament => tournament.id))
   const branding = getTenantBranding()
   const isElite = branding.key === "padel-elite"
   const isLightSurface = !isElite && surface === "light"
@@ -214,7 +217,8 @@ export function PublicTournamentCards({
   return (
     <div className="flex flex-col gap-3">
       {tournaments.map((tournament) => {
-        const priceLabel = formatPrice(tournament.price)
+        const ownInscription = payments.inscriptions?.[tournament.id]
+          const priceLabel = formatPrice(tournament.price)
         const hideVenue = Boolean(tournament.hideVenue)
         const venueName = tournament.club?.name || tournament.club?.address || null
         const venueMapsUrl = hideVenue
@@ -266,7 +270,7 @@ export function PublicTournamentCards({
               router.push(getPublicTournamentHref(tournament))
             }}
             onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
+              if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
                 event.preventDefault()
                 router.push(getPublicTournamentHref(tournament))
               }
@@ -294,7 +298,7 @@ export function PublicTournamentCards({
                         {registrationStatusLabel}
                       </Badge>
                     ) : null}
-                    {tournament.isFull ? (
+                    {tournament.isFull && !ownInscription ? (
                       <Badge className={isLightSurface ? "rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600" : "rounded-full border border-red-200/90 bg-red-700 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_0_22px_rgba(220,38,38,0.38)]"}>
                         Completo
                       </Badge>
@@ -406,20 +410,20 @@ export function PublicTournamentCards({
                       ) : null}
                       {tournament.maxParticipants ? (
                         <div className={isLightSurface ? "inline-flex items-center rounded-full border border-[#20335d]/12 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 sm:text-sm" : "inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-200 sm:text-sm"}>
-                          {tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
+                          {ownInscription ? "Ya estás inscripto" : tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
                         </div>
                       ) : null}
                     </div>
                   ) : tournament.maxParticipants ? (
                     <div className={isLightSurface ? "inline-flex w-fit items-center rounded-full border border-[#20335d]/12 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 sm:text-sm" : "inline-flex w-fit items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-200 sm:text-sm"}>
-                      {tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
+                      {ownInscription ? "Ya estás inscripto" : tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
                     </div>
                   ) : null}
 
                 </div>
 
                 <div className="flex w-full flex-col justify-end gap-2 lg:w-52 lg:items-center">
-                  {canRegister ? (
+                  {payments.loading ? <p role="status" className="text-sm">Consultando inscripción…</p> : payments.error ? <div role="alert" className="text-sm">No se pudo consultar tu inscripción. <Button variant="outline" onClick={() => void payments.retry().catch(() => {})}>Reintentar</Button></div> : ownInscription ? <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={ownInscription} /></div> : canRegister ? (
                     <PublicRegistrationLauncher
                       tournamentId={tournament.id}
                       tournamentName={tournament.name}

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { presentPayment, type PaymentInscription, type PaymentRow } from '@/lib/tournaments/payment-types'
 import { getTenantBranding } from '@/config/tenant'
 import { getTenantUpcomingTournamentSummaries } from '@/lib/services/tenant-home.service'
 import { getTournamentCategoryDisplay } from '@/lib/services/tournament-category-config'
@@ -67,6 +68,7 @@ export type TournamentData = {
 }
 
 export type InscribedTournament = {
+  payment?: PaymentInscription
   inscription_id: string
   couple_id: string
   tournament: {
@@ -105,6 +107,7 @@ export type InscribedTournamentsResult = {
 }
 
 export type UpcomingTournament = {
+  payment?: PaymentInscription
   id: string
   name: string
   type?: "LONG" | "AMERICAN" | string | null
@@ -431,7 +434,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
     const { data: rawInscriptions, error: inscriptionsError } = await supabase
       .from('inscriptions')
       .select(`
-        id, couple_id, tournament_id, is_eliminated,
+        id, couple_id, tournament_id, is_eliminated, is_pending, payment_method, payment_proof_path, payment_proof_status, payment_revision,
         tournaments!inner(
           id, name, type, start_date, end_date, status, category_name, category_config,
           gender, hide_venue, is_draft,
@@ -439,7 +442,6 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
         )
       `)
       .in('couple_id', coupleIds)
-      .eq('is_pending', false)
       .eq('is_eliminated', false)
       .eq('es_prueba', false)
       .eq('tournaments.is_draft', false)
@@ -457,7 +459,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
     const eliminatedByInscriptionId = new Map<string, boolean>()
 
     const inscribedTournaments = (rawInscriptions || []).map((rawInscription): InscribedTournament | null => {
-      const inscription = rawInscription as unknown as {
+      const inscription = rawInscription as unknown as PaymentRow & {
         id: string
         couple_id: string
         is_eliminated: boolean
@@ -502,6 +504,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
 
       return {
         inscription_id: inscription.id,
+        payment: presentPayment(inscription),
         couple_id: inscription.couple_id,
         tournament: {
           id: tournament.id,
@@ -541,7 +544,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
     }).filter((inscription): inscription is InscribedTournament => Boolean(inscription))
       .sort((first, second) => second.tournament.start_date.localeCompare(first.tournament.start_date))
 
-    const longInscriptions = inscribedTournaments.filter(inscription => inscription.tournament.type === 'LONG')
+    const longInscriptions = inscribedTournaments.filter(inscription => inscription.tournament.type === 'LONG' && !inscription.payment?.isPending)
     if (longInscriptions.length === 0) return { inscribedTournaments }
 
     const longTournamentIds = [...new Set(longInscriptions.map(inscription => inscription.tournament.id))]
@@ -747,20 +750,15 @@ export async function getPlayerUpcomingTournaments(
     const coupleIds = (playerCouples || []).map((couple: any) => couple.id)
     const tournamentIds = tournaments.map((tournament) => tournament.id)
 
-    let inscribedTournamentIds = new Set<string>()
-    if (coupleIds.length > 0) {
-      const { data: inscriptions, error: inscriptionsError } = await supabase
-        .from('inscriptions')
-        .select('tournament_id')
-        .in('couple_id', coupleIds)
-        .in('tournament_id', tournamentIds)
-
-      if (inscriptionsError) {
-        console.error('Error fetching player inscriptions:', inscriptionsError)
-      } else {
-        inscribedTournamentIds = new Set((inscriptions || []).map((inscription: any) => inscription.tournament_id))
-      }
-    }
+    const canReadPlayer = await verifyAuthenticatedPlayer(supabase, playerId)
+    if (!canReadPlayer) return { upcomingTournaments: [], error: 'No autorizado' }
+    const { data: inscriptions, error: inscriptionsError } = await supabase
+      .from('inscriptions')
+      .select('id, tournament_id, is_pending, payment_method, payment_proof_path, payment_proof_status, payment_revision')
+      .or(`and(couple_id.is.null,player_id.eq.${playerId})${coupleIds.length ? `,couple_id.in.(${coupleIds.join(',')})` : ''}`)
+      .in('tournament_id', tournamentIds)
+    if (inscriptionsError) throw inscriptionsError
+    const paymentByTournament = new Map<string, PaymentInscription>((inscriptions || []).map((row: PaymentRow & { tournament_id: string }) => [row.tournament_id, presentPayment(row)]))
 
     const upcomingTournaments: UpcomingTournament[] = tournaments.map((tournament) => {
       const currentInscriptions = tournament.currentParticipants || 0
@@ -783,7 +781,8 @@ export async function getPlayerUpcomingTournaments(
         remaining_slots: capacity.remainingSlots,
         description: '',
         price: tournament.price ?? null,
-        is_inscribed: inscribedTournamentIds.has(tournament.id),
+        is_inscribed: paymentByTournament.has(tournament.id),
+        payment: paymentByTournament.get(tournament.id),
         is_full: capacity.isFull,
         has_few_slots: capacity.hasFewSlots,
         show_few_slots_alert: tournament.showFewSlotsAlert !== false,

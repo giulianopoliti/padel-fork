@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
+import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Swords, Trophy, Users } from "lucide-react"
 import type { InscribedTournament } from "@/app/api/panel/actions"
 import { Badge } from "@/components/ui/badge"
@@ -204,6 +205,7 @@ export default function PlayerFvInscribedTournamentsSection({
                       </Link>
                     </Button>
                   ) : null}
+                  <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p>{inscription.payment && <PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={inscription.payment} />}</div>
                   <Button asChild variant="outline" className="h-11 border-white/25 bg-transparent text-sm font-semibold text-white hover:bg-white/10 hover:text-white">
                     <Link href={`/tournaments/${tournament.id}`}>
                       Ver torneo

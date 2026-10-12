@@ -77,6 +77,7 @@ export default async function SettingsInscripcionesPage({
             initialShowFewSlotsAlert={tournament.show_few_slots_alert ?? true}
             initialEnablePaymentCheckboxes={tournament.enable_payment_checkboxes ?? false}
             initialEnableTransferProof={tournament.enable_transfer_proof ?? false}
+            initialAllowCashPayment={tournament.allow_cash_payment ?? false}
             initialMessagesEnabled={tournament.messages_enabled ?? true}
             initialTransferAlias={tournament.transfer_alias ?? null}
             initialTransferAmount={tournament.transfer_amount ?? null}

@@ -49,6 +49,7 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
     console.log(`[LongStrategy] Registrando pareja en torneo LONG ${tournamentId}`, { player1Id, player2Id })
 
     // Validaciones básicas
+    context.trace?.step('tournament-rules')
     const validation = await this.validateCoupleRegistration(request, context)
     if (!validation.isValid) {
       return { success: false, error: validation.error }
@@ -56,6 +57,7 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
 
     try {
       // Verificar permisos
+      context.trace?.step('registration-permission')
       const permissionCheck = await this.checkRegistrationPermissions(context)
       if (!permissionCheck.success) {
         return { success: false, error: permissionCheck.error }
@@ -70,18 +72,21 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
       )
 
       // Categorizar jugadores si es necesario
+      context.trace?.step('categorize-players')
       const categorizationResult = await this.categorizePlayers(player1Id, player2Id, context)
       if (!categorizationResult.success) {
         return { success: false, error: categorizationResult.error }
       }
 
       // Verificar que los jugadores no estén ya inscritos
+      context.trace?.step('check-existing-players')
       const existingCheck = await this.checkExistingPlayerInscriptions(player1Id, player2Id, tournamentId, supabase)
       if (!existingCheck.success) {
         return { success: false, error: existingCheck.error }
       }
 
       // Crear o encontrar la pareja
+      context.trace?.step('find-or-create-couple')
       const coupleResult = await this.createOrFindCouple(player1Id, player2Id, supabase)
       if (!coupleResult.success || !coupleResult.coupleId) {
         return { success: false, error: coupleResult.error }
@@ -90,6 +95,7 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
       const coupleId = coupleResult.coupleId
 
       // Verificar inscripción existente de la pareja
+      context.trace?.step('check-existing-couple')
       const { data: existingInscription } = await supabase
         .from('inscriptions')
         .select('id')
@@ -104,50 +110,39 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
       // 1. Registrar en inscriptions
       // Si es inscripcion del organizador, player_id queda null
       // Si es inscripcion del jugador, player_id es el id del jugador que inscribe
+      context.trace?.step('save-inscription')
       const { data: inscription, error: inscriptionError } = await supabase
         .from('inscriptions')
         .insert({
           tournament_id: tournamentId,
           couple_id: coupleId,
           player_id: isOrganizerRegistration ? null : player1Id,
+          payment_method: request.paymentMethod || (context.tournament.enable_transfer_proof ? 'TRANSFER' : null),
           is_pending: shouldRequireInscriptionValidation({
             validateInscriptions: context.tournament.validate_inscriptions,
             actorRole: context.user.role,
             isOrganizerRegistration,
           })
         })
-        .select('id')
+        .select('id, is_pending, payment_method, payment_proof_path')
         .single()
 
       if (inscriptionError) {
-        console.error('[LongStrategy] Error al registrar pareja:', inscriptionError)
+        context.trace?.log('inscription_insert_failed', 'error', inscriptionError)
         return { success: false, error: 'No se pudo inscribir la pareja.' }
       }
 
       // 2. Asignar automáticamente a la zona general (específico de LONG)
+      if (inscription.is_pending || (inscription.payment_method === 'TRANSFER' && !inscription.payment_proof_path)) {
+        return { success: true, inscriptionId: inscription.id, coupleId, inscription, zoneAssigned: false }
+      }
+      context.trace?.step('assign-general-zone')
       const zoneAssignmentResult = await this.assignCoupleToGeneralZone(coupleId, tournamentId, supabase)
       
       if (!zoneAssignmentResult.success) {
-        // ❌ Si la asignación a zona falla, rollback de la inscripción
-        console.error(`[LongStrategy] Zone assignment failed for couple ${coupleId}:`, zoneAssignmentResult.error)
-        
-        try {
-          await supabase
-            .from('inscriptions')
-            .delete()
-            .eq('id', inscription.id)
-          console.log(`[LongStrategy] Rollback: Inscription ${inscription.id} deleted due to zone assignment failure`)
-        } catch (rollbackError) {
-          console.error(`[LongStrategy] CRITICAL: Failed to rollback inscription ${inscription.id}:`, rollbackError)
-        }
-        
-        return {
-          success: false,
-          error: `No se pudo asignar la pareja a la zona: ${zoneAssignmentResult.error}`,
-          rollbackPerformed: true
-        }
+        context.trace?.log('zone_assignment_deferred', 'warn')
+        return { success: true, inscriptionId: inscription.id, coupleId, inscription, zoneAssigned: false }
       }
-
       console.log(`✅ [LongStrategy] Pareja registrada: ${coupleId}, Zona asignada: ${zoneAssignmentResult.success}`)
 
       return {
@@ -160,7 +155,7 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
       }
 
     } catch (error) {
-      console.error('[LongStrategy] Error inesperado:', error)
+      context.trace?.log('strategy_failed', 'error', error)
       return { success: false, error: 'Error interno del servidor.' }
     }
   }

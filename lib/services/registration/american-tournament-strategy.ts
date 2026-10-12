@@ -46,6 +46,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
     console.log(`[AmericanStrategy] Registrando pareja en torneo ${tournamentId}`, { player1Id, player2Id })
 
     // Validaciones básicas
+    context.trace?.step('tournament-rules')
     const validation = await this.validateCoupleRegistration(request, context)
     if (!validation.isValid) {
       return { success: false, error: validation.error }
@@ -53,6 +54,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
 
     try {
       // Verificar permisos
+      context.trace?.step('registration-permission')
       const permissionCheck = await this.checkRegistrationPermissions(context)
       if (!permissionCheck.success) {
         return { success: false, error: permissionCheck.error }
@@ -67,18 +69,21 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       )
 
       // Categorizar jugadores si es necesario
+      context.trace?.step('categorize-players')
       const categorizationResult = await this.categorizePlayers(player1Id, player2Id, context)
       if (!categorizationResult.success) {
         return { success: false, error: categorizationResult.error }
       }
 
       // Verificar que los jugadores no estén ya inscritos
+      context.trace?.step('check-existing-players')
       const existingCheck = await this.checkExistingPlayerInscriptions(player1Id, player2Id, tournamentId, supabase)
       if (!existingCheck.success) {
         return { success: false, error: existingCheck.error }
       }
 
       // Crear o encontrar la pareja
+      context.trace?.step('find-or-create-couple')
       const coupleResult = await this.createOrFindCouple(player1Id, player2Id, supabase)
       if (!coupleResult.success || !coupleResult.coupleId) {
         return { success: false, error: coupleResult.error }
@@ -87,6 +92,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       const coupleId = coupleResult.coupleId
 
       // Verificar inscripción existente de la pareja
+      context.trace?.step('check-existing-couple')
       const { data: existingInscription } = await supabase
         .from('inscriptions')
         .select('id')
@@ -105,30 +111,33 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       // - Si es inscripción del JUGADOR:
       //   - player_id = player1Id (jugador que solicita inscripción)
       //   - is_pending = true (requiere aprobación del organizador)
+      context.trace?.step('save-inscription')
       const { data: inscription, error: inscriptionError } = await supabase
         .from('inscriptions')
         .insert({
           tournament_id: tournamentId,
           couple_id: coupleId,
           player_id: isOrganizerRegistration ? null : player1Id,
+          payment_method: request.paymentMethod || (context.tournament.enable_transfer_proof ? 'TRANSFER' : null),
           is_pending: shouldRequireInscriptionValidation({
             validateInscriptions: context.tournament.validate_inscriptions,
             actorRole: context.user.role,
             isOrganizerRegistration,
           })
         })
-        .select('id')
+        .select('id, is_pending, payment_method, payment_proof_path')
         .single()
 
       if (inscriptionError) {
-        console.error('[AmericanStrategy] Error al registrar pareja:', inscriptionError)
+        context.trace?.log('inscription_insert_failed', 'error', inscriptionError)
         return { success: false, error: 'No se pudo inscribir la pareja.' }
       }
 
       let zoneAssigned = false
       const isSingleZone = context.tournament.format_config?.version === 2
         && context.tournament.format_config.zoneMode === 'SINGLE_ZONE'
-      if (!inscription.is_pending && isSingleZone) {
+      if (!inscription.is_pending && isSingleZone && !(inscription.payment_method === 'TRANSFER' && !inscription.payment_proof_path)) {
+        context.trace?.step('assign-general-zone')
         const zoneResult = await ensureAmericanSingleZone(tournamentId)
         if (!zoneResult.success) {
           console.warn('[AmericanStrategy] La inscripción se guardó y la Zona General se reconciliará al abrir o iniciar el torneo:', zoneResult.error)
@@ -147,7 +156,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       }
 
     } catch (error) {
-      console.error('[AmericanStrategy] Error inesperado:', error)
+      context.trace?.log('strategy_failed', 'error', error)
       return { success: false, error: 'Error interno del servidor.' }
     }
   }

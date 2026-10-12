@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { CalendarDays, ChevronRight, Clock3, MapPin, Ticket, Users } from "lucide-react"
 import type { UpcomingTournament } from "@/app/api/panel/actions"
@@ -232,7 +233,7 @@ export default function PlayerUpcomingTournamentsSection({
               </div>
 
               <div className="flex flex-col justify-between gap-3">
-                {canRegister ? (
+                {tournament.is_inscribed && tournament.payment ? <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={tournament.payment} /></div> : canRegister ? (
                   <PublicRegistrationLauncher
                     tournamentId={tournament.id}
                     tournamentName={tournament.name}

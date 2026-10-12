@@ -24,6 +24,8 @@ export type InscriptionMessageData = {
     couple_id: string | null
     player_id: string | null
     is_pending: boolean
+    payment_method?: string | null
+    payment_proof_path?: string | null
     created_at: string | null
   }
   tournament: TournamentEmailContext & {
@@ -161,7 +163,7 @@ export const loadInscriptionMessageData = async (
 
   const { data: inscription, error: inscriptionError } = await supabase
     .from("inscriptions")
-    .select("id, tournament_id, couple_id, player_id, is_pending, created_at")
+    .select("id, tournament_id, couple_id, player_id, is_pending, created_at, payment_method, payment_proof_path")
     .eq("id", inscriptionId)
     .single()
 
