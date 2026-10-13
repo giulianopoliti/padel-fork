@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { validateAndFormatPhone } from '@/utils/phone'
 import { normalizePlayerDni, sanitizeDniInput } from '@/lib/utils/player-dni'
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity'
+import { parsePublicRegistrationRole } from '@/lib/auth/public-registration-role'
 
 // Interface for registration result
 interface RegisterResult {
@@ -791,14 +792,17 @@ export async function registerAndLinkToExistingPlayer(formData: FormData, player
 }
 
 export async function register(formData: FormData): Promise<RegisterResult> {
-  const supabase = await createClient()
-
   const email = formData.get('email') as string
   const password = formData.get('password') as string
-  const role = formData.get('role') as 'PLAYER' | 'CLUB' | 'COACH' | 'ORGANIZADOR'
+  const rawRole = formData.get('role')
 
-  if (!email || !password || !role) {
+  if (!email || !password || !rawRole) {
     return { error: 'Email, contraseña y rol son requeridos.', success: false }
+  }
+
+  const role = parsePublicRegistrationRole(rawRole)
+  if (!role) {
+    return { error: 'Rol de registro no permitido.', success: false }
   }
 
   if (password.length < 6) {
@@ -806,6 +810,7 @@ export async function register(formData: FormData): Promise<RegisterResult> {
   }
 
   try {
+    const supabase = await createClient()
     let pendingExistingPlayer: Awaited<ReturnType<typeof checkPlayerByDNI>>['player'] | null = null
 
     if (role === 'CLUB') {
