@@ -1,6 +1,6 @@
 import React from 'react';
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { mapTournamentToPublicInfo } from '@/lib/tournaments/public-tournament-details';
 import { getTournamentCategoryDisplay } from '@/lib/services/tournament-category-config';
 import {
@@ -16,9 +16,12 @@ import { normalizeTournamentOperationalSettings } from '@/lib/services/tournamen
 import { getTenantBranding } from '@/config/tenant';
 import type { Metadata } from 'next';
 import { getPublicTournamentById } from '@/lib/services/public-tournament.service';
+import { getPublicTournamentHref } from '@/lib/tournaments/public-tournament-url';
+import { appendPublicTournamentListSearchParams, type PublicTournamentListSearchParams } from '@/lib/seo/legacy-public-route';
 
 interface TournamentPageProps {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<PublicTournamentListSearchParams>;
 }
 
 interface ClientTournament {
@@ -152,9 +155,18 @@ const serializeTournamentForClient = (
  *
  * @see docs/PERMISSIONS_SPEC.md
  */
-export default async function TournamentPage({ params }: TournamentPageProps) {
-  const resolvedParams = await params;
-  return <TournamentPageById tournamentId={resolvedParams.id} />
+export default async function TournamentPage({ params, searchParams }: TournamentPageProps) {
+  const { id } = await params;
+  const tournament = await getPublicTournamentById(id);
+
+  if (tournament?.seo_slug?.trim()) {
+    permanentRedirect(appendPublicTournamentListSearchParams(
+      getPublicTournamentHref({ id, seoSlug: tournament.seo_slug }),
+      searchParams ? await searchParams : {},
+    ));
+  }
+
+  return <TournamentPageById tournamentId={id} />
 }
 
 export async function generateMetadata({ params }: TournamentPageProps): Promise<Metadata> {

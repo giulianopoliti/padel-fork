@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
+import { getPublicTournamentHref } from '@/lib/tournaments/public-tournament-url'
 
 type TournamentStatus = 'NOT_STARTED' | 'ZONE_PHASE' | 'BRACKET_PHASE'
 
@@ -80,7 +81,7 @@ export async function POST(
 
     const { data: tournament, error: tournamentError } = await supabase
       .from('tournaments')
-      .select('id, status')
+      .select('id, status, seo_slug, is_draft')
       .eq('id', tournamentId)
       .single()
 
@@ -111,6 +112,8 @@ export async function POST(
       revalidatePath(`/tournaments/${tournamentId}`, 'page')
       revalidatePath('/tournaments', 'page')
       revalidatePath('/my-tournaments', 'page')
+      revalidatePath('/panel', 'page')
+      revalidatePath(getPublicTournamentHref({ id: tournamentId, seoSlug: tournament.seo_slug, isDraft: tournament.is_draft }), 'page')
       revalidatePath('/', 'page')
     } catch (revalidateError) {
       console.error('[restoreTournament API] Error revalidating paths:', revalidateError)

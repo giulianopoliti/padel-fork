@@ -61,7 +61,7 @@ export const getPublicTournamentBySlug = async (slug: string): Promise<ResolvedP
   return { id: tournament.id, seo_slug: tournament.seo_slug, isAlias: true }
 }
 
-/** Used only to emit a canonical URL for an existing UUID route. */
+/** Resolves the current tenant's published tournament for ID links and canonical redirects. */
 export const getPublicTournamentById = async (id: string): Promise<ResolvedPublicTournament | null> => {
   const context = await basePublicTournamentQuery()
   if (!context) return null

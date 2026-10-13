@@ -25,10 +25,12 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { getTournamentStatusLabel } from "@/lib/tournaments/public-tournament-details"
 import { formatDateArgentina, formatTimeArgentina } from "@/lib/utils"
+import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 
 interface TournamentCardProps {
   tournament: {
     id: string
+    seo_slug?: string | null
     name: string
     status: string
     pre_tournament_image_url: string | null
@@ -88,6 +90,16 @@ const getTournamentStatusConfig = (status: string) => {
       accent: "border-l-emerald-500",
       label: "Completado",
     },
+    FINISHED_POINTS_PENDING: {
+      badge: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400",
+      accent: "border-l-green-500",
+      label: "Finalizado",
+    },
+    PAIRING: {
+      badge: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400",
+      accent: "border-l-amber-500",
+      label: "Emparejamiento",
+    },
     CANCELED: {
       badge: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400",
       accent: "border-l-red-500",
@@ -95,7 +107,7 @@ const getTournamentStatusConfig = (status: string) => {
     },
   }
 
-  return configs[status] || configs.NOT_STARTED
+  return configs[status] || { ...configs.NOT_STARTED, label: getTournamentStatusLabel(status) }
 }
 
 const formatDate = (dateString: string) =>
@@ -149,6 +161,7 @@ const formatPrice = (price: number | string | null) => {
 }
 
 export default function TournamentCard({ tournament, priority = false }: TournamentCardProps) {
+  const tournamentHref = getPublicTournamentHref({ id: tournament.id, seoSlug: tournament.seo_slug, isDraft: tournament.is_draft })
   const statusConfig = getTournamentStatusConfig(tournament.status)
   const progressPercentage = tournament.totalMatches > 0
     ? Math.round((tournament.matchesFinished / tournament.totalMatches) * 100)
@@ -161,7 +174,7 @@ export default function TournamentCard({ tournament, priority = false }: Tournam
     <HoverCard openDelay={300}>
       <HoverCardTrigger asChild>
         <Link
-          href={`/tournaments/${tournament.id}`}
+          href={tournamentHref}
           className="block rounded-surface group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           aria-label={`Ver detalles del torneo ${tournament.name}, estado: ${statusConfig.label}`}
         >
@@ -250,7 +263,7 @@ export default function TournamentCard({ tournament, priority = false }: Tournam
                     <div className="flex flex-col items-center rounded-surface bg-blue-50 p-3 dark:bg-blue-900/20">
                       <Users className="mb-1 h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
                       <span className="text-2xl font-bold">{tournament.inscriptions}</span>
-                      <span className="text-xs text-muted-foreground">inscriptos</span>
+                      <span className="text-xs text-muted-foreground">inscripciones</span>
                     </div>
                     <div className="flex flex-col items-center rounded-surface bg-green-50 p-3 dark:bg-green-900/20">
                       <Zap className="mb-1 h-5 w-5 text-green-600 dark:text-green-400" aria-hidden="true" />
@@ -260,7 +273,7 @@ export default function TournamentCard({ tournament, priority = false }: Tournam
                     <div className="flex flex-col items-center rounded-surface bg-amber-50 p-3 dark:bg-amber-900/20">
                       <Calendar className="mb-1 h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                       <span className="text-2xl font-bold">{tournament.matchesPending}</span>
-                      <span className="text-xs text-muted-foreground">programados</span>
+                      <span className="text-xs text-muted-foreground">pendientes</span>
                     </div>
                   </div>
 
@@ -345,7 +358,7 @@ export default function TournamentCard({ tournament, priority = false }: Tournam
           </div>
 
           <Button size="sm" className="w-full" asChild>
-            <Link href={`/tournaments/${tournament.id}`}>
+            <Link href={tournamentHref}>
               Ver detalles completos {"->"}
             </Link>
           </Button>

@@ -103,8 +103,6 @@ Regla practica: `git push` deploya codigo en Vercel; `supabase db push` migra ba
 Si una migracion o cambio requiere funciones Edge, desplegarlas en cada Supabase remoto:
 
 ```bash
-supabase functions deploy get-club-tournaments
-supabase functions deploy get-organization-tournaments
 supabase functions deploy get-player-inscribed-tournaments
 supabase functions deploy get-player-next-match
 supabase functions deploy get-player-upcoming-tournaments
@@ -112,6 +110,11 @@ supabase functions deploy search-players-organization
 supabase functions deploy search-ranking-players
 supabase functions deploy search-tournament-players
 ```
+
+`/panel` y `/my-tournaments` consultan los torneos desde Next.js. Las funciones
+`get-club-tournaments` y `get-organization-tournaments` son legado: conservarlas
+remotamente mientras existan versiones de la aplicación o consumidores externos
+que aún las invoquen; no son necesarias para el listado nuevo.
 
 Igual que con `db push`, el destino de `functions deploy` es el proyecto Supabase actualmente linkeado.
 

@@ -1,35 +1,15 @@
-"use client"
-
 import { Trophy, ArrowRight, Users, CalendarDays } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
-import TournamentCard from "./tournament-card"
+import PanelTournamentCard from "./panel-tournament-card"
+import type { PanelTournamentWithMetrics } from "@/lib/services/organizer-panel-metrics"
 import PlayersSectionClient from "./players-section-client"
-
-interface TournamentData {
-  id: string
-  name: string
-  status: string
-  pre_tournament_image_url: string | null
-  start_date: string
-  end_date: string | null
-  category_name: string
-  gender: string
-  type: string
-  price: number | string | null
-  clubes?: {
-    id: string
-    name: string
-  } | null
-  inscriptions: number
-  matchesFinished: number
-  matchesPending: number
-  totalMatches: number
-  is_draft?: boolean
-}
+import TournamentClubSelector from '@/components/tournament/tournament-club-selector'
+import type { ActiveTournamentClub } from '@/lib/services/tournament-club-filter.service'
+import { getOrganizerPanelHref, getTournamentListHref } from '@/lib/tournaments/tournament-list-filters'
 
 interface PlayerData {
   id: string
@@ -52,13 +32,20 @@ interface Category {
 }
 
 interface OrganizadorDashboardProps {
-  tournaments: TournamentData[]
+  tournaments: PanelTournamentWithMetrics[]
   players: PlayerData[]
   categories: Category[]
   totalPlayers: number
   organizationId: string
   canResolvePlayerIdentity: boolean
-  hasError?: boolean
+  tournamentsError?: boolean
+  playersError?: boolean
+  prioritizesUpcoming?: boolean
+  clubs: ActiveTournamentClub[]
+  clubId?: string
+  tournamentPage: number
+  tournamentPages: number
+  totalTournaments: number
 }
 
 export default function OrganizadorDashboard({
@@ -68,22 +55,15 @@ export default function OrganizadorDashboard({
   totalPlayers,
   organizationId,
   canResolvePlayerIdentity,
-  hasError = false
+  tournamentsError = false,
+  playersError = false,
+  prioritizesUpcoming = false,
+  clubs,
+  clubId,
+  tournamentPage,
+  tournamentPages,
+  totalTournaments,
 }: OrganizadorDashboardProps) {
-
-  if (hasError) {
-    return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            No pudimos cargar los torneos. Por favor, intenta recargar la página.
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -125,43 +105,57 @@ export default function OrganizadorDashboard({
                 Mis Torneos
               </h2>
               <p className="text-sm text-muted-foreground">
-                Últimos {tournaments.length} torneos activos
+                {prioritizesUpcoming ? "Próximos primero; luego zonas y llaves" : "Próximos, zonas y llaves por fecha de inicio"}
               </p>
             </div>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/my-tournaments" className="flex items-center gap-2">
+            <Link href={getTournamentListHref('upcoming', 1, clubId)} prefetch={false} className="flex items-center gap-2">
               Ver todos
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </Button>
         </div>
 
-        {tournaments.length === 0 ? (
+        <div className="mb-4"><TournamentClubSelector clubs={clubs} clubId={clubId} path="/panel" /></div>
+        {!tournamentsError && totalTournaments > 0 && <p className="mb-3 text-sm text-muted-foreground" role="status">{totalTournaments} torneos · página {tournamentPage} de {tournamentPages}</p>}
+        {tournamentsError ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No pudimos cargar los torneos</AlertTitle>
+            <AlertDescription>Recargá la página para volver a intentarlo.</AlertDescription>
+          </Alert>
+        ) : tournaments.length === 0 ? (
           <div className="text-center py-16 bg-muted/50 rounded-surface border-2 border-dashed">
             <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center mb-4">
               <Trophy className="h-8 w-8 text-amber-600 dark:text-amber-500" aria-hidden="true" />
             </div>
             <h3 className="text-lg font-semibold mb-2">
-              No tienes torneos todavía
+              No hay torneos próximos ni en juego
             </h3>
             <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-              Comienza creando tu primer torneo de pádel y gestiona inscripciones, partidos y mucho más.
+              Los torneos finalizados y cancelados están en Ver todos. Podés crear un torneo para comenzar.
             </p>
             <Button asChild>
               <Link href="/tournaments/create">Crear torneo</Link>
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4">
-            {tournaments.map((tournament, index) => (
-              <TournamentCard
+          <div className="grid gap-3 md:grid-cols-2">
+            {tournaments.map((tournament) => (
+              <PanelTournamentCard
                 key={tournament.id}
                 tournament={tournament}
-                priority={index === 0}
               />
             ))}
           </div>
+        )}
+        {!tournamentsError && tournamentPages > 1 && (
+          <nav aria-label="Paginación de torneos del panel" className="mt-4 flex items-center justify-between gap-3">
+            {tournamentPage > 1 ? <Button variant="outline" size="sm" asChild><Link prefetch={false} href={getOrganizerPanelHref(tournamentPage - 1, clubId)}>Anterior</Link></Button> : <Button variant="outline" size="sm" disabled>Anterior</Button>}
+            <span className="text-sm text-muted-foreground">{tournamentPage} / {tournamentPages}</span>
+            {tournamentPage < tournamentPages ? <Button variant="outline" size="sm" asChild><Link prefetch={false} href={getOrganizerPanelHref(tournamentPage + 1, clubId)}>Siguiente</Link></Button> : <Button variant="outline" size="sm" disabled>Siguiente</Button>}
+          </nav>
         )}
       </section>
 
@@ -179,7 +173,7 @@ export default function OrganizadorDashboard({
                 Jugadores
               </h2>
               <p className="text-sm text-muted-foreground">
-                {totalPlayers > 0
+                {playersError ? 'Directorio no disponible' : totalPlayers > 0
                   ? `${totalPlayers} jugadores en el directorio`
                   : 'No hay jugadores registrados'
                 }
@@ -196,13 +190,19 @@ export default function OrganizadorDashboard({
           )}
         </div>
 
-        <PlayersSectionClient
+        {playersError ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No pudimos cargar el directorio de jugadores</AlertTitle>
+            <AlertDescription>Recargá la página para volver a intentarlo.</AlertDescription>
+          </Alert>
+        ) : <PlayersSectionClient
           initialPlayers={players}
           categories={categories}
           organizationId={organizationId}
           canResolvePlayerIdentity={canResolvePlayerIdentity}
           totalPlayers={totalPlayers}
-        />
+        />}
       </section>
     </div>
   )

@@ -6,29 +6,13 @@ import { getTenantBranding } from "@/config/tenant"
 import { getTpeRestrictionPlayers } from "@/lib/services/tpe-registration-restrictions"
 import TpeRegistrationRestrictionsPanel from "@/app/(main)/panel/@organizador/components/tpe-registration-restrictions-panel"
 import { searchPlayersGlobally } from "@/lib/services/player-search-service"
+import { getOrganizerPanelTournamentPage } from "@/lib/services/organizer-panel.service"
+import type { PanelTournamentWithMetrics } from "@/lib/services/organizer-panel-metrics"
+
+import { getActiveTournamentClubs, validateTournamentClub } from '@/lib/services/tournament-club-filter.service'
+import { normalizeListPage, getOrganizerPanelHref } from '@/lib/tournaments/tournament-list-filters'
 
 export const dynamic = 'force-dynamic'
-
-interface TournamentWithMetrics {
-  id: string
-  name: string
-  status: string
-  pre_tournament_image_url: string | null
-  start_date: string
-  end_date: string | null
-  category_name: string
-  gender: string
-  type: string
-  price: number | string | null
-  clubes?: {
-    id: string
-    name: string
-  } | null
-  inscriptions: number
-  matchesFinished: number
-  matchesPending: number
-  totalMatches: number
-}
 
 interface PlayerData {
   id: string
@@ -44,8 +28,10 @@ interface PlayerData {
   users?: { email: string | null } | null
 }
 
-export default async function OrganizadorDashboardPage() {
+export default async function OrganizadorDashboardPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const supabase = await createClient()
+  const params = searchParams ? await searchParams : {}
+  const page = normalizeListPage(params.page)
 
   // 1. Autenticación
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -88,41 +74,46 @@ export default async function OrganizadorDashboardPage() {
 
   const organizationId = orgMember.organizacion_id
 
-  // 3. Fetch torneos con métricas usando edge function
-  const { data: result, error: tournamentsError } = await supabase.functions.invoke(
-    'get-organization-tournaments',
-    {
-      body: {
-        organizationId,
-        limit: 3
-      }
-    }
-  )
-
-  const tournamentsWithMetrics: TournamentWithMetrics[] = result?.tournaments || []
+  let clubs: Awaited<ReturnType<typeof getActiveTournamentClubs>>
+  let clubId: string | undefined
+  try {
+    clubs = await getActiveTournamentClubs(supabase, { column: 'organization_id', id: organizationId })
+    clubId = validateTournamentClub(params.club, clubs)
+  } catch (error) {
+    console.error('[OrganizerPanel] Could not load club filter:', error)
+    return <div className="container mx-auto px-4 py-8" role="alert"><p>No pudimos aplicar el filtro. El club no está disponible o no pudimos cargar los clubes activos.</p><a href="/panel" className="mt-3 inline-block underline">Volver a todos los clubes</a></div>
+  }
+  const tenant = getTenantBranding().key
+  // Start independent sections together; one failed section must not hide the others.
+  const tournamentsPromise = getOrganizerPanelTournamentPage(supabase, organizationId, tenant, page, clubId)
+  const playersPromise = searchPlayersGlobally({ page: 1, pageSize: 10 })
+  const [tournamentsResult, playersResult, categoriesResult, restrictionsResult] = await Promise.allSettled([
+    tournamentsPromise,
+    playersPromise,
+    getCategories(),
+    tenant === "padel-elite" ? getTpeRestrictionPlayers() : Promise.resolve([]),
+  ])
+  const tournamentsWithMetrics: PanelTournamentWithMetrics[] = tournamentsResult.status === 'fulfilled' ? tournamentsResult.value.tournaments : []
+  if (tournamentsResult.status === 'fulfilled' && tournamentsResult.value.redirectPage !== null) redirect(getOrganizerPanelHref(tournamentsResult.value.redirectPage, clubId))
+  const tournamentsError = tournamentsResult.status === 'rejected'
+  if (tournamentsError) console.error('[OrganizadorDashboardPage] Error loading tournaments:', tournamentsResult.reason)
 
   // 5. Directorio completo de jugadores del tenant.
   let players: PlayerData[] = []
   let totalPlayers = 0
-  let playersError: unknown = null
-
-  try {
-    const playerSearch = await searchPlayersGlobally({
-      page: 1,
-      pageSize: 10,
-    })
-    players = playerSearch.players as PlayerData[]
-    totalPlayers = playerSearch.total
-  } catch (error) {
-    playersError = error
-    console.error("[OrganizadorDashboardPage] Error loading organization players:", error)
+  const playersError = playersResult.status === 'rejected' || categoriesResult.status === 'rejected'
+  if (playersResult.status === 'fulfilled') {
+    players = playersResult.value.players as PlayerData[]
+    totalPlayers = playersResult.value.total
+  } else {
+    console.error("[OrganizadorDashboardPage] Error loading organization players:", playersResult.reason)
   }
 
   // 7. Fetch categorías para la edición de jugadores
-  const categories = await getCategories()
-  const tpeRestrictionPlayers = getTenantBranding().key === "padel-elite"
-    ? await getTpeRestrictionPlayers()
-    : []
+  const categories = categoriesResult.status === 'fulfilled' ? categoriesResult.value : []
+  const tpeRestrictionPlayers = restrictionsResult.status === 'fulfilled' ? restrictionsResult.value : []
+  if (categoriesResult.status === 'rejected') console.error('[OrganizadorDashboardPage] Error loading categories:', categoriesResult.reason)
+  if (restrictionsResult.status === 'rejected') console.error('[OrganizadorDashboardPage] Error loading restrictions:', restrictionsResult.reason)
 
   const normalizedPlayers: PlayerData[] = players.map((player) => ({
     ...player,
@@ -138,12 +129,22 @@ export default async function OrganizadorDashboardPage() {
         totalPlayers={totalPlayers}
         organizationId={organizationId}
         canResolvePlayerIdentity={['owner', 'admin'].includes(orgMember.member_role)}
-        hasError={!!tournamentsError || !!playersError}
+        tournamentsError={tournamentsError}
+        playersError={playersError}
+        prioritizesUpcoming={tenant === "padel-elite"}
+        clubs={clubs}
+        clubId={clubId}
+        tournamentPage={page}
+        tournamentPages={tournamentsResult.status === 'fulfilled' ? tournamentsResult.value.pages : 1}
+        totalTournaments={tournamentsResult.status === 'fulfilled' ? tournamentsResult.value.total : 0}
       />
-      {getTenantBranding().key === "padel-elite" && (
+      {tenant === "padel-elite" && restrictionsResult.status === 'fulfilled' && (
         <div className="container mx-auto px-4 pb-8 sm:px-6 lg:px-8">
           <TpeRegistrationRestrictionsPanel players={tpeRestrictionPlayers} />
         </div>
+      )}
+      {tenant === "padel-elite" && restrictionsResult.status === 'rejected' && (
+        <p role="alert" className="container mx-auto px-4 pb-8 text-sm text-destructive">No pudimos cargar las restricciones de inscripción. Recargá la página para consultarlas.</p>
       )}
     </>
   )

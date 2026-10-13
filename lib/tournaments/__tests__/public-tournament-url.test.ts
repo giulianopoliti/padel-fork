@@ -15,4 +15,9 @@ describe("getPublicTournamentHref", () => {
       "/tournaments/fbc8daa3-79ca-4bae-9d54-ff4156c13858",
     )
   })
+
+  it("keeps drafts on the ID route even when they have a slug", () => {
+    expect(getPublicTournamentHref({ id: "draft", seoSlug: "draft-slug", isDraft: true })).toBe("/tournaments/draft")
+    expect(getPublicTournamentHref({ id: "published", seoSlug: "public-slug", isDraft: false })).toBe("/torneos/public-slug")
+  })
 })
