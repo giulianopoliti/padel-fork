@@ -1,5 +1,6 @@
 'use server';
 
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
 import { getTenantBranding } from '@/config/tenant';
 import { uploadWinnerPhoto } from './winner-photo-actions';
@@ -730,7 +731,7 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const result = await supabase
         .from('tournaments')
-        .insert(buildTournamentToInsert(seoSlug))
+        .insert(withTournamentSortValues(buildTournamentToInsert(seoSlug)))
         .select()
         .single()
 

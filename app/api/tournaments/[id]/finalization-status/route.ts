@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
@@ -43,14 +44,14 @@ const handleSave = async (request: NextRequest, { params }: Context, finalize: b
     const { effectiveZoneStage, effectiveTargetMatchesPerCouple, effectiveBracketMode, effectiveAdvancementConfig, appliedNotes, ...baseConfig } = formatConfig
     const existingConfig = state.tournament.format_config && typeof state.tournament.format_config === 'object'
       ? state.tournament.format_config : baseConfig
-    const { data, error } = await supabase.from('tournaments').update({
+    const { data, error } = await supabase.from('tournaments').update(withTournamentSortValues({
       ...(finalize ? {
         status: 'FINISHED_POINTS_PENDING',
         winner_id: primaryChampion?.winnerId ?? state.tournament.winner_id,
         end_date: new Date().toISOString(),
       } : {}),
       format_config: { ...existingConfig, bonuses },
-    }).eq('id', id).eq('status', finalize ? 'BRACKET_PHASE' : 'FINISHED_POINTS_PENDING').select('id').maybeSingle()
+    })).eq('id', id).eq('status', finalize ? 'BRACKET_PHASE' : 'FINISHED_POINTS_PENDING').select('id').maybeSingle()
     if (error || !data) return NextResponse.json({ error: 'No se pudo finalizar el torneo. Actualizá la página e intentá nuevamente.' }, { status: 409 })
     revalidatePath(`/tournaments/${id}`)
     revalidatePath(`/tournaments/${id}/bracket`)

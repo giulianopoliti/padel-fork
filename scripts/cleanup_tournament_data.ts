@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '../lib/tournaments/tournament-sort-values'
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
@@ -169,13 +170,13 @@ const main = async () => {
     console.log('📋 Step 6: Updating tournament status...');
     const { error: updateError } = await supabase
         .from('tournaments')
-        .update({
+        .update(withTournamentSortValues({
             status: 'ZONE_PHASE',
             bracket_status: 'NOT_STARTED',
             bracket_generated_at: null,
             last_bracket_update: null,
             placeholder_brackets_generated_at: null
-        })
+        }))
         .eq('id', tournamentId);
 
     if (updateError) {

@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -57,7 +58,7 @@ export async function POST(
 
     const { error } = await supabase
       .from('tournaments')
-      .update({ status: 'CANCELED' })
+      .update(withTournamentSortValues({ status: 'CANCELED' }))
       .eq('id', tournamentId)
 
     if (error) {

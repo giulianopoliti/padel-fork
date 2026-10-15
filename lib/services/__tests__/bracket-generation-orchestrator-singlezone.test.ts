@@ -95,6 +95,12 @@ describe('single-zone GOLD/SILVER generation orchestration', () => {
     const result = await generatePlaceholderBracket(tournamentId)
 
     expect(result.success).toBe(true)
+    const supabase = await createClientServiceRole()
+    const writes = (supabase.from as jest.Mock).mock.results.flatMap(({ value }) =>
+      (value.update as jest.Mock).mock.calls.map(([payload]) => payload))
+    expect(writes).toEqual(expect.arrayContaining([expect.objectContaining({
+      status: 'BRACKET_PHASE', status_sort_value: 3,
+    })]))
     expect(savePlaceholderBracketToDatabase).toHaveBeenNthCalledWith(
       1,
       tournamentId,

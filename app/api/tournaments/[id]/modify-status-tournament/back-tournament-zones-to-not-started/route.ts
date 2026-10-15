@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
@@ -88,7 +89,7 @@ export async function PATCH(
     // Actualizar el status del torneo a NOT_STARTED
     const { error: statusError } = await supabase
       .from('tournaments')
-      .update({ status: 'NOT_STARTED' })
+      .update(withTournamentSortValues({ status: 'NOT_STARTED' }))
       .eq('id', tournamentId)
 
     if (statusError) {

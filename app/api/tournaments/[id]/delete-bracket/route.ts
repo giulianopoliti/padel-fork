@@ -5,6 +5,7 @@
  * Supports deleting all bracket artifacts or a specific bracket_key.
  */
 
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import type { BracketKey } from '@/types/tournament-format-v2'
@@ -224,11 +225,11 @@ export async function DELETE(
       if (deletionTarget.mode === 'ALL') {
         const { error: tournamentUpdateError } = await supabase
           .from('tournaments')
-          .update({
+          .update(withTournamentSortValues({
             status: 'ZONE_PHASE',
             bracket_generated_at: null,
             placeholder_brackets_generated_at: null,
-          })
+          }))
           .eq('id', tournamentId)
 
         if (tournamentUpdateError) {
@@ -248,11 +249,11 @@ export async function DELETE(
         if ((remainingEliminationMatches || 0) === 0) {
           const { error: tournamentUpdateError } = await supabase
             .from('tournaments')
-            .update({
+            .update(withTournamentSortValues({
               status: 'ZONE_PHASE',
               bracket_generated_at: null,
               placeholder_brackets_generated_at: null,
-            })
+            }))
             .eq('id', tournamentId)
 
           if (tournamentUpdateError) {

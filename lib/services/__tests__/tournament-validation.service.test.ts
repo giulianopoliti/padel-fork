@@ -1,8 +1,8 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClientServiceRole } from '@/utils/supabase/server'
 import { TournamentValidationService } from '@/lib/services/tournament-validation.service'
 
 jest.mock('@/utils/supabase/server', () => ({
-  createClient: jest.fn(),
+  createClientServiceRole: jest.fn(),
 }))
 
 function createValidationSupabaseMock({
@@ -45,7 +45,7 @@ describe('TournamentValidationService capacity rules', () => {
   })
 
   it('allows registrations when the tournament still has room', async () => {
-    ;(createClient as jest.Mock).mockResolvedValue(
+    ;(createClientServiceRole as jest.Mock).mockResolvedValue(
       createValidationSupabaseMock({
         tournament: {
           id: 'tournament-1',
@@ -67,7 +67,7 @@ describe('TournamentValidationService capacity rules', () => {
   })
 
   it('blocks registrations when the tournament is full', async () => {
-    ;(createClient as jest.Mock).mockResolvedValue(
+    ;(createClientServiceRole as jest.Mock).mockResolvedValue(
       createValidationSupabaseMock({
         tournament: {
           id: 'tournament-1',

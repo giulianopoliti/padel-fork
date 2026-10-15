@@ -1,5 +1,6 @@
 'use server'
 
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import { checkTournamentPermissions } from "@/utils/tournament-permissions"
@@ -181,7 +182,7 @@ export async function createTournamentFecha(
 
           const { error: statusUpdateError } = await supabase
             .from('tournaments')
-            .update({ status: 'ZONE_PHASE' })
+            .update(withTournamentSortValues({ status: 'ZONE_PHASE' }))
             .eq('id', fechaData.tournament_id)
 
           if (statusUpdateError) {

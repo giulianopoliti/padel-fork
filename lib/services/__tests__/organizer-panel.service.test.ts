@@ -14,7 +14,7 @@ const createDatabase = (tables: Record<string, Row[]>, failedTable?: string, row
   const supabase = {
     from: (table: string) => {
       let rows = [...(tables[table] || [])]
-      const orders: { key: string; nullsFirst?: boolean }[] = []
+      const orders: { key: string; ascending?: boolean; nullsFirst?: boolean }[] = []
       let limit = Infinity
       let head = false
       let clubFilter: unknown
@@ -25,7 +25,7 @@ const createDatabase = (tables: Record<string, Row[]>, failedTable?: string, row
         eq: (key: string, value: unknown) => { if (key === 'club_filter.club_id') clubFilter = value; else rows = rows.filter((row) => row[key] === value); return query },
         or: () => { rows = rows.filter((row) => row.club_id === clubFilter || (row.club_links as unknown[] || []).includes(clubFilter)); return query },
         in: (key: string, values: unknown[]) => { rows = rows.filter((row) => values.includes(row[key])); return query },
-        order: (key: string, options: { nullsFirst?: boolean }) => { orders.push({ key, ...options }); return query },
+        order: (key: string, options: { ascending?: boolean; nullsFirst?: boolean }) => { orders.push({ key, ...options }); return query },
         limit: (value: number) => { limit = value; return query },
         range: (start: number, end: number) => { from = start; to = end; return query },
         then: (resolve: (value: unknown) => unknown) => {
@@ -36,7 +36,7 @@ const createDatabase = (tables: Record<string, Row[]>, failedTable?: string, row
               if (av == null) return order.nullsFirst ? -1 : 1
               if (bv == null) return order.nullsFirst ? 1 : -1
               const compared = String(av).localeCompare(String(bv))
-              if (compared) return compared
+              if (compared) return order.ascending === false ? -compared : compared
             }
             return 0
           })
@@ -54,6 +54,19 @@ const createDatabase = (tables: Record<string, Row[]>, failedTable?: string, row
 const storedTournament = (row: PanelTournament, organization_id = 'org', es_prueba = false): Row => ({ ...row, organization_id, es_prueba })
 
 describe('organizer panel selection', () => {
+  it.each(['padel-fv', 'padel-elite'] as const)('lets category outrank status for %s and reverses states on descending order', async (tenant) => {
+    const db = createDatabase({ tournaments: [
+      { ...storedTournament(tournament('first-upcoming')), category_sort_value: 1, status_sort_value: 1 },
+      { ...storedTournament(tournament('first-bracket', 'BRACKET_PHASE')), category_sort_value: 1, status_sort_value: 3 },
+      { ...storedTournament(tournament('ninth-zone', 'ZONE_PHASE')), category_sort_value: 9, status_sort_value: 2 },
+      { ...storedTournament(tournament('unknown')), category_sort_value: null, status_sort_value: 1 },
+    ] })
+    const result = await getOrganizerPanelTournamentPage(db.supabase, 'org', tenant, 1, undefined, [
+      { field: 'category', direction: 'asc' }, { field: 'status', direction: 'desc' },
+    ])
+    expect(result.tournaments.map(({ id }) => id)).toEqual(['first-bracket', 'first-upcoming', 'ninth-zone', 'unknown'])
+    expect(db.requests.filter(({ table }) => table === 'tournaments')).toHaveLength(1)
+  })
   it('FV filters before limiting, orders dates ascending/nulls last and scopes to the organization', async () => {
     const eligible = Array.from({ length: 10 }, (_, i) => storedTournament(tournament(`t${i}`, i % 2 ? 'BRACKET_PHASE' : 'ZONE_PHASE', `2026-10-${String(i + 10).padStart(2, '0')}`)))
     const database = createDatabase({ tournaments: [

@@ -15,6 +15,9 @@ import { RestoreTournamentButton } from './components/restore-tournament-button'
 import ListRetryButton from './components/list-retry-button'
 import TournamentClubSelector from '@/components/tournament/tournament-club-selector'
 import { getActiveTournamentClubs, validateTournamentClub } from '@/lib/services/tournament-club-filter.service'
+import { getTournamentSortSettings } from '@/lib/services/tournament-sort-settings.service'
+import TournamentSortDialog from '@/components/tournament/tournament-sort-dialog'
+import type { TournamentSortRule } from '@/lib/tournaments/tournament-sort'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,10 +59,10 @@ const TournamentWithActions = ({ tournament, priority }: { tournament: ListedTou
   </article>
 )
 
-const TournamentList = async ({ context, filter, page, clubId }: { clubId?: string; context: Awaited<ReturnType<typeof getTournamentListingContext>>; filter: TournamentListFilter; page: number }) => {
+const TournamentList = async ({ context, filter, page, clubId, sortRules }: { sortRules: TournamentSortRule[]; clubId?: string; context: Awaited<ReturnType<typeof getTournamentListingContext>>; filter: TournamentListFilter; page: number }) => {
   let result: Awaited<ReturnType<typeof getTournamentListPage>>
   try {
-    result = await getTournamentListPage(context.supabase, context.scope, filter, page, clubId)
+    result = await getTournamentListPage(context.supabase, context.scope, filter, page, clubId, sortRules)
   } catch (error) {
     console.error('[MyTournaments] Could not load page:', error)
     return <Alert variant="destructive"><AlertTitle>No pudimos cargar los torneos</AlertTitle><AlertDescription className="mt-2 space-y-3"><p>Intentá nuevamente. Los torneos y sus métricas no están disponibles en este momento.</p><ListRetryButton /></AlertDescription></Alert>
@@ -107,6 +110,13 @@ const MyTournamentsPage = async ({ searchParams }: { searchParams: Promise<Recor
     console.error('[MyTournaments] Could not load club filter:', error)
     return <div className="container mx-auto px-4 py-8"><Alert variant="destructive"><AlertTitle>No pudimos aplicar el filtro de club</AlertTitle><AlertDescription className="mt-2 space-y-3"><p>El club no está disponible o no pudimos cargar los clubes activos.</p><Link href={getTournamentListHref(filter)} prefetch={false} className="underline">Volver a todos los clubes</Link><ListRetryButton /></AlertDescription></Alert></div>
   }
+  let sortSettings: Awaited<ReturnType<typeof getTournamentSortSettings>>
+  try {
+    sortSettings = await getTournamentSortSettings(context.supabase, 'my-tournaments')
+  } catch (error) {
+    console.error('[MyTournaments] Could not load sorting:', error)
+    return <div className="container mx-auto px-4 py-8"><Alert variant="destructive"><AlertTitle>No pudimos cargar el orden de los torneos</AlertTitle><AlertDescription className="mt-2"><ListRetryButton /></AlertDescription></Alert></div>
+  }
   const counts: CountsPromise = getTournamentListCounts(context.supabase, context.scope, clubId)
     .then((value): CountsResult => ({ value }))
     .catch((error): CountsResult => { console.error('[MyTournaments] Could not load counts:', error); return { error: true } })
@@ -117,11 +127,12 @@ const MyTournamentsPage = async ({ searchParams }: { searchParams: Promise<Recor
         <Suspense fallback={<Skeleton className="mt-4 h-8 w-64" />}><Summary counts={counts} /></Suspense>
       </header>
       <TournamentClubSelector clubs={clubs} clubId={clubId} path="/my-tournaments" state={filter} />
+      <TournamentSortDialog surface="my-tournaments" settings={sortSettings} tenantName={getTenantBranding().shortName} />
       <nav aria-label="Filtrar torneos por estado" className="flex gap-2 overflow-x-auto pb-2">
         {(Object.keys(TOURNAMENT_LIST_FILTERS) as TournamentListFilter[]).filter((key) => key !== 'other').map((key) => <FilterLink key={key} filter={key} selected={filter} counts={counts} clubId={clubId} />)}
         <Suspense fallback={null}><OtherFilter selected={filter} counts={counts} clubId={clubId} /></Suspense>
       </nav>
-      <Suspense key={`${filter}-${page}-${clubId || "all"}`} fallback={<ListLoading />}><TournamentList context={context} filter={filter} page={page} clubId={clubId} /></Suspense>
+      <Suspense key={`${filter}-${page}-${clubId || "all"}-${JSON.stringify(sortSettings.rules)}`} fallback={<ListLoading />}><TournamentList context={context} filter={filter} page={page} clubId={clubId} sortRules={sortSettings.rules} /></Suspense>
     </div>
   </main>
 }

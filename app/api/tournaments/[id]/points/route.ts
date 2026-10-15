@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 // ✅ Using new Points Service (organized in lib/services/points)
@@ -173,7 +174,7 @@ export async function POST(
     // Actualizar estado del torneo
     const { error: updateError } = await supabase
       .from('tournaments')
-      .update({ status: 'FINISHED_POINTS_CALCULATED' })
+      .update(withTournamentSortValues({ status: 'FINISHED_POINTS_CALCULATED' }))
       .eq('id', tournamentId);
 
     if (updateError) {

@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
@@ -88,7 +89,7 @@ export async function PATCH(
     // 4. Actualizar el status del torneo a ZONE_PHASE
     const { error: statusError } = await supabase
       .from('tournaments')
-      .update({ status: 'ZONE_PHASE' })
+      .update(withTournamentSortValues({ status: 'ZONE_PHASE' }))
       .eq('id', tournamentId)
 
     if (statusError) {

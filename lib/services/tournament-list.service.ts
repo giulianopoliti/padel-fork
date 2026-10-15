@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/server'
 import { LIST_PAGE_SIZE, STANDARD_LIST_STATES, TOURNAMENT_LIST_FILTERS, type TournamentListFilter } from '@/lib/tournaments/tournament-list-filters'
 import { readTournamentMetrics } from './tournament-metrics.service'
 import { scopedTournamentQuery } from './tournament-club-filter.service'
+import { getTournamentSortColumn, type TournamentSortRule } from '@/lib/tournaments/tournament-sort'
 
 export interface TournamentListingScope {
   column: 'organization_id' | 'club_id'
@@ -75,11 +76,13 @@ export const getTournamentListCounts = async (supabase: SupabaseClient, scope: T
 // Only internal server consumers with an already validated scope may call this.
 export const getTournamentListPage = async (
   supabase: SupabaseClient, scope: TournamentListingScope, filter: TournamentListFilter, page: number, clubId?: string,
+  sortRules: TournamentSortRule[] = [{ field: 'start_date', direction: 'asc' }],
 ) => {
   let query = scopedTournaments(supabase, scope, 'id,seo_slug,name,status,pre_tournament_image_url,start_date,end_date,category_name,gender,type,price,is_draft,clubes(id,name)', false, clubId,
     filter === 'other' ? `status.not.in.(${STANDARD_LIST_STATES.join(',')}),status.is.null` : undefined)
   if (filter !== 'other') query = query.in('status', [...TOURNAMENT_LIST_FILTERS[filter].states])
-  const { data, error, count } = await query.order('start_date', { ascending: true, nullsFirst: false }).order('id', { ascending: true })
+  for (const rule of sortRules) query = query.order(getTournamentSortColumn(rule.field), { ascending: rule.direction === 'asc', nullsFirst: false })
+  const { data, error, count } = await query.order('id', { ascending: true })
     .range((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE - 1)
   if (error) throw error
   if (count === null) throw new Error('No se pudo obtener el total del filtro')

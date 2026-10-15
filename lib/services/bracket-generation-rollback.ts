@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClientServiceRole } from '@/utils/supabase/server'
 import type { BracketKey } from '@/types/tournament-format-v2'
 
@@ -87,11 +88,11 @@ export async function rollbackPlaceholderBracketGeneration(
 
   const { error: tournamentError } = await supabase
     .from('tournaments')
-    .update({
+    .update(withTournamentSortValues({
       status: previousState.status,
       bracket_status: previousState.bracket_status,
       bracket_generated_at: previousState.bracket_generated_at
-    })
+    }))
     .eq('id', tournamentId)
 
   if (tournamentError) {

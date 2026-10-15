@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClientServiceRole } from '@/utils/supabase/server'
 import { PlaceholderBracketGenerator } from '@/lib/services/bracket-generator-v2'
 import { updateDefinitivePositionsService } from '@/lib/services/definitive-positions-service'
@@ -98,7 +99,7 @@ export async function generatePlaceholderBracket(
 
     const { error: phaseTransitionError } = await supabase
       .from('tournaments')
-      .update({ status: 'BRACKET_PHASE' })
+      .update(withTournamentSortValues({ status: 'BRACKET_PHASE' }))
       .eq('id', tournamentId)
 
     if (phaseTransitionError) {
@@ -155,11 +156,11 @@ export async function generatePlaceholderBracket(
 
     const { error: finalizeTournamentError } = await supabase
       .from('tournaments')
-      .update({
+      .update(withTournamentSortValues({
         status: 'BRACKET_PHASE',
         bracket_status: 'BRACKET_GENERATED',
         bracket_generated_at: new Date().toISOString()
-      })
+      }))
       .eq('id', tournamentId)
 
     if (finalizeTournamentError) {

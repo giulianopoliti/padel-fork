@@ -58,6 +58,16 @@ const stored = (id: string, status = 'NOT_STARTED', organization_id = 'org', clu
 const scope = { column: 'organization_id', id: 'org' } as const
 
 describe('paged tournament backend', () => {
+  it('applies category priority and descending creation date before slicing pages, with nulls last', async () => {
+    const rows = Array.from({ length: 25 }, (_, i) => ({ ...stored(String(i).padStart(2, '0')), category_sort_value: i < 15 ? 1 : 9, created_at: `2026-10-${String(i + 1).padStart(2, '0')}` }))
+    const db = database({ tournaments: [{ ...stored('unknown'), category_sort_value: null, created_at: '2030-01-01' }, ...rows] })
+    const rules = [{ field: 'category', direction: 'asc' }, { field: 'created_at', direction: 'desc' }] as const
+    const pages = await Promise.all([1, 2, 3].map((page) => getTournamentListPage(db.supabase, scope, 'upcoming', page, undefined, [...rules])))
+    expect(pages[0].tournaments.map(({ id }) => id)).toEqual(['14', '13', '12', '11', '10', '09', '08', '07', '06', '05', '04', '03'])
+    expect(pages[1].tournaments.slice(0, 4).map(({ id }) => id)).toEqual(['02', '01', '00', '24'])
+    expect(pages[2].tournaments.at(-1)?.id).toBe('unknown')
+    expect(new Set(pages.flatMap(({ tournaments }) => tournaments.map(({ id }) => id))).size).toBe(26)
+  })
   it('loads only the selected state/page and metrics of its 12 IDs, retaining SEO links', async () => {
     const rows = Array.from({ length: 30 }, (_, i) => stored(String(i).padStart(2, '0')))
     const db = database({ tournaments: [...rows, stored('zone', 'ZONE_PHASE'), stored('foreign', 'NOT_STARTED', 'other'), { ...stored('test'), es_prueba: true }],

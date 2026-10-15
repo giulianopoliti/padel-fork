@@ -4,6 +4,7 @@
  * Handles both old tournaments and new simplified flow
  */
 
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
 import {
   buildTournamentCapacitySummary,
@@ -332,10 +333,10 @@ export class TournamentValidationService {
       // Update tournament to new system
       const { error } = await supabase
         .from('tournaments')
-        .update({
+        .update(withTournamentSortValues({
           status: newStatus,
           registration_locked: false // Reset legacy lock for new system
-        })
+        }))
         .eq('id', tournamentId);
 
       if (error) {

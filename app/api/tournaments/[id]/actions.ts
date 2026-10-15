@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient, createClientServiceRole } from "@/utils/supabase/server";
 import { snakeAssignCouplesToZones } from "@/utils/zone-utils";
 import { createApiResponse } from "@/utils/serialization";
@@ -1188,14 +1189,14 @@ export async function buildZonesAction(tournamentId: string): Promise<{
     
     if (shouldUseNewSystem) {
       // Nuevo sistema: ZONE_PHASE (permite seguir inscribiendo parejas y drag & drop)
-      await supabase.from("tournaments").update({ 
+      await supabase.from("tournaments").update(withTournamentSortValues({
         status: "ZONE_PHASE"
-      }).eq("id", tournamentId)
+      })).eq("id", tournamentId)
     } else {
       // Sistema legacy: PAIRING (mantener compatibilidad con torneos existentes)
-      await supabase.from("tournaments").update({ 
+      await supabase.from("tournaments").update(withTournamentSortValues({
         status: "PAIRING" 
-      }).eq("id", tournamentId)
+      })).eq("id", tournamentId)
     }
   }
 
@@ -2887,10 +2888,10 @@ export async function startTournament(tournamentId: string) {
     // Cambiar estado a ZONE_PHASE (en lugar de PAIRING/ZONE_REGISTRATION)
     const { data, error } = await supabase
       .from('tournaments')
-      .update({ 
+      .update(withTournamentSortValues({
         status: 'ZONE_PHASE',
         start_date: new Date().toISOString() 
-      })
+      }))
       .eq('id', tournamentId)
       .select()
     
@@ -2912,10 +2913,10 @@ export async function startBracketPhase(tournamentId: string) {
   try {
     const { data, error } = await supabase
       .from('tournaments')
-      .update({ 
+      .update(withTournamentSortValues({
         status: 'BRACKET_PHASE',
         bracket_generated_at: new Date().toISOString() 
-      })
+      }))
       .eq('id', tournamentId)
       .select()
     

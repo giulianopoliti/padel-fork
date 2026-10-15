@@ -1,5 +1,6 @@
 "use server"
 
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
@@ -1247,7 +1248,7 @@ export async function backTournamentToNotStartedAction(
     // Update tournament status to NOT_STARTED
     const { error: statusError } = await supabase
       .from('tournaments')
-      .update({ status: 'NOT_STARTED' })
+      .update(withTournamentSortValues({ status: 'NOT_STARTED' }))
       .eq('id', tournamentId)
 
     if (statusError) {
@@ -1469,12 +1470,12 @@ export async function backTournamentFromBracketToZones(
     console.log('[backTournamentFromBracketToZones] Step 6: Updating tournament status...')
     const { error: statusError } = await supabase
       .from('tournaments')
-      .update({
+      .update(withTournamentSortValues({
         status: 'ZONE_PHASE',
         bracket_status: 'NOT_STARTED',
         bracket_generated_at: null,
         placeholder_brackets_generated_at: null
-      })
+      }))
       .eq('id', tournamentId)
 
     if (statusError) {

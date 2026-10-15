@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { checkTournamentPermissions } from "@/utils/tournament-permissions"
@@ -136,7 +137,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const { error: updateErr } = await supabase
     .from("tournaments")
-    .update({ status: "ZONE_PHASE" })
+    .update(withTournamentSortValues({ status: "ZONE_PHASE" }))
     .eq("id", tournamentId)
 
   if (updateErr) {

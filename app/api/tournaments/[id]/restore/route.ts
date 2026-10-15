@@ -1,3 +1,4 @@
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
@@ -100,7 +101,7 @@ export async function POST(
 
     const { error: updateError } = await supabase
       .from('tournaments')
-      .update({ status: nextStatus })
+      .update(withTournamentSortValues({ status: nextStatus }))
       .eq('id', tournamentId)
 
     if (updateError) {

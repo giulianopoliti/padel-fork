@@ -10,6 +10,8 @@ import PlayersSectionClient from "./players-section-client"
 import TournamentClubSelector from '@/components/tournament/tournament-club-selector'
 import type { ActiveTournamentClub } from '@/lib/services/tournament-club-filter.service'
 import { getOrganizerPanelHref, getTournamentListHref } from '@/lib/tournaments/tournament-list-filters'
+import TournamentSortDialog from '@/components/tournament/tournament-sort-dialog'
+import { describeTournamentSort, type TournamentSortSettings } from '@/lib/tournaments/tournament-sort'
 
 interface PlayerData {
   id: string
@@ -46,6 +48,8 @@ interface OrganizadorDashboardProps {
   tournamentPage: number
   tournamentPages: number
   totalTournaments: number
+  sortSettings?: TournamentSortSettings
+  tenantName: string
 }
 
 export default function OrganizadorDashboard({
@@ -63,6 +67,8 @@ export default function OrganizadorDashboard({
   tournamentPage,
   tournamentPages,
   totalTournaments,
+  sortSettings,
+  tenantName,
 }: OrganizadorDashboardProps) {
 
   return (
@@ -105,7 +111,7 @@ export default function OrganizadorDashboard({
                 Mis Torneos
               </h2>
               <p className="text-sm text-muted-foreground">
-                {prioritizesUpcoming ? "Próximos primero; luego zonas y llaves" : "Próximos, zonas y llaves por fecha de inicio"}
+                {sortSettings?.configured ? describeTournamentSort(sortSettings.rules) : prioritizesUpcoming ? "Próximos primero; luego zonas y llaves" : "Próximos, zonas y llaves por fecha de inicio"}
               </p>
             </div>
           </div>
@@ -117,7 +123,10 @@ export default function OrganizadorDashboard({
           </Button>
         </div>
 
-        <div className="mb-4"><TournamentClubSelector clubs={clubs} clubId={clubId} path="/panel" /></div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <TournamentClubSelector clubs={clubs} clubId={clubId} path="/panel" />
+          {sortSettings && <TournamentSortDialog surface="panel" settings={sortSettings} tenantName={tenantName} />}
+        </div>
         {!tournamentsError && totalTournaments > 0 && <p className="mb-3 text-sm text-muted-foreground" role="status">{totalTournaments} torneos · página {tournamentPage} de {tournamentPages}</p>}
         {tournamentsError ? (
           <Alert variant="destructive">

@@ -114,6 +114,10 @@ This is a **Padel Tournament Management System** built with Next.js 15, React 19
 
 ## Remote Supabase selection (mandatory)
 
+## Supabase migrations: deployment prohibition (mandatory)
+
+**Never deploy, apply, push, or otherwise execute a Supabase migration against any remote environment.** You may create, edit, review, and validate migration files locally, but the repository owner deploys migrations separately through Supabase CI/CD after granting approval. This prohibition applies even when a remote project and tenant have been selected.
+
 This repository is the shared codebase for two separate organizers and two separate remote Supabase projects. Never use an MCP named only `supabase` or `supabase-develop`, and never use the historical Padel Para Todos project (`vulusxqgknaejdxnhiex`) for remote database work.
 
 - `supabase-fv` is Padel FV (`bfmaqrythlwbfjuqumom`) and is the default remote destination for work in this `padel-fv` workspace or requests about `padelfv.com`/FV.

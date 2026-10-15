@@ -4,6 +4,7 @@ import type { TenantBranding } from '@/config/tenant'
 import { aggregatePanelMetrics, type PanelTournament } from './organizer-panel-metrics'
 import { readTournamentMetrics } from './tournament-metrics.service'
 import { scopedTournamentQuery } from './tournament-club-filter.service'
+import { getTournamentSortColumn, type TournamentSortRule } from '@/lib/tournaments/tournament-sort'
 
 export const PANEL_PAGE_SIZE = 8
 const SELECT = 'id,seo_slug,name,status,start_date,category_name,gender,type,price,is_draft,clubes(id,name)'
@@ -11,11 +12,15 @@ const SELECT = 'id,seo_slug,name,status,start_date,category_name,gender,type,pri
 // organizationId comes from the authenticated user's active membership.
 export const getOrganizerPanelTournamentPage = async (
   supabase: SupabaseClient, organizationId: string, tenant: TenantBranding['key'], page = 1, clubId?: string,
+  sortRules?: TournamentSortRule[],
 ) => {
   const scope = { column: 'organization_id' as const, id: organizationId }
   const selectGroup = async (states: string[], offset: number, limit: number) => {
     let query = scopedTournamentQuery(supabase, scope, SELECT, limit === 0, clubId).in('status', states)
-      .order('start_date', { ascending: true, nullsFirst: false }).order('id', { ascending: true })
+    for (const rule of sortRules ?? [{ field: 'start_date', direction: 'asc' }] as TournamentSortRule[]) {
+      query = query.order(getTournamentSortColumn(rule.field), { ascending: rule.direction === 'asc', nullsFirst: false })
+    }
+    query = query.order('id', { ascending: true })
     if (limit > 0) query = query.range(offset, offset + limit - 1)
     const { data, error, count } = await query
     if (error) throw error
@@ -25,7 +30,7 @@ export const getOrganizerPanelTournamentPage = async (
   const offset = (page - 1) * PANEL_PAGE_SIZE
   let tournaments: PanelTournament[]
   let total: number
-  if (tenant === 'padel-elite') {
+  if (tenant === 'padel-elite' && !sortRules) {
     const upcoming = await selectGroup(['NOT_STARTED'], offset, PANEL_PAGE_SIZE)
     const remaining = PANEL_PAGE_SIZE - upcoming.tournaments.length
     const active = await selectGroup(['ZONE_PHASE', 'BRACKET_PHASE'], Math.max(0, offset - upcoming.total), remaining)

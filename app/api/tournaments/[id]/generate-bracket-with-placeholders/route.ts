@@ -6,6 +6,7 @@
  * Uses placeholders for unknown positions and definitive couples for known positions.
  */
 
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { PlaceholderBracketGenerator } from '@/lib/services/bracket-generator-v2'
@@ -222,11 +223,11 @@ export async function POST(
       // Update tournament status
       const { error: tournamentUpdateError } = await supabase
         .from('tournaments')
-        .update({
+        .update(withTournamentSortValues({
           status: 'BRACKET_PHASE',
           placeholder_brackets_generated_at: new Date().toISOString(),
           bracket_generated_at: new Date().toISOString()
-        })
+        }))
         .eq('id', tournamentId)
 
       if (tournamentUpdateError) {

@@ -11,6 +11,7 @@ import type { PanelTournamentWithMetrics } from "@/lib/services/organizer-panel-
 
 import { getActiveTournamentClubs, validateTournamentClub } from '@/lib/services/tournament-club-filter.service'
 import { normalizeListPage, getOrganizerPanelHref } from '@/lib/tournaments/tournament-list-filters'
+import { getTournamentSortSettings } from '@/lib/services/tournament-sort-settings.service'
 
 export const dynamic = 'force-dynamic'
 
@@ -85,13 +86,15 @@ export default async function OrganizadorDashboardPage({ searchParams }: { searc
   }
   const tenant = getTenantBranding().key
   // Start independent sections together; one failed section must not hide the others.
-  const tournamentsPromise = getOrganizerPanelTournamentPage(supabase, organizationId, tenant, page, clubId)
+  const sortSettingsPromise = getTournamentSortSettings(supabase, 'panel')
+  const tournamentsPromise = sortSettingsPromise.then((settings) => getOrganizerPanelTournamentPage(supabase, organizationId, tenant, page, clubId, settings.configured ? settings.rules : undefined))
   const playersPromise = searchPlayersGlobally({ page: 1, pageSize: 10 })
-  const [tournamentsResult, playersResult, categoriesResult, restrictionsResult] = await Promise.allSettled([
+  const [tournamentsResult, playersResult, categoriesResult, restrictionsResult, sortSettingsResult] = await Promise.allSettled([
     tournamentsPromise,
     playersPromise,
     getCategories(),
     tenant === "padel-elite" ? getTpeRestrictionPlayers() : Promise.resolve([]),
+    sortSettingsPromise,
   ])
   const tournamentsWithMetrics: PanelTournamentWithMetrics[] = tournamentsResult.status === 'fulfilled' ? tournamentsResult.value.tournaments : []
   if (tournamentsResult.status === 'fulfilled' && tournamentsResult.value.redirectPage !== null) redirect(getOrganizerPanelHref(tournamentsResult.value.redirectPage, clubId))
@@ -132,6 +135,8 @@ export default async function OrganizadorDashboardPage({ searchParams }: { searc
         tournamentsError={tournamentsError}
         playersError={playersError}
         prioritizesUpcoming={tenant === "padel-elite"}
+        sortSettings={sortSettingsResult.status === 'fulfilled' ? sortSettingsResult.value : undefined}
+        tenantName={getTenantBranding().shortName}
         clubs={clubs}
         clubId={clubId}
         tournamentPage={page}

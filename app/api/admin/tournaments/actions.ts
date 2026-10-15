@@ -1,5 +1,6 @@
 "use server"
 
+import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { supabaseAdmin, verifyAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 
@@ -32,7 +33,12 @@ export async function updateTournament(
 
     const { error } = await supabaseAdmin
       .from("tournaments")
-      .update(data)
+      // This legacy form edits category_name only. Clear a stale structured
+      // category in the same write so it cannot override the newly selected label.
+      .update(withTournamentSortValues({
+        ...data,
+        ...(data.category_name !== undefined ? { category_config: null } : {}),
+      }))
       .eq("id", id)
 
     if (error) throw error
@@ -70,7 +76,7 @@ export async function cancelTournamentAction(tournamentId: string) {
     // Cancelar torneo
     const { error } = await supabaseAdmin
       .from("tournaments")
-      .update({ status: "CANCELED" })
+      .update(withTournamentSortValues({ status: "CANCELED" }))
       .eq("id", tournamentId)
 
     if (error) throw error
@@ -177,7 +183,7 @@ export async function backToNotStartedAction(tournamentId: string) {
     // Actualizar estado del torneo a NOT_STARTED
     const { error: statusError } = await supabaseAdmin
       .from("tournaments")
-      .update({ status: "NOT_STARTED" })
+      .update(withTournamentSortValues({ status: "NOT_STARTED" }))
       .eq("id", tournamentId)
 
     if (statusError) {
@@ -298,12 +304,12 @@ export async function backToZonesAction(tournamentId: string) {
     // 6. Actualizar estado del torneo a ZONE_PHASE
     const { error: statusError } = await supabaseAdmin
       .from("tournaments")
-      .update({
+      .update(withTournamentSortValues({
         status: "ZONE_PHASE",
         bracket_status: "NOT_STARTED",
         bracket_generated_at: null,
         placeholder_brackets_generated_at: null
-      })
+      }))
       .eq("id", tournamentId)
 
     if (statusError) {
