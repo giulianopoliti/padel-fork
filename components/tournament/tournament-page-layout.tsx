@@ -1,5 +1,6 @@
 "use client"
 
+import { isAmericanLibreTournament } from '@/lib/services/americano-libre-format'
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { useTournament } from "@/app/(main)/tournaments/[id]/providers/TournamentProvider"
@@ -175,7 +176,7 @@ export default function TournamentPageLayout({
       case "brackets":
         return (
           <div className="h-full overflow-x-auto overflow-y-hidden">
-            {isPublicView || tournamentStatus === 'FINISHED_POINTS_CALCULATED' ? (
+            {!isAmericanLibreTournament(tournament ?? {}) && (isPublicView || tournamentStatus === 'FINISHED_POINTS_CALCULATED') ? (
               // Vista pública unificada (incluye torneos finalizados)
               <ReadOnlyBracketTab
                 tournamentId={tournamentId}
@@ -183,7 +184,7 @@ export default function TournamentPageLayout({
               />
             ) : (
               // Vista club owner con drag & drop (ImprovedBracketRenderer)
-              <TournamentBracketTab {...commonTabProps} />
+              <TournamentBracketTab {...commonTabProps} isAmericanLibre={isAmericanLibreTournament(tournament ?? {})} />
             )}
           </div>
         )

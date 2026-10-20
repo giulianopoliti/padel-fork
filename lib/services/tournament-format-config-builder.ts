@@ -28,6 +28,13 @@ export function buildTournamentFormatConfig(
     config.targetMatchesPerCouple = input.matchesPerCouple
   }
 
+  if (config.bracketAssignment === 'MANUAL') {
+    if (config.zoneMode === 'MULTI_ZONE' && config.targetMatchesPerCouple === 3) {
+      config.zoneRules = { minSize: 3, maxSize: 4, idealSize: 4, allowedSizes: [3, 4] }
+    }
+    return config
+  }
+
   if (config.advancementConfig.kind === 'PER_ZONE_TOP') {
     const couplesPerZone = input.couplesPerZone ?? config.advancementConfig.couplesPerZone
     ;(config.advancementConfig as PerZoneTopAdvancementConfig).couplesPerZone = couplesPerZone

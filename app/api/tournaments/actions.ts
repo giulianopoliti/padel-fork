@@ -1232,6 +1232,7 @@ export async function getMatchesByTournamentId(
       )
     `)
     .eq('tournament_id', tournamentId)
+    .eq('bracket_is_active', true)
     .order('round', { ascending: false })
     .order('order_in_round', { ascending: true });
 
@@ -1701,6 +1702,7 @@ export async function fetchTournamentMatches(tournamentId: string) {
         )
       `)
       .eq("tournament_id", tournamentId)
+      .eq('bracket_is_active', true)
       .order("round")
       .order("order");
     
@@ -2331,6 +2333,7 @@ async function findNextRoundMatchForWinner(
       .from("matches")
       .select("*")
       .eq("tournament_id", tournamentId)
+      .eq('bracket_is_active', true)
       .eq("round", nextRound)
       .order("order_in_round");
     
@@ -2513,6 +2516,7 @@ export async function advanceToNextStageAction(tournamentId: string) {
       .from("matches")
       .select("*")
       .eq("tournament_id", tournamentId)
+      .eq('bracket_is_active', true)
       .neq("round", "ZONE")
       .order("round")
       .order("order");
@@ -4511,6 +4515,7 @@ async function extractCouplesSeededFromDatabase(tournamentId: string, supabase: 
       .from('matches')
       .select('couple1_id, couple2_id, winner_id, result_couple1, result_couple2, status')
       .eq('tournament_id', tournamentId)
+      .eq('bracket_is_active', true)
       .eq('zone_id', zone.id)
       .eq('status', 'FINISHED');
 
@@ -4852,6 +4857,7 @@ export async function calculateTournamentPoints(
       couple2:couples!matches_couple2_id_fkey(*, player1:players!couples_player1_id_fkey(*), player2:players!couples_player2_id_fkey(*))
     `)
     .eq('tournament_id', tournamentId)
+    .eq('bracket_is_active', true)
     .eq('status', 'FINISHED');
 
   if (matchesError) throw new Error('Error fetching matches');
@@ -5207,7 +5213,8 @@ export async function getMatchPoints(
     const { data: matches, error: matchesError } = await client
       .from('matches')
       .select('id')
-      .eq('tournament_id', tournamentId);
+      .eq('tournament_id', tournamentId)
+      .eq('bracket_is_active', true);
       
     if (matchesError) {
       console.error('[getMatchPoints] Error fetching matches:', matchesError);

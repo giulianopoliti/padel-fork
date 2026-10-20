@@ -5,6 +5,26 @@ import type {
 } from '@/types/tournament-format-v2'
 
 export const TOURNAMENT_FORMAT_PRESETS: Record<OperationalTournamentFormatPresetId, TournamentFormatConfigV2> = {
+  AMERICAN_MULTI_ZONE_FREE: {
+    version: 2, presetId: 'AMERICAN_MULTI_ZONE_FREE', baseType: 'AMERICAN',
+    zoneMode: 'MULTI_ZONE', zoneStage: 'FIXED_MATCH_COUNT', targetMatchesPerCouple: 2,
+    bracketMode: 'SINGLE', bracketAssignment: 'MANUAL',
+    advancementConfig: { kind: 'SINGLE', advanceCount: 64, allocationMode: 'CUSTOM' },
+    rankingScope: 'PER_ZONE', rankingPolicyId: 'STANDARD_PADEL',
+    qualificationSource: 'MANUAL', bracketSeedingStrategy: 'MANUAL',
+    zoneRules: { minSize: 3, maxSize: 5, idealSize: 4, allowedSizes: [3, 4, 5] },
+    display: { name: 'Americano libre multizona', description: 'Zonas con posiciones de referencia y una llave con asignación manual de parejas.' },
+  },
+  AMERICAN_SINGLE_ZONE_FREE: {
+    version: 2, presetId: 'AMERICAN_SINGLE_ZONE_FREE', baseType: 'AMERICAN',
+    zoneMode: 'SINGLE_ZONE', zoneStage: 'FIXED_MATCH_COUNT', targetMatchesPerCouple: 2,
+    bracketMode: 'SINGLE', bracketAssignment: 'MANUAL',
+    advancementConfig: { kind: 'SINGLE', advanceCount: 64, allocationMode: 'CUSTOM' },
+    rankingScope: 'PER_ZONE', rankingPolicyId: 'STANDARD_PADEL',
+    qualificationSource: 'MANUAL', bracketSeedingStrategy: 'MANUAL',
+    zoneRules: { minSize: 3, maxSize: 32, idealSize: 8, allowedSizes: Array.from({ length: 30 }, (_, index) => index + 3) },
+    display: { name: 'Americano libre zona única', description: 'Zona General con posiciones de referencia y una llave con asignación manual de parejas.' },
+  },
   AMERICAN_MULTI_ZONE_2: {
     version: 2,
     presetId: 'AMERICAN_MULTI_ZONE_2',

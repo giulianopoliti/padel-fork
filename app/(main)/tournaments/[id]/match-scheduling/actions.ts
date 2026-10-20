@@ -113,6 +113,7 @@ const haveCouplesPlayedTogether = async (
       .from('matches')
       .select('id, status')
       .eq('tournament_id', tournamentId)
+      .eq('bracket_is_active', true)
       .or(`and(couple1_id.eq.${couple1Id},couple2_id.eq.${couple2Id}),and(couple1_id.eq.${couple2Id},couple2_id.eq.${couple1Id})`)
 
     if (error) {
@@ -1804,6 +1805,7 @@ export async function deleteMatches(
       .from('matches')
       .select('id, status')
       .eq('tournament_id', tournamentId)
+      .eq('bracket_is_active', true)
       .in('id', matchIds)
 
     if (verifyError) {

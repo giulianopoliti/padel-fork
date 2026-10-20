@@ -113,7 +113,7 @@ export async function getNewDefinitivePositions(
   return definitivePositions
 }
 
-type PlaceholderResolutionScope = 'ZONE_POSITIONS' | 'GLOBAL_STANDINGS' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES'
+type PlaceholderResolutionScope = 'ZONE_POSITIONS' | 'GLOBAL_STANDINGS' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES' | 'MANUAL'
 
 async function getPlaceholderResolutionScope(tournamentId: string): Promise<PlaceholderResolutionScope> {
   const supabase = await createClientServiceRole()
@@ -552,6 +552,10 @@ export class BracketPlaceholderResolver {
       // PASO 1: Buscar posiciones definitivas de la zona actualizada
       console.log(`📍 [BRACKET-RESOLVER] STEP 1/5: Getting definitive positions`)
       const resolutionScope = await getPlaceholderResolutionScope(tournamentId)
+      if (resolutionScope === 'MANUAL') {
+        return { success: true, definitivePositions: 0, resolvedSeeds: 0, updatedMatches: 0,
+          detectedByes: 0, advancedMatches: 0, executionTime: Date.now() - startTime, errors: [] }
+      }
       const definitivePositions = resolutionScope === 'GLOBAL_STANDINGS'
         ? await getGlobalDefinitivePositions(tournamentId)
         : resolutionScope === 'HYBRID_FIRSTS_GLOBAL_REST_ZONES'

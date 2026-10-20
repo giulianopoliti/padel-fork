@@ -1,7 +1,7 @@
 # Plan de acción: AMERICANO LIBRE
 
 Fecha: 16 de octubre de 2026.
-Estado: planificación; implementación pendiente.
+Estado: fases 0 y 1 completadas el 17 de octubre de 2026 y fases 2, 3 y 4 completadas el 19 de octubre de 2026 en el mismo worktree. Fase 5 pendiente. Migración de fase 1 conservada; fase 4 añade una nueva migración deportiva verificada exclusivamente en local. Sin despliegue remoto.
 
 Este documento reúne las decisiones de la conversación. Reemplaza las propuestas anteriores de dar prioridad a asignaciones manuales sobre ganadores, inventar BYEs por saltar rondas, guardar cada arrastre automáticamente o modificar participantes de partidos ya jugados.
 
@@ -85,6 +85,8 @@ Objetivo: precisar cómo se representa una entrada y una rama antes de escribir 
 
 Entrega: contrato breve de datos, invariantes, operaciones y archivos afectados. La conservación de ramas inactivas ya está decidida; no volver a preguntarla.
 
+Resultado de fase 0: [contrato-americano-libre-fase-0.md](contrato-americano-libre-fase-0.md). Incluye inventario local, estados por casillero, distribución original, actividad de ramas, ejemplos de capacidad y protocolo transaccional común con resultados/BYEs. El contrato no ejecuta ni da por aprobado un DDL; la persistencia y sus permisos se materializan y verifican localmente en fase 1.
+
 ### Fase 1. Configuración y persistencia de LIBRE
 
 Depende de fase 0.
@@ -99,6 +101,8 @@ Depende de fase 0.
 
 Entrega: contratos y persistencia local verificados con fallos parciales y concurrencia. No desplegar migraciones remotas.
 
+Resultado: [resultado-americano-libre-fase-1.md](resultado-americano-libre-fase-1.md). Incluye configuración de zona única/multizona, metadatos persistentes, RPC transaccionales, contratos TypeScript, permisos y pruebas locales. El generador por cantidad y el editor visual corresponden a las fases siguientes; los escritores deportivos legacy de LIBRE quedan bloqueados hasta su integración transaccional en fase 4.
+
 ### Fase 2. Generación de estructura por cantidad
 
 Depende de fase 1.
@@ -112,6 +116,8 @@ Depende de fase 1.
 - Mostrar cantidad solicitada y capacidad efectiva; no recalcular silenciosamente la distribución por nuevas inscripciones o nuevos resultados de zonas.
 
 Entrega: cuadros de 16, 20, 24 y 32, vacíos de participantes, con sus distribuciones de entrada correctas y persistentes después de recargar.
+
+Resultado de fase 2: [resultado-americano-libre-fase-2.md](resultado-americano-libre-fase-2.md). Generador por cantidad conectado al adaptador transaccional de fase 1; selector de 2 a 64, estados ENTRY/BYE/WINNER y métricas persistidas. Verificados los cuatro tamaños, zonas incompletas, rollback y concurrencia exclusivamente en local. La interfaz permanece de lectura, sin editor ni escritores deportivos legacy. El resultado detalla pruebas y limitaciones reales de TypeScript, lint, build y navegador.
 
 ### Fase 3. Extensión de Reorganizar parejas
 
@@ -130,6 +136,8 @@ Depende de fases 1 y 2.
 
 Entrega: recorrido desde zonas a llave, movimiento entre rondas, intercambio, guardado y cancelación; persistencia y recarga correctas.
 
+Resultado de fase 3: [resultado-americano-libre-fase-3.md](resultado-americano-libre-fase-3.md). Reorganizar con panel de zonas, arrastre/selección, borrador, Guardar/Cancelar y guardado transaccional por revisión. Ramas conservadas y árbol dibujado con conexiones reales; verificados capacidad 29/31/32, recarga, rollback y conflictos en local. La integración deportiva sigue pendiente de fase 4.
+
 ### Fase 4. Integración deportiva y consumidores de partidos
 
 Depende de fase 3; revisar sus interfaces desde fase 0.
@@ -144,6 +152,8 @@ Depende de fase 3; revisar sus interfaces desde fase 0.
 - Verificar campeón, finalista y puntos con entradas directas y BYEs, sin inventar partidos ganados por colocación manual.
 
 Entrega: torneo completo de zonas a finalización, incluyendo ramas desactivadas/reactivadas y edición concurrente.
+
+Resultado de fase 4: [resultado-americano-libre-fase-4.md](resultado-americano-libre-fase-4.md). Resultados, avance, BYEs, descalificación, agenda y cierre comparten bloqueo, revisión y transacción; las referencias de zona no reasignan la llave. Verificados 234 tests Jest, 66 comprobaciones SQL deportivas adicionales y carreras reales en la base local desechable. La interfaz se verificó con API simulada; el recorrido autenticado integral sigue en fase 5. El documento detalla escritores legacy bloqueados y las limitaciones de TypeScript, lint y build.
 
 ### Fase 5. Verificación integrada y preparación de entrega
 

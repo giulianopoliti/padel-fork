@@ -1,6 +1,8 @@
 export type BaseTournamentType = 'AMERICAN' | 'LONG'
 
 export type OperationalTournamentFormatPresetId =
+  | 'AMERICAN_MULTI_ZONE_FREE'
+  | 'AMERICAN_SINGLE_ZONE_FREE'
   | 'AMERICAN_MULTI_ZONE_2'
   | 'AMERICAN_MULTI_ZONE_3'
   | 'AMERICAN_MULTI_ZONE_GLOBAL_2'
@@ -32,8 +34,8 @@ export type BracketMode = 'NONE' | 'SINGLE' | 'GOLD_SILVER'
 export type BracketKey = 'MAIN' | 'GOLD' | 'SILVER'
 export type RankingScope = 'PER_ZONE' | 'GLOBAL'
 export type RankingPolicyId = 'STANDARD_PADEL'
-export type QualificationSource = 'ZONE_POSITIONS' | 'GLOBAL_STANDINGS' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES'
-export type BracketSeedingStrategy = 'SERPENTINE_BY_ZONE' | 'GLOBAL_RANKING' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES'
+export type QualificationSource = 'ZONE_POSITIONS' | 'GLOBAL_STANDINGS' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES' | 'MANUAL'
+export type BracketSeedingStrategy = 'SERPENTINE_BY_ZONE' | 'GLOBAL_RANKING' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES' | 'MANUAL'
 export type CouplesPerZone = 2 | 3 | 'ALL'
 
 export interface PerZoneTopAdvancementConfig {
@@ -73,6 +75,7 @@ export interface TournamentFormatZoneRules {
 }
 
 export interface TournamentFormatConfigV2 {
+  bracketAssignment?: 'QUALIFICATION' | 'MANUAL'
   bonuses?: Partial<Record<BracketKey, { enabled: boolean; champion: number; finalist: number }>>
   version: 2
   presetId: TournamentFormatPresetId

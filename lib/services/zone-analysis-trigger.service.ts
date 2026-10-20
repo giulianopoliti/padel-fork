@@ -155,6 +155,7 @@ export class ZoneAnalysisTriggerService {
     definitivePositions: any[]
   ): Promise<void> {
     const resolutionScope = await this.getPlaceholderResolutionScope(tournamentId)
+    if (resolutionScope === 'MANUAL') return
 
     if (resolutionScope === 'GLOBAL_STANDINGS') {
       await this.triggerGlobalPlaceholderResolution(tournamentId)
@@ -205,7 +206,7 @@ export class ZoneAnalysisTriggerService {
 
   private async getPlaceholderResolutionScope(
     tournamentId: string
-  ): Promise<'ZONE_POSITIONS' | 'GLOBAL_STANDINGS' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES'> {
+  ): Promise<'ZONE_POSITIONS' | 'GLOBAL_STANDINGS' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES' | 'MANUAL'> {
     const supabase = await createClient()
 
     const { data: tournament, error } = await supabase

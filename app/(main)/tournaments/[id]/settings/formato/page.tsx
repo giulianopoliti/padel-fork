@@ -63,7 +63,9 @@ export default async function SettingsFormatoPage({ params }: SettingsFormatoPag
           <p className="mt-2 text-lg font-semibold text-slate-950">{bracketModeLabel}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant="outline">{tournament.status || 'NOT_STARTED'}</Badge>
-            {resolvedFormat.qualificationSource === 'GLOBAL_STANDINGS' ? (
+            {resolvedFormat.bracketAssignment === 'MANUAL' ? (
+              <Badge variant="secondary">Asignación manual</Badge>
+            ) : resolvedFormat.qualificationSource === 'GLOBAL_STANDINGS' ? (
               <Badge variant="secondary">Tabla general</Badge>
             ) : resolvedFormat.qualificationSource === 'HYBRID_FIRSTS_GLOBAL_REST_ZONES' ? (
               <Badge variant="secondary">Hibrido</Badge>

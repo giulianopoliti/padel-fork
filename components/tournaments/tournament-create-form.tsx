@@ -230,7 +230,7 @@ const tournamentSchema = z.object({
     }
   }
 
-  if (data.advancement_allocation_mode !== 'CUSTOM') return
+  if (preset.bracketAssignment === 'MANUAL' || data.advancement_allocation_mode !== 'CUSTOM') return
 
   if (preset.advancementConfig.kind === 'SINGLE') {
     const advanceCount = data.single_bracket_advance_count || 0
@@ -297,7 +297,7 @@ const getPresetMeta = (presetId: string) => {
 
   const zoneLabel = preset.zoneMode === 'MULTI_ZONE' ? 'Multiples zonas' : 'Zona unica';
   const stageLabel = preset.zoneStage === 'ROUND_ROBIN' ? 'Todos contra todos' : `${preset.targetMatchesPerCouple ?? 0} partidos por pareja`;
-  const qualificationLabel = preset.qualificationSource === 'GLOBAL_STANDINGS'
+  const qualificationLabel = preset.bracketAssignment === 'MANUAL' ? 'Asignación manual' : preset.qualificationSource === 'GLOBAL_STANDINGS'
     ? 'Tabla general'
     : preset.qualificationSource === 'HYBRID_FIRSTS_GLOBAL_REST_ZONES'
       ? 'Primeros por tabla general'
@@ -408,6 +408,7 @@ export default function TournamentCreateForm() {
   const isAmericanTournament = selectedType === 'AMERICAN';
   const presetOptions = PRESET_OPTIONS[selectedType];
   const selectedPreset = presetOptions.find((preset) => preset.presetId === watchedValues.format_preset);
+  const isSelectedAmericanLibre = selectedPreset?.bracketAssignment === 'MANUAL';
   const roundRobinAmericanPresetOptions = PRESET_OPTIONS.AMERICAN.filter(
     (preset) => preset.presetId === 'AMERICAN_SINGLE_ZONE_ROUND_ROBIN_CHAMPION'
   );
@@ -851,6 +852,8 @@ export default function TournamentCreateForm() {
         type: data.type as 'LONG' | 'AMERICAN',
         format_config: buildTournamentFormatConfig({
           presetId: data.format_preset as TournamentFormatPresetId,
+          matchesPerCouple: selectedPreset?.bracketAssignment === 'MANUAL'
+            ? Number(data.american_zone_matches_per_couple || '2') : undefined,
           couplesPerZone: data.american_couples_per_zone
             ? data.american_couples_per_zone === 'ALL'
               ? 'ALL'
@@ -1371,6 +1374,33 @@ export default function TournamentCreateForm() {
                           <FormControl>
                             {selectedType === 'AMERICAN' ? (
                               <div className="space-y-4">
+                                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                  {PRESET_OPTIONS.AMERICAN.filter((preset) => preset.bracketAssignment === 'MANUAL').map((preset) => (
+                                    <button
+                                      key={preset.presetId}
+                                      type="button"
+                                      aria-pressed={field.value === preset.presetId}
+                                      onClick={() => field.onChange(preset.presetId)}
+                                      className={cn('rounded-elevated border p-4 text-left transition-all sm:p-5',
+                                        field.value === preset.presetId ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300')}
+                                    >
+                                      <p className="text-base font-medium">{preset.display.name}</p>
+                                      <p className="mt-1 text-sm">{preset.display.description}</p>
+                                    </button>
+                                  ))}
+                                </div>
+                                {isSelectedAmericanLibre && (
+                                  <FormField control={form.control} name="american_zone_matches_per_couple" render={({ field: matchesField }) => (
+                                    <FormItem>
+                                      <FormLabel>Partidos por pareja en zonas</FormLabel>
+                                      <Select value={matchesField.value || '2'} onValueChange={matchesField.onChange}>
+                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                        <SelectContent><SelectItem value="2">2 partidos</SelectItem><SelectItem value="3">3 partidos</SelectItem></SelectContent>
+                                      </Select>
+                                      <FormDescription>Las posiciones se muestran como referencia. Las parejas de la llave se eligen manualmente.</FormDescription>
+                                    </FormItem>
+                                  )} />
+                                )}
                                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
                                   {AMERICAN_MULTI_ZONE_FORMAT_OPTIONS.map((option) => {
                                     const isSelected =
@@ -1952,7 +1982,7 @@ export default function TournamentCreateForm() {
                         )} />
                       </div>
 
-                      {selectedPreset?.bracketMode !== 'NONE' && (
+                      {selectedPreset?.bracketMode !== 'NONE' && !isSelectedAmericanLibre && (
                         <div className="space-y-5 rounded-elevated border border-slate-200 bg-slate-50 p-4 sm:p-5">
                           <div>
                             <p className="font-medium text-slate-900">Parejas que avanzan a la llave</p>

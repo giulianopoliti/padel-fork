@@ -13,6 +13,7 @@ import {
 import { shouldEnforceLongBracketMatchRequirement } from '@/lib/services/tournament-operational-settings'
 import { resolveZoneFixtureRequirements } from '@/lib/services/zone-fixture-requirements.service'
 import { ensureAmericanSingleZone } from '@/lib/services/tournaments/american-single-zone'
+import { isAmericanLibreTournament, AMERICAN_LIBRE_GENERATION_PENDING } from './americano-libre-format'
 
 export interface BracketArtifactState {
   seedCount: number
@@ -62,6 +63,7 @@ export interface PlaceholderBracketValidationFailure {
     | 'BRACKET_ALREADY_EXISTS'
     | 'ZONE_MATCHES_INCOMPLETE'
     | 'ZONE_VALIDATION_ERROR'
+    | 'MANUAL_BRACKET_REQUIRED'
   totalCouples: number
   totalZones: number
   artifacts: BracketArtifactState
@@ -328,6 +330,11 @@ export async function validatePlaceholderBracketGeneration(
       totalZones: 0,
       artifacts: EMPTY_ARTIFACT_STATE
     }
+  }
+
+  if (isAmericanLibreTournament(tournament)) {
+    return { success: false, code: 'MANUAL_BRACKET_REQUIRED', message: AMERICAN_LIBRE_GENERATION_PENDING,
+      totalCouples: 0, totalZones: 0, artifacts: EMPTY_ARTIFACT_STATE, tournament }
   }
 
   const artifacts = await getPersistedBracketArtifacts(tournamentId)

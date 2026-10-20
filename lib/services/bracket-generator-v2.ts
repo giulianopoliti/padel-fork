@@ -1,3 +1,4 @@
+import { buildBracketSeeding } from './bracket-structure'
 /**
  * PlaceholderBracketGenerator - Generates tournament brackets with placeholder support
  * Extends the existing hybrid-serpentine algorithm to work with unknown zone positions
@@ -110,6 +111,10 @@ export class PlaceholderBracketGenerator {
     console.log(`🎯 [BRACKET-GEN-V2] Tournament format detected: ${tournament.type}`)
 
     const resolvedFormat = TournamentFormatResolver.getResolvedFormat(tournament)
+
+    if (resolvedFormat.bracketAssignment === 'MANUAL') {
+      throw new Error('Americano libre no genera seeds desde clasificaciones de zona.')
+    }
 
     if (resolvedFormat.effectiveBracketMode === 'NONE') {
       throw new Error('Este formato define campeon directo desde la tabla. No corresponde generar una llave.')
@@ -735,64 +740,7 @@ export class PlaceholderBracketGenerator {
    * Returns full bracket seeding with BYEs automatically placed
    */
   private buildBracketSeeding(N: number): { P: number, order: (number | 'BYE')[], position_by_seed: number[] } {
-    if (N <= 0) {
-      return {
-        P: 0,
-        order: [],
-        position_by_seed: []
-      }
-    }
-
-    // Calculate P = next power of 2 >= N
-    let P = 1
-    while (P < N) {
-      P *= 2
-    }
-
-    let order: number[] = []
-    
-    if (P === 1) {
-      order = [1]
-    } else {
-      // Base case: P >= 2
-      order = [1, 2]
-      
-      // Iterative duplication (serpentine algorithm)
-      while (order.length < P) {
-        const m = order.length
-        const Nnew = 2 * m
-        const b: number[] = []
-        
-        // Process consecutive pairs
-        for (let i = 0; i < m; i += 2) {
-          const x = order[i]
-          const y = order[i + 1]
-          
-          // Serpentine pattern: [x, Nnew+1-x, Nnew+1-y, y]
-          b.push(x, Nnew + 1 - x, Nnew + 1 - y, y)
-        }
-        
-        order = b
-      }
-    }
-
-    // Mark BYEs (seeds > N)
-    const orderWithByes: (number | 'BYE')[] = order.map(seed => seed > N ? 'BYE' : seed)
-
-    // Build position_by_seed
-    const position_by_seed: number[] = new Array(N + 1) // 1-indexed
-    for (let pos = 1; pos <= P; pos++) {
-      const seed = orderWithByes[pos - 1]
-      if (seed !== 'BYE' && typeof seed === 'number') {
-        position_by_seed[seed] = pos
-      }
-    }
-
-    return {
-      P,
-      order: orderWithByes,
-      position_by_seed: position_by_seed.slice(1) // Remove index 0 to make it 0-indexed in output
-    }
+    return buildBracketSeeding(N)
   }
 
   /**

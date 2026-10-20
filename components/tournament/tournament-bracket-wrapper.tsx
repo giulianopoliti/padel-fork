@@ -1,10 +1,12 @@
 "use client"
 
 import { BracketVisualizationV2 } from './bracket-v2/BracketVisualizationV2'
+import { AmericanFreeBracket } from './american-free-bracket'
 import ReadOnlyBracketTab from './read-only-bracket-tab'
 
 interface TournamentBracketWrapperProps {
   tournamentId: string
+  isAmericanLibre?: boolean
   isOwner: boolean
   isPublicView?: boolean
   tournamentStatus?: string
@@ -22,11 +24,14 @@ interface TournamentBracketWrapperProps {
 export default function TournamentBracketWrapper({
   tournamentId,
   isOwner,
+  isAmericanLibre = false,
   isPublicView,
   tournamentStatus,
   bracketMode,
   onDataRefresh
 }: TournamentBracketWrapperProps) {
+
+  if (isAmericanLibre) return <AmericanFreeBracket key={tournamentId} tournamentId={tournamentId} isOwner={isOwner} onDataRefresh={onDataRefresh} />
 
   // Vista Owner: Sistema V2 con drag & drop completo
   if (isOwner) {
