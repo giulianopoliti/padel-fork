@@ -16,6 +16,7 @@ export interface FinalizationMatch {
   bracket_key: string | null
   status: string
   winner_id: string | null
+  bracket_is_active?: boolean
 }
 export interface FinalizationTournament {
   status: string
@@ -26,6 +27,7 @@ export interface FinalizationTournament {
 }
 
 export const getFinalizationEligibility = (tournament: FinalizationTournament, matches: FinalizationMatch[]) => {
+  matches = matches.filter(match => match.bracket_is_active !== false)
   const format = TournamentFormatResolver.getResolvedFormat(tournament)
   const bracketKeys: BracketKey[] = format.effectiveBracketMode === 'GOLD_SILVER'
     ? ['GOLD', 'SILVER'] : format.effectiveBracketMode === 'NONE' ? [] : ['MAIN']
@@ -73,8 +75,14 @@ export const loadTournamentFinalization = async (supabase: SupabaseClient, tourn
     .select('status, winner_id, type, format_type, format_config').eq('id', tournamentId).single()
   if (tournamentError || !tournament) throw new Error('No se pudo obtener el torneo.')
   const { data: matches, error: matchesError } = await supabase.from('matches')
-    .select('id, type, round, bracket_key, status, winner_id').eq('tournament_id', tournamentId)
+    .select('id, type, round, bracket_key, status, winner_id, bracket_is_active').eq('tournament_id', tournamentId)
   if (matchesError) throw new Error('No se pudo verificar los partidos del torneo.')
   const eligibility = getFinalizationEligibility(tournament, matches ?? [])
-  return { tournament, ...eligibility, bonuses: getTournamentBonuses(tournament, eligibility.bracketKeys) }
+  let expectedRevision: number | null = null
+  if (tournament.format_config?.presetId === 'AMERICAN_MULTI_ZONE_FREE' || tournament.format_config?.presetId === 'AMERICAN_SINGLE_ZONE_FREE') {
+    const { data: freeState, error: freeError } = await supabase.from('american_free_brackets').select('revision').eq('tournament_id', tournamentId).maybeSingle()
+    if (freeError) throw new Error('No se pudo verificar la revisión de la llave.')
+    expectedRevision = freeState?.revision ?? null
+  }
+  return { tournament, ...eligibility, expectedRevision, bonuses: getTournamentBonuses(tournament, eligibility.bracketKeys) }
 }

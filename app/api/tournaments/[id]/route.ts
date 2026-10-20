@@ -38,6 +38,7 @@ export async function GET(
         )
       `)
       .eq("tournament_id", id)
+      .eq('bracket_is_active', true)
       .order("created_at");
 
     if (error) {

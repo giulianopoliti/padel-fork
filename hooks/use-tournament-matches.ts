@@ -43,6 +43,7 @@ export function useTournamentMatches(tournamentId: string) {
             )
           `)
           .eq('tournament_id', tournamentId)
+          .eq('bracket_is_active', true)
           .order('created_at', { ascending: true });
 
         if (matchesError) throw matchesError;
@@ -128,4 +129,4 @@ export function useTournamentMatches(tournamentId: string) {
   }, [tournamentId]);
 
   return { matches, loading, error };
-} 
+}

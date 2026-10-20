@@ -15,6 +15,7 @@ export class AdvancementPlanner {
     config: TournamentFormatConfigV2
   ): { isValid: boolean; error?: string } {
     const resolved = TournamentFormatResolver.getResolvedFormat({ format_config: config }, { totalCouples })
+    if (resolved.bracketAssignment === 'MANUAL') return { isValid: true }
     const allocationValidation = BracketQualificationAllocationService.validateAllocation(
       totalCouples,
       resolved.effectiveAdvancementConfig
@@ -61,6 +62,10 @@ export class AdvancementPlanner {
   ): AdvancementResult<T> {
     const totalCouples = options.totalCouples ?? rankedEntries.length
     const resolved = TournamentFormatResolver.getResolvedFormat({ format_config: config }, { totalCouples })
+
+    if (resolved.bracketAssignment === 'MANUAL') {
+      return { gold: [], silver: [], eliminated: [] }
+    }
 
     if (resolved.effectiveBracketMode === 'NONE') {
       return {

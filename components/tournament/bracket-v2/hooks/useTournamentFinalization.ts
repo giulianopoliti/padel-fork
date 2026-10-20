@@ -6,6 +6,7 @@ import type { BracketKey } from '@/types/tournament-format-v2'
 import type { TournamentBonuses } from '@/lib/tournaments/finalization'
 
 interface TournamentFinalizationState {
+  expectedRevision?: number | null
   status: string
   canShowPointsCalculation: boolean
   canFinalize: boolean
@@ -22,6 +23,7 @@ const fetchFinalization = async (url: string): Promise<TournamentFinalizationSta
   if (!response.ok || !data.success) throw new Error(data.error || 'No se pudo verificar el torneo.')
   return {
     status: data.status,
+    expectedRevision: data.expectedRevision,
     canShowPointsCalculation: data.status === 'FINISHED_POINTS_PENDING' && data.allMatchesFinished,
     canFinalize: data.canFinalize,
     allMatchesFinished: data.allMatchesFinished,
@@ -40,6 +42,7 @@ export const useTournamentFinalization = (tournamentId: string) => {
   const refetch = useCallback(async () => { await mutate() }, [mutate])
   return {
     status: data?.status ?? 'UNKNOWN',
+    expectedRevision: data?.expectedRevision,
     canShowPointsCalculation: !error && (data?.canShowPointsCalculation ?? false),
     canFinalize: !error && (data?.canFinalize ?? false),
     allMatchesFinished: data?.allMatchesFinished ?? false,

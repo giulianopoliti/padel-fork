@@ -35,6 +35,7 @@ function hydrateFormatConfig(value: TournamentFormatConfigV2): TournamentFormatC
   const preset = getTournamentFormatPreset(value.presetId)
   const isLegacyRedirect = value.presetId !== preset.presetId
   const shouldUsePresetAdvancementConfig = (
+    preset.bracketAssignment === 'MANUAL' ||
     isLegacyRedirect ||
     (
       (preset.presetId === 'AMERICAN_MULTI_ZONE_2' || preset.presetId === 'AMERICAN_MULTI_ZONE_3') &&
@@ -58,6 +59,7 @@ function hydrateFormatConfig(value: TournamentFormatConfigV2): TournamentFormatC
       ? (hasExplicitTargetMatchesPerCouple ? value.targetMatchesPerCouple : preset.targetMatchesPerCouple)
       : (isLegacyRedirect ? preset.targetMatchesPerCouple : value.targetMatchesPerCouple),
     bracketMode: preset.bracketMode,
+    bracketAssignment: preset.bracketAssignment ?? 'QUALIFICATION',
     zoneRules: {
       ...preset.zoneRules,
       ...(value.zoneRules || {}),
@@ -73,8 +75,8 @@ function hydrateFormatConfig(value: TournamentFormatConfigV2): TournamentFormatC
     ),
     rankingScope: isLegacyRedirect ? preset.rankingScope : value.rankingScope || preset.rankingScope,
     rankingPolicyId: isLegacyRedirect ? preset.rankingPolicyId : value.rankingPolicyId || preset.rankingPolicyId,
-    qualificationSource: isLegacyRedirect ? preset.qualificationSource : value.qualificationSource || preset.qualificationSource,
-    bracketSeedingStrategy: isLegacyRedirect ? preset.bracketSeedingStrategy : value.bracketSeedingStrategy || preset.bracketSeedingStrategy,
+    qualificationSource: isLegacyRedirect || preset.bracketAssignment === 'MANUAL' ? preset.qualificationSource : value.qualificationSource || preset.qualificationSource,
+    bracketSeedingStrategy: isLegacyRedirect || preset.bracketAssignment === 'MANUAL' ? preset.bracketSeedingStrategy : value.bracketSeedingStrategy || preset.bracketSeedingStrategy,
   }
 }
 
@@ -114,7 +116,7 @@ export class TournamentFormatResolver {
 
     const totalCouples = options.totalCouples
 
-    if (typeof totalCouples === 'number' && totalCouples >= 0) {
+    if (baseConfig.bracketAssignment !== 'MANUAL' && typeof totalCouples === 'number' && totalCouples >= 0) {
       effectiveAdvancementConfig = BracketQualificationAllocationService.applyAutomaticAllocation(
         totalCouples,
         effectiveAdvancementConfig

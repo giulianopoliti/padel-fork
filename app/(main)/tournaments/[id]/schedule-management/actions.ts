@@ -79,6 +79,7 @@ export async function getAvailableScheduleRoundOptions(
       .from('matches')
       .select('round, bracket_key')
       .eq('tournament_id', tournamentId)
+      .eq('bracket_is_active', true)
       .eq('type', 'ELIMINATION')
       .in('round', [...SCHEDULE_ROUND_ORDER])
 

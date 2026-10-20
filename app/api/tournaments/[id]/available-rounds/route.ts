@@ -59,6 +59,7 @@ export async function GET(
       .from('matches')
       .select('round')
       .eq('tournament_id', tournamentId)
+      .eq('bracket_is_active', true)
       .not('round', 'is', null)
 
     if (error) {

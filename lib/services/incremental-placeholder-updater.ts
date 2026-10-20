@@ -31,6 +31,7 @@ export class IncrementalPlaceholderUpdater {
     let resolvedCount = 0
     
     const resolutionScope = await this.getPlaceholderResolutionScope(tournamentId)
+    if (resolutionScope === 'MANUAL') return { resolved: 0, definitive: zoneResult.definitivePositions }
 
     // PASO 2: Resolver placeholders segun el scope de clasificacion.
     if (resolutionScope === 'GLOBAL_STANDINGS') {
@@ -53,7 +54,7 @@ export class IncrementalPlaceholderUpdater {
 
   private async getPlaceholderResolutionScope(
     tournamentId: string
-  ): Promise<'ZONE_POSITIONS' | 'GLOBAL_STANDINGS' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES'> {
+  ): Promise<'ZONE_POSITIONS' | 'GLOBAL_STANDINGS' | 'HYBRID_FIRSTS_GLOBAL_REST_ZONES' | 'MANUAL'> {
     const supabase = await createClient()
 
     const { data: tournament, error } = await supabase

@@ -79,6 +79,7 @@ export function usePlayerNextMatch(playerId?: string): UsePlayerNextMatchReturn 
         `)
         .or(`couple1_id.in.(${coupleIds.join(',')}),couple2_id.in.(${coupleIds.join(',')})`)
         .in('status', ['PENDING', 'IN_PROGRESS'])
+        .eq('bracket_is_active', true)
         .order('created_at', { ascending: true })
         .limit(1)
 

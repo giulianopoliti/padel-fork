@@ -1,5 +1,7 @@
 'use client'
 
+import { isAmericanLibreTournament } from '@/lib/services/americano-libre-format'
+import { AmericanFreeBracket } from '@/components/tournament/american-free-bracket'
 import { useState, useEffect } from 'react'
 import TournamentBracketTab from '@/components/tournament/tournament-bracket-tab'
 import PublicBracketTreeView from '@/components/tournament/bracket-v2/components/PublicBracketTreeView'
@@ -61,6 +63,10 @@ export default function BracketClientWrapper({
         Cargando llave...
       </div>
     )
+  }
+
+  if (isAmericanLibreTournament(tournament)) {
+    return <AmericanFreeBracket key={tournamentId} tournamentId={tournamentId} isOwner={isOwner} onDataRefresh={handleDataRefresh} />
   }
 
   if (!isOwner && tournament) {

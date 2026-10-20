@@ -69,7 +69,11 @@ export default function TournamentFormatConfigForm({
   )
 
   const presetOptions = useMemo(() => {
-    const allOptions = getPresetOptionsByType(tournamentType)
+    const allOptions = getPresetOptionsByType(tournamentType).filter((preset) => (
+      resolvedFormat.bracketAssignment === 'MANUAL'
+        ? preset.presetId === resolvedFormat.presetId
+        : preset.bracketAssignment !== 'MANUAL'
+    ))
     const isStartedAmericanTournament =
       tournamentType === 'AMERICAN' && tournamentStatus && tournamentStatus !== 'NOT_STARTED'
 
@@ -94,7 +98,7 @@ export default function TournamentFormatConfigForm({
     }
 
     return runtimeOptions
-  }, [tournamentType, tournamentStatus, resolvedFormat.presetId])
+  }, [tournamentType, tournamentStatus, resolvedFormat.presetId, resolvedFormat.bracketAssignment])
 
   const [presetId, setPresetId] = useState<TournamentFormatPresetId>(resolvedFormat.presetId)
   const [singleAdvanceCount, setSingleAdvanceCount] = useState(
@@ -297,6 +301,15 @@ export default function TournamentFormatConfigForm({
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (resolvedFormat.bracketAssignment === 'MANUAL') {
+    return <div className="space-y-3 text-sm text-slate-600">
+      <p className="font-medium text-slate-950">{resolvedFormat.display.name}</p>
+      <p>{resolvedFormat.display.description}</p>
+      <p>Partidos por pareja en zonas: {resolvedFormat.effectiveTargetMatchesPerCouple}.</p>
+      <p>La cantidad de entradas se elige al generar la llave. Las parejas se ubican con Reorganizar parejas.</p>
+    </div>
   }
 
   return (

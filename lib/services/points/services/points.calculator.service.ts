@@ -66,8 +66,9 @@ export class PointsCalculatorService {
     // 4. Get all finished matches
     const { data: matches, error: matchesError } = await supabase
       .from('matches')
-      .select('id, type, round, bracket_key, status, winner_id, couple1_id, couple2_id')
+      .select('id, type, round, bracket_key, status, winner_id, couple1_id, couple2_id, bracket_is_active')
       .eq('tournament_id', tournamentId)
+      .eq('bracket_is_active', true)
       .eq('status', 'FINISHED');
 
     if (matchesError) {
@@ -75,7 +76,10 @@ export class PointsCalculatorService {
     }
 
     const disqualifiedMatchIds = await getActiveDisqualificationMatchIds(tournamentId, supabase);
-    const pointEligibleMatches = (matches || []).filter((match: any) => !disqualifiedMatchIds.has(match.id));
+    const pointEligibleMatches = (matches || []).filter((match: any) =>
+      match.bracket_is_active !== false && !disqualifiedMatchIds.has(match.id) &&
+      match.winner_id && match.couple1_id && match.couple2_id
+    );
 
     console.log(`[PointsCalculator] Processing ${pointEligibleMatches.length} finished matches (${disqualifiedMatchIds.size} disqualified matches excluded)`);
 

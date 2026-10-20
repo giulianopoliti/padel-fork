@@ -26,6 +26,7 @@ export default async function TournamentFormatPage({ params }: FormatPageProps) 
   const resolved = TournamentFormatResolver.getResolvedFormat(tournament)
   const branding = getTenantBranding()
   const isAmerican = resolved.baseType === 'AMERICAN'
+  const isManual = resolved.bracketAssignment === 'MANUAL'
   const isPadelFvLong = !isAmerican && branding.key === 'padel-fv'
   const advancement = resolved.effectiveAdvancementConfig
   const stageText = resolved.effectiveZoneStage === 'ROUND_ROBIN'
@@ -50,7 +51,9 @@ export default async function TournamentFormatPage({ params }: FormatPageProps) 
           </div>
           <p className="mt-6 text-base leading-7 text-foreground/85">{resolved.display.description}</p>
           <p className="mt-3 text-base leading-7 text-foreground/85">
-            {isAmerican
+            {isManual
+              ? 'El Americano libre se juega en una jornada, a un set por partido. La organización elige y ubica manualmente las parejas de la llave.'
+              : isAmerican
               ? 'El Americano se juega en una sola jornada y cada partido es a un set. Cuando el formato incluye llave, la clasificación de zona define los cruces eliminatorios posteriores.'
               : isPadelFvLong
                 ? 'Cada partido de la Liga se juega al mejor de tres sets. Primero se juega la clasificación y después comienzan los partidos eliminatorios.'
@@ -65,8 +68,9 @@ export default async function TournamentFormatPage({ params }: FormatPageProps) 
             {isPadelFvLong ? ' Generalmente son 3 partidos de qually.' : ''}
           </GuideCard>
           <GuideCard icon={Trophy} title="Clasificación">
+            {isManual && 'Las posiciones de zonas son una referencia. La organización define la cantidad de entradas y asigna manualmente las parejas de la llave.'}
             {advancement.kind === 'NONE' && 'La tabla final define directamente al campeón.'}
-            {advancement.kind === 'SINGLE' && `Avanzan las mejores ${advancement.advanceCount} parejas a la llave. Esto puede ser modificado más adelante según la organización.`}
+            {!isManual && advancement.kind === 'SINGLE' && `Avanzan las mejores ${advancement.advanceCount} parejas a la llave. Esto puede ser modificado más adelante según la organización.`}
             {advancement.kind === 'PER_ZONE_TOP' && (advancement.couplesPerZone === 'ALL' ? 'Las posiciones de las zonas ordenan la llave.' : `Avanzan ${advancement.couplesPerZone} parejas por zona.`)}
             {advancement.kind === 'GOLD_SILVER' && `Se forman Copa de Oro (${advancement.goldCount}) y Copa de Plata (${advancement.silverCount}).`}
           </GuideCard>
@@ -76,7 +80,7 @@ export default async function TournamentFormatPage({ params }: FormatPageProps) 
           <h2 className="flex items-center gap-2 text-xl font-semibold"><GitFork className="h-5 w-5 text-primary" /> Desarrollo</h2>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
             <li className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />Los resultados se reflejan en la tabla de posiciones según el reglamento del torneo.</li>
-            {isAmerican ? <li className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />El Americano se juega en una sola jornada, a un set por partido. La llave se arma con las posiciones obtenidas y cada cruce de llave es eliminatorio.</li> : isPadelFvLong ? <>
+            {isManual ? <li className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />Los resultados de zonas actualizan las posiciones de referencia. En la llave, los ganadores avanzan por sus cruces eliminatorios.</li> : isAmerican ? <li className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />El Americano se juega en una sola jornada, a un set por partido. La llave se arma con las posiciones obtenidas y cada cruce de llave es eliminatorio.</li> : isPadelFvLong ? <>
               <li className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />En la Liga normalmente hay 3 partidos de qually y luego partidos eliminatorios.</li>
               <li className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />Como jugador tenés que cargar tu preferencia horaria para que la organización pueda coordinar los partidos. Generalmente se juega una fecha por fin de semana.</li>
             </> : <li className="flex gap-2"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />La Liga se desarrolla durante varias jornadas. Cada partido tiene un día y horario determinado por la organización y no depende de una preferencia horaria del jugador.</li>}

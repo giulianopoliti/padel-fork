@@ -7,6 +7,7 @@ import React from "react"
 interface TournamentBracketTabProps {
   tournamentId: string;
   isOwner: boolean;
+  isAmericanLibre?: boolean;
   isPublicView?: boolean;
   tournamentStatus?: string;
   bracketMode?: 'NONE' | 'SINGLE' | 'GOLD_SILVER';
@@ -17,19 +18,20 @@ interface TournamentBracketTabProps {
 const TournamentBracketTab: React.FC<TournamentBracketTabProps> = React.memo(({
   tournamentId,
   isOwner,
+  isAmericanLibre,
   isPublicView = false,
   tournamentStatus,
   bracketMode,
   onDataRefresh
 }) => {
-  const MemoizedBracket = React.memo(TournamentBracketWrapper);
 
   return (
     <Card>
       <CardContent className="p-4">
-        <MemoizedBracket
+        <TournamentBracketWrapper
           tournamentId={tournamentId}
           isOwner={isOwner}
+          isAmericanLibre={isAmericanLibre}
           isPublicView={isPublicView}
           tournamentStatus={tournamentStatus}
           bracketMode={bracketMode}
@@ -43,6 +45,7 @@ const TournamentBracketTab: React.FC<TournamentBracketTabProps> = React.memo(({
   return (
     prevProps.tournamentId === nextProps.tournamentId &&
     prevProps.isOwner === nextProps.isOwner &&
+    prevProps.isAmericanLibre === nextProps.isAmericanLibre &&
     prevProps.isPublicView === nextProps.isPublicView &&
     prevProps.tournamentStatus === nextProps.tournamentStatus &&
     prevProps.bracketMode === nextProps.bracketMode &&

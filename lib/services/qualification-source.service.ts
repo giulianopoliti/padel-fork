@@ -80,6 +80,7 @@ export class QualificationSourceService {
     }
 
     const rules = TournamentFormatRulesService.resolve({ tournament })
+    if (rules.resolvedFormat.bracketAssignment === 'MANUAL') return []
     const shouldApplyAdvancementLimit = Boolean((tournament as any)?.format_config?.version === 2)
     const useCurrentLongStandings = tournament.type === 'LONG'
       ? !(await shouldEnforceLongBracketMatchRequirement(supabase, tournamentId))
