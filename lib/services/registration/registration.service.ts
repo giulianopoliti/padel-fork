@@ -10,7 +10,7 @@
  * - Validaciones transversales antes de delegar a estrategias
  */
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { scheduleInscriptionProofCleanup } from '@/lib/services/inscription-proofs'
 import { createRegistrationStrategy, RegistrationStrategyError } from './registration-strategy.factory'
@@ -32,10 +32,12 @@ import type {
   TournamentType
 } from './types/registration-types'
 import { hasRealDni, sanitizeDniInput } from '@/lib/utils/player-dni'
+import type { SoloPlayerRpcContracts } from '@/types/solo-players'
 import { hasSameNormalizedPlayerName } from '@/lib/utils/player-identity'
 import { getTenantBranding } from '@/config/tenant'
 import { createRegistrationTrace, registrationErrorDetails } from '@/lib/tournaments/registration-log'
 import { reconcileCompleteInscriptions } from './reconcile-complete-inscriptions'
+import { isInscriptionProofPending } from '@/lib/tournaments/inscription-requirements'
 import {
   assertTpePlayersCanRegister,
   recordTpeLateWithdrawal,
@@ -245,36 +247,65 @@ export class RegistrationService {
    * Convierte una inscripción individual en pareja
    */
   async convertIndividualToCouple(request: RegisterCoupleRequest): Promise<CoupleRegistrationResult> {
-    console.log(`[RegistrationService] Convirtiendo inscripción individual a pareja en torneo ${request.tournamentId}`)
+    return this.confirmPair(request)
+  }
 
+  /** The request is read with the caller's RLS, then rechecked under DB locks. */
+  async acceptTournamentRequest(requestId: string, options: {
+    termsAccepted: boolean; paymentMethod?: 'TRANSFER' | 'CASH'
+  }): Promise<CoupleRegistrationResult> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Usuario no autenticado' }
+    const { data: request, error } = await supabase.from('solo_player_requests')
+      .select('tournament_id, sender_player_id, recipient_player_id, recipient_user_id').eq('id', requestId).maybeSingle()
+    if (error || !request?.tournament_id || request.recipient_user_id !== user.id) {
+      return { success: false, error: 'Sin permisos sobre la solicitud' }
+    }
+    return this.confirmPair({ tournamentId: request.tournament_id, player1Id: request.sender_player_id,
+      player2Id: request.recipient_player_id, termsAccepted: options.termsAccepted, paymentMethod: options.paymentMethod }, requestId)
+  }
+
+  private async confirmPair(request: RegisterCoupleRequest, requestId?: string): Promise<CoupleRegistrationResult> {
+    const prepared = await this.prepareContext(request.tournamentId)
+    if (!prepared.success || !prepared.context) return { success: false, error: prepared.error }
+    const context = prepared.context
     try {
-      const context = await this.prepareContext(request.tournamentId)
-      if (!context.success || !context.context) {
-        return { success: false, error: context.error }
+      // Actor and tenant are derived on the server. Only service_role can invoke
+      // this RPC; it repeats permission, state, category, terms and capacity checks.
+      const admin = await createClientServiceRole()
+      const { data, error } = await admin.rpc('confirm_tournament_pair', {
+        p_tournament_id: request.tournamentId, p_player1_id: request.player1Id, p_player2_id: request.player2Id,
+        p_actor_id: context.user.id, p_tenant: getTenantBranding().key, p_request_id: requestId ?? null,
+        p_payment_method: request.paymentMethod ?? null, p_terms_accepted: request.termsAccepted === true,
+        p_allow_blocked_override: request.allowBlockedPlayerOverride === true,
+        p_organizer: request.isOrganizerRegistration === true,
+      })
+      if (error) return { success: false, error: error.message }
+      const result = data as SoloPlayerRpcContracts['confirm_tournament_pair']['Returns']
+      const inscription = result.inscription
+      let assignmentPending = false
+      try {
+        const gate = await reconcileCompleteInscriptions(request.tournamentId)
+        assignmentPending = gate === 'WAITING_PROOF' && !inscription.is_pending
+          && !isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof)
       }
-
-      const strategy = this.getStrategy(context.context.tournament.type)
-
-      const validation = await this.validateCoupleConversionRequest(request, context.context)
-      if (!validation.success) {
-        return { success: false, error: validation.error }
-      }
-
-      const result = await strategy.convertIndividualToCouple(request, context.context)
-      this.logRegistrationResult('convertIndividualToCouple', request.tournamentId, result)
-      await this.notifyInscriptionCreated(result.inscriptionId, context.context)
-      await this.handleTournamentCapacitySideEffects(request.tournamentId, result.success)
-
-      return result
-
+      catch { assignmentPending = true }
+      // A notification/cache failure cannot turn a committed reservation into an error.
+      if (result.created) await this.notifyInscriptionCreated(inscription.id, context)
+      try { await syncTournamentCapacityRegistrationLock(request.tournamentId) } catch { /* retried on next capacity refresh */ }
+      try { this.revalidateTournamentRegistrationPaths(request.tournamentId) } catch { /* reservation already committed */ }
+      return { success: true, inscriptionId: inscription.id, coupleId: inscription.couple_id, inscription,
+        alreadyRegistered: result.created === false,
+        paymentRequired: isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof),
+        message: result.created === false ? 'Esta pareja ya está inscripta en este torneo.'
+          : assignmentPending ? 'Pareja guardada. Pendiente de asignación; se reintentará al actualizar las inscripciones.'
+          : inscription.is_pending ? 'Pareja guardada. Pendiente de aprobación del organizador.'
+            : isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof)
+              ? 'Pareja guardada. Adjuntá el comprobante para completar la inscripción.' : 'Pareja inscripta.' }
     } catch (error) {
-      console.error('[RegistrationService] Error en convertIndividualToCouple:', error)
-      return { 
-        success: false, 
-        error: error instanceof RegistrationStrategyError ? 
-          error.message : 
-          'Error interno del servidor'
-      }
+      console.error('[RegistrationService] confirm_pair_failed', error)
+      return { success: false, error: 'No se pudo confirmar la pareja.' }
     }
   }
 

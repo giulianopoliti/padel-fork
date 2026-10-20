@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkRoutePermission, getRedirectPath } from "@/config/permissions"
+import { getLegacyTournamentRedirectPath } from '@/lib/seo/legacy-tournament-redirect'
 
 // Define user roles (ensure this matches config/permissions.ts and your user data)
 type Role = "PLAYER" | "CLUB" | "COACH" | "ADMIN" | "ORGANIZADOR"
@@ -93,6 +94,15 @@ export async function updateSession(request: NextRequest) {
       //console.error("[Middleware] User auth error:", userError.message)
     }
     const userId = user?.id
+
+    const tournamentRedirectPath = await getLegacyTournamentRedirectPath(supabase, currentPath)
+    if (tournamentRedirectPath) {
+      const url = request.nextUrl.clone()
+      url.pathname = tournamentRedirectPath
+      const redirectResponse = NextResponse.redirect(url, 308)
+      response.cookies.getAll().forEach(cookie => redirectResponse.cookies.set(cookie))
+      return redirectResponse
+    }
 
     // If no session/user, clear any cached data for this user
     if (!user && userId) {

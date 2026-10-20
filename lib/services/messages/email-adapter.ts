@@ -1,3 +1,4 @@
+import { isInscriptionProofPending } from "@/lib/tournaments/inscription-requirements"
 import {
   buildAppUrl,
   detailsList,
@@ -61,7 +62,7 @@ const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEve
   if (data.adminEmails.length === 0) return skipped("no admin recipients")
 
   const tournamentUrl = buildAppUrl(`/tournaments/${data.tournament.id}/inscriptions`)
-  const statusLabel = data.inscription.payment_method === "TRANSFER" && !data.inscription.payment_proof_path
+  const statusLabel = isInscriptionProofPending(data.inscription, data.tournament.enable_transfer_proof)
     ? "Falta comprobante (cupo reservado)"
     : data.inscription.is_pending ? "Pendiente de revision" : "Confirmada"
   const tournamentStartLabel = formatTournamentDateTime(data.tournament.start_date)
@@ -108,7 +109,7 @@ const sendInscriptionApprovedPlayer = async (event: Extract<TournamentMessageEve
   if (!data) return skipped("missing inscription data")
   if (!isTournamentMessagesEnabled(data.tournament)) return skipped("messages disabled")
   if (data.inscription.is_pending) return skipped("inscription still pending")
-  if (data.inscription.payment_method === "TRANSFER" && !data.inscription.payment_proof_path) return skipped("inscription missing proof")
+  if (isInscriptionProofPending(data.inscription, data.tournament.enable_transfer_proof)) return skipped("inscription missing proof")
   if (data.playerEmails.length === 0) return skipped("no player recipients")
 
   const tournamentUrl = buildAppUrl(`/tournaments/${data.tournament.id}`)

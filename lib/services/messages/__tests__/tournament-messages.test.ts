@@ -45,6 +45,7 @@ const baseTables = (overrides: Record<string, any[]> = {}) => ({
       organization_id: null,
       organizador_id: null,
       messages_enabled: true,
+      enable_transfer_proof: true,
     },
   ],
   inscriptions: [
@@ -109,6 +110,16 @@ describe("sendTournamentMessage", () => {
         tags: expect.arrayContaining([{ name: "type", value: "inscription_approved_player" }]),
       }),
     )
+  })
+
+  it("confirms a historical transfer when the current tournament no longer requires proof", async () => {
+    const tables = baseTables()
+    const supabase = makeSupabase({ ...tables,
+      tournaments: [{ ...tables.tournaments[0], enable_transfer_proof: false }],
+      inscriptions: [{ ...tables.inscriptions[0], payment_method: "TRANSFER", payment_proof_path: null }],
+    })
+    await sendTournamentMessage({ type: "INSCRIPTION_APPROVED_PLAYER", supabase, inscriptionId: "inscription-1" })
+    expect(sendTransactionalEmail).toHaveBeenCalledWith(expect.objectContaining({ to: ["ana@example.com", "beto@example.com"] }))
   })
 
   it("waits for the proof before confirming an automatically approved reservation", async () => {

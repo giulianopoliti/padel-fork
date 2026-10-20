@@ -7,10 +7,12 @@ import { Trophy, Menu, X, BarChart3, Calendar, MapPin, User, Home, BookOpen } fr
 import type { User as AuthUser } from "@supabase/supabase-js"
 import NavbarUserProfile from "./navbar-user-profile"
 import { useEffect, useRef, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { getIcon, IconName } from "@/components/icons"
 import BrandLogo from "@/components/ui/brand-logo"
 import { getTenantBranding } from "@/config/tenant"
+import { isSoloPlayersEnabled } from "@/config/solo-players"
+import { SoloNotificationBell } from "@/components/solo-players/notification-bell"
 
 interface NavLink {
   label: string
@@ -52,9 +54,15 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isFvHeroVisible, setIsFvHeroVisible] = useState(false)
   const headerRef = useRef<HTMLElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const prefersReducedMotion = useReducedMotion()
   const branding = getTenantBranding()
   const isElite = branding.key === "padel-elite"
   const isFvHeroPage = !isElite && (pathname === "/" || pathname === "/panel")
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
 
   useEffect(() => {
     if (!isFvHeroPage) {
@@ -101,10 +109,32 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
       }
     }
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return
+      setMobileMenuOpen(false)
+      menuButtonRef.current?.focus()
+    }
+    const handleFocusIn = (event: FocusEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (headerRef.current?.contains(target) || target.closest("[data-navbar-dropdown-content='true']")) return
+      setMobileMenuOpen(false)
+    }
+    const desktopQuery = window.matchMedia("(min-width: 1024px)")
+    const handleViewportChange = () => {
+      if (desktopQuery.matches) setMobileMenuOpen(false)
+    }
+
     document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    document.addEventListener("focusin", handleFocusIn)
+    desktopQuery.addEventListener("change", handleViewportChange)
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener("focusin", handleFocusIn)
+      desktopQuery.removeEventListener("change", handleViewportChange)
     }
   }, [mobileMenuOpen])
 
@@ -115,7 +145,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const isFvDarkNavbar = !isElite
   const headerClassName = isElite
     ? "sticky top-0 z-50 bg-gray-950/95 shadow-md backdrop-blur"
-    : isFvOverHero
+    : isFvOverHero && !mobileMenuOpen
       ? "sticky top-0 z-50 border-b border-white/10 bg-[#0b1933]/95 shadow-[0_8px_24px_rgba(8,16,31,0.18)] backdrop-blur lg:bg-[#0b1933]/78 transition-colors duration-200"
       : "sticky top-0 z-50 border-b border-white/10 bg-[#0b1933] shadow-[0_8px_24px_rgba(8,16,31,0.18)]"
   const activeDesktopClassName = isElite
@@ -124,13 +154,13 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   const inactiveDesktopClassName = isElite
     ? "text-gray-300 hover:bg-gray-800 hover:text-white"
     : "h-full px-1 text-sm font-medium text-slate-300 hover:text-white"
-  const activeMobileClassName = isElite ? "bg-blue-600 text-white" : "border-l-2 border-court-500 bg-white/5 text-white"
+  const activeMobileClassName = isElite ? "bg-blue-600 text-white" : "bg-white/5 text-court-300 ring-1 ring-inset ring-white/10"
   const inactiveMobileClassName = isElite
     ? "text-gray-300 hover:bg-gray-800 hover:text-white"
-    : "border-l-2 border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
+    : "text-slate-300 hover:bg-white/5 hover:text-white"
   const mobilePanelClassName = isElite
     ? "border-t border-gray-800 py-4 lg:hidden"
-    : "border-t border-white/10 bg-[#101d3a] px-4 py-3 shadow-[0_16px_28px_rgba(8,16,31,0.24)] lg:hidden"
+    : "absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-b border-white/10 bg-[#0b1933] px-4 pb-5 pt-3 shadow-[0_16px_28px_rgba(8,16,31,0.24)] sm:px-6 lg:hidden"
   const mobilePanelDividerClassName = isElite
     ? "mt-4 border-t border-gray-800 pt-4"
     : "mt-3 border-t border-white/10 pt-3"
@@ -141,8 +171,8 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
   return (
     <header ref={headerRef} className={headerClassName}>
       <div className={isElite ? "container mx-auto px-6" : "container mx-auto px-4 sm:px-6"}>
-        <div className={isElite ? "flex h-20 items-center justify-between" : "relative flex h-16 items-center lg:h-[72px]"}>
-          <Link href="/" className="flex items-center space-x-3">
+        <div className={isElite ? "flex h-20 items-center gap-4 lg:gap-6" : "relative flex h-16 items-center lg:h-[72px]"}>
+          <Link href="/" onClick={() => setMobileMenuOpen(false)} className={isElite ? "flex shrink-0 items-center" : "flex items-center space-x-3"}>
             <BrandLogo
               variant="navbar"
               surface={isFvDarkNavbar ? "dark" : "light"}
@@ -150,7 +180,7 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
             />
           </Link>
 
-          <nav className={isElite ? "hidden lg:flex items-center space-x-2" : "absolute left-1/2 hidden h-full -translate-x-1/2 items-center gap-7 lg:flex"} aria-label="Navegación principal">
+          <nav className={isElite ? "hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex xl:gap-2" : "absolute left-1/2 hidden h-full -translate-x-1/2 items-center gap-7 lg:flex"} aria-label="Navegación principal">
             {mainLinks.map((link) => {
               const IconComponent = getIconComponent(link.icon)
               const isActive = link.path === "/" ? pathname === "/" : pathname === link.path || pathname?.startsWith(`${link.path}/`)
@@ -159,18 +189,20 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
                 <Link
                   key={link.path}
                   href={link.path}
-                  className={isElite ? `flex items-center space-x-2 px-5 py-2.5 rounded-full text-base transition-all duration-200 ${
+                  className={isElite ? `flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3 py-2.5 text-sm transition-all duration-200 xl:px-4 xl:text-base 2xl:px-5 ${
                     isActive ? activeDesktopClassName : inactiveDesktopClassName
                   }` : `flex items-center gap-2 transition-colors ${isActive ? activeDesktopClassName : inactiveDesktopClassName}`}
                 >
-                  <IconComponent className={isElite ? "h-5 w-5" : "h-4 w-4"} />
+                  <IconComponent className={isElite ? "h-5 w-5 shrink-0" : "h-4 w-4"} />
                   <span>{link.label}</span>
                 </Link>
               )
             })}
           </nav>
 
-          <div className={isElite ? "hidden items-center space-x-3 lg:flex" : "ml-auto hidden items-center space-x-3 lg:flex"}>
+          <div className={isElite ? "ml-auto flex shrink-0 items-center gap-2 lg:ml-0" : "ml-auto flex items-center gap-2"}>
+          {user && isSoloPlayersEnabled() && <SoloNotificationBell />}
+          <div className="hidden items-center space-x-3 lg:flex">
             {user ? (
               <div className="transition-all duration-300 ease-in-out">
                 <NavbarUserProfile profileLinks={profileLinks} />
@@ -188,18 +220,30 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
           </div>
 
           <button
+            ref={menuButtonRef}
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={isElite ? `lg:hidden rounded-full p-2 ${inactiveMobileClassName}` : "ml-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/15 lg:hidden"}
+            className={isElite ? `lg:hidden rounded-full p-2 ${inactiveMobileClassName}` : "inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 lg:hidden"}
             aria-expanded={mobileMenuOpen}
+            aria-controls="navbar-mobile-menu"
             aria-label={mobileMenuOpen ? "Cerrar menu" : "Abrir menu"}
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
+          </div>
         </div>
 
         <AnimatePresence>
           {mobileMenuOpen && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className={mobilePanelClassName}>
+            <motion.div
+              id="navbar-mobile-menu"
+              initial={isElite ? { opacity: 0, height: 0 } : { opacity: 0, y: prefersReducedMotion ? 0 : -8 }}
+              animate={isElite ? { opacity: 1, height: "auto" } : { opacity: 1, y: 0 }}
+              exit={isElite ? { opacity: 0, height: 0 } : { opacity: 0, y: prefersReducedMotion ? 0 : -8 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+              inert={!mobileMenuOpen}
+              className={mobilePanelClassName}
+            >
               <nav className={isElite ? "space-y-2" : "space-y-1"} aria-label="Navegación móvil">
                 {mainLinks.map((link) => {
                   const IconComponent = getIconComponent(link.icon)
@@ -209,10 +253,11 @@ export default function NavbarClient({ mainLinks, profileLinks, user }: NavbarCl
                     <Link
                       key={link.path}
                       href={link.path}
+                      aria-current={isActive ? "page" : undefined}
                       onClick={() => setMobileMenuOpen(false)}
                       className={isElite ? `flex items-center space-x-3 px-4 py-3 rounded-elevated text-base transition-all duration-200 ${
                         isActive ? activeMobileClassName : inactiveMobileClassName
-                      }` : `flex min-h-14 items-center gap-3 px-4 text-base font-semibold transition-colors ${isActive ? activeMobileClassName : inactiveMobileClassName}`}
+                      }` : `flex min-h-12 items-center gap-3 rounded-control px-4 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 ${isActive ? activeMobileClassName : inactiveMobileClassName}`}
                     >
                       <IconComponent className="h-5 w-5" />
                       <span>{link.label}</span>

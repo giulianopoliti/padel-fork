@@ -3,6 +3,8 @@ import { NextRequest } from 'next/server';
 import { checkTournamentAccess } from '@/utils/tournament-permissions';
 import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
 import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
+import { sanitizeTournamentPlayer } from '@/utils/tournament-player-privacy';
+import { reconcileCompleteInscriptions } from '@/lib/services/registration/reconcile-complete-inscriptions';
 
 /**
  * 🎯 API ROUTE: INSCRIPCIONES PARA TORNEOS (AMERICAN Y LONG)
@@ -37,8 +39,8 @@ interface InscriptionResponse {
     id: string;
     player1_id: string;
     player2_id: string;
-    players_player1: PlayerInfo;
-    players_player2: PlayerInfo;
+    players_player1: PlayerInfo | null;
+    players_player2: PlayerInfo | null;
   } | null;
   player?: PlayerInfo | null;
   inscription_payments?: PaymentInfo[];
@@ -125,6 +127,12 @@ export async function GET(
       );
     }
 
+    // A manager refresh retries assignment without undoing a saved reservation.
+    if (accessCheck.accessLevel === 'FULL_MANAGEMENT') {
+      try { await reconcileCompleteInscriptions(tournamentId); }
+      catch { console.warn('[inscriptions] zone_assignment_pending'); }
+    }
+
     // ✅ REUTILIZAR: Query compartida entre torneos AMERICAN y LONG
     // Incluir TODAS las inscripciones (pendientes y aprobadas) con is_pending
     // Incluir informacion de pagos (inscription_payments)
@@ -188,20 +196,27 @@ export async function GET(
 
     // Transformar datos al formato esperado por el frontend
     const formattedInscriptions: InscriptionResponse[] = (inscriptions || [])
-      .map(inscription => ({
-        id: inscription.id,
-        couple_id: inscription.couple_id ?? null,
-        player_id: inscription.player_id ?? null,
-        created_at: inscription.created_at,
-        is_pending: inscription.is_pending ?? false,
-        payment_proof_status: inscription.payment_proof_status ?? 'NOT_REQUIRED',
-        payment_proof_uploaded_at: inscription.payment_proof_uploaded_at ?? null,
-        payment_alias_snapshot: inscription.payment_alias_snapshot ?? null,
-        payment_amount_snapshot: inscription.payment_amount_snapshot ?? null,
-        couples: getSingleRelation(inscription.couples),
-        player: getSingleRelation(inscription.player),
-        inscription_payments: inscription.inscription_payments || []
-      }));
+      .map(inscription => {
+        const couple = getSingleRelation(inscription.couples);
+        return {
+          id: inscription.id,
+          couple_id: inscription.couple_id ?? null,
+          player_id: inscription.player_id ?? null,
+          created_at: inscription.created_at,
+          is_pending: inscription.is_pending ?? false,
+          payment_proof_status: inscription.payment_proof_status ?? 'NOT_REQUIRED',
+          payment_proof_uploaded_at: inscription.payment_proof_uploaded_at ?? null,
+          payment_alias_snapshot: inscription.payment_alias_snapshot ?? null,
+          payment_amount_snapshot: inscription.payment_amount_snapshot ?? null,
+          couples: couple ? {
+            ...couple,
+            players_player1: getSingleRelation(couple.players_player1),
+            players_player2: getSingleRelation(couple.players_player2),
+          } : null,
+          player: getSingleRelation(inscription.player),
+          inscription_payments: inscription.inscription_payments || []
+        };
+      });
 
     // Transform to format expected by useTournamentInscriptions hook (both AMERICAN and LONG)
     const coupleInscriptions = formattedInscriptions
@@ -256,9 +271,20 @@ export async function GET(
       (player as any).late_withdrawal_count = lateWithdrawalCounts.get(player.id) || 0;
     });
 
+    const hasManagementPermission = accessCheck.accessLevel === 'FULL_MANAGEMENT';
+    const visibleCoupleInscriptions = coupleInscriptions.map((inscription) => ({
+      ...inscription,
+      player_1_info: inscription.player_1_info
+        ? sanitizeTournamentPlayer(inscription.player_1_info, hasManagementPermission) : null,
+      player_2_info: inscription.player_2_info
+        ? sanitizeTournamentPlayer(inscription.player_2_info, hasManagementPermission) : null,
+    }));
+    const visibleIndividualInscriptions = individualInscriptions.map((player) =>
+      sanitizeTournamentPlayer(player, hasManagementPermission));
+
     return Response.json({
-      coupleInscriptions,
-      individualInscriptions,
+      coupleInscriptions: visibleCoupleInscriptions,
+      individualInscriptions: visibleIndividualInscriptions,
       tournament: {
         id: tournament.id,
         name: tournament.name,

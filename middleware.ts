@@ -50,6 +50,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Canonical tournament redirects must also run for Link prefetch requests.
+    { source: '/tournaments/:id' },
     /*
      * Optimized matcher - only run on paths that actually need auth checking
      * Excludes:

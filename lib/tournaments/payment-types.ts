@@ -10,6 +10,7 @@ export type PaymentInscription = {
   uploadedAt?: string | null
   reviewedAt?: string | null
   individual?: boolean
+  proofRequired?: boolean
 }
 
 // Explicit RPC boundary while database.types.ts remains the repository fallback.
@@ -34,9 +35,10 @@ export type PaymentRow = {
   id: string; payment_method: 'CASH' | 'TRANSFER' | null; payment_proof_path: string | null
   payment_proof_status: string; is_pending: boolean; payment_revision: number
 }
-export const presentPayment = (row: PaymentRow): PaymentInscription => ({
+export const presentPayment = (row: PaymentRow, enableTransferProof = true): PaymentInscription => ({
   id: row.id, method: row.payment_method, hasProof: Boolean(row.payment_proof_path),
   proofStatus: row.payment_proof_status, isPending: row.is_pending, revision: row.payment_revision,
+  proofRequired: enableTransferProof && row.payment_method === 'TRANSFER',
 })
 
 export const paymentPresentation = (inscription: PaymentInscription) => {
@@ -45,6 +47,7 @@ export const paymentPresentation = (inscription: PaymentInscription) => {
     action: 'Ver comprobante',
   }
   if (inscription.method === 'CASH') return { status: 'Abonás en efectivo', action: 'Modificar pago' }
+  if (inscription.proofRequired === false) return { status: 'No se requiere comprobante', action: 'Ver detalles' }
   if (inscription.method === 'TRANSFER') return { status: 'Falta subir el comprobante', action: 'Subir comprobante' }
   return { status: '', action: 'Ver detalles' }
 }

@@ -14,6 +14,10 @@ import { useUser } from "@/contexts/user-context"
 import { Gender } from "@/types"
 import { useToast } from "@/components/ui/use-toast"
 import { getTenantBranding } from "@/config/tenant"
+import { isSoloPlayersEnabled } from "@/config/solo-players"
+import { TournamentInterest } from "@/components/solo-players/tournament-interest"
+import { useSoloDirectory } from "@/components/solo-players/use-solo-directory"
+import { getTournamentSoloState } from "@/components/solo-players/tournament-solo-status"
 
 interface PublicRegistrationLauncherProps {
   tournamentId: string
@@ -42,7 +46,10 @@ export default function PublicRegistrationLauncher({
   fullWidth = false,
   requireTermsAcceptance = getTenantBranding().key === "padel-elite",
 }: PublicRegistrationLauncherProps) {
-  const coupleOnlyMode = enableTransferProof
+  const soloPlayersEnabled = isSoloPlayersEnabled()
+  const { data: soloData, reload: reloadSolo } = useSoloDirectory()
+  const soloState = getTournamentSoloState(soloData, tournamentId)
+  const coupleOnlyMode = enableTransferProof && !soloPlayersEnabled
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"couple" | "individual">("couple")
@@ -121,6 +128,8 @@ export default function PublicRegistrationLauncher({
 
     if (coupleOnlyMode) {
       setActiveTab("couple")
+    } else if (soloState) {
+      setActiveTab("individual")
     }
 
     setRegisterDialogOpen(true)
@@ -136,6 +145,13 @@ export default function PublicRegistrationLauncher({
     window.location.assign(redirectBase)
   }
 
+  const handleInterestComplete = (success: boolean) => {
+    setRegisterDialogOpen(false)
+    if (!success) return
+    void reloadSolo()
+    toast({ title: "Ya estás buscando pareja", description: "Te avisaremos cuando recibas una propuesta para este torneo." })
+  }
+
   return (
     <>
       <Button
@@ -144,11 +160,11 @@ export default function PublicRegistrationLauncher({
         size="lg"
       >
         <UserPlus className="mr-2 h-4 w-4" />
-        {buttonLabel}
+        {soloState ? "Ver mi búsqueda" : buttonLabel}
       </Button>
 
       <Dialog open={registerDialogOpen} onOpenChange={setRegisterDialogOpen}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto" onCloseAutoFocus={event => {
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto" onClick={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} onCloseAutoFocus={event => {
           if (!pendingPaymentId.current) return
           event.preventDefault()
           const inscriptionId = pendingPaymentId.current
@@ -156,9 +172,9 @@ export default function PublicRegistrationLauncher({
           openPayment({ tournamentId, tournamentName, inscriptionId })
         }}>
           <DialogHeader>
-            <DialogTitle>Inscripción al torneo</DialogTitle>
+            <DialogTitle>{soloPlayersEnabled ? "Jugá este torneo" : "Inscripción al torneo"}</DialogTitle>
             <DialogDescription>
-              {coupleOnlyMode
+              {soloPlayersEnabled ? tournamentName : coupleOnlyMode
                 ? `Este torneo requiere inscripción en pareja con transferencia y comprobante para ${tournamentName}.`
                 : `Completa tu inscripción individual o en pareja para ${tournamentName}.`}
             </DialogDescription>
@@ -173,7 +189,7 @@ export default function PublicRegistrationLauncher({
               {!coupleOnlyMode && (
                 <TabsTrigger value="individual" className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  Individual
+                {soloPlayersEnabled ? "Busco pareja" : "Individual"}
                 </TabsTrigger>
               )}
             </TabsList>
@@ -196,7 +212,7 @@ export default function PublicRegistrationLauncher({
 
             {!coupleOnlyMode && (
               <TabsContent value="individual" className="mt-4">
-                <RegisterPlayerForm
+                {soloPlayersEnabled ? <TournamentInterest tournamentId={tournamentId} onComplete={handleInterestComplete} /> : <RegisterPlayerForm
                   tournamentId={tournamentId}
                   tournament={{
                     id: tournamentId,
@@ -205,7 +221,7 @@ export default function PublicRegistrationLauncher({
                   }}
                   onComplete={handleRegistrationComplete}
                   requireTermsAcceptance={requireTermsAcceptance}
-                />
+                />}
               </TabsContent>
             )}
           </Tabs>

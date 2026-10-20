@@ -22,6 +22,7 @@ import LegacyPlayerDashboard from "@/app/(main)/panel-cpa/@player/page"
 import { isTournamentGenderFilter } from "@/lib/tournaments/gender-filtering"
 import SponsorMarquee from "@/components/sponsor-marquee"
 import { PlayerFvPanelHero } from "./components/player-fv-panel-hero"
+import { PlayerSoloTournaments } from "@/components/solo-players/tournament-solo-status"
 
 export const dynamic = "force-dynamic"
 
@@ -142,6 +143,7 @@ function PadelElitePlayerPanel({
           </div>
 
           <div className="space-y-8">
+            <PlayerSoloTournaments />
             <PlayerUpcomingTournamentsSection tournaments={upcomingTournaments} />
             <PlayerInscribedTournamentsSection tournaments={inscribedTournaments} />
             <PlayerNextMatchSection nextMatches={nextMatches} />
@@ -167,6 +169,7 @@ function PadelFvPlayerPanel({
           <SponsorMarquee compact tone="dark" className="mb-5 rounded-display border-white/10 bg-white/[0.035]" />
 
           <div className="space-y-6">
+            <PlayerSoloTournaments tone="dark" />
             <PlayerFvNextMatchSection nextMatches={nextMatches} />
             <PlayerFvInscribedTournamentsSection tournaments={inscribedTournaments} />
             <PlayerFvUpcomingTournamentsSection tournaments={upcomingTournaments} tournamentType="AMERICAN" />

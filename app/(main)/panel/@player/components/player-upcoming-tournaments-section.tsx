@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
+import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { CalendarDays, ChevronRight, Clock3, MapPin, Ticket, Users } from "lucide-react"
 import type { UpcomingTournament } from "@/app/api/panel/actions"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
+import { TournamentSoloStatus } from "@/components/solo-players/tournament-solo-status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -233,7 +234,12 @@ export default function PlayerUpcomingTournamentsSection({
               </div>
 
               <div className="flex flex-col justify-between gap-3">
-                {tournament.is_inscribed && tournament.payment ? <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={tournament.payment} /></div> : canRegister ? (
+                <TournamentSoloStatus tournamentId={tournament.id} tone="dark" />
+                {tournament.is_inscribed ? (
+                  <p className="flex min-h-10 items-center justify-center text-center text-sm font-semibold text-white">
+                    Ya estás inscripto
+                  </p>
+                ) : canRegister ? (
                   <PublicRegistrationLauncher
                     tournamentId={tournament.id}
                     tournamentName={tournament.name}
@@ -247,7 +253,7 @@ export default function PlayerUpcomingTournamentsSection({
                   />
                 ) : (
                   <div className="rounded-[1.25rem] border border-white/12 bg-white/6 px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/80">
-                    {tournament.is_inscribed ? "Segui tu inscripcion abajo" : "Mira los detalles del torneo"}
+                    Mira los detalles del torneo
                   </div>
                 )}
 
@@ -256,7 +262,7 @@ export default function PlayerUpcomingTournamentsSection({
                   variant="outline"
                   className="w-full rounded-full border-white/20 bg-white/5 text-sm font-bold uppercase tracking-[0.14em] text-white hover:bg-white/10 hover:text-white"
                 >
-                  <Link href={`/tournaments/${tournament.id}`}>
+                  <Link href={getPublicTournamentHref(tournament)}>
                     Ver detalles
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Link>

@@ -5,6 +5,7 @@ type SendEmailInput = {
   text?: string
   idempotencyKey?: string
   tags?: Array<{ name: string; value: string }>
+  signal?: AbortSignal
 }
 
 export type SendEmailResult =
@@ -53,6 +54,7 @@ export const sendTransactionalEmail = async (input: SendEmailInput): Promise<Sen
 
     const response = await fetch(RESEND_EMAIL_ENDPOINT, {
       method: "POST",
+      signal: input.signal,
       headers,
       body: JSON.stringify({
         from,

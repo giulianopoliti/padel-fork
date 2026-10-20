@@ -5,6 +5,7 @@ import { useOwnPayments } from "@/hooks/use-own-payments"
 import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
 import { useRouter } from "next/navigation"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
+import { TournamentSoloStatus } from "@/components/solo-players/tournament-solo-status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -266,6 +267,7 @@ export function PublicTournamentCards({
             role="link"
             tabIndex={0}
             onClick={(event) => {
+              if (!event.currentTarget.contains(event.target as Node)) return
               if ((event.target as HTMLElement).closest("a, button, input, select, textarea")) return
               router.push(getPublicTournamentHref(tournament))
             }}
@@ -312,6 +314,7 @@ export function PublicTournamentCards({
 
                   <div>
                     <h3 className={titleClassName}>{tournament.name}</h3>
+                    <div className="mt-2"><TournamentSoloStatus tournamentId={tournament.id} tone={isLightSurface ? "light" : "dark"} /></div>
                     {isLongTournament ? (
                       <p className={`mt-1 ${bodyTextClassName}`}>
                         Liga con fechas programadas y seguimiento durante la semana.

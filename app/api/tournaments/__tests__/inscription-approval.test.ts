@@ -8,6 +8,7 @@ jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }))
 import { createClient } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import { approveInscription } from '../actions'
+import { reconcileCompleteInscriptions } from '@/lib/services/registration/reconcile-complete-inscriptions'
 
 describe('independent inscription approval', () => {
   it('approves an inscription without reviewing its pending proof', async () => {
@@ -23,5 +24,9 @@ describe('independent inscription approval', () => {
     const result = await approveInscription('inscription')
     expect(result.success).toBe(true)
     expect(update).toHaveBeenCalledWith({ is_pending: false })
+
+    jest.mocked(reconcileCompleteInscriptions).mockRejectedValueOnce(new Error('zone unavailable'))
+    const deferred = await approveInscription('inscription')
+    expect(deferred).toMatchObject({ success: true, message: expect.stringContaining('Pendiente de asignación') })
   })
 })

@@ -94,6 +94,9 @@ describe('resumable inscription payments', () => {
       if (params.p_revision !== inscription.payment_revision) return { data: null, error: { code: '40001' } } as never
       if (!params.p_manager && inscription.payment_proof_status === 'APPROVED') return { data: null, error: { code: '42501' } } as never
       const op = params.p_operation
+      if ((op === 'attach' && inscription.payment_proof_path) || (op === 'replace' && !inscription.payment_proof_path)) {
+        return { data: null, error: { code: '40001' } } as never
+      }
       const patch = op === 'attach' || op === 'replace'
         ? { payment_proof_path: params.p_path, payment_proof_status: 'PENDING_REVIEW' }
         : op === 'remove' ? { payment_proof_path: null, payment_proof_status: 'NOT_REQUIRED' }
@@ -159,10 +162,10 @@ describe('resumable inscription payments', () => {
   })
   it('does not approve a concurrent replacement', async () => {
     prepareApproval()
-    jest.mocked(supabaseAdmin.rpc).mockImplementationOnce(async () => {
+    jest.mocked(supabaseAdmin.rpc).mockImplementationOnce((async () => {
       inscription!.payment_revision = 1; inscription!.payment_proof_path = 'replacement'
       return { data: null, error: { code: '40001' } } as never
-    })
+    }) as never)
     expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(409)
     expect(inscription!.payment_proof_status).toBe('PENDING_REVIEW')
   })
@@ -184,6 +187,19 @@ describe('resumable inscription payments', () => {
     const body = await response.json()
     expect(body).toMatchObject({ incompleteCount: 1, inscriptions: [{ id: 'inscription', hasProof: false }] })
     expect(JSON.stringify(body)).not.toContain('payment_proof_path')
+  })
+
+  it('uses the current proof setting while retaining the transfer and independent approval', async () => {
+    settings.enable_transfer_proof = false
+    inscription!.is_pending = true
+    const response = await GET(new NextRequest(endpoint), context)
+    expect(await response.json()).toMatchObject({ inscription: { method: 'TRANSFER', hasProof: false, proofRequired: false, isPending: true } })
+    expect(inscription).toMatchObject({ payment_method: 'TRANSFER', is_pending: true, payment_proof_path: null })
+    jest.mocked(getUserDetails).mockResolvedValue({ role: 'ADMIN' } as never)
+    jest.mocked(checkTournamentPermissions).mockResolvedValue({ hasPermission: true })
+    expect(await (await GET(new NextRequest(`${endpoint}?list=1`), context)).json()).toMatchObject({ incompleteCount: 0, inscriptions: [{ proofRequired: false }] })
+    expect(await (await GET(new NextRequest(`${endpoint}?incomplete=1`), context)).json()).toMatchObject({ incompleteCount: 0 })
+    expect(update).not.toHaveBeenCalled()
   })
 
   it('reserves without requiring a file', async () => {
@@ -249,8 +265,44 @@ describe('resumable inscription payments', () => {
 
   it('does not upload twice after a lost confirmation', async () => {
     inscription!.payment_proof_path = 'already-stored'
-    expect((await run('attach', { inscriptionId: 'inscription' }, proof())).status).toBe(200)
+    const response = await run('attach', { inscriptionId: 'inscription' }, proof())
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: 'proof_already_attached', message: 'Tu compañero ya adjuntó un comprobante', inscription: { hasProof: true } })
     expect(uploadInscriptionProof).not.toHaveBeenCalled()
+  })
+
+  it('does not turn a fresh attach into a replacement when a proof already exists', async () => {
+    inscription!.payment_proof_path = 'first-proof'
+    const response = await run('attach', { inscriptionId: 'inscription', revision: '0' }, proof())
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ message: 'Tu compañero ya adjuntó un comprobante' })
+    expect(inscription!.payment_proof_path).toBe('first-proof')
+    expect(uploadInscriptionProof).not.toHaveBeenCalled()
+    expect(supabaseAdmin.rpc).not.toHaveBeenCalled()
+  })
+
+  it('keeps the first saved proof when both partners upload together', async () => {
+    let uploaded = 0
+    let releaseUploads!: () => void
+    const bothUploaded = new Promise<void>(resolve => { releaseUploads = resolve })
+    jest.mocked(uploadInscriptionProof).mockImplementation(async () => {
+      const path = `partner-proof-${++uploaded}`
+      if (uploaded === 2) releaseUploads()
+      await bothUploaded
+      return { success: true, filePath: path }
+    })
+    const responses = await Promise.all([
+      run('attach', { inscriptionId: 'inscription', revision: '0' }, proof()),
+      run('attach', { inscriptionId: 'inscription', revision: '0' }, proof()),
+    ])
+    expect(responses.map(response => response.status).sort()).toEqual([200, 409])
+    const winner = await responses.find(response => response.status === 200)!.json()
+    const loser = await responses.find(response => response.status === 409)!.json()
+    expect(loser).toMatchObject({ code: 'proof_already_attached', message: 'Tu compañero ya adjuntó un comprobante', inscription: winner.inscription })
+    expect(inscription).toMatchObject({ payment_revision: 1, payment_proof_path: 'partner-proof-1' })
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(deleteInscriptionProof).not.toHaveBeenCalled()
+    expect(scheduleInscriptionProofCleanup).toHaveBeenCalled()
   })
 
   it('rejects invalid files without changing the reservation', async () => {
@@ -287,7 +339,9 @@ describe('resumable inscription payments', () => {
 
   it('keeps success and proof after a deferred zone assignment fails', async () => {
     jest.mocked(reconcileCompleteInscriptions).mockRejectedValue(new Error('zone unavailable'))
-    expect((await run('attach', { inscriptionId: 'inscription' }, proof())).status).toBe(200)
+    const response = await run('attach', { inscriptionId: 'inscription' }, proof())
+    expect(response.status).toBe(200)
+    expect((await response.json()).message).toContain('Pendiente de asignación')
     expect(deleteInscriptionProof).not.toHaveBeenCalled()
   })
 

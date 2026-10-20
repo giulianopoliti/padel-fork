@@ -37,6 +37,7 @@ export const InscriptionPaymentEditor = ({ target, copy, allowProofApproval = fa
   const inscription = data?.inscription
   const [method, setMethod] = useState<'CASH' | 'TRANSFER' | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [fileOperation, setFileOperation] = useState<'attach' | 'replace' | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [approving, setApproving] = useState(false)
@@ -62,9 +63,11 @@ export const InscriptionPaymentEditor = ({ target, copy, allowProofApproval = fa
   const handleRefresh = async () => {
     try {
       const next = await mutate()
-      if (next?.inscription) { setMethod(next.inscription.method); setDraftRevision(file ? next.inscription.revision : null) }
+      const partnerAttached = fileOperation === 'attach' && next?.inscription?.hasProof
+      if (next?.inscription) { setMethod(next.inscription.method); setDraftRevision(file && !partnerAttached ? next.inscription.revision : null) }
+      if (partnerAttached) { setFile(null); setFileOperation(null) }
       setUncertain(false)
-      setMessage(null)
+      setMessage(partnerAttached ? 'Tu compañero ya adjuntó un comprobante' : null)
     } catch { setMessage('No se pudo consultar. Tu selección sigue disponible en este navegador.') }
   }
   const handleSave = async (operation: 'attach' | 'replace' | 'remove' | 'cash' | 'transfer' | 'approve-proof') => {
@@ -89,12 +92,20 @@ export const InscriptionPaymentEditor = ({ target, copy, allowProofApproval = fa
       const { response, data: result } = await fetchRegistrationJson(url, {
         method: 'POST', headers: { 'x-registration-attempt': attemptId }, body,
       })
+      if (response.status === 409 && result.code === 'proof_already_attached' && result.inscription) {
+        await mutate({ ...data, inscription: result.inscription }, { revalidate: false })
+        setMethod(result.inscription.method); setFile(null); setFileOperation(null); setDraftRevision(null); setUncertain(false)
+        setMessage('Tu compañero ya adjuntó un comprobante')
+        void mutateCache(key => Array.isArray(key) && (String(key[0]).includes('/inscriptions/payment') || key[0] === 'own-payments')).catch(() => {})
+        router.refresh()
+        return
+      }
       if (!response.ok || !result.success) throw new Error(result.message || 'No se pudo guardar el pago.')
       await mutate({ ...data, inscription: result.inscription }, { revalidate: false })
-      setMethod(result.inscription.method); setFile(null); setDraftRevision(null); setUncertain(false)
-      setMessage(operation === 'approve-proof' ? 'Comprobante aprobado.' : preparedProof && file && preparedProof.size < file.size
+      setMethod(result.inscription.method); setFile(null); setFileOperation(null); setDraftRevision(null); setUncertain(false)
+      setMessage(result.message || (operation === 'approve-proof' ? 'Comprobante aprobado.' : preparedProof && file && preparedProof.size < file.size
         ? `Cambios guardados. Imagen reducida de ${(file.size / 1_000_000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} MB a ${Math.ceil(preparedProof.size / 1000).toLocaleString('es-AR')} KB.`
-        : 'Cambios guardados.')
+        : 'Cambios guardados.'))
       // Revalidate all compact summaries, batches and organizer rows, with no private public cache.
       void mutateCache(key => Array.isArray(key) && (String(key[0]).includes('/inscriptions/payment') || key[0] === 'own-payments')).catch(() => {})
       router.refresh()
@@ -110,7 +121,7 @@ export const InscriptionPaymentEditor = ({ target, copy, allowProofApproval = fa
   if (!data) return <div className="space-y-4"><p role="status">Consultando inscripción…</p>{closeAction}</div>
   if (!inscription) return <div className="space-y-4"><p role="status">Esta inscripción ya no existe. Cerrá el popup y revisá el torneo.</p>{closeAction}</div>
   const canEdit = Boolean(data.manager || inscription.proofStatus !== 'APPROVED')
-  const transfer = method === 'TRANSFER' || (method === null && inscription.hasProof)
+  const transfer = inscription.hasProof || (data.settings.transfer && method === 'TRANSFER')
   const changed = method !== inscription.method
   const conflict = draftRevision !== null && draftRevision !== inscription.revision
   const alias = changed ? data.settings.alias : inscription.alias || data.settings.alias
@@ -119,11 +130,12 @@ export const InscriptionPaymentEditor = ({ target, copy, allowProofApproval = fa
     if (changed && method) {
       if (method === 'CASH' && inscription.hasProof) setConfirm('cash')
       else void handleSave(method === 'CASH' ? 'cash' : 'transfer')
-    } else if (file) void handleSave(inscription.hasProof ? 'replace' : 'attach')
+    } else if (file && fileOperation) void handleSave(fileOperation)
   }
   return <div className="space-y-5">
     {!target.tournamentName && data.tournamentName && <p className="font-semibold">{data.tournamentName}</p>}
     <p className="text-sm text-slate-600">{copy.introduction}</p>
+    {!data.settings.transfer && <p className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-900">Este torneo ya no requiere comprobante. Los archivos y elecciones de pago anteriores se conservan; la aprobación de la inscripción, si corresponde, sigue siendo independiente.</p>}
     {(data.settings.cash || data.settings.transfer || inscription.method) && <fieldset disabled={!canEdit || busy || uncertain || conflict} className="space-y-2">
       <legend className="mb-2 text-sm font-semibold">Forma de pago</legend>
       <div className="flex flex-wrap gap-4">
@@ -132,7 +144,7 @@ export const InscriptionPaymentEditor = ({ target, copy, allowProofApproval = fa
       </div>
     </fieldset>}
     {transfer && <div className="space-y-3">
-      <p className="text-sm text-slate-600">{copy.transfer}</p>
+      <p className="text-sm text-slate-600">{data.settings.transfer ? copy.transfer : 'Comprobante guardado de una transferencia anterior. Ya no es un requisito para habilitar esta inscripción.'}</p>
       <p className="text-sm">Importe: <strong>{amount == null ? copy.missingAmount : `$${Number(amount).toLocaleString('es-AR')}`}</strong></p>
       {alias && <div className="flex items-center justify-between gap-3"><p className="min-w-0 break-all text-sm">Alias: <strong>{alias}</strong></p><Button variant="outline" size="sm" className={secondaryActionClasses} onClick={() => void navigator.clipboard.writeText(alias).then(() => setMessage('Alias copiado.')).catch(() => setMessage('No se pudo copiar. Seleccioná el alias para copiarlo.'))}><Copy aria-hidden="true" />Copiar</Button></div>}
       {inscription.hasProof && <div className="space-y-2">
@@ -149,7 +161,7 @@ export const InscriptionPaymentEditor = ({ target, copy, allowProofApproval = fa
           if (!next) return
           const invalid = validateInscriptionProofSelection(next)
           if (invalid) { setMessage(invalid); return }
-          setDraftRevision(previous => previous ?? inscription.revision); setFile(next); setMessage(null); setConfirm(null)
+          setDraftRevision(previous => previous ?? inscription.revision); setFileOperation(inscription.hasProof ? 'replace' : 'attach'); setFile(next); setMessage(null); setConfirm(null)
         }} /><span className="block text-xs font-normal text-slate-500">JPG, PNG o WEBP hasta 20 MB: las imágenes pesadas se comprimen al subir. PDF hasta 4 MB. El archivo enviado no supera 4 MB. Seleccionar no sube el archivo.</span>
       </label>}
       {changed && <p className="text-sm text-slate-600">{copy.changeMethod}</p>}

@@ -146,12 +146,13 @@ export async function PATCH(
       )
     }
 
-    if (shouldApprovePendingInscriptions) {
+    const proofRequirementDisabled = currentTournament.enable_transfer_proof === true && enableTransferProof === false
+    if (shouldApprovePendingInscriptions || proofRequirementDisabled) {
       try {
         const { reconcileCompleteInscriptions } = await import('@/lib/services/registration/reconcile-complete-inscriptions')
         await reconcileCompleteInscriptions(tournamentId)
       } catch {
-        console.error('[inscription-settings] Zone reconciliation deferred after approval')
+        console.error('[inscription-settings] Zone reconciliation deferred after requirements change')
       }
     }
 
@@ -175,6 +176,7 @@ export async function PATCH(
     revalidatePath(`/tournaments/${tournamentId}`)
     revalidatePath(`/tournaments/${tournamentId}/settings`, 'layout')
     revalidatePath(`/tournaments/${tournamentId}/inscriptions`)
+    revalidatePath('/jugadores-sueltos')
     revalidatePath('/tournaments')
     revalidatePath('/panel')
     revalidatePath('/')

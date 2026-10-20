@@ -73,6 +73,7 @@ export type InscribedTournament = {
   couple_id: string
   tournament: {
     id: string
+    seoSlug?: string | null
     name: string
     type?: "LONG" | "AMERICAN" | string | null
     start_date: string
@@ -109,6 +110,7 @@ export type InscribedTournamentsResult = {
 export type UpcomingTournament = {
   payment?: PaymentInscription
   id: string
+  seoSlug?: string | null
   name: string
   type?: "LONG" | "AMERICAN" | string | null
   start_date: string
@@ -436,8 +438,8 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
       .select(`
         id, couple_id, tournament_id, is_eliminated, is_pending, payment_method, payment_proof_path, payment_proof_status, payment_revision,
         tournaments!inner(
-          id, name, type, start_date, end_date, status, category_name, category_config,
-          gender, hide_venue, is_draft,
+          id, seo_slug, name, type, start_date, end_date, status, category_name, category_config,
+          gender, hide_venue, is_draft, enable_transfer_proof,
           clubes(name, address)
         )
       `)
@@ -465,6 +467,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
         is_eliminated: boolean
         tournaments: {
           id: string
+          seo_slug: string | null
           name: string | null
           type: string | null
           start_date: string | null
@@ -474,9 +477,11 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
           category_config: unknown
           gender: string | null
           hide_venue: boolean | null
+          enable_transfer_proof: boolean | null
           clubes: ClubRelation | ClubRelation[] | null
         } | Array<{
           id: string
+          seo_slug: string | null
           name: string | null
           type: string | null
           start_date: string | null
@@ -486,6 +491,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
           category_config: unknown
           gender: string | null
           hide_venue: boolean | null
+          enable_transfer_proof: boolean | null
           clubes: ClubRelation | ClubRelation[] | null
         }> | null
       }
@@ -504,10 +510,11 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
 
       return {
         inscription_id: inscription.id,
-        payment: presentPayment(inscription),
+        payment: presentPayment(inscription, tournament.enable_transfer_proof === true),
         couple_id: inscription.couple_id,
         tournament: {
           id: tournament.id,
+          seoSlug: tournament.seo_slug,
           name: tournament.name || 'Torneo',
           type: tournament.type,
           start_date: tournament.start_date || '',
@@ -758,7 +765,8 @@ export async function getPlayerUpcomingTournaments(
       .or(`and(couple_id.is.null,player_id.eq.${playerId})${coupleIds.length ? `,couple_id.in.(${coupleIds.join(',')})` : ''}`)
       .in('tournament_id', tournamentIds)
     if (inscriptionsError) throw inscriptionsError
-    const paymentByTournament = new Map<string, PaymentInscription>((inscriptions || []).map((row: PaymentRow & { tournament_id: string }) => [row.tournament_id, presentPayment(row)]))
+    const proofSettings = new Map(tournaments.map(tournament => [tournament.id, tournament.enableTransferProof === true]))
+    const paymentByTournament = new Map<string, PaymentInscription>((inscriptions || []).map((row: PaymentRow & { tournament_id: string }) => [row.tournament_id, presentPayment(row, proofSettings.get(row.tournament_id) === true)]))
 
     const upcomingTournaments: UpcomingTournament[] = tournaments.map((tournament) => {
       const currentInscriptions = tournament.currentParticipants || 0
@@ -769,6 +777,7 @@ export async function getPlayerUpcomingTournaments(
 
       return {
         id: tournament.id,
+        seoSlug: tournament.seoSlug,
         name: tournament.name,
         type: tournament.type || "LONG",
         start_date: tournament.startDate || '',

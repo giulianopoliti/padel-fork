@@ -158,7 +158,7 @@ export const PadelFvImmersiveHero = () => {
       data-padel-fv-hero
       data-video-status={videoFailed ? "error" : isBuffering ? "buffering" : isPlaying ? "playing" : "paused"}
       aria-labelledby="padel-fv-hero-title"
-      className="relative isolate -mt-20 min-h-[100svh] overflow-hidden bg-[#0b1933] pt-20 text-white"
+      className="relative isolate -mt-16 min-h-[100svh] overflow-hidden bg-[#0b1933] pt-16 text-white lg:-mt-[72px] lg:pt-[72px]"
     >
       <div className="absolute inset-0" aria-hidden="true">
         <picture>
@@ -197,7 +197,7 @@ export const PadelFvImmersiveHero = () => {
       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[linear-gradient(0deg,rgba(7,17,37,0.84)_0%,rgba(7,17,37,0.06)_100%)]" aria-hidden="true" />
       <div className="absolute inset-x-0 top-0 h-48 bg-[linear-gradient(180deg,rgba(7,17,37,0.56)_0%,transparent_100%)]" aria-hidden="true" />
 
-      <div className="container relative mx-auto flex min-h-[calc(100svh-5rem)] items-end px-4 pb-28 pt-28 sm:px-6 sm:pb-24 sm:pt-28 lg:items-center lg:py-24">
+      <div className="container relative mx-auto flex min-h-[calc(100svh-4rem)] items-end px-4 pb-28 pt-28 sm:px-6 sm:pb-24 sm:pt-28 lg:min-h-[calc(100svh-72px)] lg:items-center lg:py-24">
         <div className="max-w-xl">
           <p className="mb-5 text-xs font-black uppercase tracking-[0.24em] text-court-300 sm:text-sm">Organizadores de torneos de pádel</p>
           <h1 id="padel-fv-hero-title" className="text-5xl font-black leading-[0.94] tracking-[-0.055em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.32)] sm:text-6xl lg:text-7xl xl:text-8xl">

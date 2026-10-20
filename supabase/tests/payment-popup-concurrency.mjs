@@ -43,6 +43,30 @@ try {
   assert.equal(run(`select count(*) from public.inscription_proof_cleanup where path='${paths[0]}';`), '1')
   assert.equal(run(`select payment_revision from public.inscriptions where id='${iid}';`), '2')
   console.log('PASS: exactly one concurrent replacement wins; the live file has no cleanup ticket, original and unused upload remain recoverable.')
+
+  run(`begin;
+    select id from public.change_inscription_payment('${iid}','${tid}',2,'remove',null,false);
+    insert into public.inscription_proof_cleanup(path,available_at)
+      values('${paths[1]}',now()+interval '15 minutes'),('${paths[2]}',now()+interval '15 minutes')
+      on conflict(path) do update set available_at=excluded.available_at,claimed_at=null;
+    commit;`)
+  const attachResults = await Promise.all(paths.slice(1).map(proof => concurrent(`begin;
+    select id from public.change_inscription_payment('${iid}','${tid}',3,'attach','${proof}',false);
+    select pg_sleep(0.3); commit;`)))
+  assert.equal(attachResults.filter(result => result.code === 0).length, 1, JSON.stringify(attachResults))
+  assert.match(attachResults.find(result => result.code !== 0).stderr, /El pago cambió/)
+  const firstSavedPath = run(`select payment_proof_path from public.inscriptions where id='${iid}';`)
+  const secondPath = paths.slice(1).find(path => path !== firstSavedPath)
+  assert.ok(secondPath)
+  assert.equal(run(`select payment_revision from public.inscriptions where id='${iid}';`), '4')
+  assert.equal(run(`select count(*) from public.inscription_proof_cleanup where path='${firstSavedPath}';`), '0')
+  assert.equal(run(`select count(*) from public.inscription_proof_cleanup where path='${secondPath}';`), '1')
+  const implicitReplace = await concurrent(`select id from public.change_inscription_payment('${iid}','${tid}',4,'attach','${secondPath}',false);`)
+  assert.notEqual(implicitReplace.code, 0)
+  assert.equal(run(`select payment_proof_path from public.inscriptions where id='${iid}';`), firstSavedPath)
+  run(`select id from public.change_inscription_payment('${iid}','${tid}',4,'replace','${secondPath}',false);`)
+  assert.equal(run(`select payment_proof_path from public.inscriptions where id='${iid}';`), secondPath)
+  console.log('PASS: the first concurrent attachment persists; attaching again cannot replace it, while an explicit replacement with the current revision can.')
 } finally {
   run(`begin;
     delete from public.inscriptions where id='${iid}';

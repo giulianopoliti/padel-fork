@@ -6,6 +6,8 @@ import { AlertCircle, BookOpen, Building2, MapPin, Navigation, Phone, Trophy, Us
 import Link from 'next/link'
 
 import PublicRegistrationLauncher from '@/components/tournament/public-registration-launcher'
+import { useSoloDirectory } from '@/components/solo-players/use-solo-directory'
+import { getTournamentSoloState } from '@/components/solo-players/tournament-solo-status'
 import { getTenantBranding } from '@/config/tenant'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -44,6 +46,8 @@ export default function NotRegisteredView({
   tournament,
 }: NotRegisteredViewProps) {
   const branding = getTenantBranding()
+  const { data: soloData } = useSoloDirectory()
+  const soloState = getTournamentSoloState(soloData, tournamentId)
   const isFull = Boolean(tournament.is_full)
   const enablePublicRegistration = shouldTreatTournamentRegistrationAsPublic({
     tenantKey: branding.key,
@@ -178,23 +182,23 @@ export default function NotRegisteredView({
         </Button>
       </div>
 
-      <Alert className="border-orange-200 bg-orange-50">
+      {!soloState && <Alert className="border-orange-200 bg-orange-50">
         <AlertCircle className="h-4 w-4 text-orange-600" />
         <AlertDescription className="text-orange-800">
           <strong>No estas inscripto</strong> en este torneo. Para participar, necesitas registrarte.
         </AlertDescription>
-      </Alert>
+      </Alert>}
 
       <Card className={canRegister ? 'border-blue-200 bg-blue-50' : 'border-red-300 bg-red-50'}>
         <CardHeader>
           <CardTitle className={`flex items-center gap-2 ${canRegister ? 'text-blue-900' : 'text-red-900'}`}>
             <UserPlus className="h-5 w-5" />
-            {canRegister ? 'Quieres participar?' : closedLabel}
+            {soloState ? 'Tu búsqueda de pareja' : canRegister ? 'Quieres participar?' : closedLabel}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className={canRegister ? 'text-blue-800' : 'text-red-800'}>
-            {canRegister
+            {soloState ? 'Podés gestionar tu búsqueda o inscribir una pareja desde el formulario.' : canRegister
               ? 'Para unirte a este torneo, abre el formulario de inscripcion y completa tu registro.'
               : 'Este torneo no acepta nuevas inscripciones en este momento.'}
           </p>
@@ -217,7 +221,7 @@ export default function NotRegisteredView({
             </div>
           )}
 
-          <div className={`space-y-1 text-sm ${canRegister ? 'text-blue-700' : 'text-red-700'}`}>
+          {!soloState && <div className={`space-y-1 text-sm ${canRegister ? 'text-blue-700' : 'text-red-700'}`}>
             <p>
               <strong>Recuerda:</strong>
             </p>
@@ -226,7 +230,7 @@ export default function NotRegisteredView({
               <li>Necesitas tener tu perfil completo</li>
               <li>Las inscripciones pueden tener fecha limite</li>
             </ul>
-          </div>
+          </div>}
         </CardContent>
       </Card>
 

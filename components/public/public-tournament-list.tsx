@@ -6,6 +6,7 @@ import { PaymentCompact } from "@/components/tournament/inscription-payment-pane
 import { useRouter } from "next/navigation"
 import { CalendarDays, ChevronRight, Clock3, MapPin, Ticket } from "lucide-react"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
+import { TournamentSoloStatus } from "@/components/solo-players/tournament-solo-status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getTenantBranding } from "@/config/tenant"
@@ -158,7 +159,8 @@ export default function PublicTournamentList({
               role="link"
               tabIndex={0}
               onClick={(event) => {
-                if ((event.target as HTMLElement).closest("a, button, input, select, textarea")) return
+                if (!event.currentTarget.contains(event.target as Node)) return
+              if ((event.target as HTMLElement).closest("a, button, input, select, textarea")) return
                 router.push(tournamentHref)
               }}
               onKeyDown={(event) => {
@@ -242,6 +244,7 @@ export default function PublicTournamentList({
               </div>
 
               <div className="flex flex-col justify-between gap-3">
+                <TournamentSoloStatus tournamentId={tournament.id} tone="dark" />
                 {payments.loading ? <p role="status" className="text-sm">Consultando inscripción…</p> : payments.error ? <div role="alert" className="text-sm">No se pudo consultar tu inscripción. <Button variant="outline" onClick={() => void payments.retry().catch(() => {})}>Reintentar</Button></div> : ownInscription ? <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={ownInscription} /></div> : canRegister ? (
                   <PublicRegistrationLauncher
                     tournamentId={tournament.id}

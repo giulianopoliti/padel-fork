@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { usePaymentDialog } from './inscription-payment-dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { UserPlus, Search, Users, Loader2, CheckCircle, Trash2, CircleHelp } from "lucide-react"
@@ -8,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import RegisterPlayerForm from "./club/register-player-form"
-import { pairIndividualPlayers, removePlayerFromTournament } from "@/app/api/tournaments/actions"
+import { pairIndividualPlayers, removePlayerFromTournament, retryTournamentPairAssignment } from "@/app/api/tournaments/actions"
 import { useUser } from "@/contexts/user-context"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { useTournamentPermissions } from "@/hooks/use-tournament-permissions"
@@ -91,6 +93,9 @@ export default function TournamentPlayersTab({
     player2: null
   })
   const [isPairing, setIsPairing] = useState(false)
+  const [isRetryingAssignment, setIsRetryingAssignment] = useState(false)
+  const router = useRouter()
+  const openPayment = usePaymentDialog()
   const [isDeleting, setIsDeleting] = useState(false)
   const [recordLateWithdrawal, setRecordLateWithdrawal] = useState(false)
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false)
@@ -254,22 +259,6 @@ export default function TournamentPlayersTab({
 
     setIsPairing(true)
     try {
-      // 🚀 Create mock couple data for optimistic update
-      const mockCouple = {
-        id: `temp-couple-${Date.now()}`, // Temporary ID
-        tournament_id: tournamentId,
-        player_1_id: selectedPlayers.player1.id,
-        player_2_id: selectedPlayers.player2.id,
-        created_at: new Date().toISOString(),
-        player_1_info: selectedPlayers.player1,
-        player_2_info: selectedPlayers.player2,
-      }
-
-      // 🚀 First: Optimistic update (remove 2 individuals, add 1 couple)
-      if (onPlayersPaired) {
-        await onPlayersPaired(selectedPlayers.player1.id, selectedPlayers.player2.id, mockCouple)
-      }
-
       const result = await pairIndividualPlayers(
         tournamentId,
         selectedPlayers.player1.id,
@@ -284,17 +273,14 @@ export default function TournamentPlayersTab({
         })
         setPairPlayersDialogOpen(false)
         setSelectedPlayers({ player1: null, player2: null })
-        // ✅ No more window.reload() - using optimistic update
+        if (result.inscriptionId && enableTransferProof) {
+          openPayment({ tournamentId, inscriptionId: result.inscriptionId, tournamentName, manager: true })
+        }
+        if (onRefresh) {
+          try { await onRefresh() } catch { /* saved pair will reload on the next refresh */ }
+        }
+        router.refresh()
       } else {
-        // If server action failed, restore the optimistic update
-        if (onPlayerAdded) {
-          await onPlayerAdded(selectedPlayers.player1)
-          await onPlayerAdded(selectedPlayers.player2)
-        }
-        // Remove the mock couple
-        if (onCoupleAdded) {
-          // Note: We'd need a removeCoupleOptimistic function or handle this in the backend
-        }
         toast({
           title: "Error al emparejar",
           description: result.error || "No se pudo crear la pareja.",
@@ -303,11 +289,6 @@ export default function TournamentPlayersTab({
       }
     } catch (error) {
       console.error("Error pairing players:", error)
-      // If error occurred, restore the optimistic update
-      if (onPlayerAdded && selectedPlayers.player1 && selectedPlayers.player2) {
-        await onPlayerAdded(selectedPlayers.player1)
-        await onPlayerAdded(selectedPlayers.player2)
-      }
       toast({
         title: "Error inesperado",
         description: "Ocurrió un error al emparejar los jugadores.",
@@ -316,6 +297,20 @@ export default function TournamentPlayersTab({
     } finally {
       setIsPairing(false)
     }
+  }
+
+  const handleRetryAssignment = async () => {
+    setIsRetryingAssignment(true)
+    try {
+      const result = await retryTournamentPairAssignment(tournamentId)
+      toast({ title: result.success ? 'Asignaciones revisadas' : 'Pendiente de asignación',
+        description: result.success ? 'Las parejas habilitadas se asignaron según el formato del torneo.' : result.error,
+        variant: result.success ? 'default' : 'destructive' })
+      if (onRefresh) await onRefresh()
+      router.refresh()
+    } catch {
+      toast({ title: 'Pendiente de asignación', description: 'No se pudo consultar el resultado. Actualizá las inscripciones.', variant: 'destructive' })
+    } finally { setIsRetryingAssignment(false) }
   }
 
   const handleDeletePlayerClick = (player: PlayerInfo) => {
@@ -416,6 +411,11 @@ export default function TournamentPlayersTab({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2">
+            {canManageTournament && !isPublicView && (
+              <Button variant="outline" size="sm" disabled={isRetryingAssignment} onClick={handleRetryAssignment}>
+                {isRetryingAssignment ? 'Revisando…' : 'Reintentar asignaciones'}
+              </Button>
+            )}
             {canPairPlayers && user && !isPublicView && !isPlayer && canManageTournament && (
               <Button
                 onClick={() => setPairPlayersDialogOpen(true)}

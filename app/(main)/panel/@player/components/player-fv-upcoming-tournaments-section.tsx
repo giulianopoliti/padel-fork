@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
-import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
+import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Ticket, Users } from "lucide-react"
 import type { UpcomingTournament } from "@/app/api/panel/actions"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
+import { TournamentSoloStatus } from "@/components/solo-players/tournament-solo-status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -253,8 +254,13 @@ export default function PlayerFvUpcomingTournamentsSection({
                   </div>
                 </div>
 
+                <TournamentSoloStatus tournamentId={tournament.id} tone="dark" />
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  {tournament.is_inscribed && tournament.payment ? <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={tournament.payment} /></div> : canRegister ? (
+                  {tournament.is_inscribed ? (
+                    <p className="flex min-h-10 items-center justify-center px-2 text-center text-xs font-semibold text-court-100 sm:text-sm">
+                      Ya estás inscripto
+                    </p>
+                  ) : canRegister ? (
                     <PublicRegistrationLauncher
                       tournamentId={tournament.id}
                       tournamentName={tournament.name}
@@ -269,15 +275,13 @@ export default function PlayerFvUpcomingTournamentsSection({
                   ) : (
                     <div className="flex h-10 items-center rounded-control border border-white/10 bg-white/5 px-3 text-xs text-brand-200">
                       <p className="line-clamp-2 font-semibold leading-4 text-white">
-                        {tournament.is_inscribed
-                          ? "Ya estas anotado."
-                          : getPublicRegistrationClosedLabel({ isFull: tournament.is_full })}
+                        {getPublicRegistrationClosedLabel({ isFull: tournament.is_full })}
                       </p>
                     </div>
                   )}
 
                   <Button asChild variant="outline" className="h-10 border-white/20 bg-transparent px-3 text-xs font-semibold text-white hover:bg-white/10 hover:text-white sm:text-sm">
-                    <Link href={`/tournaments/${tournament.id}`}>
+                    <Link href={getPublicTournamentHref(tournament)}>
                       Ver detalles
                       <ChevronRight className="ml-1 h-4 w-4" />
                     </Link>

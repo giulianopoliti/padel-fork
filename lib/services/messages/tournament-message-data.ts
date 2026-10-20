@@ -71,7 +71,7 @@ export type LongMatchMessageData = {
 }
 
 const TOURNAMENT_SELECT =
-  "id, name, type, category_name, start_date, end_date, club_id, organization_id, organizador_id, messages_enabled"
+  "id, name, type, category_name, start_date, end_date, club_id, organization_id, organizador_id, messages_enabled, enable_transfer_proof"
 
 export const isTournamentMessagesEnabled = (tournament: { messages_enabled?: boolean | null }) =>
   tournament.messages_enabled !== false

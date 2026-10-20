@@ -1,0 +1,51 @@
+begin;
+set local search_path=public,extensions;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+create temporary table search_ids(key text primary key,id uuid default gen_random_uuid());
+grant all on search_ids to authenticated,service_role;
+insert into search_ids(key) select unnest(array['a','b','owner','other_owner','organizer','inactive','outsider','org','other_org','club','other_club','tournament','claim']);
+create function pg_temp.nid(k text) returns uuid language sql stable as $$select id from pg_temp.search_ids where key=k$$;
+insert into auth.users(id,email) select id,'search-'||id||'@example.invalid' from search_ids where key in ('a','b','owner','other_owner','organizer','inactive','outsider');
+insert into public.users(id,email,role) select id,'search-'||id||'@example.invalid',
+  case when key in ('owner','other_owner') then 'CLUB'::public."ROLE" when key in ('organizer','inactive') then 'ORGANIZADOR'::public."ROLE" else 'PLAYER'::public."ROLE" end
+  from search_ids where key in ('a','b','owner','other_owner','organizer','inactive','outsider');
+insert into public.players(id,user_id,first_name,last_name,category_name) select id,id,key,'Search fixture','9na' from search_ids where key in ('a','b');
+insert into public.organizaciones(id,name,slug) values(pg_temp.nid('org'),'Search fixture','search-'||pg_temp.nid('org'));
+insert into public.organization_members(organizacion_id,user_id,is_active) values(pg_temp.nid('org'),pg_temp.nid('organizer'),true),(pg_temp.nid('org'),pg_temp.nid('inactive'),false);
+insert into public.clubes(id,user_id,name) values(pg_temp.nid('club'),pg_temp.nid('owner'),'Search club'),(pg_temp.nid('other_club'),pg_temp.nid('other_owner'),'Other club');
+insert into public.tournaments(id,club_id,organization_id,name,type,status,category_name,enable_public_inscriptions,is_draft,max_participants)
+  values(pg_temp.nid('tournament'),pg_temp.nid('club'),pg_temp.nid('org'),'Search tournament','AMERICAN','NOT_STARTED','9na',true,false,16);
+insert into public.organizaciones(id,name,slug) values(pg_temp.nid('other_org'),'Other circuit','other-search-'||pg_temp.nid('other_org'));
+insert into public.organization_members(organizacion_id,user_id,is_active) values(pg_temp.nid('other_org'),pg_temp.nid('other_owner'),true);
+
+select ok(not has_function_privilege('authenticated','solo_player_private.check_release_terms(uuid,text,uuid[])','EXECUTE'),'authenticated clients cannot invoke guard internals');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',pg_temp.nid('a')::text,true);
+select set_config('request.jwt.claims','{"iss":"https://bfmaqrythlwbfjuqumom.supabase.co/auth/v1"}',true);
+select throws_ok($$select public.save_solo_player_post(pg_temp.nid('a'),'9na','DRIVE','RIGHT','+5491123456789',false,'solo-players-contact-v1',pg_temp.nid('tournament'),null,'old-version')$$,'22023',null,'direct FV RPC rejects stale terms');
+select throws_ok($$select public.save_solo_player_post(pg_temp.nid('a'),'9na','DRIVE','RIGHT','+5491123456789',false,'solo-players-contact-v1',pg_temp.nid('tournament'),null,'2026-08-28')$$,'22023',null,'direct FV RPC rejects Elite terms');
+select lives_ok($$select public.save_solo_player_post(pg_temp.nid('a'),'9na','DRIVE','RIGHT','+5491123456789',false,'solo-players-contact-v1',pg_temp.nid('tournament'),null,'solo-players-tournament-v1')$$,'direct FV RPC accepts current terms');
+reset role;
+insert into search_ids(key,id) select 'post',id from public.solo_player_posts where player_id=pg_temp.nid('a');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',pg_temp.nid('b')::text,true);
+select set_config('request.jwt.claims','{"iss":"https://bfmaqrythlwbfjuqumom.supabase.co/auth/v1"}',true);
+select throws_ok($$select public.send_solo_player_request(pg_temp.nid('post'),pg_temp.nid('b'),'+5491199999999','solo-players-contact-v1','old-version')$$,'22023',null,'direct request RPC rejects stale terms');
+select set_config('request.jwt.claims','{"iss":"https://lzowflvgnspjdbvdxliy.supabase.co/auth/v1"}',true);
+select throws_ok($$select public.send_solo_player_request(pg_temp.nid('post'),pg_temp.nid('b'),'+5491199999999','solo-players-contact-v1','solo-players-tournament-v1')$$,'22023',null,'Elite cannot use FV terms');
+select lives_ok($$select public.send_solo_player_request(pg_temp.nid('post'),pg_temp.nid('b'),'+5491199999999','solo-players-contact-v1','2026-08-28')$$,'Elite accepts current terms');
+reset role;
+delete from public.solo_player_requests where post_id=pg_temp.nid('post');
+insert into public.tpe_registration_blocks(player_id,blocked_by_user_id) values(pg_temp.nid('b'),pg_temp.nid('owner'));
+set local role authenticated;
+select set_config('request.jwt.claim.sub',pg_temp.nid('b')::text,true);
+select throws_ok($$select public.send_solo_player_request(pg_temp.nid('post'),pg_temp.nid('b'),'+5491199999999','solo-players-contact-v1','2026-08-28')$$,'P0001',null,'blocked Elite player cannot bypass through direct request RPC');
+select throws_ok($$select public.save_solo_player_post(pg_temp.nid('b'),'9na','DRIVE','RIGHT','+5491199999999',false,'solo-players-contact-v1',pg_temp.nid('tournament'),null,'2026-08-28')$$,'P0001',null,'blocked Elite player cannot bypass through direct publication RPC');
+select lives_ok($$select public.save_solo_player_post_in_organization(pg_temp.nid('org'),pg_temp.nid('b'),'9na','DRIVE','RIGHT','+5491199999999',false,'solo-players-contact-v1',null,'1_WEEK')$$,'a general search still does not register a blocked player');
+select set_config('request.jwt.claim.sub',pg_temp.nid('a')::text,true);
+select set_config('request.jwt.claims','{"iss":"https://unrelated.supabase.co/auth/v1"}',true);
+select throws_ok($$select public.save_solo_player_post(pg_temp.nid('a'),'9na','DRIVE','RIGHT','+5491123456789',false,'solo-players-contact-v1',pg_temp.nid('tournament'),null,'solo-players-tournament-v1',pg_temp.nid('post'))$$,'42501',null,'unsupported issuer is rejected');
+reset role;
+select * from finish();
+rollback;

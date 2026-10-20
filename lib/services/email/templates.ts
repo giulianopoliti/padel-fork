@@ -89,11 +89,13 @@ export const renderEmailLayout = ({
   preview,
   body,
   cta,
+  footer,
 }: {
   title: string
   preview: string
   body: string
   cta?: { label: string; href: string }
+  footer?: string
 }) => {
   const safeTitle = escapeHtml(title)
   const safePreview = escapeHtml(preview)
@@ -129,7 +131,7 @@ export const renderEmailLayout = ({
             </tr>
             <tr>
               <td style="padding:20px 32px;background:#f9fafb;color:#6b7280;font-size:13px;line-height:1.5;">
-                Recibis este email porque participas en un torneo gestionado desde la plataforma.
+                ${escapeHtml(footer || "Recibis este email porque participas en un torneo gestionado desde la plataforma.")}
               </td>
             </tr>
           </table>

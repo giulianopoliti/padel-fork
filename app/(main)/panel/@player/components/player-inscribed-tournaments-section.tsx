@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { PaymentCompact } from "@/components/tournament/inscription-payment-panel"
+import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import { CalendarDays, ChevronRight, MapPin, Users } from "lucide-react"
 import type { InscribedTournament } from "@/app/api/panel/actions"
 import { Badge } from "@/components/ui/badge"
@@ -106,14 +106,14 @@ export default function PlayerInscribedTournamentsSection({
               </div>
 
               <div className="flex flex-col gap-3">
-                <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p>{inscription.payment && <PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={inscription.payment} />}</div>
-                  <Button
+                <p className="text-center text-sm font-semibold text-white">Ya estás inscripto</p>
+                <Button
                   asChild
                   variant="outline"
                   className="w-full rounded-full border-white/20 bg-white/5 text-sm font-bold uppercase tracking-[0.14em] text-white hover:bg-white/10 hover:text-white"
                 >
-                  <Link href={`/tournaments/${tournament.id}`}>
-                    Ver torneo
+                  <Link href={getPublicTournamentHref(tournament)}>
+                    Ver detalles
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>

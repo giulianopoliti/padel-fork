@@ -3403,240 +3403,34 @@ export async function checkPlayerInscriptionStatus(tournamentId: string, playerI
   }
 }
 
-export async function pairIndividualPlayers(tournamentId: string, player1Id: string, player2Id: string): Promise<{ success: boolean; error?: string; message?: string }> {
-  const supabase = await createClient();
-  
+export async function pairIndividualPlayers(tournamentId: string, player1Id: string, player2Id: string) {
+  const { getRegistrationService } = await import('@/lib/services/registration')
+  return getRegistrationService().convertIndividualToCouple({
+    tournamentId, player1Id, player2Id, isOrganizerRegistration: true,
+  })
+}
+
+export async function acceptSoloPlayerTournamentRequest(requestId: string, options: {
+  termsAccepted: boolean; paymentMethod?: 'TRANSFER' | 'CASH'
+}) {
+  const { getRegistrationService } = await import('@/lib/services/registration')
+  return getRegistrationService().acceptTournamentRequest(requestId, options)
+}
+
+export async function retryTournamentPairAssignment(tournamentId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+  const permissions = await checkTournamentPermissions(user.id, tournamentId)
+  if (!permissions.hasPermission) return { success: false, error: 'Sin permisos sobre el torneo' }
   try {
-    // Verificar que ambos jugadores estén inscritos individualmente en el torneo
-    const { data: player1Inscription, error: p1Error } = await supabase
-      .from('inscriptions')
-      .select('id, player_id')
-      .eq('tournament_id', tournamentId)
-      .eq('player_id', player1Id)
-      .is('couple_id', null)
-      .maybeSingle();
-
-    if (p1Error) {
-      console.error("[pairIndividualPlayers] Error checking player 1 inscription:", p1Error);
-      return { success: false, error: "Error al verificar la inscripción del primer jugador." };
-    }
-
-    if (!player1Inscription) {
-      return { success: false, error: "El primer jugador no está inscrito individualmente en este torneo." };
-    }
-
-    const { data: player2Inscription, error: p2Error } = await supabase
-      .from('inscriptions')
-      .select('id, player_id')
-      .eq('tournament_id', tournamentId)
-      .eq('player_id', player2Id)
-      .is('couple_id', null)
-      .maybeSingle();
-
-    if (p2Error) {
-      console.error("[pairIndividualPlayers] Error checking player 2 inscription:", p2Error);
-      return { success: false, error: "Error al verificar la inscripción del segundo jugador." };
-    }
-
-    if (!player2Inscription) {
-      return { success: false, error: "El segundo jugador no está inscrito individualmente en este torneo." };
-    }
-
-    // Verificar que no sean el mismo jugador
-    if (player1Id === player2Id) {
-      return { success: false, error: "No se puede emparejar un jugador consigo mismo." };
-    }
-
-    // Crear o encontrar la pareja
-    const { data: existingCouple, error: findCoupleError } = await supabase
-      .from('couples')
-      .select('id')
-      .or(`and(player1_id.eq.${player1Id},player2_id.eq.${player2Id}),and(player1_id.eq.${player2Id},player2_id.eq.${player1Id})`)
-      .maybeSingle();
-
-    if (findCoupleError) {
-      console.error("[pairIndividualPlayers] Error checking existing couple:", findCoupleError);
-      return { success: false, error: "Error al verificar pareja existente." };
-    }
-
-    let coupleId: string;
-    
-    if (existingCouple) {
-      coupleId = existingCouple.id;
-    } else {
-      // Crear nueva pareja
-      const { data: newCouple, error: coupleError } = await supabase
-        .from('couples')
-        .insert({ player1_id: player1Id, player2_id: player2Id })
-        .select('id')
-        .single();
-      
-      if (coupleError || !newCouple?.id) {
-        console.error("[pairIndividualPlayers] Error creating couple:", coupleError);
-        return { success: false, error: "No se pudo crear la pareja." };
-      }
-      coupleId = newCouple.id;
-    }
-
-    // Verificar que la pareja no esté ya inscrita en el torneo
-    const { data: existingCoupleInscription, error: checkCoupleError } = await supabase
-      .from('inscriptions')
-      .select('id')
-      .eq('tournament_id', tournamentId)
-      .eq('couple_id', coupleId)
-      .maybeSingle();
-
-    if (checkCoupleError) {
-      console.error("[pairIndividualPlayers] Error checking existing couple inscription:", checkCoupleError);
-      return { success: false, error: "Error al verificar inscripción de pareja existente." };
-    }
-    
-    if (existingCoupleInscription) {
-      return { success: false, error: "Esta pareja ya está inscrita en el torneo." };
-    }
-
-    // Crear inscripción de la pareja
-    const { data: newInscription, error: inscriptionError } = await supabase
-      .from('inscriptions')
-      .insert({ 
-        tournament_id: tournamentId, 
-        couple_id: coupleId, 
-        player_id: player1Id, // Usar player1 como contacto principal
-      })
-      .select('id')
-      .single(); 
-      
-    if (inscriptionError) {
-      console.error("[pairIndividualPlayers] Error creating couple inscription:", inscriptionError);
-      return { success: false, error: "No se pudo inscribir la pareja." };
-    }
-
-    const { data: tournament, error: tournamentError } = await supabase
-      .from('tournaments')
-      .select('type')
-      .eq('id', tournamentId)
-      .single();
-
-    if (tournamentError) {
-      console.error("[pairIndividualPlayers] Error checking tournament type:", tournamentError);
-      await removeTournamentCoupleMembership({
-        supabase,
-        tournamentId,
-        coupleId,
-        deleteInscription: false,
-      });
-      await supabase.from('inscriptions').delete().eq('id', newInscription.id);
-      return { success: false, error: "Error al verificar el tipo de torneo." };
-    }
-
-    if (tournament?.type === 'LONG') {
-      const ensuredZoneResult = await ensureLongTournamentGeneralZone(tournamentId);
-      if (!ensuredZoneResult.success) {
-        await supabase.from('inscriptions').delete().eq('id', newInscription.id);
-        return { success: false, error: ensuredZoneResult.error || "No se pudo preparar la zona del torneo." };
-      }
-
-      const { data: zone, error: zoneError } = await supabase
-        .from('zones')
-        .select('id')
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (zoneError || !zone) {
-        console.error('[pairIndividualPlayers] Error finding LONG zone:', zoneError);
-        await supabase.from('inscriptions').delete().eq('id', newInscription.id);
-        return { success: false, error: "No se encontro zona para el torneo LONG." };
-      }
-
-      const membershipResult = await ensureCanonicalZoneMembership({
-        supabase,
-        tournamentId,
-        zoneId: zone.id,
-        coupleId,
-      });
-
-      if (!membershipResult.success) {
-        console.error('[pairIndividualPlayers] Error assigning canonical zone membership:', membershipResult.error);
-        await supabase.from('inscriptions').delete().eq('id', newInscription.id);
-        return { success: false, error: "No se pudo asignar la pareja a la zona del torneo." };
-      }
-
-      if (membershipResult.mirrorWarning) {
-        console.warn('[pairIndividualPlayers] zone_couples mirror warning:', membershipResult.mirrorWarning);
-      }
-    }
-
-    // Eliminar las inscripciones individuales de ambos jugadores
-    const { error: deleteError } = await supabase
-      .from('inscriptions')
-      .delete()
-      .in('id', [player1Inscription.id, player2Inscription.id]);
-
-    if (deleteError) {
-      console.error("[pairIndividualPlayers] Error deleting individual inscriptions:", deleteError);
-      // Intentar rollback de la inscripción de pareja
-      await removeTournamentCoupleMembership({
-        supabase,
-        tournamentId,
-        coupleId,
-        deleteInscription: false,
-      });
-      await supabase.from('inscriptions').delete().eq('id', newInscription.id);
-      return { success: false, error: "Error al eliminar las inscripciones individuales." };
-    }
-    
-    // 🔥 FIX: Add zone assignment for LONG tournaments (missing logic that was causing zone_couples not to be populated)
-    try {
-      // Get tournament type to check if it's LONG
-      const { data: tournament, error: tournamentError } = await supabase
-        .from('tournaments')
-        .select('type')
-        .eq('id', tournamentId)
-        .single();
-      
-      if (!tournamentError && tournament?.type === 'LONG' && process.env.NODE_ENV === 'legacy-zone-couples-disabled') {
-        console.log('[pairIndividualPlayers] Assigning couple to zone for LONG tournament');
-        
-        // Find the zone for this tournament
-        const { data: zone, error: zoneError } = await supabase
-          .from('zones')
-          .select('id')
-          .eq('tournament_id', tournamentId)
-          .single();
-        
-        if (!zoneError && zone) {
-          // Assign couple to zone
-          const { error: assignmentError } = await supabase
-            .from('zone_couples')
-            .insert({
-              zone_id: zone.id,
-              couple_id: coupleId
-            });
-          
-          if (assignmentError) {
-            console.error('[pairIndividualPlayers] Error assigning couple to zone:', assignmentError);
-            // Don't fail the pairing, just log the error
-          } else {
-            console.log(`✅ [pairIndividualPlayers] Couple ${coupleId} assigned to zone ${zone.id}`);
-          }
-        } else {
-          console.warn('[pairIndividualPlayers] No zone found for LONG tournament:', tournamentId);
-        }
-      }
-    } catch (zoneErr) {
-      console.error('[pairIndividualPlayers] Unexpected error assigning to zone:', zoneErr);
-      // Don't fail the pairing
-    }
-    
-    revalidatePath(`/tournaments/${tournamentId}`);
-    revalidatePath(`/my-tournaments/${tournamentId}`);
-    
-    return { success: true, message: "Jugadores emparejados exitosamente." };
-  } catch (error: any) {
-    console.error("[pairIndividualPlayers] Unexpected error:", error);
-    return { success: false, error: "Error inesperado al emparejar jugadores." };
+    const status = await reconcileCompleteInscriptions(tournamentId)
+    if (status === 'WAITING_PROOF') return { success: false, error: 'Hay parejas sin comprobante. Completá o cancelá esas inscripciones antes de asignar.' }
+    if (status === 'CLOSED') return { success: false, error: 'El torneo ya no admite nuevas asignaciones.' }
+    revalidatePath(`/tournaments/${tournamentId}`)
+    return { success: true }
+  } catch {
+    return { success: false, error: 'Pendiente de asignación. Volvé a intentarlo.' }
   }
 }
 
@@ -4631,7 +4425,8 @@ export async function getMultiplePlayersWeeklyPoints(playerIds: string[]): Promi
 export async function registerCoupleForTournamentAndRemoveIndividual(
   tournamentId: string, 
   player1Id: string, 
-  player2Id: string
+  player2Id: string,
+  options: { termsAccepted?: boolean; paymentMethod?: 'CASH' | 'TRANSFER'; isOrganizerRegistration?: boolean; allowBlockedPlayerOverride?: boolean } = {}
 ): Promise<{ 
   success: boolean; 
   error?: string; 
@@ -4642,7 +4437,7 @@ export async function registerCoupleForTournamentAndRemoveIndividual(
   console.log(`[registerCoupleForTournamentAndRemoveIndividual] 🔄 Refactorizado con Strategy Pattern`, { tournamentId, player1Id, player2Id });
   
   // Usar la nueva implementación V2 con Strategy Pattern
-  return await registerCoupleForTournamentAndRemoveIndividualV2(tournamentId, player1Id, player2Id);
+  return await registerCoupleForTournamentAndRemoveIndividualV2(tournamentId, player1Id, player2Id, options);
 }
 
 // =============================================================================
@@ -6070,7 +5865,8 @@ export async function removeCoupleFromTournamentV2(
 export async function registerCoupleForTournamentAndRemoveIndividualV2(
   tournamentId: string, 
   player1Id: string, 
-  player2Id: string
+  player2Id: string,
+  options: { termsAccepted?: boolean; paymentMethod?: 'CASH' | 'TRANSFER'; isOrganizerRegistration?: boolean; allowBlockedPlayerOverride?: boolean } = {}
 ): Promise<{ 
   success: boolean; 
   error?: string; 
@@ -6088,7 +5884,11 @@ export async function registerCoupleForTournamentAndRemoveIndividualV2(
     const result = await convertIndividualToCouple({
       tournamentId,
       player1Id,
-      player2Id
+      player2Id,
+      termsAccepted: options.termsAccepted,
+      paymentMethod: options.paymentMethod,
+      isOrganizerRegistration: options.isOrganizerRegistration,
+      allowBlockedPlayerOverride: options.allowBlockedPlayerOverride,
     });
     
     // Revalidar paths para mantener comportamiento anterior
@@ -6108,7 +5908,7 @@ export async function registerCoupleForTournamentAndRemoveIndividualV2(
       inscription: result.inscription || { id: result.inscriptionId },
       convertedFrom: null, // El Strategy no maneja este campo legacy, se puede inferir después si es necesario
       message: result.success ? 
-        'Inscripciones individuales convertidas a pareja exitosamente.' : 
+        (result.message || 'Inscripciones individuales convertidas a pareja exitosamente.') :
         result.error
     };
     
@@ -6133,6 +5933,7 @@ export async function registerCoupleForTournamentAndRemoveIndividualV2(
 export async function approveInscription(inscriptionId: string): Promise<{
   success: boolean;
   error?: string;
+  message?: string;
 }> {
   console.log(`[approveInscription] Aprobando inscripcion ${inscriptionId}`);
   
@@ -6183,9 +5984,10 @@ export async function approveInscription(inscriptionId: string): Promise<{
   }
 
 
+  let assignmentPending = false
   if (inscription.couple_id) {
-    try { await reconcileCompleteInscriptions(inscription.tournament_id) }
-    catch { console.error('[approveInscription] zone_reconciliation_deferred') }
+    try { assignmentPending = (await reconcileCompleteInscriptions(inscription.tournament_id)) === 'WAITING_PROOF' }
+    catch { assignmentPending = true; console.error('[approveInscription] zone_reconciliation_deferred') }
   }
 
   try {
@@ -6202,10 +6004,12 @@ export async function approveInscription(inscriptionId: string): Promise<{
   console.log(`[approveInscription] Inscripcion ${inscriptionId} aprobada exitosamente`);
   
   // Revalidar paths
-  revalidatePath(`/tournaments/${inscription.tournament_id}`);
-  revalidatePath(`/my-tournaments/${inscription.tournament_id}`);
+  try {
+    revalidatePath(`/tournaments/${inscription.tournament_id}`);
+    revalidatePath(`/my-tournaments/${inscription.tournament_id}`);
+  } catch { console.warn('[approveInscription] refresh_deferred') }
   
-  return { success: true };
+  return { success: true, message: assignmentPending ? 'Inscripción aprobada. Pendiente de asignación; completá los comprobantes faltantes o reintentá la asignación.' : 'La inscripción ha sido aprobada' };
 }
 
 /**

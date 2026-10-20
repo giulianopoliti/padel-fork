@@ -14,7 +14,7 @@ import { TournamentFormatResolver } from "@/lib/services/tournament-format-resol
  * Responsabilidades:
  * ✅ Validar autenticación y permisos
  * ✅ Verificar que hay parejas inscritas
- * ✅ Verificar que NO hay jugadores individuales sin pareja
+ * Los intereses individuales no bloquean el inicio
  * ✅ Sincronizar parejas aprobadas en formatos de zona única
  * ✅ Cambiar status a ZONE_PHASE
  * ✅ Retornar éxito con mensaje
@@ -111,24 +111,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         error: zoneResult.error || "No se pudo preparar la Zona General"
       }, { status: 500 })
     }
-  }
-
-  // ========================================
-  // PASO 5: VERIFICAR QUE NO HAY JUGADORES SIN PAREJA
-  // ========================================
-
-  const { count: individualCount } = await supabase
-    .from("inscriptions")
-    .select("*", { count: "exact", head: true })
-    .eq("tournament_id", tournamentId)
-    .is("couple_id", null)
-    .not("player_id", "is", null)
-
-  if (individualCount && individualCount > 0) {
-    return NextResponse.json({
-      success: false,
-      error: `Hay ${individualCount} jugador(es) sin pareja. Todos deben estar emparejados antes de iniciar el torneo.`
-    }, { status: 400 })
   }
 
   // ========================================

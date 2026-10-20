@@ -23,6 +23,7 @@ export type TournamentEmailContext = {
   club_id?: string | null
   organization_id?: string | null
   organizador_id?: string | null
+  enable_transfer_proof?: boolean | null
 }
 
 export const getNotificationSupabase = async (fallbackSupabase: SupabaseLike): Promise<SupabaseLike> => {

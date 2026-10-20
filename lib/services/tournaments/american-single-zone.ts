@@ -140,14 +140,14 @@ export const ensureAmericanSingleZone = async (
         position: index + 1,
       })
 
-      if (!membership.success) {
+      if (!membership.success || membership.mirrorWarning) {
         return {
           success: false,
           applies: true,
           zoneId: zone.id,
           assignedCouples,
           totalApprovedCouples: coupleIds.length,
-          error: membership.error || 'No se pudo asignar una pareja a la Zona General.',
+          error: membership.error || membership.mirrorWarning || 'No se pudo asignar una pareja a la Zona General.',
         }
       }
       assignedCouples += 1

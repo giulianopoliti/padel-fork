@@ -37,4 +37,15 @@ describe('payment presentation', () => {
     expect(html).toContain('Modificar pago')
     expect(html).not.toMatch(/Falta comprobante|Subir comprobante|Cobrado|Pagado/)
   })
+  it('does not request a disabled proof and keeps administrative approval visible', () => {
+    const html = render({ proofRequired: false, isPending: true })
+    expect(html).toContain('No se requiere comprobante')
+    expect(html).toContain('espera aprobación')
+    expect(html).not.toMatch(/Falta subir|Subir comprobante/)
+  })
+  it('keeps an existing proof accessible after the requirement is disabled', () => {
+    const html = render({ proofRequired: false, hasProof: true, proofStatus: 'APPROVED' })
+    expect(html).toContain('Ver comprobante')
+    expect(html).toContain('Comprobante aprobado')
+  })
 })

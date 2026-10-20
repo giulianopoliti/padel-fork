@@ -9,6 +9,7 @@ type Role = "PLAYER" | "CLUB" | "COACH" | "ADMIN" | "ORGANIZADOR"
 import NavbarClient from "./navbar-client"
 import SkeletonNavbar from "./skeleton-navbar"
 import { getTenantBranding } from "@/config/tenant"
+import { isSoloPlayersEnabled } from "@/config/solo-players"
 
 const publicLinks = [
   {
@@ -26,6 +27,7 @@ const publicLinks = [
     label: "Clubes",
     icon: "MapPin" as const,
   },
+  ...(isSoloPlayersEnabled() ? [{ path: "/jugadores-sueltos", label: "Jugadores sueltos", icon: "Users" as const }] : []),
 ]
 
 const fvMainLinks = publicLinks.filter((link) => link.path !== "/clubes")

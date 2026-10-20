@@ -99,15 +99,6 @@ export default function InitiateTournamentButton({
   };
 
   const handleStartTournament = async () => {
-    // Verificar si hay jugadores individuales sin emparejar
-    if (playersCount > 0) {
-      toast({
-        title: "No se puede iniciar el torneo",
-        description: `Hay ${playersCount} jugador(es) individual(es) sin pareja. Todos los participantes deben estar organizados en parejas.`,
-        variant: "destructive",
-      });
-      return;
-    }
 
     setIsLoading(true);
     try {
@@ -139,8 +130,8 @@ export default function InitiateTournamentButton({
     }
   };
 
-  const totalParticipants = couplesCount * 2 + playersCount;
-  const canStartTournament = playersCount === 0; // Solo se puede iniciar si no hay jugadores sin emparejar
+  const totalParticipants = couplesCount * 2;
+  const canStartTournament = couplesCount > 0;
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -278,26 +269,14 @@ export default function InitiateTournamentButton({
                 </div>
               </div>
               
-              {/* Advertencia si hay jugadores sin emparejar */}
               {playersCount > 0 && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-control">
-                  <div className="flex items-center gap-2 text-red-800">
-                    <AlertTriangle className="h-5 w-5" />
-                    <p className="font-medium">No se puede iniciar el torneo</p>
-                  </div>
-                  <p className="text-sm text-red-700 mt-1">
-                    Hay <strong>{playersCount} jugador(es) individual(es)</strong> sin pareja. 
-                    Para iniciar el torneo, todos los participantes deben estar organizados en parejas.
-                  </p>
-                  <p className="text-sm text-red-700 mt-2">
-                    <strong>Solución:</strong> Vaya a la pestaña "Inscripciones" y forme parejas con los jugadores individuales 
-                    utilizando la función "Inscribir Parejas" o elimine las inscripciones individuales.
-                  </p>
-                </div>
+                <p className="mt-4 text-sm text-slate-600">
+                  Hay {playersCount} jugadores sin pareja. No ocupan cupo ni bloquean las zonas o el inicio.
+                </p>
               )}
               
               {/* Advertencia de capacidad máxima */}
-              {tournament?.max_participants && totalParticipants > tournament.max_participants && (
+              {tournament?.max_participants && couplesCount > tournament.max_participants && (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-control">
                   <div className="flex items-center gap-2 text-amber-800">
                     <AlertTriangle className="h-4 w-4" />
@@ -360,7 +339,7 @@ export default function InitiateTournamentButton({
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                {playersCount > 0 ? "Empareje jugadores primero" : "Iniciar Torneo"}
+                Iniciar Torneo
               </>
             )}
           </Button>

@@ -21,7 +21,7 @@ export const PaymentCompact = ({ tournamentId, inscription, tournamentName, mana
   return <div className="space-y-2 text-sm" aria-label="Pago de la inscripción">
     {!manager && view.status && <p>{view.status}</p>}
     {(view.status || manager) && <Button type="button" size="sm" variant="outline" data-payment-tournament={tournamentId} className="min-h-10 bg-white text-slate-900 hover:bg-slate-100" onClick={() => openPayment({ tournamentId, inscriptionId: inscription.id, tournamentName, manager })}>
-      {manager ? inscription.hasProof ? 'Ver comprobante' : inscription.method === 'TRANSFER' ? 'Pendiente de comprobante' : inscription.method === 'CASH' ? 'Efectivo' : 'Modificar pago' : view.action}
+      {manager ? inscription.hasProof ? 'Ver comprobante' : inscription.method === 'TRANSFER' && inscription.proofRequired !== false ? 'Pendiente de comprobante' : inscription.method === 'CASH' ? 'Efectivo' : 'Ver detalles del pago' : view.action}
     </Button>}
     {manager && inscription.hasProof && <p>{inscription.proofStatus === 'APPROVED' ? 'Aprobado' : 'Pendiente de revisión'}</p>}
     {!manager && inscription.isPending && <p className="text-xs">La inscripción espera aprobación del organizador.</p>}

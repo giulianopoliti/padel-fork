@@ -8,6 +8,7 @@ import { ProfileSidebar } from "@/components/profile/profile-sidebar"
 import { PersonalDataSection } from "@/components/profile/personal-data-section"
 import { GameDataSection } from "@/components/profile/game-data-section"
 import { SecuritySection } from "@/components/profile/security-section"
+import { EmailPreferences } from "@/components/profile/email-preferences"
 import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/components/ui/use-toast"
 import { getPlayerProfile, completeUserProfile, type FormState } from "@/app/(main)/edit-profile/actions"
@@ -40,6 +41,7 @@ interface UserProfile {
   preferred_side?: string | null
   club_id?: string | null
   profile_image_url?: string | null
+  solo_player_emails?: boolean
 }
 
 const initialFormState: FormState = {
@@ -55,6 +57,7 @@ export default function EditProfilePage() {
   const [allClubsData, setAllClubsData] = useState<Club[]>([])
   const [isFetchingData, setIsFetchingData] = useState(true)
   const { toast } = useToast()
+  const handleEmailPreferenceSaved = (enabled: boolean): void => setUserProfileData(profile => profile ? { ...profile, solo_player_emails: enabled } : profile)
 
   // useActionState for form handling
   const [formState, formAction, isPending] = useActionState<FormState, FormData>(completeUserProfile, initialFormState)
@@ -130,6 +133,7 @@ export default function EditProfilePage() {
       <>
         <div style={{ display: activeSection === "personal" ? "block" : "none" }}>
           <PersonalDataSection defaultValues={defaultsForSections} />
+          <EmailPreferences enabled={userProfileData.solo_player_emails !== false} onSaved={handleEmailPreferenceSaved} />
         </div>
         <div style={{ display: activeSection === "game" ? "block" : "none" }}>
           <GameDataSection defaultValues={defaultsForSections} allClubs={allClubsData} />
@@ -275,10 +279,10 @@ export default function EditProfilePage() {
                         </div>
                       </div>
                     ) : (
-                      <PersonalDataSection defaultValues={{
+                      <><PersonalDataSection defaultValues={{
                         ...userProfileData,
                         score: userProfileData.score?.toString() ?? "",
-                      }} />
+                      }} /><EmailPreferences enabled={userProfileData.solo_player_emails !== false} onSaved={handleEmailPreferenceSaved} /></>
                     )}
                   </TabsContent>
 

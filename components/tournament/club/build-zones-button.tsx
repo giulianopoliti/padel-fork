@@ -87,15 +87,6 @@ export default function BuildZonesButton({
   };
 
   const handleBuildZones = async () => {
-    // Verificar si hay jugadores individuales sin emparejar
-    if (playersCount > 0) {
-      toast({
-        title: "No se puede armar las zonas",
-        description: `Hay ${playersCount} jugador(es) individual(es) sin pareja. Todos los participantes deben estar organizados en parejas.`,
-        variant: "destructive",
-      });
-      return;
-    }
 
     // Verificar mínimo de parejas
     if (couplesCount < 6) {
@@ -141,7 +132,7 @@ export default function BuildZonesButton({
   };
 
   const zonesDistribution = calculateZonesDistribution(couplesCount);
-  const canBuildZones = playersCount === 0 && couplesCount >= 6 && zonesDistribution !== null;
+  const canBuildZones = couplesCount >= 6 && zonesDistribution !== null;
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -247,22 +238,14 @@ export default function BuildZonesButton({
                 </div>
               </div>
 
-              {/* Advertencia si hay jugadores sin emparejar */}
               {playersCount > 0 && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-control">
-                  <div className="flex items-center gap-2 text-red-800">
-                    <AlertTriangle className="h-5 w-5" />
-                    <p className="font-medium">No se pueden crear las zonas</p>
-                  </div>
-                  <p className="text-sm text-red-700 mt-1">
-                    Hay <strong>{playersCount} jugador(es) individual(es)</strong> sin pareja.
-                    Para crear las zonas, todos los participantes deben estar organizados en parejas.
-                  </p>
-                </div>
+                <p className="mt-4 text-sm text-slate-600">
+                  Hay {playersCount} jugadores sin pareja. No ocupan cupo ni bloquean las zonas o el inicio.
+                </p>
               )}
 
               {/* Advertencia si no hay suficientes parejas */}
-              {couplesCount < 6 && playersCount === 0 && (
+              {couplesCount < 6 && (
                 <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-control">
                   <div className="flex items-center gap-2 text-amber-800">
                     <AlertTriangle className="h-5 w-5" />

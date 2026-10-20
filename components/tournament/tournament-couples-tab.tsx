@@ -307,7 +307,7 @@ export default function TournamentCouplesTab({
       if (result.success) {
         toast({
           title: "Inscripcion aprobada",
-          description: "La inscripcion ha sido aprobada",
+          description: result.message || "La inscripcion ha sido aprobada",
         })
         if (onRefresh) await onRefresh()
       } else {

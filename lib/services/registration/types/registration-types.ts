@@ -124,8 +124,10 @@ export interface PlayerRegistrationResult extends RegistrationResult {
 }
 
 export interface CoupleRegistrationResult extends RegistrationResult {
+  alreadyRegistered?: boolean
   coupleId?: string
   inscription?: Inscription
+  paymentRequired?: boolean
   zoneAssigned?: boolean
   zoneId?: string
   rollbackPerformed?: boolean

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { AlertTriangle, Eye, Landmark, Loader2, Mail, Receipt, ShieldCheck } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useSWRConfig } from "swr"
 
 interface InscriptionAutomationFormProps {
   tournamentId: string
@@ -145,6 +146,7 @@ export default function InscriptionAutomationForm({
   const [transferFieldsError, setTransferFieldsError] = useState<string | null>(null)
 
   const { toast } = useToast()
+  const { mutate } = useSWRConfig()
   const transferSaveInFlight = useRef(false)
   const [savedTransfer, setSavedTransfer] = useState({
     alias: initialTransferAlias || "",
@@ -194,6 +196,8 @@ export default function InscriptionAutomationForm({
       }
 
       handlers?.onSuccess?.()
+      // A committed settings change must not leave stale "proof missing" cards around.
+      void mutate(key => Array.isArray(key) && (key[0] === 'own-payments' || (typeof key[0] === 'string' && (key[0].startsWith('/api/solo-players') || key[0].includes(`/tournaments/${tournamentId}/`))))).catch(() => {})
       return { success: true as const }
     } catch (error) {
       const message =

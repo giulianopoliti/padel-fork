@@ -14,6 +14,7 @@ import { validateMixedPairGender } from '@/lib/services/tournament-category-conf
 import { normalizePlayerDni } from '@/lib/utils/player-dni'
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity'
 import { shouldRequireInscriptionValidation } from './inscription-validation'
+import { isInscriptionProofPending } from '@/lib/tournaments/inscription-requirements'
 import { createClientServiceRole } from '@/utils/supabase/server'
 import { ensureAmericanSingleZone } from '@/lib/services/tournaments/american-single-zone'
 import type {
@@ -136,7 +137,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       let zoneAssigned = false
       const isSingleZone = context.tournament.format_config?.version === 2
         && context.tournament.format_config.zoneMode === 'SINGLE_ZONE'
-      if (!inscription.is_pending && isSingleZone && !(inscription.payment_method === 'TRANSFER' && !inscription.payment_proof_path)) {
+      if (!inscription.is_pending && isSingleZone && !isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof)) {
         context.trace?.step('assign-general-zone')
         const zoneResult = await ensureAmericanSingleZone(tournamentId)
         if (!zoneResult.success) {
@@ -365,42 +366,10 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
 
   async convertIndividualToCouple(
     request: RegisterCoupleRequest,
-    context: RegistrationContext
+    _context: RegistrationContext
   ): Promise<CoupleRegistrationResult> {
-    const { tournamentId, player1Id, player2Id } = request
-    const { supabase } = context
-
-    console.log(`[AmericanStrategy] Convirtiendo inscripción individual a pareja`)
-
-    try {
-      // Encontrar inscripciones individuales para eliminar
-      const { data: individualInscriptions } = await supabase
-        .from('inscriptions')
-        .select('id, player_id')
-        .eq('tournament_id', tournamentId)
-        .is('couple_id', null)
-        .in('player_id', [player1Id, player2Id])
-
-      // Registrar la pareja
-      const coupleResult = await this.registerCouple(request, context)
-      
-      if (coupleResult.success && individualInscriptions) {
-        // Eliminar inscripciones individuales
-        const inscriptionIds = individualInscriptions.map((i: { id: string }) => i.id)
-        await supabase
-          .from('inscriptions')
-          .delete()
-          .in('id', inscriptionIds)
-
-        console.log(`✅ [AmericanStrategy] Eliminadas ${inscriptionIds.length} inscripciones individuales`)
-      }
-
-      return coupleResult
-
-    } catch (error) {
-      console.error('[AmericanStrategy] Error convirtiendo a pareja:', error)
-      return { success: false, error: 'Error al convertir inscripción.' }
-    }
+    const { getRegistrationService } = await import('./registration.service')
+    return getRegistrationService().convertIndividualToCouple(request)
   }
 
   // ===== ELIMINACIÓN DE PAREJAS =====

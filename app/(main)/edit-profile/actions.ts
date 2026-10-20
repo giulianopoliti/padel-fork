@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/database.types';
 import { normalizePlayerDni } from '@/lib/utils/player-dni';
+import { receivesSoloEmails } from '@/lib/solo-players/email-preference';
 // --- Zod Schema for Player Profile Validation ---
 
 // Since this page is now only for players, we simplify the schema.
@@ -358,7 +359,7 @@ export async function getPlayerProfile() {
       message: !playerData && userData.role === 'PLAYER' ?
         "Complete su perfil de jugador para comenzar a participar en torneos." :
         "Datos obtenidos con éxito.",
-      userProfile,
+      userProfile: { ...userProfile, solo_player_emails: receivesSoloEmails(user.user_metadata) },
       allClubs: allClubs || [],
     };
   } catch (error) {

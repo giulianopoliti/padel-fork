@@ -19,6 +19,7 @@ import {
 import { normalizePlayerDni } from '@/lib/utils/player-dni'
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity'
 import { shouldRequireInscriptionValidation } from './inscription-validation'
+import { isInscriptionProofPending } from '@/lib/tournaments/inscription-requirements'
 import { createClientServiceRole } from '@/utils/supabase/server'
 import type {
   RegisterCoupleRequest,
@@ -133,7 +134,7 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
       }
 
       // 2. Asignar automáticamente a la zona general (específico de LONG)
-      if (inscription.is_pending || (inscription.payment_method === 'TRANSFER' && !inscription.payment_proof_path)) {
+      if (inscription.is_pending || isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof)) {
         return { success: true, inscriptionId: inscription.id, coupleId, inscription, zoneAssigned: false }
       }
       context.trace?.step('assign-general-zone')
@@ -364,42 +365,10 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
 
   async convertIndividualToCouple(
     request: RegisterCoupleRequest,
-    context: RegistrationContext
+    _context: RegistrationContext
   ): Promise<CoupleRegistrationResult> {
-    const { tournamentId, player1Id, player2Id } = request
-    const { supabase } = context
-
-    console.log(`[LongStrategy] Convirtiendo inscripción individual a pareja en torneo LONG`)
-
-    try {
-      // Encontrar inscripciones individuales para eliminar
-      const { data: individualInscriptions } = await supabase
-        .from('inscriptions')
-        .select('id, player_id')
-        .eq('tournament_id', tournamentId)
-        .is('couple_id', null)
-        .in('player_id', [player1Id, player2Id])
-
-      // Registrar la pareja (incluirá asignación automática a zona)
-      const coupleResult = await this.registerCouple(request, context)
-      
-      if (coupleResult.success && individualInscriptions) {
-        // Eliminar inscripciones individuales
-        const inscriptionIds = individualInscriptions.map((i: any) => i.id)
-        await supabase
-          .from('inscriptions')
-          .delete()
-          .in('id', inscriptionIds)
-
-        console.log(`✅ [LongStrategy] Eliminadas ${inscriptionIds.length} inscripciones individuales y pareja asignada a zona`)
-      }
-
-      return coupleResult
-
-    } catch (error) {
-      console.error('[LongStrategy] Error convirtiendo a pareja:', error)
-      return { success: false, error: 'Error al convertir inscripción.' }
-    }
+    const { getRegistrationService } = await import('./registration.service')
+    return getRegistrationService().convertIndividualToCouple(request)
   }
 
   // ===== ELIMINACIÓN DE PAREJAS =====

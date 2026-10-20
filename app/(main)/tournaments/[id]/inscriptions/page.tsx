@@ -1,4 +1,6 @@
 import React from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
@@ -8,9 +10,10 @@ import { checkTournamentAccess } from '@/utils/tournament-permissions';
 import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
 import InscriptionsClient from './components/InscriptionsClient';
 import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
+import { sanitizeTournamentPlayer } from '@/utils/tournament-player-privacy';
 
 interface InscriptionsPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -100,7 +103,11 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
     enablePublicInscriptions: tournament.show_public_inscriptions,
     accessLevel: accessCheck.accessLevel,
   })) {
-    redirect(`/tournaments/${tournamentId}`);
+    return <main className="mx-auto max-w-2xl space-y-4 px-4 py-12">
+      <h1 className="text-2xl font-semibold">Las inscripciones de este torneo no son públicas</h1>
+      <p className="text-sm leading-6 text-muted-foreground">Podés consultar tu inscripción y completar sus requisitos desde la página del torneo. Esta vista de gestión está reservada al organizador.</p>
+      <Button asChild><Link href={`/tournaments/${tournamentId}`}>Ir al torneo y ver mi inscripción</Link></Button>
+    </main>;
   }
 
   // ✅ CAMBIO: Permitir tanto AMERICAN como LONG
@@ -193,6 +200,17 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
     player.late_withdrawal_count = lateWithdrawalCounts.get(player.id) || 0;
   });
 
+  const hasManagementPermission = accessCheck.accessLevel === 'FULL_MANAGEMENT';
+  const visibleCoupleInscriptions = coupleInscriptions.map((inscription: any) => ({
+    ...inscription,
+    player_1_info: inscription.player_1_info
+      ? sanitizeTournamentPlayer(inscription.player_1_info, hasManagementPermission) : null,
+    player_2_info: inscription.player_2_info
+      ? sanitizeTournamentPlayer(inscription.player_2_info, hasManagementPermission) : null,
+  }));
+  const visibleIndividualInscriptions = individualInscriptions.map((player: any) =>
+    sanitizeTournamentPlayer(player, hasManagementPermission));
+
   // ========================================
   // PASO 4: RENDERIZAR CLIENT COMPONENT
   // ========================================
@@ -202,14 +220,16 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
     ...tournament,
     clubes: tournament.hide_venue ? undefined : tournament.clubes,
   }));
-  const serializedAllPlayers = JSON.parse(JSON.stringify(allPlayers || []));
+  const serializedAllPlayers = JSON.parse(JSON.stringify(
+    (allPlayers || []).map((player) => sanitizeTournamentPlayer(player, hasManagementPermission))
+  ));
 
   return (
     <>
     <InscriptionsClient 
       tournament={serializedTournament}
-      coupleInscriptions={coupleInscriptions}
-      individualInscriptions={individualInscriptions}
+      coupleInscriptions={visibleCoupleInscriptions}
+      individualInscriptions={visibleIndividualInscriptions}
       allPlayers={serializedAllPlayers}
       tournamentId={tournamentId}
     />

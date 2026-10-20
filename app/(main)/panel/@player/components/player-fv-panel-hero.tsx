@@ -120,7 +120,7 @@ export const PlayerFvPanelHero = ({ firstName, categoryName }: PlayerFvPanelHero
       ref={sectionRef}
       aria-labelledby="fv-player-panel-title"
       data-fv-player-panel-hero
-      className="relative isolate -mt-20 min-h-[360px] overflow-hidden bg-[#0b1933] pt-20 text-white sm:min-h-[440px]"
+      className="relative isolate -mt-16 min-h-[360px] overflow-hidden bg-[#0b1933] pt-16 text-white sm:min-h-[440px] lg:-mt-[72px] lg:pt-[72px]"
     >
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
         <Image src={poster} alt="" fill sizes="100vw" className="object-cover object-[center_40%] lg:hidden" />

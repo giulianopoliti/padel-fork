@@ -2,5 +2,8 @@
   "buildCommand": "pnpm build",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "crons": [{ "path": "/api/cron/inscription-proof-cleanup", "schedule": "0 3 * * *" }]
+  "crons": [
+    { "path": "/api/cron/inscription-proof-cleanup", "schedule": "0 3 * * *" },
+    { "path": "/api/cron/solo-players", "schedule": "5 3 * * *" }
+  ]
 }

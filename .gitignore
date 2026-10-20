@@ -6,6 +6,7 @@
 # next.js
 /.next/
 /.next-dev-fv/
+/.next-*/
 /out/
 
 # production
