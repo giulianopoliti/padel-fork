@@ -1,6 +1,7 @@
 import { getTournamentFormatPreset } from '@/config/tournament-format-presets'
 import {
   canSwitchAmericanMultiZoneRuntime,
+  canSwitchAmericanFormatBeforeBracket,
   canSwitchAmericanSingleZoneRuntime,
   hasFormatConfigV2,
   hasSameAmericanZoneTopology,
@@ -54,6 +55,16 @@ describe('tournament-format-policy', () => {
 })
 
 describe('American runtime format topology policy', () => {
+  test.each([
+    ['AMERICAN_MULTI_ZONE_2', 'AMERICAN_MULTI_ZONE_FREE'],
+    ['AMERICAN_MULTI_ZONE_FREE', 'AMERICAN_MULTI_ZONE_HYBRID_3'],
+    ['AMERICAN_SINGLE_ZONE_GLOBAL_2', 'AMERICAN_SINGLE_ZONE_FREE'],
+    ['AMERICAN_SINGLE_ZONE_FREE', 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3'],
+  ])('allows a settings conversion %s → %s without enabling the legacy free writer', (current, next) => {
+    expect(canSwitchAmericanFormatBeforeBracket(current, next)).toBe(true)
+    const free = current.endsWith('_FREE') ? current : next
+    expect(shouldWrapLegacyEndpointsWithCanonicalFlow({ type: 'AMERICAN', format_config: getTournamentFormatPreset(free as 'AMERICAN_MULTI_ZONE_FREE' | 'AMERICAN_SINGLE_ZONE_FREE') })).toBe(false)
+  })
   const singleMain = 'AMERICAN_SINGLE_ZONE_GLOBAL_2'
   const singleCups = 'AMERICAN_SINGLE_ZONE_GLOBAL_GOLD_SILVER_3'
   const multi = 'AMERICAN_MULTI_ZONE_GLOBAL_2'

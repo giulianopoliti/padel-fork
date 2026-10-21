@@ -74,6 +74,18 @@ export function isFormatStatusAllowedForRuntimeSwitch(status?: string | null): b
   return status === 'NOT_STARTED' || status === 'ZONE_PHASE'
 }
 
+// Settings transitions only. Do not add FREE to the runtime lists above:
+// those lists also select legacy automatic bracket writers.
+export const isEditableAmericanMultiZonePreset = (presetId?: string | null): boolean =>
+  presetId === 'AMERICAN_MULTI_ZONE_FREE' || isRuntimeAmericanMultiZonePreset(presetId)
+
+export const isEditableAmericanSingleZonePreset = (presetId?: string | null): boolean =>
+  presetId === 'AMERICAN_SINGLE_ZONE_FREE' || isRuntimeAmericanSingleZonePreset(presetId)
+
+export const canSwitchAmericanFormatBeforeBracket = (current?: string | null, next?: string | null): boolean =>
+  (isEditableAmericanMultiZonePreset(current) && isEditableAmericanMultiZonePreset(next)) ||
+  (isEditableAmericanSingleZonePreset(current) && isEditableAmericanSingleZonePreset(next))
+
 export function hasFormatConfigV2(tournament: TournamentLike): boolean {
   return Boolean((tournament as any)?.format_config?.version === 2)
 }

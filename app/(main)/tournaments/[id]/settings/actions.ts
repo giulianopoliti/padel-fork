@@ -13,11 +13,9 @@ import { getZonesFromTournament, deleteZonesAndData, deleteMatchesHierarchy, del
 import type { TournamentFormatConfigV2 } from '@/types/tournament-format-v2'
 import { getZoneStageAndMatchesPerCouple } from '@/lib/services/zone-fixture-planner.service'
 import {
-  canSwitchAmericanMultiZoneRuntime,
-  canSwitchAmericanSingleZoneRuntime,
-  hasSameAmericanZoneTopology,
-  isRuntimeAmericanMultiZonePreset,
-  isRuntimeAmericanSingleZonePreset,
+  canSwitchAmericanFormatBeforeBracket,
+  isEditableAmericanMultiZonePreset,
+  isEditableAmericanSingleZonePreset,
   isFormatStatusAllowedForRuntimeSwitch,
   shouldUseLegacyQualifying
 } from '@/lib/services/tournament-format-policy'
@@ -450,14 +448,11 @@ export async function updateTournamentFormatConfig(
     const isAmericanFormatUpdate = isAmericanTournament && (
       JSON.stringify(tournament.format_config) !== JSON.stringify(formatConfig)
     )
-    const runtimeSwitchRequested = isAmericanFormatUpdate && (
-      canSwitchAmericanMultiZoneRuntime(currentResolved.presetId, nextResolved.presetId) ||
-      canSwitchAmericanSingleZoneRuntime(currentResolved.presetId, nextResolved.presetId)
-    )
+    const runtimeSwitchRequested = isAmericanFormatUpdate && canSwitchAmericanFormatBeforeBracket(currentResolved.presetId, nextResolved.presetId)
     const topologySwitchRequested = isAmericanFormatUpdate && (
-      (isRuntimeAmericanMultiZonePreset(currentResolved.presetId) || isRuntimeAmericanSingleZonePreset(currentResolved.presetId)) &&
-      (isRuntimeAmericanMultiZonePreset(nextResolved.presetId) || isRuntimeAmericanSingleZonePreset(nextResolved.presetId)) &&
-      !hasSameAmericanZoneTopology(currentResolved.presetId, nextResolved.presetId)
+      (isEditableAmericanMultiZonePreset(currentResolved.presetId) || isEditableAmericanSingleZonePreset(currentResolved.presetId)) &&
+      (isEditableAmericanMultiZonePreset(nextResolved.presetId) || isEditableAmericanSingleZonePreset(nextResolved.presetId)) &&
+      !runtimeSwitchRequested
     )
     const longSingleZoneBracketModeSwitchRequested = canSwitchLongSingleZoneBracketMode(
       currentResolved.presetId,
@@ -539,7 +534,7 @@ export async function updateTournamentFormatConfig(
       }
 
       if (
-        isRuntimeAmericanMultiZonePreset(nextResolved.presetId) &&
+        isEditableAmericanMultiZonePreset(nextResolved.presetId) &&
         nextResolved.effectiveTargetMatchesPerCouple === 3
       ) {
         const oversizedZone = zoneSnapshots.find((zone) => zone.coupleCount > 4)
@@ -574,7 +569,7 @@ export async function updateTournamentFormatConfig(
       }
     }
 
-    if (formatConfig.advancementConfig.kind === 'SINGLE') {
+    if (nextResolved.bracketAssignment !== 'MANUAL' && formatConfig.advancementConfig.kind === 'SINGLE') {
       let registeredCouplesCount = 0
       try {
         const counts = await getRegisteredCouplesCountForFormatValidation(supabase, tournamentId)
@@ -604,7 +599,7 @@ export async function updateTournamentFormatConfig(
       return { success: false, error: 'Error al validar las parejas inscriptas del torneo' }
     }
 
-    if (registeredCouplesCountForAllocation > 0) {
+    if (nextResolved.bracketAssignment !== 'MANUAL' && registeredCouplesCountForAllocation > 0) {
       const normalizedConfig = TournamentFormatResolver.getResolvedFormat(
         { type: tournament.type, format_type: tournament.format_type, format_config: formatConfig },
         { totalCouples: registeredCouplesCountForAllocation }
