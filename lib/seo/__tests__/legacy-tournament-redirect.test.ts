@@ -38,11 +38,11 @@ describe('legacy tournament canonical redirect', () => {
     }
   })
 
-  it('resolves published tournaments within the configured active tenant', async () => {
+  it('resolves tournaments within the configured active tenant regardless of draft status', async () => {
     expect(await getLegacyTournamentRedirectPath(supabase, `/tournaments/${tournamentId}`)).toBe('/torneos/largo')
     expect(query.eq).toHaveBeenCalledWith('organization.id', organizationId)
     expect(query.eq).toHaveBeenCalledWith('organization.is_active', true)
-    expect(query.neq).toHaveBeenCalledWith('is_draft', true)
+    expect(query.neq).not.toHaveBeenCalled()
   })
 
   it.each(['/tournaments/create', `/tournaments/${tournamentId}/inscriptions`, '/torneos/largo', '/panel'])(

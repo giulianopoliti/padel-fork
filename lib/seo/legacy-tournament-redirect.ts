@@ -23,7 +23,6 @@ export const getLegacyTournamentRedirectPath = async (
       .from('tournaments')
       .select('seo_slug, organization:organizaciones!inner(id, slug, is_active)')
       .eq('id', tournamentId)
-      .neq('is_draft', true)
       .eq('organization.is_active', true)
       .eq(`organization.${field}`, value)
       .maybeSingle()

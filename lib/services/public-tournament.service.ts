@@ -19,7 +19,7 @@ const basePublicTournamentQuery = async () => {
   }
 }
 
-/** Resolves only a non-draft tournament belonging to the current tenant. */
+/** Resolves a tournament belonging to the current tenant, regardless of draft status. */
 export const getPublicTournamentBySlug = async (slug: string): Promise<ResolvedPublicTournament | null> => {
   const context = await basePublicTournamentQuery()
   if (!context) return null
@@ -29,7 +29,6 @@ export const getPublicTournamentBySlug = async (slug: string): Promise<ResolvedP
     .select("id, seo_slug")
     .eq("organization_id", context.organizationId)
     .eq("seo_slug", slug)
-    .neq("is_draft", true)
     .maybeSingle()
 
   if (error) {
@@ -43,7 +42,7 @@ export const getPublicTournamentBySlug = async (slug: string): Promise<ResolvedP
 
   const { data: alias, error: aliasError } = await context.supabase
     .from("tournament_seo_slug_aliases")
-    .select("tournament:tournaments!inner(id, seo_slug, organization_id, is_draft)")
+    .select("tournament:tournaments!inner(id, seo_slug, organization_id)")
     .eq("organization_id", context.organizationId)
     .eq("seo_slug", slug)
     .maybeSingle()
@@ -54,14 +53,14 @@ export const getPublicTournamentBySlug = async (slug: string): Promise<ResolvedP
   }
 
   const tournament = Array.isArray(alias?.tournament) ? alias.tournament[0] : alias?.tournament
-  if (!tournament || tournament.organization_id !== context.organizationId || tournament.is_draft === true) {
+  if (!tournament || tournament.organization_id !== context.organizationId) {
     return null
   }
 
   return { id: tournament.id, seo_slug: tournament.seo_slug, isAlias: true }
 }
 
-/** Resolves the current tenant's published tournament for ID links and canonical redirects. */
+/** Resolves the current tenant's tournament for ID links and canonical redirects. */
 export const getPublicTournamentById = async (id: string): Promise<ResolvedPublicTournament | null> => {
   const context = await basePublicTournamentQuery()
   if (!context) return null
@@ -71,7 +70,6 @@ export const getPublicTournamentById = async (id: string): Promise<ResolvedPubli
     .select("id, seo_slug")
     .eq("organization_id", context.organizationId)
     .eq("id", id)
-    .neq("is_draft", true)
     .maybeSingle()
 
   if (error) {

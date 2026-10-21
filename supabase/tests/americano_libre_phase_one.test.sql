@@ -141,7 +141,7 @@ select throws_ok($$select pg_temp.save('eight',4,pg_temp.put(pg_temp.layout('eig
 select throws_ok($$select pg_temp.save('eight',4,pg_temp.put(pg_temp.layout('eight'),pg_temp.mid('eight',5,1),1,pg_temp.fid('c3')))$$,
   '22023','Un avance deportivo no es una asignación manual','manual entry cannot replace winner');
 select throws_ok($$update public.tournaments set format_config='{"version":2,"presetId":"AMERICAN_MULTI_ZONE_2"}' where id=pg_temp.fid('eight')$$,
-  '22023','No se admite convertir un torneo existente a otra modalidad LIBRE','preset cannot bypass write guards');
+  '22023','Para cambiar el formato primero tenés que revertir la llave','preset cannot bypass write guards');
 select lives_ok($$insert into public.matches(tournament_id,type,round,couple1_id,couple2_id) values(pg_temp.fid('legacy'),'ELIMINATION','FINAL',null,null)$$,'legacy persistence remains available');
 select lives_ok($$select pg_temp.save('eight',4,pg_temp.layout('eight'),'organizer')$$,'active organization member can manage');
 select lives_ok($$select pg_temp.save('eight',5,pg_temp.layout('eight'),'admin')$$,'admin can manage');

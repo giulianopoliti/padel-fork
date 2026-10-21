@@ -16,8 +16,8 @@ describe("getPublicTournamentHref", () => {
     )
   })
 
-  it("keeps drafts on the ID route even when they have a slug", () => {
-    expect(getPublicTournamentHref({ id: "draft", seoSlug: "draft-slug", isDraft: true })).toBe("/tournaments/draft")
+  it("uses the SEO route regardless of draft status", () => {
+    expect(getPublicTournamentHref({ id: "draft", seoSlug: "draft-slug", isDraft: true })).toBe("/torneos/draft-slug")
     expect(getPublicTournamentHref({ id: "published", seoSlug: "public-slug", isDraft: false })).toBe("/torneos/public-slug")
   })
 })

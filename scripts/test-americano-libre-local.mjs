@@ -39,6 +39,8 @@ try {
   const existingFree = await run("select to_regclass('public.american_free_brackets') is not null;")
   good(existingFree)
   if (existingFree.stdout.trim() !== 't') good(await run(`begin; ${migration} commit;`))
+  const formatGuardMigration = await readFile(new URL('../supabase/migrations/20261021202643_americano_libre_allow_format_switch_before_bracket.sql', import.meta.url), 'utf8')
+  good(await run(`begin; ${formatGuardMigration} commit;`))
   const tests = await readFile(new URL('../supabase/tests/americano_libre_phase_one.test.sql', import.meta.url), 'utf8')
   const tap = await run(tests)
   good(tap)

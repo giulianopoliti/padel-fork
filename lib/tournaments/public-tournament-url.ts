@@ -4,10 +4,10 @@ export interface PublicTournamentLinkTarget {
   isDraft?: boolean | null
 }
 
-export const getPublicTournamentHref = ({ id, seoSlug, isDraft }: PublicTournamentLinkTarget) => {
+export const getPublicTournamentHref = ({ id, seoSlug }: PublicTournamentLinkTarget) => {
   const normalizedSlug = seoSlug?.trim()
 
-  if (normalizedSlug && isDraft !== true) {
+  if (normalizedSlug) {
     return `/torneos/${encodeURIComponent(normalizedSlug)}`
   }
 
