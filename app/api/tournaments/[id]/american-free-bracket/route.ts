@@ -1,4 +1,5 @@
 import { readFreeEditorData } from '@/lib/services/americano-libre-editor-read'
+import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient, createClientServiceRole } from '@/utils/supabase/server'
@@ -13,10 +14,16 @@ import { createFreeBracketSchema, freeBracketSnapshotSchema, saveFreeBracketSche
 export const dynamic = 'force-dynamic'
 type Context = { params: Promise<{ id: string }> }
 const requestSchema = z.object({ requestedCount: createFreeBracketSchema.shape.requestedCount }).strict()
-const failure = (error: unknown) => NextResponse.json({
-  success: false,
-  message: error instanceof z.ZodError ? 'Cantidad o estructura inválida' : error instanceof Error ? error.message : 'Error al obtener la llave',
-}, { status: error instanceof FreeBracketPersistenceError ? error.status : error instanceof z.ZodError ? 400 : 500 })
+const failure = (error: unknown) => {
+  const status = error instanceof FreeBracketPersistenceError ? error.status : error instanceof z.ZodError ? 400 : 500
+  const message = error instanceof z.ZodError ? 'Cantidad o estructura inválida' : error instanceof Error ? error.message : 'Error al obtener la llave'
+  console.error('[AMERICANO LIBRE] Error en american-free-bracket', {
+    status, message,
+    code: error instanceof FreeBracketPersistenceError ? error.code : undefined,
+    validation: error instanceof z.ZodError ? error.issues.map(({ path, code }) => ({ path, code })) : undefined,
+  })
+  return NextResponse.json({ success: false, message }, { status })
+}
 
 export const POST = async (request: NextRequest, { params }: Context) => {
   try {
@@ -55,9 +62,10 @@ export const GET = async (_request: NextRequest, { params }: Context) => {
     const client = await createClient()
     // User-scoped reads preserve tournament visibility and public RLS.
     const { data: tournament, error } = await client.from('tournaments')
-      .select('type, format_type, format_config, status, bracket_status, bracket_generated_at').eq('id', id).single()
+      .select('type, format_type, format_config, status, bracket_status, bracket_generated_at, show_bracket_zone_references').eq('id', id).single()
     if (error || !tournament) return NextResponse.json({ success: false, message: 'No se encontró el torneo' }, { status: 404 })
     if (!isAmericanLibreTournament(tournament)) return NextResponse.json({ success: false, message: 'El torneo no es Americano libre' }, { status: 400 })
+    const showZoneReferences = tournament.show_bracket_zone_references !== false
     const { data: { user } } = await client.auth.getUser()
     const canManage = user ? (await checkTournamentPermissions(user.id, id)).hasPermission : false
     const { data: state, error: stateError } = await client.from('american_free_brackets').select('*').eq('tournament_id', id).maybeSingle()
@@ -69,6 +77,7 @@ export const GET = async (_request: NextRequest, { params }: Context) => {
         readFreeEditorData(client, id, canManage),
       ])
       if (matches.error || hierarchy.error) throw new Error(matches.error?.message || hierarchy.error?.message)
+      editor.zoneMatchTarget = TournamentFormatResolver.getResolvedFormat(tournament).effectiveTargetMatchesPerCouple
       const snapshot = freeBracketSnapshotSchema.parse({ ...state, hierarchy: hierarchy.data,
         matches: (matches.data || []).map((match) => ({
           id: match.id, round: match.round, order_in_round: match.order_in_round,
@@ -83,9 +92,9 @@ export const GET = async (_request: NextRequest, { params }: Context) => {
       const { data: latest, error: revisionError } = await client.from('american_free_brackets').select('revision').eq('tournament_id', id).single()
       if (revisionError) throw new Error(revisionError.message)
       if (!latest || latest.revision !== snapshot.revision) throw new FreeBracketPersistenceError('La llave cambió durante la carga. Recargá para editar.', '40001')
-      return NextResponse.json({ success: true, snapshot, editor, canManage, status: tournament.status })
+      return NextResponse.json({ success: true, snapshot, editor, canManage, status: tournament.status, showZoneReferences })
     }
-    if (!canManage) return NextResponse.json({ success: true, snapshot: null, canManage, status: tournament.status })
+    if (!canManage) return NextResponse.json({ success: true, snapshot: null, canManage, status: tournament.status, showZoneReferences })
     const service = await createClientServiceRole()
     const [inscriptions, disqualified, zones, artifacts] = await Promise.all([
       service.from('inscriptions').select('couple_id').eq('tournament_id', id).or('is_pending.eq.false,is_pending.is.null').not('couple_id', 'is', null),
@@ -98,6 +107,6 @@ export const GET = async (_request: NextRequest, { params }: Context) => {
     const blockedReason = tournament.status !== 'ZONE_PHASE' ? 'La generación requiere fase de zonas'
       : artifacts.exists || tournament.bracket_generated_at || ['BRACKET_GENERATED', 'BRACKET_ACTIVE'].includes(tournament.bracket_status) ? 'Ya existe una llave o artefactos previos'
       : !zones.count ? 'Primero creá las zonas del torneo' : null
-    return NextResponse.json({ success: true, snapshot: null, suggestedCount, canManage, status: tournament.status, blockedReason })
+    return NextResponse.json({ success: true, snapshot: null, suggestedCount, canManage, status: tournament.status, blockedReason, showZoneReferences })
   } catch (error) { return failure(error) }
 }

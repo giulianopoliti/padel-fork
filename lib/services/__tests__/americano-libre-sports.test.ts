@@ -64,6 +64,23 @@ describe('LIBRE sports and reference statistics', () => {
     expect(points.get(`${id(2)}-player2`)).toEqual({ earned: 0, bonus: 5 })
     expect(single).toHaveBeenCalledTimes(2)
   })
+  it('assigns and processes a BYE through one atomic RPC without a separate layout write', async () => {
+    const rpc = jest.fn(async () => ({ data: null, error: { code: '40001', message: 'La llave cambió' } }))
+    const from = jest.fn()
+    await expect(mutateFreeSports({ rpc, from } as unknown as SupabaseClient, id(1), id(2), {
+      expectedRevision: 3, operations: [{ kind: 'ASSIGN_AND_PROCESS_BYE', matchId: id(99) }],
+    })).rejects.toMatchObject({ status: 409 })
+    expect(from).not.toHaveBeenCalled()
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledWith('process_american_free_bye', { p_tournament_id: id(1), p_actor_id: id(2), p_expected_revision: 3, p_match_id: id(99) })
+  })
+  it('rejects mixed batches before attempting direct BYE processing', async () => {
+    const rpc = jest.fn()
+    await expect(mutateFreeSports({ rpc } as unknown as SupabaseClient, id(1), id(2), {
+      expectedRevision: 3, operations: [{ kind: 'ASSIGN_AND_PROCESS_BYE', matchId: id(99) }, { kind: 'PROCESS_BYE', matchId: id(98) }],
+    })).rejects.toThrow('Procesá cada pase libre por separado')
+    expect(rpc).not.toHaveBeenCalled()
+  })
   it('returns stale revision conflict from the only RPC without retrying', async () => {
     const rpc = jest.fn(async () => ({ data: null, error: { code: '40001', message: 'La llave cambió. Recargá.' } }))
     const query = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), in: jest.fn(async () => ({ data: [], error: null })) }

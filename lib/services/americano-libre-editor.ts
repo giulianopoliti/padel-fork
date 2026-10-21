@@ -42,8 +42,8 @@ const entrySource = (snapshot: FreeBracketSnapshot, source: FreeSlot, editor: Fr
 }
 const clearEntry = (snapshot: FreeBracketSnapshot, slot: FreeSlot): void => {
   const original = snapshot.original_slots[slot.matchId]?.[slot.slot - 1]
-  if (!original || original === 'BYE') throw new Error('Origen de entrada inválido.')
-  setSlot(find(snapshot, slot.matchId), slot.slot, original, null)
+  if (!original) throw new Error('Origen de entrada inválido.')
+  setSlot(find(snapshot, slot.matchId), slot.slot, original === 'WINNER' ? 'WINNER' : 'ENTRY', null)
 }
 
 // Project from the FINAL along persisted WINNER edges, never from sorted cards.
@@ -65,6 +65,7 @@ export const projectFreeDraft = (baseline: FreeBracketSnapshot, draft: FreeBrack
   draft.matches.forEach((match) => {
     match.bracket_is_active = active.has(match.id)
     const original = find(baseline, match.id)
+    if (match.slot1_origin === 'BYE' && match.slot2_origin === 'BYE') throw new Error('Un partido no puede tener dos pases libres.')
     const changed = ([1, 2] as const).some((slot) => {
       const before = getFreeSlot(original, slot), after = getFreeSlot(match, slot)
       return before.origin !== after.origin || before.coupleId !== after.coupleId
@@ -76,6 +77,8 @@ export const projectFreeDraft = (baseline: FreeBracketSnapshot, draft: FreeBrack
     for (const slot of [1, 2] as const) {
       const { origin, coupleId } = getFreeSlot(match, slot)
       const old = getFreeSlot(original, slot)
+      const initialOrigin = baseline.original_slots[match.id]?.[slot - 1]
+      if (initialOrigin === 'WINNER' ? origin === 'BYE' : origin === 'WINNER') throw new Error('El pase libre solo se puede asignar en un lugar de entrada inicial.')
       if (old.origin === 'WINNER' && old.coupleId && (origin !== 'WINNER' || coupleId !== old.coupleId)) throw new Error('Un ganador deportivo no es una entrada manual.')
       if (origin === 'BYE' && coupleId) throw new Error('Un pase previsto no admite pareja.')
       if (!match.bracket_is_active || origin !== 'ENTRY') continue
@@ -106,7 +109,6 @@ export const moveFreeEntry = (baseline: FreeBracketSnapshot, current: FreeBracke
   const destination = find(draft, target.matchId)
   if (sportsLocked(destination, editor)) throw new Error('El destino tiene actividad deportiva.')
   const targetValue = getFreeSlot(destination, target.slot)
-  if (targetValue.origin === 'BYE') throw new Error('Este lugar es un pase libre previsto, no una entrada.')
   if (targetValue.origin === 'WINNER' && targetValue.coupleId) throw new Error('Este lugar contiene un ganador deportivo.')
   if (source.kind === 'SLOT' && freeSlotKey(source) === freeSlotKey(target)) throw new Error('Elegí otro casillero de destino.')
   const coupleId = source.kind === 'ZONE'
@@ -120,6 +122,9 @@ export const moveFreeEntry = (baseline: FreeBracketSnapshot, current: FreeBracke
       entrySource(draft, target, editor)
       if (!compatible(draft, target, source)) throw new Error('El intercambio no es compatible en ambas direcciones.')
       setSlot(find(draft, source.matchId), source.slot, 'ENTRY', targetValue.coupleId)
+    } else if (targetValue.origin === 'BYE') {
+      if (baseline.original_slots[source.matchId]?.[source.slot - 1] === 'WINNER') throw new Error('Para trasladar el BYE elegí una pareja de la ronda inicial.')
+      setSlot(find(draft, source.matchId), source.slot, 'BYE', null)
     } else clearEntry(draft, source)
   }
   // A retreat first restores the original WINNER, so the chosen descendant
@@ -134,6 +139,17 @@ export const removeFreeEntry = (baseline: FreeBracketSnapshot, current: FreeBrac
   const draft = structuredClone(current)
   entrySource(draft, source, editor)
   clearEntry(draft, source)
+  return projectFreeDraft(baseline, draft, editor)
+}
+export const toggleFreeBye = (baseline: FreeBracketSnapshot, current: FreeBracketSnapshot, editor: FreeEditorData, target: FreeSlot): FreeBracketSnapshot => {
+  const draft = structuredClone(current)
+  const match = find(draft, target.matchId)
+  const value = getFreeSlot(match, target.slot)
+  if (!match.bracket_is_active) throw new Error('El lugar pertenece a una rama inactiva.')
+  if (sportsLocked(match, editor)) throw new Error('Deshacé el BYE procesado antes de reorganizar. No se pueden modificar partidos con actividad deportiva.')
+  if (baseline.original_slots[match.id]?.[target.slot - 1] === 'WINNER') throw new Error('El pase libre solo se puede asignar en un lugar de entrada inicial.')
+  if (value.coupleId) throw new Error('Mové o quitá la pareja antes de asignar el BYE en su lugar.')
+  setSlot(match, target.slot, value.origin === 'BYE' ? 'ENTRY' : 'BYE', null)
   return projectFreeDraft(baseline, draft, editor)
 }
 export const freeLayout = (snapshot: FreeBracketSnapshot): FreeMatchLayout[] => snapshot.matches.map((match) => ({

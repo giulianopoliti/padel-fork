@@ -62,6 +62,17 @@ describe('LIBRE HTTP boundary', () => {
     expect(saveFreeBracket).toHaveBeenCalledWith(expect.anything(), id, 'authenticated-actor', input)
     expect(await response.json()).toMatchObject({ snapshot: { revision: 5 } })
   })
+  it('returns and logs the database rejection instead of silently retaining a failed save', async () => {
+    const log = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const layout = buildFreeBracket(20).matches.map(({ id, slot1_origin, slot2_origin }) => ({ id, slot1_origin, slot2_origin, couple1_id: null, couple2_id: null }))
+      jest.mocked(saveFreeBracket).mockRejectedValue(new FreeBracketPersistenceError('Orígenes incompatibles con la distribución original', '22023'))
+      const response = await PATCH(request({ expectedRevision: 6, layout }), context)
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ success: false, message: 'Orígenes incompatibles con la distribución original' })
+      expect(log).toHaveBeenCalledWith('[AMERICANO LIBRE] Error en american-free-bracket', expect.objectContaining({ status: 400, code: '22023', message: 'Orígenes incompatibles con la distribución original' }))
+    } finally { log.mockRestore() }
+  })
   it.each([false, true])('denies save without management (anonymous=%s)', async (anonymous) => {
     if (anonymous) actor = null
     jest.mocked(checkTournamentPermissions).mockResolvedValue({ hasPermission: false })
@@ -118,6 +129,13 @@ describe('LIBRE HTTP boundary', () => {
     expect(result.suggestedCount).toBeUndefined()
     expect(createClientServiceRole).not.toHaveBeenCalled()
   })
+  it.each([true, false])('returns the saved visibility to public readers (%s)', async showZoneReferences => {
+    actor = null
+    responses.tournaments = { data: { type: 'AMERICAN', format_config: getTournamentFormatPreset('AMERICAN_MULTI_ZONE_FREE'), status: 'ZONE_PHASE', show_bracket_zone_references: showZoneReferences } }
+    const result = await (await GET(new NextRequest('http://localhost'), context)).json()
+    expect(result.showZoneReferences).toBe(showZoneReferences)
+    expect(createClientServiceRole).not.toHaveBeenCalled()
+  })
   it.each([
     ['missing zones', { count: 0 }, false, 'Primero creá las zonas del torneo'],
     ['existing artifacts', { count: 1 }, true, 'Ya existe una llave o artefactos previos'],
@@ -128,6 +146,7 @@ describe('LIBRE HTTP boundary', () => {
     expect(result.blockedReason).toBe(message)
   })
   it('returns the persisted distribution on reload without counting new registrations', async () => {
+    responses.tournaments = { data: { type: 'AMERICAN', status: 'BRACKET_PHASE', format_config: { ...getTournamentFormatPreset('AMERICAN_MULTI_ZONE_FREE'), targetMatchesPerCouple: 3 } } }
     const structure = buildFreeBracket(20)
     responses.american_free_brackets = { data: {
       tournament_id: id, bracket_key: 'MAIN', contract_version: 1, revision: 0,
@@ -145,6 +164,7 @@ describe('LIBRE HTTP boundary', () => {
     expect(result.snapshot).toMatchObject({ requested_count: 20, base_size: 32, effective_capacity: 20, assigned_count: 0 })
     expect(result.snapshot.matches).toHaveLength(31)
     expect(result.snapshot.hierarchy).toHaveLength(30)
+    expect(result.editor.zoneMatchTarget).toBe(3)
     jest.mocked(readFreeEditorData).mockImplementation(async () => {
       const previous = responses.american_free_brackets as { data: { revision: number } }
       responses.american_free_brackets = { data: { ...previous.data, revision: previous.data.revision + 1 } }

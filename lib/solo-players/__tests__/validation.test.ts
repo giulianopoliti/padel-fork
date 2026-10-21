@@ -56,4 +56,7 @@ describe("solo player publication boundaries", () => {
       expect(isSoloPlayersLocalBackend()).toBe(true)
     } finally { process.env = previous }
   })
+  it("does not describe an eliminated pair as a confirmed inscription", () => {
+    expect(getSoloPairLabel({ tournament_id: "t", inscription_id: "i", pendingApproval: true, pendingProof: true, isEliminated: true })).toBe("Pareja eliminada")
+  })
 })

@@ -66,6 +66,14 @@ export interface GranularMatchCardProps {
   moveTargetSlots?: Partial<Record<'slot1' | 'slot2', boolean>>
   preloadedSetScores?: MatchSetScore[]
   className?: string
+  renderParticipant?: (slot: 'slot1' | 'slot2') => React.ReactNode
+  managedActions?: {
+    onManage: () => void
+    onClearResult: () => void
+    menu?: React.ReactNode
+    additionalActions?: React.ReactNode
+  }
+  inactive?: boolean
 }
 
 export function GranularMatchCard({
@@ -84,6 +92,9 @@ export function GranularMatchCard({
   moveTargetSlots,
   preloadedSetScores,
   className,
+  renderParticipant,
+  managedActions,
+  inactive = false,
 }: GranularMatchCardProps) {
   const [localDragHover, setLocalDragHover] = useState<'slot1' | 'slot2' | null>(null)
   const [setScores, setSetScores] = useState<MatchSetScore[]>([])
@@ -98,7 +109,7 @@ export function GranularMatchCard({
     tournamentId,
     isOwner,
     config: {
-      enabled: isEditMode && isOwner,
+      enabled: isEditMode && isOwner && !managedActions,
       sameRoundOnly: true,
       pendingMatchesOnly: true,
       maxPendingOperations: 10,
@@ -141,12 +152,14 @@ export function GranularMatchCard({
     !isEditMode
 
   const canDisqualifyInBracket =
+    !managedActions &&
     isOwner &&
     !isEditMode &&
     !!couple1 &&
     !!couple2 &&
     ['PENDING', 'IN_PROGRESS', 'WAITING_OPONENT', 'WAITING_OPPONENT'].includes(match.status)
   const canToggleDraftStatus =
+    !managedActions &&
     isOwner &&
     !isEditMode &&
     (
@@ -260,6 +273,10 @@ export function GranularMatchCard({
   }
 
   const handleDeleteResult = async () => {
+    if (managedActions) {
+      managedActions.onClearResult()
+      return
+    }
     const confirmed = window.confirm('Esto borra el resultado del partido y lo vuelve a Pendiente. El partido no se elimina. ¿Continuar?')
     if (!confirmed) return
 
@@ -508,7 +525,7 @@ export function GranularMatchCard({
                       className="h-7 w-7 border-red-200 text-red-700 hover:bg-red-50"
                       onClick={handleDeleteResult}
                       disabled={matchState.updatingResult}
-                      aria-label="Borrar partido"
+                      aria-label={managedActions ? 'Revertir resultado' : 'Borrar partido'}
                     >
                       {matchState.updatingResult ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -517,7 +534,7 @@ export function GranularMatchCard({
                       )}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Borrar partido</TooltipContent>
+                  <TooltipContent>{managedActions ? 'Revertir resultado' : 'Borrar partido'}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}
@@ -549,9 +566,11 @@ export function GranularMatchCard({
                 </Tooltip>
               </TooltipProvider>
             )}
-            {statusInfo.badge}
+            {inactive ? <Badge variant="secondary" className="text-[10px]">Rama inactiva</Badge> : statusInfo.badge}
             {isOwner && !isEditMode && (
-              <ByeActionsDropdown
+              managedActions ? managedActions.menu !== undefined ? managedActions.menu : <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Gestionar partido" onClick={managedActions.onManage}>
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button> : <ByeActionsDropdown
                 match={match}
                 tournamentId={tournamentId}
                 isOwner={isOwner}
@@ -564,7 +583,7 @@ export function GranularMatchCard({
 
       <CardContent className="flex flex-1 flex-col gap-1 px-2.5 pb-2 pt-1.5">
         <div className="relative">
-          <DraggableCoupleSlot
+          {renderParticipant ? renderParticipant('slot1') : <DraggableCoupleSlot
             couple={couple1}
             match={match}
             slotPosition="slot1"
@@ -587,7 +606,7 @@ export function GranularMatchCard({
             isMoveTarget={Boolean(moveTargetSlots?.slot1)}
             compact
             className="min-h-[2.5rem] p-1.5"
-          />
+          />}
           {renderDisqualificationMenu(couple1, couple1Name)}
           {!isEditMode && <div className="absolute right-1 top-1 z-30"><WinnerPhotoMenu matchId={match.id} round={match.round} matchStatus={match.status} matchWinnerId={match.winner_id} coupleId={couple1?.id} /></div>}
         </div>
@@ -597,7 +616,7 @@ export function GranularMatchCard({
         </div>
 
         <div className="relative">
-          <DraggableCoupleSlot
+          {renderParticipant ? renderParticipant('slot2') : <DraggableCoupleSlot
             couple={couple2}
             match={match}
             slotPosition="slot2"
@@ -620,12 +639,13 @@ export function GranularMatchCard({
             isMoveTarget={Boolean(moveTargetSlots?.slot2)}
             compact
             className="min-h-[2.5rem] p-1.5"
-          />
+          />}
           {renderDisqualificationMenu(couple2, couple2Name)}
           {!isEditMode && <div className="absolute right-1 top-1 z-30"><WinnerPhotoMenu matchId={match.id} round={match.round} matchStatus={match.status} matchWinnerId={match.winner_id} coupleId={couple2?.id} /></div>}
         </div>
 
         <div className="mt-auto space-y-1 border-t border-slate-100 pt-1.5">
+          {isOwner && !isEditMode && managedActions?.additionalActions}
           {courtLabel && (
             <div className="flex items-center gap-1 text-[10px] text-slate-600">
               <MapPin className="h-3 w-3" />
@@ -640,7 +660,7 @@ export function GranularMatchCard({
             </div>
           )}
 
-          {match.status === 'FINISHED' && !isLongTournament && !isDisqualificationResult && (
+          {match.status === 'FINISHED' && !isLongTournament && !isDisqualificationResult && !managedActions && (
               (() => {
                 const set = match.result?.sets?.[0]
                 const score1 = set

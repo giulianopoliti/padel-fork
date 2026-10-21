@@ -8,6 +8,8 @@ export interface SoloPairState {
   pendingApproval: boolean
   pendingProof: boolean
   transferProofEnabled?: boolean
+  formedViaSoloPlayers?: boolean
+  isEliminated?: boolean
 }
 export interface SoloDirectoryData {
   userId: string

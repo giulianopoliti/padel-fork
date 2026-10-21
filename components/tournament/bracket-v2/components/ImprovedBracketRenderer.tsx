@@ -18,7 +18,7 @@ import {
 } from './BracketMatchActionDialogs'
 import { useBracketDragDrop } from '../context/bracket-drag-context'
 import { useBracketDragOperations } from '../hooks/useBracketDragOperations'
-import { useBracketTreeLayout, type TreeMatchPosition } from '../hooks/useBracketTreeLayout'
+import { useBracketTreeLayout, type TreeMatchPosition, type TreeRelation } from '../hooks/useBracketTreeLayout'
 import { applyPendingOperationsToData, getMatchPreviewInfo } from '../utils/preview-operations'
 import type { BracketData, BracketMatchV2, CoupleData } from '../types/bracket-types'
 
@@ -39,6 +39,12 @@ export interface ImprovedBracketRendererProps {
   onDataRefresh?: () => void
   setScoresByMatch?: Record<string, MatchSetScore[]>
   className?: string
+  controls?: React.ReactNode
+  renderMatch?: (match: BracketMatchV2, variant: 'tree' | 'stack') => React.ReactNode
+  relations?: TreeRelation[]
+  allowRoundNavigation?: boolean
+  constrainHeight?: boolean
+  cardExtraHeight?: number
 }
 
 interface RoundGroup {
@@ -99,6 +105,12 @@ export function ImprovedBracketRenderer({
   onMatchUpdate,
   onDataRefresh,
   setScoresByMatch,
+  controls,
+  renderMatch,
+  relations,
+  allowRoundNavigation = false,
+  constrainHeight = false,
+  cardExtraHeight = 0,
   className
 }: ImprovedBracketRendererProps) {
   const [isEditMode, setIsEditMode] = useState(false)
@@ -111,6 +123,9 @@ export function ImprovedBracketRenderer({
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const [desktopViewportWidth, setDesktopViewportWidth] = useState(0)
   const [fitToWidth, setFitToWidth] = useState(true)
+  const [viewMode, setViewMode] = useState<'rounds' | 'tree'>('tree')
+  const [selectedRound, setSelectedRound] = useState<string | null>(null)
+  const isRoundView = allowRoundNavigation && viewMode === 'rounds'
 
   const dragOperations = useBracketDragOperations({
     tournamentId,
@@ -150,7 +165,7 @@ export function ImprovedBracketRenderer({
         const sortedMatches = [...matches].sort((a, b) => (a.order_in_round ?? 0) - (b.order_in_round ?? 0))
         const completedMatches = sortedMatches.filter(match => match.status === 'FINISHED').length
         const canPlay = sortedMatches.filter(
-          match => match.participants?.slot1?.couple && match.participants?.slot2?.couple
+          match => match.status === 'PENDING' && match.participants?.slot1?.couple && match.participants?.slot2?.couple
         ).length
 
         return {
@@ -163,6 +178,8 @@ export function ImprovedBracketRenderer({
         }
       })
   }, [previewData.matches])
+
+  const activeRound = roundGroups.find(group => group.round === selectedRound) ?? roundGroups[0]
 
   const stats = useMemo(() => {
     const total = previewData.matches.length
@@ -182,7 +199,9 @@ export function ImprovedBracketRenderer({
   const { layout } = useBracketTreeLayout({
     tournamentId,
     roundGroups,
-    tournamentType
+    tournamentType,
+    relations,
+    cardExtraHeight,
   })
 
   useEffect(() => {
@@ -202,7 +221,7 @@ export function ImprovedBracketRenderer({
     observer.observe(container)
 
     return () => observer.disconnect()
-  }, [roundGroups.length])
+  }, [roundGroups.length, isRoundView])
 
   const desktopCanvasWidth = layout.canvasSize.width
   const desktopCanvasHeight = layout.canvasSize.height
@@ -409,6 +428,15 @@ export function ImprovedBracketRenderer({
     setIsEditMode(true)
   }
 
+  const handleCanvasDragOver = (event: React.DragEvent<HTMLDivElement>): void => {
+    if (!constrainHeight || !event.dataTransfer.types.includes('text/plain')) return
+    const container = event.currentTarget
+    const rect = container.getBoundingClientRect()
+    const step = (position: number, start: number, end: number): number =>
+      position < start + 64 ? -24 : position > end - 64 ? 24 : 0
+    container.scrollBy({ left: step(event.clientX, rect.left, rect.right), top: step(event.clientY, rect.top, rect.bottom), behavior: 'auto' })
+  }
+
   const closeMovePanel = () => {
     setIsMovePanelOpen(false)
     setSelectedCoupleForMove(null)
@@ -495,7 +523,7 @@ export function ImprovedBracketRenderer({
           </div>
         )}
 
-        <GranularMatchCard
+        {renderMatch ? renderMatch(match, variant) : <GranularMatchCard
           match={match}
           tournamentId={tournamentId}
           tournamentType={tournamentType}
@@ -524,7 +552,7 @@ export function ImprovedBracketRenderer({
             variant === 'tree' && 'h-full',
             hasChanges && 'ring-1 ring-blue-200 shadow-blue-50'
           )}
-        />
+        />}
       </div>
     )
   }
@@ -544,7 +572,7 @@ export function ImprovedBracketRenderer({
   )
 
   const renderControls = () => (
-    <div className="border-b border-slate-200 bg-white">
+    <div className="shrink-0 border-b border-slate-200 bg-white">
       <div className="flex flex-col gap-3 p-3 lg:p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
@@ -568,7 +596,7 @@ export function ImprovedBracketRenderer({
               <Zap className="h-3.5 w-3.5" />
               {stats.canPlay} listos
             </div>
-            <Button
+            {!isRoundView && <Button
               type="button"
               variant={fitToWidth ? 'default' : 'outline'}
               size="sm"
@@ -577,10 +605,11 @@ export function ImprovedBracketRenderer({
             >
               <Maximize2 className="h-3.5 w-3.5" />
               {fitToWidth ? `Ajustado ${Math.round(desktopScale * 100)}%` : '100%'}
-            </Button>
+            </Button>}
           </div>
 
-          {isOwner && enableDragDrop && (
+          {controls}
+          {!controls && isOwner && enableDragDrop && (
               !isEditMode ? (
                 <TooltipProvider>
                   <Tooltip>
@@ -634,6 +663,19 @@ export function ImprovedBracketRenderer({
           )}
         </div>
 
+        {allowRoundNavigation && <div className="space-y-3">
+          <div role="group" aria-label="Vista de la llave" className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant={!isRoundView ? 'default' : 'outline'} aria-pressed={!isRoundView} onClick={() => setViewMode('tree')}>Llave completa</Button>
+            <Button type="button" size="sm" variant={isRoundView ? 'default' : 'outline'} aria-pressed={isRoundView} onClick={() => setViewMode('rounds')}>Por rondas</Button>
+          </div>
+          {isRoundView && <div role="group" aria-label="Ronda a mostrar" className="flex flex-wrap gap-2">
+            {roundGroups.map(group => {
+              const active = group.round === activeRound?.round
+              return <Button key={group.round} type="button" size="sm" variant={active ? 'secondary' : 'ghost'} aria-pressed={active} onClick={() => setSelectedRound(group.round)}>{group.displayName} ({group.completedMatches}/{group.totalMatches})</Button>
+            })}
+          </div>}
+        </div>}
+
         {dragState.pendingOperations.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-surface border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
             <div className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
@@ -662,12 +704,12 @@ export function ImprovedBracketRenderer({
   }
 
   return (
-    <div className={cn('min-w-0 max-w-full overflow-hidden rounded-surface border bg-slate-50', className)}>
+    <div className={cn('min-w-0 max-w-full overflow-hidden rounded-surface border bg-slate-50', constrainHeight && 'lg:flex lg:h-full lg:min-h-0 lg:flex-col', className)}>
       {renderControls()}
 
-      <div className="lg:hidden">
+      <div className={cn(isRoundView ? '' : 'lg:hidden', constrainHeight && isRoundView && 'lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain')}>
         <div className="space-y-6 p-4">
-          {roundGroups.map(group => (
+          {(isRoundView ? [activeRound] : roundGroups).map(group => (
             <section key={group.round} className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -681,7 +723,7 @@ export function ImprovedBracketRenderer({
                   {group.completedMatches}/{group.totalMatches}
                 </Badge>
               </div>
-              <div className="space-y-3">
+              <div className={isRoundView ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] items-start gap-3' : 'space-y-3'}>
                 {group.matches.map(match => renderMatchCard(match, 'stack'))}
               </div>
             </section>
@@ -689,8 +731,8 @@ export function ImprovedBracketRenderer({
         </div>
       </div>
 
-      <div className="hidden lg:block">
-        <div ref={desktopScrollRef} className="max-w-full overflow-x-auto overflow-y-hidden px-3 pb-4 pt-3 lg:px-4">
+      {!isRoundView && <div className={cn('hidden lg:block', constrainHeight && 'lg:min-h-0 lg:flex-1')}>
+        <div ref={desktopScrollRef} onDragOver={handleCanvasDragOver} tabIndex={constrainHeight ? 0 : undefined} aria-label="Desplazar llave completa" className={cn('max-w-full px-3 pb-4 pt-3 lg:px-4', constrainHeight ? 'h-full overflow-auto overscroll-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring' : 'overflow-x-auto overflow-y-hidden')}>
           <div
             className="relative"
             style={{
@@ -721,7 +763,8 @@ export function ImprovedBracketRenderer({
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    opacity="0.9"
+                    opacity={connector.inactive ? 0.3 : 0.9}
+                    strokeDasharray={connector.inactive ? '5 5' : undefined}
                   />
                 ))}
               </svg>
@@ -756,7 +799,7 @@ export function ImprovedBracketRenderer({
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       <BracketMoveCoupleSheet
         open={isMovePanelOpen}

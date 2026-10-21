@@ -1,10 +1,13 @@
 import { z } from 'zod'
 
+export type FreeMatchAction = 'result' | 'start' | 'disqualify' | 'bye' | 'undo-bye' | 'clear-result'
+
 const matchId = z.string().uuid()
 export const freeSportOperationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('RESULT'), matchId, score1: z.number().int().min(0).max(99), score2: z.number().int().min(0).max(99) }).strict(),
   z.object({ kind: z.literal('CLEAR_RESULT'), matchId }).strict(),
   z.object({ kind: z.literal('PROCESS_BYE'), matchId }).strict(),
+  z.object({ kind: z.literal('ASSIGN_AND_PROCESS_BYE'), matchId }).strict(),
   z.object({ kind: z.literal('UNDO_BYE'), matchId }).strict(),
   z.object({ kind: z.literal('DISQUALIFY'), matchId, coupleId: z.string().uuid(), reason: z.string().trim().min(1).max(1000) }).strict(),
   z.object({ kind: z.literal('COURT'), matchId, court: z.string().trim().max(100), start: z.boolean().default(false) }).strict(),

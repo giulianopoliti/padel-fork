@@ -143,7 +143,7 @@ export default function BackToNotStartedButton({ tournamentId }: BackToNotStarte
                 Cargando información...
               </>
             ) : (
-              '🔄 Volver Torneo a No Iniciado'
+              'Volver Torneo a No Iniciado'
             )}
           </Button>
         </CardContent>
@@ -156,35 +156,38 @@ export default function BackToNotStartedButton({ tournamentId }: BackToNotStarte
               <AlertTriangle className="h-5 w-5 text-red-600" />
               ¿Revertir el torneo?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>Esta acción eliminará <strong>permanentemente</strong> todos los datos del torneo:</p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Esta acción eliminará <strong>permanentemente</strong> las zonas, sus partidos, resultados y asignaciones:</p>
+                <p>Las inscripciones se conservan para volver a organizar el torneo.</p>
               
-              {previewData && (
-                <div className="bg-red-50 border border-red-200 rounded-control p-3 space-y-1">
-                  <h4 className="font-medium text-red-900">Datos a eliminar:</h4>
-                  <div className="text-sm text-red-800 space-y-1">
-                    {previewData.zonesCount > 0 && (
-                      <p>• {previewData.zonesCount} zona{previewData.zonesCount !== 1 ? 's' : ''}</p>
-                    )}
-                    {previewData.matchesCount > 0 && (
-                      <p>• {previewData.matchesCount} partido{previewData.matchesCount !== 1 ? 's' : ''} de zona</p>
-                    )}
-                    {previewData.zoneCouplesCount > 0 && (
-                      <p>• {previewData.zoneCouplesCount} asignación{previewData.zoneCouplesCount !== 1 ? 'es' : ''} de parejas</p>
-                    )}
-                    {previewData.zonePositionsCount > 0 && (
-                      <p>• {previewData.zonePositionsCount} posición{previewData.zonePositionsCount !== 1 ? 'es' : ''} de zona</p>
-                    )}
-                    {totalItems === 0 && (
-                      <p>• No hay datos para eliminar</p>
-                    )}
+                {previewData && (
+                  <div className="bg-red-50 border border-red-200 rounded-control p-3 space-y-1">
+                    <h4 className="font-medium text-red-900">Datos a eliminar:</h4>
+                    <div className="text-sm text-red-800 space-y-1">
+                      {previewData.zonesCount > 0 && (
+                        <p>• {previewData.zonesCount} zona{previewData.zonesCount !== 1 ? 's' : ''}</p>
+                      )}
+                      {previewData.matchesCount > 0 && (
+                        <p>• {previewData.matchesCount} partido{previewData.matchesCount !== 1 ? 's' : ''} de zona</p>
+                      )}
+                      {previewData.zoneCouplesCount > 0 && (
+                        <p>• {previewData.zoneCouplesCount} asignación{previewData.zoneCouplesCount !== 1 ? 'es' : ''} de parejas</p>
+                      )}
+                      {previewData.zonePositionsCount > 0 && (
+                        <p>• {previewData.zonePositionsCount} posición{previewData.zonePositionsCount !== 1 ? 'es' : ''} de zona</p>
+                      )}
+                      {totalItems === 0 && (
+                        <p>• No hay datos para eliminar</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               
-              <p className="text-red-800 font-medium">
-                ⚠️ Esta acción no se puede deshacer.
-              </p>
+                <p className="text-red-800 font-medium">
+                  Esta acción no se puede deshacer.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -199,7 +202,7 @@ export default function BackToNotStartedButton({ tournamentId }: BackToNotStarte
                 htmlFor="confirm-reset" 
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                Entiendo que todos los datos se eliminarán permanentemente
+                Entiendo que se eliminarán las zonas y sus partidos
               </label>
             </div>
           </div>

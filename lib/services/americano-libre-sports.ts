@@ -36,6 +36,15 @@ export const rankFreeZone = (couples: CoupleData[], matches: MatchData[], operat
 
 export const mutateFreeSports = async (client: SupabaseClient, tournamentId: string, actorId: string, input: FreeSportsInput): Promise<FreeBracketSnapshot> => {
   const parsed = freeSportsInputSchema.parse(input)
+  const directBye = parsed.operations.find(op => op.kind === 'ASSIGN_AND_PROCESS_BYE')
+  if (directBye) {
+    if (parsed.operations.length !== 1) throw new Error('Procesá cada pase libre por separado.')
+    const { data, error } = await client.rpc('process_american_free_bye', {
+      p_tournament_id: tournamentId, p_actor_id: actorId, p_expected_revision: parsed.expectedRevision, p_match_id: directBye.matchId,
+    })
+    if (error) throw new FreeBracketPersistenceError(error.message, error.code)
+    return freeBracketSnapshotSchema.parse(data)
+  }
   const { data: matches, error } = await client.from('matches').select('id, zone_id').eq('tournament_id', tournamentId)
     .in('id', parsed.operations.filter((op) => op.kind === 'RESULT' || op.kind === 'CLEAR_RESULT').map((op) => op.matchId))
   if (error) throw new Error(error.message)

@@ -201,60 +201,62 @@ export default function BackFromBracketButton({
               <AlertTriangle className="h-5 w-5 text-orange-600" />
               Revertir a fase de zonas
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                Esta accion eliminara <strong>permanentemente</strong> el bracket generado:
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Esta accion eliminara <strong>permanentemente</strong> el bracket generado:
+                </p>
 
-              {previewData && (
-                <div className="space-y-1 rounded-control border border-orange-200 bg-orange-50 p-3">
-                  <h4 className="font-medium text-orange-900">Datos a eliminar:</h4>
-                  <div className="space-y-1 text-sm text-orange-800">
-                    {previewData.seedsCount > 0 && (
-                      <p>- {previewData.seedsCount} seed{previewData.seedsCount !== 1 ? 's' : ''} del bracket</p>
-                    )}
-                    {previewData.hierarchyCount > 0 && (
-                      <p>
-                        - {previewData.hierarchyCount} relacion
-                        {previewData.hierarchyCount !== 1 ? 'es' : ''} de jerarquia
-                      </p>
-                    )}
-                    {previewData.bracketMatchesCount > 0 && (
-                      <p>
-                        - {previewData.bracketMatchesCount} partido
-                        {previewData.bracketMatchesCount !== 1 ? 's' : ''} de bracket
-                      </p>
-                    )}
-                    {totalItems === 0 && <p>- No hay datos de bracket para eliminar</p>}
-                  </div>
-                </div>
-              )}
-
-              {hasFinishedMatches && (
-                <div className="space-y-1 rounded-control border-2 border-red-300 bg-red-100 p-3">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
-                    <div>
-                      <h4 className="font-semibold text-red-900">Atencion</h4>
-                      <p className="mt-1 text-sm text-red-800">
-                        Hay <strong>{previewData?.finishedBracketMatches}</strong> partido
-                        {previewData?.finishedBracketMatches !== 1 ? 's' : ''} de bracket ya
-                        finalizado{previewData?.finishedBracketMatches !== 1 ? 's' : ''}. Se
-                        perderan todos esos resultados permanentemente.
-                      </p>
+                {previewData && (
+                  <div className="space-y-1 rounded-control border border-orange-200 bg-orange-50 p-3">
+                    <h4 className="font-medium text-orange-900">Datos a eliminar:</h4>
+                    <div className="space-y-1 text-sm text-orange-800">
+                      {previewData.seedsCount > 0 && (
+                        <p>- {previewData.seedsCount} seed{previewData.seedsCount !== 1 ? 's' : ''} del bracket</p>
+                      )}
+                      {previewData.hierarchyCount > 0 && (
+                        <p>
+                          - {previewData.hierarchyCount} relacion
+                          {previewData.hierarchyCount !== 1 ? 'es' : ''} de jerarquia
+                        </p>
+                      )}
+                      {previewData.bracketMatchesCount > 0 && (
+                        <p>
+                          - {previewData.bracketMatchesCount} partido
+                          {previewData.bracketMatchesCount !== 1 ? 's' : ''} de bracket
+                        </p>
+                      )}
+                      {totalItems === 0 && <p>- No hay datos de bracket para eliminar</p>}
                     </div>
                   </div>
+                )}
+
+                {hasFinishedMatches && (
+                  <div className="space-y-1 rounded-control border-2 border-red-300 bg-red-100 p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
+                      <div>
+                        <h4 className="font-semibold text-red-900">Atencion</h4>
+                        <p className="mt-1 text-sm text-red-800">
+                          Hay <strong>{previewData?.finishedBracketMatches}</strong> partido
+                          {previewData?.finishedBracketMatches !== 1 ? 's' : ''} de bracket ya
+                          finalizado{previewData?.finishedBracketMatches !== 1 ? 's' : ''}. Se
+                          perderan todos esos resultados permanentemente.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-control border border-blue-200 bg-blue-50 p-3">
+                  <p className="text-sm text-blue-800">
+                    Los datos de zona se mantendran intactos. Podras regenerar la llave cuando estes
+                    listo.
+                  </p>
                 </div>
-              )}
 
-              <div className="rounded-control border border-blue-200 bg-blue-50 p-3">
-                <p className="text-sm text-blue-800">
-                  Los datos de zona se mantendran intactos. Podras regenerar la llave cuando estes
-                  listo.
-                </p>
+                <p className="font-medium text-orange-800">Esta accion no se puede deshacer.</p>
               </div>
-
-              <p className="font-medium text-orange-800">Esta accion no se puede deshacer.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
 

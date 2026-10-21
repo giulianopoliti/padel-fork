@@ -46,6 +46,7 @@ export const getSoloPostLabel = (post: Pick<SoloOwnPost, "status" | "expires_at"
 }
 
 export const getSoloPairLabel = (pair: SoloPairState): string => {
+  if (pair.isEliminated) return "Pareja eliminada"
   if (pair.pendingApproval && pair.pendingProof) return "Pareja pendiente de aprobación y comprobante"
   if (pair.pendingApproval) return "Pareja pendiente de aprobación"
   if (pair.pendingProof) return "Pareja pendiente de comprobante"

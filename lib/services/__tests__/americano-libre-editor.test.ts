@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { buildFreeBracket } from '../americano-libre-generator'
-import { freeLayout, getFreeSlot, moveFreeEntry, removeFreeEntry } from '../americano-libre-editor'
+import { freeLayout, getFreeSlot, moveFreeEntry, removeFreeEntry, toggleFreeBye } from '../americano-libre-editor'
 import type { FreeBracketSnapshot } from '@/types/americano-libre'
 import type { FreeEditorData, FreeSlot, FreeSource } from '@/types/americano-libre-editor'
 
@@ -88,16 +88,58 @@ describe('LIBRE editor draft', () => {
     const draft = moveFreeEntry(assigned, assigned, editor, source(a), b)
     expect(() => moveFreeEntry(assigned, draft, editor, source(b), place(snapshot, '4TOS', 4, 2))).toThrow('entrada guardada')
   })
-  it('blocks duplicate entries, disabled couples, BYEs and inactive destinations', () => {
+  it('blocks duplicate entries, disabled couples and inactive destinations', () => {
     const { snapshot, editor } = fixture(20)
     const draft = moveFreeEntry(snapshot, snapshot, editor, zone(editor), place(snapshot, '16VOS', 2))
     expect(() => moveFreeEntry(snapshot, draft, editor, zone(editor), place(snapshot, '16VOS', 7))).toThrow('otra entrada')
     editor.couples[1].eligible = false
     expect(() => moveFreeEntry(snapshot, draft, editor, zone(editor, 1), place(snapshot, '16VOS', 7))).toThrow('habilitada')
-    const bye = snapshot.matches.find((match) => match.slot1_origin === 'BYE' || match.slot2_origin === 'BYE')!
-    expect(() => moveFreeEntry(snapshot, snapshot, editor, zone(editor), { matchId: bye.id, slot: bye.slot1_origin === 'BYE' ? 1 : 2 })).toThrow('pase libre previsto')
     const direct = moveFreeEntry(snapshot, snapshot, editor, zone(editor), place(snapshot, '4TOS', 1))
     expect(() => moveFreeEntry(snapshot, direct, editor, zone(editor, 2), place(snapshot, '16VOS', 1))).toThrow()
+  })
+  it('fills a BYE from another match and transfers the pass to the vacated slot', () => {
+    const { snapshot, editor } = fixture(20)
+    const bye = snapshot.matches.find((match) => match.slot2_origin === 'BYE')!
+    const target: FreeSlot = { matchId: bye.id, slot: 2 }
+    const initial = place(snapshot, '16VOS', 2)
+    let draft = moveFreeEntry(snapshot, snapshot, editor, zone(editor), initial)
+    draft = moveFreeEntry(snapshot, draft, editor, zone(editor, 1), { ...initial, slot: 2 })
+    const saved = structuredClone(draft)
+    draft = moveFreeEntry(saved, draft, editor, source(initial), target)
+    expect(getFreeSlot(draft.matches.find(m => m.id === initial.matchId)!, 1)).toEqual({ origin: 'BYE', coupleId: null })
+    expect(getFreeSlot(draft.matches.find(m => m.id === target.matchId)!, 2)).toEqual({ origin: 'ENTRY', coupleId: editor.couples[0].coupleId })
+    expect(draft.effective_capacity).toBe(20)
+    expect(draft.matches.find(m => m.id === initial.matchId)!.couple2_id).toBe(editor.couples[1].coupleId)
+    expect(draft.original_slots).toEqual(snapshot.original_slots)
+    // Removing the newly placed pair must leave an available entry, not recreate the old BYE.
+    draft = removeFreeEntry(saved, draft, editor, target)
+    expect(getFreeSlot(draft.matches.find(m => m.id === target.matchId)!, 2).origin).toBe('ENTRY')
+    expect(saved.matches.find(m => m.id === target.matchId)!.slot2_origin).toBe('BYE')
+  })
+  it('removes a BYE, fills it from zones and gives the pass to a different pair', () => {
+    const { snapshot, editor } = fixture(20)
+    const bye = snapshot.matches.find(match => match.slot2_origin === 'BYE')!
+    const target: FreeSlot = { matchId: bye.id, slot: 2 }
+    const other = place(snapshot, '16VOS', 2, 2)
+    let draft = toggleFreeBye(snapshot, snapshot, editor, target)
+    expect(draft.effective_capacity).toBe(21)
+    draft = moveFreeEntry(snapshot, draft, editor, zone(editor), target)
+    draft = toggleFreeBye(snapshot, draft, editor, other)
+    expect(draft.effective_capacity).toBe(20)
+    expect(draft.assigned_count).toBe(1)
+    expect(draft.matches.every(m => !m.winner_id && !m.bye_processed)).toBe(true)
+    expect(() => toggleFreeBye(snapshot, draft, editor, target)).toThrow('Mové o quitá')
+    expect(() => toggleFreeBye(snapshot, draft, editor, place(snapshot, '16VOS', 2))).toThrow('dos pases')
+    expect(() => toggleFreeBye(snapshot, draft, editor, place(snapshot, '8VOS', 1))).toThrow('entrada inicial')
+  })
+  it('fills a BYE directly from zones but keeps processed and played passes locked', () => {
+    const { snapshot, editor } = fixture(20)
+    const bye = snapshot.matches.find(match => match.slot2_origin === 'BYE')!
+    const target: FreeSlot = { matchId: bye.id, slot: 2 }
+    expect(moveFreeEntry(snapshot, snapshot, editor, zone(editor), target).effective_capacity).toBe(21)
+    bye.bye_processed = true
+    expect(() => toggleFreeBye(snapshot, snapshot, editor, target)).toThrow('Deshacé el BYE')
+    expect(() => moveFreeEntry(snapshot, snapshot, editor, zone(editor), target)).toThrow('actividad deportiva')
   })
   it('protects played matches and WINNER participants from selection/removal', () => {
     const { snapshot, editor } = fixture(), a = place(snapshot, '16VOS', 1)

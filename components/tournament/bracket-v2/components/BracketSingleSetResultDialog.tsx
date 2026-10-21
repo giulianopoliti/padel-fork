@@ -17,12 +17,15 @@ import { useMatchManagement } from '../hooks/useMatchManagement'
 interface BracketSingleSetResultDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  match: BracketMatchV2
-  couple1: CoupleData
-  couple2: CoupleData
+  match: Pick<BracketMatchV2, 'id' | 'round' | 'order_in_round' | 'result'>
+  couple1: Pick<CoupleData, 'id' | 'name' | 'player1_details' | 'player2_details'>
+  couple2: Pick<CoupleData, 'id' | 'name' | 'player1_details' | 'player2_details'>
   tournamentId: string
   isModifyMode?: boolean
   onResultSaved?: () => void
+  onSaveResult?: (score1: number, score2: number) => Promise<void>
+  saving?: boolean
+  saveError?: string | null
 }
 
 const isValidSetScore = (c1: number, c2: number): boolean => {
@@ -36,8 +39,8 @@ const isValidSetScore = (c1: number, c2: number): boolean => {
 const formatPlayerName = (first?: string | null, last?: string | null) =>
   `${first || ''} ${last || ''}`.trim()
 
-const formatCoupleLabel = (couple: CoupleData) =>
-  `${formatPlayerName(couple.player1_details?.first_name, couple.player1_details?.last_name)} / ${formatPlayerName(couple.player2_details?.first_name, couple.player2_details?.last_name)}`
+const formatCoupleLabel = (couple: Pick<CoupleData, 'name' | 'player1_details' | 'player2_details'>) =>
+  couple.name || `${formatPlayerName(couple.player1_details?.first_name, couple.player1_details?.last_name)} / ${formatPlayerName(couple.player2_details?.first_name, couple.player2_details?.last_name)}`
 
 export function BracketSingleSetResultDialog({
   open,
@@ -48,6 +51,9 @@ export function BracketSingleSetResultDialog({
   tournamentId,
   isModifyMode = false,
   onResultSaved,
+  onSaveResult,
+  saving = false,
+  saveError,
 }: BracketSingleSetResultDialogProps) {
   const [couple1Score, setCouple1Score] = useState('')
   const [couple2Score, setCouple2Score] = useState('')
@@ -55,6 +61,9 @@ export function BracketSingleSetResultDialog({
   const couple1InputRef = useRef<HTMLInputElement>(null)
 
   const [matchState, matchActions] = useMatchManagement(tournamentId)
+  const existingSet = match.result?.sets?.[0]
+  const existingScore1 = existingSet?.slot1Score
+  const existingScore2 = existingSet?.slot2Score
 
   useEffect(() => {
     if (!open) return
@@ -77,7 +86,7 @@ export function BracketSingleSetResultDialog({
     }
     setError(null)
     setTimeout(() => couple1InputRef.current?.focus(), 100)
-  }, [open, isModifyMode, match])
+  }, [open, isModifyMode, match.id, existingScore1, existingScore2])
 
   const c1 = parseInt(couple1Score, 10)
   const c2 = parseInt(couple2Score, 10)
@@ -85,12 +94,17 @@ export function BracketSingleSetResultDialog({
   const canSubmit = isValid && couple1Score !== '' && couple2Score !== ''
 
   const handleSave = async () => {
+    if (saving || matchState.updatingResult) return
     if (!canSubmit) {
       setError('Ingresá un resultado válido de pádel (1 set).')
       return
     }
 
     setError(null)
+    if (onSaveResult) {
+      await onSaveResult(c1, c2)
+      return
+    }
     const winnerId = c1 > c2 ? couple1.id : couple2.id
     const result = matchActions.createSingleSetResult(c1, c2, winnerId)
     const success = await matchActions.updateResult(match.id, result, true)
@@ -119,6 +133,7 @@ export function BracketSingleSetResultDialog({
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-semibold text-slate-900">{formatCoupleLabel(couple1)}</span>
                 <Input
+                  aria-label={`Games de ${formatCoupleLabel(couple1)}`}
                   ref={couple1InputRef}
                   type="text"
                   inputMode="numeric"
@@ -126,20 +141,21 @@ export function BracketSingleSetResultDialog({
                   value={couple1Score}
                   onChange={(e) => setCouple1Score(e.target.value.replace(/\D/g, '').slice(0, 1))}
                   className="h-10 w-12 text-center text-lg font-bold"
-                  disabled={matchState.updatingResult}
+                  disabled={(saving || matchState.updatingResult)}
                 />
               </div>
               <div className="text-center text-xs font-bold uppercase text-slate-400">vs</div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-semibold text-slate-900">{formatCoupleLabel(couple2)}</span>
                 <Input
+                  aria-label={`Games de ${formatCoupleLabel(couple2)}`}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
                   value={couple2Score}
                   onChange={(e) => setCouple2Score(e.target.value.replace(/\D/g, '').slice(0, 1))}
                   className="h-10 w-12 text-center text-lg font-bold"
-                  disabled={matchState.updatingResult}
+                  disabled={(saving || matchState.updatingResult)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && canSubmit) {
                       e.preventDefault()
@@ -158,20 +174,20 @@ export function BracketSingleSetResultDialog({
             </div>
           )}
 
-          {error && (
+          {(error || saveError) && (
             <div className="flex items-center gap-2 rounded-surface bg-red-50 p-2 text-sm text-red-700">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              {error}
+              {error || saveError}
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={matchState.updatingResult}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={(saving || matchState.updatingResult)}>
             Cancelar
           </Button>
-          <Button onClick={() => void handleSave()} disabled={!canSubmit || matchState.updatingResult}>
-            {matchState.updatingResult ? (
+          <Button onClick={() => void handleSave()} disabled={!canSubmit || (saving || matchState.updatingResult)}>
+            {(saving || matchState.updatingResult) ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Guardando...

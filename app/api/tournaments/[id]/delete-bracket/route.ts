@@ -1,3 +1,8 @@
+import { revalidatePath } from 'next/cache'
+import { isAmericanLibreTournament } from '@/lib/services/americano-libre-format'
+import { resetFreeTournament } from '@/lib/services/americano-libre-reset'
+import { FreeBracketPersistenceError } from '@/lib/services/americano-libre-persistence'
+import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 /**
  * Delete Tournament Bracket API Endpoint
  * DELETE /api/tournaments/[id]/delete-bracket
@@ -7,7 +12,7 @@
 
 import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import type { BracketKey } from '@/types/tournament-format-v2'
 import { normalizeBracketKey } from '@/lib/services/bracket-key-policy'
 
@@ -58,7 +63,7 @@ export async function DELETE(
 
     const { data: tournament, error: tournamentError } = await supabase
       .from('tournaments')
-      .select('id, name, status, bracket_generated_at, placeholder_brackets_generated_at')
+      .select('id, name, status, type, format_config, bracket_generated_at, placeholder_brackets_generated_at')
       .eq('id', tournamentId)
       .single()
 
@@ -67,6 +72,20 @@ export async function DELETE(
         { success: false, error: 'Tournament not found' },
         { status: 404 }
       )
+    }
+
+    if (isAmericanLibreTournament(tournament)) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return NextResponse.json({ success: false, error: 'Iniciá sesión' }, { status: 401 })
+      if (!(await checkTournamentPermissions(user.id, tournamentId)).hasPermission) {
+        return NextResponse.json({ success: false, error: 'Sin permisos sobre el torneo' }, { status: 403 })
+      }
+      if (deletionTarget.mode === 'ONE' && deletionTarget.bracketKey !== 'MAIN') {
+        return NextResponse.json({ success: false, error: 'La llave libre es MAIN' }, { status: 400 })
+      }
+      await resetFreeTournament(await createClientServiceRole(), tournamentId, user.id, 'ZONE_PHASE')
+      revalidatePath(`/tournaments/${tournamentId}`, 'layout')
+      return NextResponse.json({ success: true, message: 'Llave eliminada. El torneo volvió a fase de zonas.' })
     }
 
     let existingSeedsQuery = supabase
@@ -322,7 +341,7 @@ export async function GET(
 
     const { data: tournament } = await supabase
       .from('tournaments')
-      .select('id, name, status, bracket_generated_at, placeholder_brackets_generated_at')
+      .select('id, name, status, type, format_config, bracket_generated_at, placeholder_brackets_generated_at')
       .eq('id', tournamentId)
       .single()
 

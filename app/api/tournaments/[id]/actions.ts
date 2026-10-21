@@ -1,3 +1,4 @@
+import { saveFreeZoneResult } from '@/lib/services/americano-libre-zone-result'
 import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient, createClientServiceRole } from "@/utils/supabase/server";
 import { snakeAssignCouplesToZones } from "@/utils/zone-utils";
@@ -1394,7 +1395,7 @@ export async function saveMatchResult(tournamentId: string, matchId: string, cou
   // 3. Verificar que el partido exista y obtener su estado actual + couple IDs
   const { data: matchRow, error: matchErr } = await supabase
     .from("matches")
-    .select("id, status, couple1_id, couple2_id")
+    .select("id, status, zone_id, couple1_id, couple2_id")
     .eq("id", matchId)
     .eq("tournament_id", tournamentId)
     .single()
@@ -1402,7 +1403,7 @@ export async function saveMatchResult(tournamentId: string, matchId: string, cou
   if (matchErr || !matchRow) return { success: false, error: "Match not found" }
 
   const isEditingFinishedMatch = matchRow.status === 'FINISHED'
-  if (couple1Score < 0 || couple2Score < 0) return { success: false, error: "Scores must be positive" }
+  if (![couple1Score, couple2Score].every((score) => Number.isInteger(score) && score >= 0 && score <= 99)) return { success: false, error: "Scores must be positive" }
   if (couple1Score === couple2Score) return { success: false, error: "Scores must be different" }
 
   // ✅ CORRECCIÓN: Determinar qué score corresponde a qué pareja en DB
@@ -1411,16 +1412,26 @@ export async function saveMatchResult(tournamentId: string, matchId: string, cou
   let dbCouple1Score: number;
   let dbCouple2Score: number;
 
-  if (couple1Id === matchRow.couple1_id) {
+  if (couple1Id === matchRow.couple1_id && couple2Id === matchRow.couple2_id) {
     // Orden correcto: couple1 del dialog = couple1 de DB
     dbCouple1Score = couple1Score;
     dbCouple2Score = couple2Score;
-  } else if (couple1Id === matchRow.couple2_id) {
+  } else if (couple1Id === matchRow.couple2_id && couple2Id === matchRow.couple1_id) {
     // Orden invertido: couple1 del dialog = couple2 de DB
     dbCouple1Score = couple2Score;
     dbCouple2Score = couple1Score;
   } else {
     return { success: false, error: "Couple IDs do not match the match record" }
+  }
+
+  if (matchRow.zone_id) {
+    try {
+      const saved = await saveFreeZoneResult(supabase, tournamentId, user.id, matchId, dbCouple1Score, dbCouple2Score)
+      if (saved) return createApiResponse({ success: true, match: saved, isEditingFinishedMatch,
+        positionUpdate: { positionsUpdated: true, bracketAdvanced: false, placeholdersResolved: false } })
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'No se pudo guardar el resultado de zona' }
+    }
   }
 
   // ✅ Calcular ganador según los scores correctos de DB

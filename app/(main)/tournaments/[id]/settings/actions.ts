@@ -1,7 +1,11 @@
 "use server"
 
+import { FreeBracketPersistenceError } from '@/lib/services/americano-libre-persistence'
+import { isAmericanLibreTournament } from '@/lib/services/americano-libre-format'
+import { resetFreeTournament } from '@/lib/services/americano-libre-reset'
+
 import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import { linkTournamentClubs, unlinkTournamentClubs } from '@/lib/services/tournaments/club-links'
@@ -1184,7 +1188,7 @@ export async function backTournamentToNotStartedAction(
     // Verify that the tournament exists and is in zone phase
     const { data: tournament, error: tErr } = await supabase
       .from('tournaments')
-      .select('id, status')
+      .select('id, status, type, format_config')
       .eq('id', tournamentId)
       .single()
     
@@ -1202,6 +1206,12 @@ export async function backTournamentToNotStartedAction(
       }
     }
     
+    if (isAmericanLibreTournament(tournament)) {
+      await resetFreeTournament(await createClientServiceRole(), tournamentId, user.id, 'NOT_STARTED')
+      revalidatePath(`/tournaments/${tournamentId}`, 'layout')
+      return { success: true, message: 'Zonas y llave eliminadas. El torneo está no iniciado.' }
+    }
+
     // Get all zones from the tournament using the abstracted function
     const zonesResult = await getZonesFromTournament(tournamentId)
     
@@ -1268,6 +1278,7 @@ export async function backTournamentToNotStartedAction(
     }
 
   } catch (error) {
+    if (error instanceof FreeBracketPersistenceError) return { success: false, error: error.message }
     console.error('Error in backTournamentToNotStartedAction:', error)
     return {
       success: false,
@@ -1400,7 +1411,7 @@ export async function backTournamentFromBracketToZones(
     // Verify tournament exists and is in BRACKET_PHASE
     const { data: tournament, error: tErr } = await supabase
       .from('tournaments')
-      .select('id, status')
+      .select('id, status, type, format_config')
       .eq('id', tournamentId)
       .single()
     
@@ -1417,6 +1428,12 @@ export async function backTournamentFromBracketToZones(
         success: false,
         error: 'El torneo no está en fase de bracket. Solo se puede revertir desde este estado.'
       }
+    }
+
+    if (isAmericanLibreTournament(tournament)) {
+      await resetFreeTournament(await createClientServiceRole(), tournamentId, user.id, 'ZONE_PHASE')
+      revalidatePath(`/tournaments/${tournamentId}`, 'layout')
+      return { success: true, message: 'Llave eliminada. Se conservaron las zonas y sus resultados.' }
     }
 
     // ORDEN CORRECTO: Eliminar en orden inverso de dependencias FK
@@ -1496,6 +1513,7 @@ export async function backTournamentFromBracketToZones(
     }
 
   } catch (error) {
+    if (error instanceof FreeBracketPersistenceError) return { success: false, error: error.message }
     console.error('[backTournamentFromBracketToZones] Unexpected error:', error)
     return { success: false, error: `Error interno del servidor: ${error instanceof Error ? error.message : 'Unknown error'}` }
   }

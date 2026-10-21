@@ -35,9 +35,10 @@ describe('LIBRE sports HTTP authorization and revision', () => {
     expect((await POST(request({ ...valid, actorId: 'spoof' }), context)).status).toBe(400)
     expect(mutateFreeSports).not.toHaveBeenCalled()
   })
-  it('forwards only the authenticated actor and typed operations', async () => {
-    expect((await POST(request(valid), context)).status).toBe(200)
-    expect(mutateFreeSports).toHaveBeenCalledWith({ trusted: true }, id, 'verified-actor', valid)
+  it.each(['PROCESS_BYE', 'ASSIGN_AND_PROCESS_BYE'])('forwards only the authenticated actor for %s', async kind => {
+    const input = { expectedRevision: 3, operations: [{ kind, matchId: id }] }
+    expect((await POST(request(input), context)).status).toBe(200)
+    expect(mutateFreeSports).toHaveBeenCalledWith({ trusted: true }, id, 'verified-actor', input)
   })
   it('surfaces revision conflicts without retrying or reporting success', async () => {
     jest.mocked(mutateFreeSports).mockRejectedValue(new FreeBracketPersistenceError('Recargá', '40001'))

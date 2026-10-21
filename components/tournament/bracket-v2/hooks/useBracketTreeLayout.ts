@@ -38,12 +38,14 @@ export interface TreeConnectorPath {
   sourceMatchId: string
   targetMatchId: string
   d: string
+  inactive?: boolean
 }
 
-interface TreeRelation {
+export interface TreeRelation {
   parentMatchId: string
   childMatchId: string
   parentSlot: number
+  inactive?: boolean
 }
 
 interface TreeLayoutData {
@@ -66,6 +68,8 @@ interface UseBracketTreeLayoutOptions {
   tournamentId: string
   roundGroups: RoundGroupLike[]
   tournamentType?: 'AMERICAN' | 'LONG'
+  relations?: TreeRelation[]
+  cardExtraHeight?: number
 }
 
 interface UseBracketTreeLayoutResult {
@@ -107,7 +111,9 @@ function createFallbackRelations(roundGroups: RoundGroupLike[]): TreeRelation[] 
 export function useBracketTreeLayout({
   tournamentId,
   roundGroups,
-  tournamentType = 'AMERICAN'
+  tournamentType = 'AMERICAN',
+  relations,
+  cardExtraHeight = 0,
 }: UseBracketTreeLayoutOptions): UseBracketTreeLayoutResult {
   const [viewportWidth, setViewportWidth] = useState<number>(1400)
 
@@ -131,11 +137,13 @@ export function useBracketTreeLayout({
   const layout = useMemo<TreeLayoutData>(() => {
     const longCardExtraHeight = tournamentType === 'LONG' ? 18 : 0
     const desktopConfig = viewportWidth >= 1536
-      ? { cardWidth: 300, cardHeight: 230 + longCardExtraHeight, connectorAnchorY: 96, roundGap: 72, matchGap: 14, paddingTop: 56 }
+      ? { cardWidth: 300, cardHeight: 258 + longCardExtraHeight, connectorAnchorY: 96, roundGap: 72, matchGap: 14, paddingTop: 88 }
       : viewportWidth >= 1280
-        ? { cardWidth: 288, cardHeight: 222 + longCardExtraHeight, connectorAnchorY: 92, roundGap: 60, matchGap: 12, paddingTop: 52 }
-        : { cardWidth: 276, cardHeight: 214 + longCardExtraHeight, connectorAnchorY: 88, roundGap: 52, matchGap: 10, paddingTop: 48 }
+        ? { cardWidth: 288, cardHeight: 250 + longCardExtraHeight, connectorAnchorY: 92, roundGap: 60, matchGap: 12, paddingTop: 84 }
+        : { cardWidth: 276, cardHeight: 242 + longCardExtraHeight, connectorAnchorY: 88, roundGap: 52, matchGap: 10, paddingTop: 80 }
 
+    desktopConfig.cardHeight += cardExtraHeight
+    desktopConfig.connectorAnchorY += cardExtraHeight / 2
     const padding = { top: desktopConfig.paddingTop, right: 36, bottom: 32, left: 20 }
 
     if (roundGroups.length === 0) {
@@ -156,8 +164,7 @@ export function useBracketTreeLayout({
       }
     }
 
-    const fallbackRelations = createFallbackRelations(roundGroups)
-    const activeRelations = fallbackRelations
+    const activeRelations = relations ?? createFallbackRelations(roundGroups)
 
     const relationsByParent = new Map<string, TreeRelation[]>()
     activeRelations.forEach(relation => {
@@ -243,6 +250,7 @@ export function useBracketTreeLayout({
           id: `${relation.childMatchId}-${relation.parentMatchId}`,
           sourceMatchId: relation.childMatchId,
           targetMatchId: relation.parentMatchId,
+          inactive: relation.inactive,
           d: `M ${sourceX} ${sourceY} L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`
         }
       })
@@ -270,9 +278,9 @@ export function useBracketTreeLayout({
         height: desktopConfig.cardHeight,
         connectorAnchorY: desktopConfig.connectorAnchorY
       },
-      hasHierarchy: false
+      hasHierarchy: relations !== undefined
     }
-  }, [roundGroups, tournamentType, viewportWidth])
+  }, [roundGroups, tournamentType, viewportWidth, relations, cardExtraHeight])
 
   return { layout }
 }

@@ -36,7 +36,9 @@ try {
   created = true
   good(await exec(`export PGPASSWORD="$POSTGRES_PASSWORD"; pg_dump -U supabase_admin -d postgres --schema-only --no-owner --no-publications --no-subscriptions | psql -X -q -U supabase_admin -d ${database} -v ON_ERROR_STOP=1`))
   const migration = await readFile(new URL('../supabase/migrations/20261017213508_americano_libre_phase_one.sql', import.meta.url), 'utf8')
-  good(await run(`begin; ${migration} commit;`))
+  const existingFree = await run("select to_regclass('public.american_free_brackets') is not null;")
+  good(existingFree)
+  if (existingFree.stdout.trim() !== 't') good(await run(`begin; ${migration} commit;`))
   const tests = await readFile(new URL('../supabase/tests/americano_libre_phase_one.test.sql', import.meta.url), 'utf8')
   const tap = await run(tests)
   good(tap)
@@ -232,7 +234,9 @@ try {
   assert.equal((await run(`select count(*) from public.tournament_couple_seeds where tournament_id=${editorTournament};`)).stdout.trim(),seedCount.stdout.trim())
   console.log('Phase 3: real draft assignments, direct entry 29, chosen retreat 31, remove 32, swap, cancel, reload and atomic rejection passed')
   const sportsMigration = await readFile(new URL('../supabase/migrations/20261019221832_americano_libre_sports.sql', import.meta.url), 'utf8')
-  good(await run(`begin; ${sportsMigration} commit;`))
+  const existingSports = await run("select to_regprocedure('public.mutate_american_free_sports(uuid,uuid,bigint,jsonb,jsonb)') is not null;")
+  good(existingSports)
+  if (existingSports.stdout.trim() !== 't') good(await run(`begin; ${sportsMigration} commit;`))
   const sportsTests = await readFile(new URL('../supabase/tests/americano_libre_sports.test.sql', import.meta.url), 'utf8')
   const sportsTap = await run(sportsTests)
   good(sportsTap)
@@ -242,6 +246,18 @@ try {
   // every stale competitor is rejected before it can write anything.
   const sportsPrelude = sportsTests.split('\nselect ok(not has_function_privilege')[0].replace('select no_plan();', '')
   good(await run(`${sportsPrelude} commit;`))
+  const existingDirectBye = await run("select to_regprocedure('public.process_american_free_bye(uuid,uuid,bigint,uuid)') is not null;")
+  good(existingDirectBye)
+  if (existingDirectBye.stdout.trim() !== 't') {
+    const editableByes = await readFile(new URL('../supabase/migrations/20261021160305_americano_libre_edit_byes.sql', import.meta.url), 'utf8')
+    const directByeMigration = await readFile(new URL('../supabase/migrations/20261021163545_americano_libre_process_bye_direct.sql', import.meta.url), 'utf8')
+    good(await run(`begin; ${editableByes} ${directByeMigration} commit;`))
+  }
+  const directByeTests = await readFile(new URL('../supabase/tests/americano_libre_direct_bye.test.sql', import.meta.url), 'utf8')
+  const directByeTap = await run(directByeTests)
+  good(directByeTap)
+  assert.doesNotMatch(directByeTap.stdout, /(?:^|\n)not ok\b/, directByeTap.stdout)
+  console.log(`Direct BYE pgTAP: ${directByeTap.stdout.match(/(?:^|\n)1\.\.(\d+)/)?.[1]} assertions passed`)
   const tid = (key) => `american_free_test.fid('${key}')`
   const mid = (key, round, order) => `american_free_test.mid('${key}',${round},${order})`
   const sport = (key, revision, kind, round, order, a = null, b = null) => `select public.mutate_american_free_sports(${tid(key)},${tid('owner')},${revision},
@@ -272,6 +288,21 @@ try {
     assert.equal((await run(`select revision from public.american_free_brackets where tournament_id=${tid('sports-four')};`)).stdout.trim(), '4')
   }
   console.log('Phase 4 lock ordering: busy inscription/membership rows reject with reload conflict instead of waiting in a deadlock cycle')
+  const resetMigration = await readFile(new URL('../supabase/migrations/20261020161721_americano_libre_reset.sql', import.meta.url), 'utf8')
+  const existingReset = await run("select to_regprocedure('public.reset_american_free_tournament(uuid,uuid,text,bigint)') is not null;")
+  good(existingReset)
+  if (existingReset.stdout.trim() !== 't') good(await run(`begin; ${resetMigration} commit;`))
+  const resetTests = await readFile(new URL('../supabase/tests/americano_libre_reset.test.sql', import.meta.url), 'utf8')
+  const resetTap = await run(resetTests)
+  good(resetTap)
+  assert.doesNotMatch(resetTap.stdout, /(?:^|\n)not ok\b/, resetTap.stdout)
+  console.log(`Reset pgTAP: ${resetTap.stdout.match(/(?:^|\n)1\.\.(\d+)/)?.[1]} assertions passed`)
+  // Keep the exact same reset and editor on separate connections.
+  await race(layoutSave('sports-direct',0), `select public.reset_american_free_tournament(${tid('sports-direct')},${tid('owner')},'ZONE_PHASE',0);`)
+  await race(`select public.reset_american_free_tournament(${tid('sports-direct')},${tid('owner')},'ZONE_PHASE',1);`, layoutSave('sports-direct',1))
+  console.log('Reset concurrency: editor/reset in both orders leaves exactly one committed phase and rejects the stale competitor')
+
+
 } finally {
   if (created) good(await exec(`export PGPASSWORD="$POSTGRES_PASSWORD"; dropdb -U supabase_admin ${database}`))
 }

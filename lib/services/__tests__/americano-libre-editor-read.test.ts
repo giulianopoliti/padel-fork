@@ -4,6 +4,45 @@ import { createClientServiceRole } from '@/utils/supabase/server'
 jest.mock('@/utils/supabase/server', () => ({ createClientServiceRole: jest.fn() }))
 
 describe('LIBRE editor reference data', () => {
+  it.each([
+    { agenda: null, expectedAgenda: false },
+    { agenda: { id: randomUUID() }, expectedAgenda: true },
+  ])('loads organizer guards with a one-to-one schedule: $expectedAgenda', async ({ agenda, expectedAgenda }) => {
+    const matchId = randomUUID()
+    const responses: Record<string, unknown> = {
+      zone_positions: { data: [] },
+      inscriptions: { data: [] },
+      tournament_couple_disqualifications: { data: [] },
+      matches: { data: [{ id: matchId, result_couple1: null, result_couple2: null, court: null, sets: [], history: [], agenda }] },
+    }
+    const client = { from: (table: string) => {
+      const query = { select: () => query, eq: () => query, or: () => query, not: () => query, then: (resolve: (value: unknown) => unknown) => Promise.resolve(resolve(responses[table])) }
+      return query
+    } }
+    jest.mocked(createClientServiceRole).mockResolvedValue(client as never)
+    const result = await readFreeEditorData(client as never, randomUUID(), true)
+    expect(result.guards[matchId]).toEqual({ sports: false, agenda: expectedAgenda })
+  })
+
+  it.each([
+    { operations: ['PROCESS_BYE', 'UNDO_BYE'], expected: false },
+    { operations: ['RESULT', 'CLEAR_RESULT', 'PROCESS_BYE', 'UNDO_BYE'], expected: true },
+    { operations: ['OTHER'], expected: true },
+  ])('preserves sports protection after history $operations', async ({ operations, expected }) => {
+    const matchId = randomUUID()
+    const responses: Record<string, unknown> = {
+      zone_positions: { data: [] }, inscriptions: { data: [] }, tournament_couple_disqualifications: { data: [] },
+      matches: { data: [{ id: matchId, result_couple1: null, result_couple2: null, court: null, sets: [], agenda: [],
+        history: operations.map(free_operation => ({ id: randomUUID(), operation_metadata: { free_operation } })) }] },
+    }
+    const client = { from: (table: string) => {
+      const query = { select: () => query, eq: () => query, or: () => query, not: () => query, then: (resolve: (value: unknown) => unknown) => Promise.resolve(resolve(responses[table])) }
+      return query
+    } }
+    jest.mocked(createClientServiceRole).mockResolvedValue(client as never)
+    expect((await readFreeEditorData(client as never, randomUUID(), true)).guards[matchId].sports).toBe(expected)
+  })
+
   it('includes couples without results, reads sports/history/schedules and filters approval and disqualifications', async () => {
     const tournamentId = randomUUID(), zoneId = randomUUID(), id = randomUUID(), pending = randomUUID(), banned = randomUUID(), matchId = randomUUID()
     const rows = [id, pending, banned].map((couple_id, index) => ({ couple_id, position: index + 1, wins: null, losses: null, games_difference: null,

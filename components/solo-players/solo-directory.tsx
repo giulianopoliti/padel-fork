@@ -79,7 +79,9 @@ export const SoloDirectory = ({ tournamentId }: { tournamentId?: string }) => {
   const filtered = data.directory.filter(post => (!category || post.category_name === category) && (!side || post.preferred_side === side)
     && (!hand || post.preferred_hand === hand) && (scope === "all" || (scope === "general" ? !post.tournament_id : post.tournament_id === scope)))
   const ownPosts = data.ownPosts.filter(post => scope === "all" || (scope === "general" ? !post.tournament_id : post.tournament_id === scope))
-  const visiblePairs = data.pairs.filter(pair => scope === "all" || pair.tournament_id === scope)
+  // All inscriptions still prevent duplicate searches; this list only shows active pairs formed here.
+  const visiblePairs = data.pairs.filter(pair => pair.formedViaSoloPlayers && !pair.isEliminated
+    && (scope === "all" || pair.tournament_id === scope))
 
   return <div className={`${getTenantBranding().tournaments.theme.className} space-y-10`} aria-busy={loading}>
     <div className="flex flex-col justify-between gap-5 rounded-2xl bg-primary p-6 text-primary-foreground sm:flex-row sm:items-end sm:p-8">

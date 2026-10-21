@@ -121,7 +121,7 @@ export function ZoneConflictBadge({
             <p className="font-medium">{tooltipMessage}</p>
             {couple1Name && couple2Name && (
               <p className="text-xs opacity-80">
-                Haz clic en "Modo Edición" para reorganizar parejas si es necesario
+                Usá "Reorganizar parejas" si necesitás cambiar este cruce.
               </p>
             )}
           </div>

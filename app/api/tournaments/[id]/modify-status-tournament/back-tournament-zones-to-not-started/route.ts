@@ -1,14 +1,17 @@
+import { isAmericanLibreTournament } from '@/lib/services/americano-libre-format'
+import { resetFreeTournament } from '@/lib/services/americano-libre-reset'
+import { FreeBracketPersistenceError } from '@/lib/services/americano-libre-persistence'
 import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import { revalidatePath } from 'next/cache'
 import { getZonesFromTournament, deleteZonesAndData } from '../actions'
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export async function PATCH(
@@ -39,7 +42,7 @@ export async function PATCH(
     // Verificar que el torneo existe y está en fase de zonas
     const { data: tournament, error: tErr } = await supabase
       .from('tournaments')
-      .select('id, status')
+      .select('id, status, type, format_config')
       .eq('id', tournamentId)
       .single()
     
@@ -57,6 +60,12 @@ export async function PATCH(
       }, { status: 400 })
     }
     
+    if (isAmericanLibreTournament(tournament)) {
+      await resetFreeTournament(await createClientServiceRole(), tournamentId, user.id, 'NOT_STARTED')
+      revalidatePath(`/tournaments/${tournamentId}`, 'layout')
+      return NextResponse.json({ success: true, message: 'Fase revertida correctamente' })
+    }
+
     // Obtener todas las zonas del torneo usando la función abstraída
     const zonesResult = await getZonesFromTournament(tournamentId)
     
@@ -111,7 +120,7 @@ export async function PATCH(
     console.error('Error in back-tournament-zones-to-not-started:', error)
     return NextResponse.json({
       success: false,
-      error: 'Internal server error'
-    }, { status: 500 })
+      error: error instanceof FreeBracketPersistenceError ? error.message : 'Internal server error'
+    }, { status: error instanceof FreeBracketPersistenceError ? error.status : 500 })
   }
 }
