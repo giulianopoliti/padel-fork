@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { supabaseAdmin, verifyAdmin } from "@/lib/supabase-admin"
+import { addBillingMonths, isBillingMonth } from "@/lib/billing/financials"
 import {
   buildChargePayload,
   getBillingContext,
@@ -21,6 +22,7 @@ const installmentSchema = z.object({
 const createCollectionSchema = z.object({
   tournamentIds: z.array(z.string().uuid()).min(1).max(100),
   maintenanceAmountPerInstallmentArs: amountSchema,
+  firstMonth: z.string().refine(isBillingMonth, "Mes de facturación inválido"),
   installments: z.array(installmentSchema).min(1).max(24),
 })
 
@@ -230,6 +232,10 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
 
     const tournamentIds = Array.from(new Set(parsed.tournamentIds))
     const dashboard = await getTenantBillingDashboard()
+    if (!dashboard.monthlyMaintenanceAvailable) {
+      throw new Error("La creación de cuotas mensuales estará disponible cuando se publique la actualización de la base de datos")
+    }
+    addBillingMonths(parsed.firstMonth, parsed.installments.length - 1)
     const selectedItems = dashboard.items.filter((item) => tournamentIds.includes(item.tournamentId))
     if (selectedItems.length !== tournamentIds.length) throw new Error("Uno o más torneos no están disponibles")
     if (selectedItems.some((item) => item.status !== "PENDING")) {
@@ -255,7 +261,7 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
       throw new Error("La suma de las cuotas debe coincidir con torneos y mantenimiento")
     }
 
-    const { data, error } = await supabaseAdmin.rpc("create_billing_collection", {
+    const { data, error } = await supabaseAdmin.rpc("create_billing_collection_monthly", {
       p_organization_id: context.organizationId,
       p_organizer_id: null,
       p_organizer_label: context.tenantName,
@@ -274,14 +280,42 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
         amount_ars: installment.amountArs,
       })),
       p_created_by: adminUserId,
+      p_first_month: parsed.firstMonth,
     })
-    if (error) throw error
+    if (error) throw new Error(error.code === "23505"
+      ? "Un torneo ya pertenece a otro cobro o el mantenimiento de uno de estos meses ya está facturado para esta cuenta."
+      : error.message)
 
     revalidatePath("/admin/cobros")
     return { success: true as const, collectionId: data as string }
   } catch (error) {
     console.error("[billing] Error creating collection:", error)
     return { success: false as const, error: error instanceof Error ? error.message : "No se pudo crear el cobro" }
+  }
+}
+
+const installmentMonthSchema = z.object({
+  installmentId: z.string().uuid(),
+  billingMonth: z.string().refine(isBillingMonth, "Mes de facturación inválido"),
+})
+
+export const assignBillingInstallmentMonth = async (input: z.infer<typeof installmentMonthSchema>) => {
+  try {
+    const adminUserId = await verifyAdmin()
+    const parsed = installmentMonthSchema.parse(input)
+    const context = await getBillingContext()
+    if (context.billingModel !== "FV_LEAGUE") throw new Error("Esta acción sólo está disponible para FV")
+    const dashboard = await getTenantBillingDashboard()
+    if (!dashboard.monthlyMaintenanceAvailable) throw new Error("La actualización de mantenimiento mensual todavía no está disponible")
+    const { error } = await supabaseAdmin.rpc("assign_billing_installment_month", {
+      p_installment_id: parsed.installmentId, p_organization_id: context.organizationId,
+      p_billing_month: parsed.billingMonth, p_assigned_by: adminUserId,
+    })
+    if (error) throw new Error(error.code === "23505" ? "El mantenimiento de ese mes ya está facturado para esta cuenta" : error.message)
+    revalidatePath("/admin/cobros")
+    return { success: true as const }
+  } catch (error) {
+    return { success: false as const, error: error instanceof Error ? error.message : "No se pudo asignar el mes" }
   }
 }
 
@@ -345,6 +379,8 @@ export const registerBillingInstallmentPayment = async (input: z.infer<typeof re
     const adminUserId = await verifyAdmin()
     const parsed = registerPaymentSchema.parse(input)
     const context = await getBillingContext()
+    // Fail closed on an inconsistent schedule, including before the additive migration is deployed.
+    if (context.billingModel === "FV_LEAGUE") await getTenantBillingDashboard()
     const { data: installment, error: lookupError } = await supabaseAdmin
       .from("billing_collection_installments")
       .select("id, collection:billing_collections!inner(organization_id)")
@@ -361,7 +397,7 @@ export const registerBillingInstallmentPayment = async (input: z.infer<typeof re
       p_payment_note: parsed.note || "",
       p_registered_by: adminUserId,
     })
-    if (error) throw error
+    if (error) throw new Error(error.message)
 
     revalidatePath("/admin/cobros")
     return { success: true as const }

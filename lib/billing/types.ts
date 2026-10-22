@@ -2,6 +2,7 @@ export type BillingModel = "FV_LEAGUE" | "TPE_PLAYER"
 export type BillingStatus = "PENDING" | "PAID" | "DISMISSED"
 export type BillingCollectionStatus = "OPEN" | "PARTIALLY_PAID" | "PAID"
 export type BillingInstallmentStatus = "PENDING" | "ISSUED" | "PAID"
+export type BillingFinancialStatus = BillingStatus | "PARTIALLY_PAID"
 
 export interface BillingSettings {
   organizationId: string
@@ -81,6 +82,12 @@ export interface BillingItem extends BillingSnapshot {
   resolvedAt: string | null
   updatedAt: string | null
   isEligible: boolean
+  financialStatus: BillingFinancialStatus
+  amountPaidArs: number
+  balanceArs: number
+  collectionId: string | null
+  paidInstallments: number
+  totalInstallments: number
 }
 
 export interface BillingCollectionTournament {
@@ -99,6 +106,8 @@ export interface BillingInstallment {
   status: BillingInstallmentStatus
   issuedAt: string | null
   paidAt: string | null
+  billingMonth: string | null
+  maintenanceAmountArs: number
 }
 
 export interface BillingCollection {
@@ -124,6 +133,7 @@ export interface BillingDashboardData {
   settings: BillingSettings
   items: BillingItem[]
   collections: BillingCollection[]
+  monthlyMaintenanceAvailable: boolean
   weekStart: string | null
   weekEnd: string | null
 }

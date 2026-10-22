@@ -43,6 +43,8 @@ import {
   updateBillingSettings,
 } from "@/app/api/admin/billing/actions"
 import { addDaysToDateOnly, buildBillingInstallments } from "@/lib/billing/rules"
+import { addBillingMonths, allocateCollection, canSelectBillingItem, formatBillingMonth, isBillingMonth, matchesBillingStatus, summarizeBilling, type BillingStatusFilter } from "@/lib/billing/financials"
+import { InstallmentMonthEditor } from "./installment-month-editor"
 import type { BillingCollection, BillingDashboardData, BillingInstallment, BillingItem, BillingStatus } from "@/lib/billing/types"
 
 const formatCurrency = (amount: number) =>
@@ -81,6 +83,21 @@ const getStatusBadge = (status: BillingStatus) => {
   return <Badge className="bg-amber-100 text-amber-800">Pendiente</Badge>
 }
 
+const getItemStatusBadge = (item: BillingItem) => {
+  if (item.financialStatus === "PARTIALLY_PAID") return (
+    <div className="space-y-1">
+      <Badge className="whitespace-nowrap bg-sky-100 text-sky-800">Cobro parcial · {Math.round(item.amountPaidArs / item.amountArs * 100)}%</Badge>
+      <p className="text-xs text-slate-500">{item.paidInstallments} de {item.totalInstallments} cuotas cobradas</p>
+    </div>
+  )
+  if (item.financialStatus === "PENDING" && item.billingModel === "FV_LEAGUE") return (
+    <div className="space-y-1"><Badge className="bg-amber-100 text-amber-800">Sin cobrar</Badge>
+      {item.collectionId && <p className="text-xs text-slate-500">En {item.totalInstallments} cuotas</p>}
+    </div>
+  )
+  return getStatusBadge(item.financialStatus)
+}
+
 const formatTournamentStatus = (status: string) => {
   if (status === "BRACKET_PHASE") return "Fase de llaves"
   if (status === "ZONE_PHASE") return "Fase de zonas"
@@ -100,10 +117,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
   const [confirmation, setConfirmation] = useState<Confirmation>(null)
-  const [statusFilter, setStatusFilter] = useState<"ALL" | BillingStatus>("ALL")
+  const [statusFilter, setStatusFilter] = useState<BillingStatusFilter>("ALL")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTournamentIds, setSelectedTournamentIds] = useState<string[]>([])
   const [installmentCount, setInstallmentCount] = useState("2")
+  const [firstMonth, setFirstMonth] = useState("")
   const [maintenanceAmountPerInstallment, setMaintenanceAmountPerInstallment] = useState("0")
   const [fvAmountUpTo16, setFvAmountUpTo16] = useState(String(data.settings.fvAmountUpTo16))
   const [fvAmountOver16, setFvAmountOver16] = useState(String(data.settings.fvAmountOver16))
@@ -120,24 +138,25 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   const filteredItems = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLocaleLowerCase("es")
     return data.items.filter((item) => {
-      const matchesStatus = statusFilter === "ALL" || item.status === statusFilter
+      const matchesStatus = matchesBillingStatus(item, statusFilter)
       const matchesSearch =
-        !normalizedSearch || item.tournamentName.toLocaleLowerCase("es").includes(normalizedSearch)
+        !normalizedSearch || `${item.tournamentName} ${item.clubName}`.toLocaleLowerCase("es").includes(normalizedSearch)
       return matchesStatus && matchesSearch
     })
   }, [data.items, searchQuery, statusFilter])
 
+  const financialSummary = useMemo(() => summarizeBilling(data.items, data.collections), [data.items, data.collections])
   const summaries = useMemo(
     () =>
       (["PENDING", "PAID", "DISMISSED"] as const).map((status) => {
-        const items = data.items.filter((item) => item.status === status)
+        const items = data.items.filter((item) => matchesBillingStatus(item, status))
         return {
           status,
           count: items.length,
-          amount: items.reduce((total, item) => total + item.amountArs, 0),
+          amount: status === "PENDING" ? financialSummary.pendingArs : status === "PAID" ? financialSummary.paidArs : financialSummary.dismissedArs,
         }
       }),
-    [data.items],
+    [data.items, financialSummary],
   )
 
   const pendingWeekItems = data.items.filter((item) => item.status === "PENDING")
@@ -214,12 +233,12 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   }, [data.items, selectedTournamentIds])
 
   const selectedPendingItems = useMemo(
-    () => selectedItems.filter((item) => item.status === "PENDING"),
+    () => selectedItems.filter(canSelectBillingItem),
     [selectedItems],
   )
 
   const pendingVisibleItems = useMemo(
-    () => filteredItems.filter((item) => item.status === "PENDING"),
+    () => filteredItems.filter(canSelectBillingItem),
     [filteredItems],
   )
 
@@ -242,19 +261,29 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     parsedInstallmentCount <= 24 &&
     Number.isSafeInteger(parsedMaintenanceAmount) &&
     parsedMaintenanceAmount >= 0
+  const monthlyPreview = useMemo(() => {
+    if (!isCollectionConfigurationValid || !isBillingMonth(`${firstMonth}-01`)) return []
+    try {
+      return buildBillingInstallments(selectedTotalAmount, parsedInstallmentCount, parsedMaintenanceAmount)
+        .map((installment, index) => ({ ...installment, month: addBillingMonths(`${firstMonth}-01`, index) }))
+    } catch { return [] }
+  }, [isCollectionConfigurationValid, firstMonth, selectedTotalAmount, parsedInstallmentCount, parsedMaintenanceAmount])
   const selectedMaintenanceTotal = isCollectionConfigurationValid
     ? parsedMaintenanceAmount * parsedInstallmentCount
     : 0
   const selectedCollectionTotal = selectedTotalAmount + selectedMaintenanceTotal
   const canCreateCollection =
     data.billingModel === "FV_LEAGUE" &&
+    data.monthlyMaintenanceAvailable &&
+    monthlyPreview.length > 0 &&
+    monthlyPreview.every((installment) => installment.amountArs > 0) &&
     selectedPendingItems.length > 0 &&
     isCollectionConfigurationValid &&
     Number.isSafeInteger(selectedCollectionTotal) &&
     selectedCollectionTotal <= 2_000_000_000
 
   useEffect(() => {
-    const availableIds = new Set(data.items.map((item) => item.tournamentId))
+    const availableIds = new Set(data.items.filter(canSelectBillingItem).map((item) => item.tournamentId))
     setSelectedTournamentIds((current) => current.filter((id) => availableIds.has(id)))
   }, [data.items])
 
@@ -291,6 +320,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
       const result = await createBillingCollection({
         tournamentIds: selectedPendingItems.map((item) => item.tournamentId),
         maintenanceAmountPerInstallmentArs: maintenanceAmount,
+        firstMonth: `${firstMonth}-01`,
         installments: buildBillingInstallments(selectedTotalAmount, count, maintenanceAmount),
       })
       if (!result.success) {
@@ -312,10 +342,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
       import("jspdf"),
       import("jspdf-autotable"),
     ])
-    const document = new jsPDF({ unit: "mm", format: "a4" })
+    const document = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+    const allocations = new Map(allocateCollection(collection).map((a) => [a.tournamentId, a]))
     const remainingBalance = Math.max(0, collection.balanceArs - (installment.status === "PAID" ? 0 : installment.amountArs))
     document.setFontSize(18)
-    document.text("Comprobante de cobro", 14, 18)
+    document.text(installment.status === "PAID" ? "Recibo de cuota cobrada" : "Cuota mensual a pagar", 14, 18)
     document.setFontSize(10)
     document.setTextColor(75, 85, 99)
     document.text(`Padel FV · Organizador: ${collection.organizerLabel}`, 14, 26)
@@ -325,12 +356,12 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     document.text(`Total del cobro: ${formatCurrency(collection.totalAmountArs)}`, 14, 43)
     document.text(`Subtotal de torneos: ${formatCurrency(collection.tournamentSubtotalArs)}`, 14, 51)
     document.text(
-      `Parte de torneos en esta cuota: ${formatCurrency(installment.amountArs - collection.maintenanceAmountPerInstallmentArs)}`,
+      `Parte de torneos en esta cuota: ${formatCurrency(installment.amountArs - installment.maintenanceAmountArs)}`,
       14,
       59,
     )
     document.text(
-      `Mantenimiento en esta cuota: ${formatCurrency(collection.maintenanceAmountPerInstallmentArs)}`,
+      `Mantenimiento: ${formatCurrency(installment.maintenanceAmountArs)} · ${formatBillingMonth(installment.billingMonth)}`,
       14,
       67,
     )
@@ -339,15 +370,19 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
       14,
       75,
     )
-    document.text(`Saldo pendiente luego de esta cuota: ${formatCurrency(remainingBalance)}`, 14, 83)
+    document.text(installment.status === "PAID"
+      ? `Cobrada el ${formatDate(installment.paidAt)} · Saldo actual: ${formatCurrency(collection.balanceArs)}`
+      : `Saldo actual: ${formatCurrency(collection.balanceArs)} · Saldo si se abona: ${formatCurrency(remainingBalance)}`, 14, 83)
     autoTable(document, {
-      head: [["Torneo", "Club", "Estado", "Parejas", "Importe"]],
+      head: [["Torneo", "Club", "Parejas", "Total torneo", "Parte en esta cuota", "Cobrado", "Saldo actual"]],
       body: collection.tournaments.map((tournament) => [
         tournament.tournamentName,
         tournament.clubName,
-        formatTournamentStatus(tournament.tournamentStatus),
         tournament.billableUnits,
         formatCurrency(tournament.amountArs),
+        formatCurrency(allocations.get(tournament.tournamentId)!.installments[installment.id]),
+        formatCurrency(allocations.get(tournament.tournamentId)!.amountPaidArs),
+        formatCurrency(allocations.get(tournament.tournamentId)!.balanceArs),
       ]),
       startY: 92,
       styles: { fontSize: 9, cellPadding: 3 },
@@ -355,7 +390,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     })
     document.setFontSize(8)
     document.setTextColor(107, 114, 128)
-    document.text(`Emitido el ${formatDate(new Date().toISOString())}`, 14, 287)
+    document.text(`Emitido el ${formatDate(new Date().toISOString())}`, 14, document.internal.pageSize.getHeight() - 10)
     document.save(`cobro-${collection.id.slice(0, 8)}-cuota-${installment.installmentNumber}.pdf`)
   }
 
@@ -377,7 +412,8 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
       import("jspdf"),
       import("jspdf-autotable"),
     ])
-    const document = new jsPDF({ unit: "mm", format: "a4" })
+    const document = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+    const allocations = new Map(allocateCollection(collection).map((a) => [a.tournamentId, a]))
     document.setFontSize(18)
     document.text("Cobro consolidado", 14, 18)
     document.setFontSize(10)
@@ -385,25 +421,36 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     document.text(`Padel FV · Organizador: ${collection.organizerLabel}`, 14, 26)
     document.text(`Subtotal de torneos: ${formatCurrency(collection.tournamentSubtotalArs)}`, 14, 33)
     document.text(
-      `Mantenimiento: ${formatCurrency(collection.maintenanceAmountPerInstallmentArs)} × ${collection.installments.length} cuotas = ${formatCurrency(collection.maintenanceAmountPerInstallmentArs * collection.installments.length)}`,
+      `Mantenimiento mensual total: ${formatCurrency(collection.installments.reduce((sum, i) => sum + i.maintenanceAmountArs, 0))}`,
       14,
       39,
     )
     document.text(
-      `Total: ${formatCurrency(collection.totalAmountArs)} · Saldo: ${formatCurrency(collection.balanceArs)}`,
+      `Total: ${formatCurrency(collection.totalAmountArs)} · Cobrado: ${formatCurrency(collection.amountPaidArs)} · Saldo: ${formatCurrency(collection.balanceArs)}`,
       14,
       45,
     )
+    let tournamentTableY = 52
     autoTable(document, {
-      head: [["Torneo", "Club", "Estado", "Parejas", "Importe"]],
+      head: [["Cuota", "Mes facturado", "Torneos", "Mantenimiento", "Total", "Estado", "Fecha de pago"]],
+      body: collection.installments.map((i) => [i.installmentNumber, formatBillingMonth(i.billingMonth),
+        formatCurrency(i.amountArs - i.maintenanceAmountArs), formatCurrency(i.maintenanceAmountArs),
+        formatCurrency(i.amountArs), i.status === "PAID" ? "Cobrada" : "Pendiente", i.paidAt ? formatDate(i.paidAt) : "—"]),
+      startY: 52, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [32, 51, 93] },
+      didDrawPage: ({ cursor }) => { tournamentTableY = (cursor?.y || 52) + 10 },
+    })
+    autoTable(document, {
+      head: [["Torneo", "Club", "Estado", "Parejas", "Total torneo", "Cobrado", "Saldo"]],
       body: collection.tournaments.map((tournament) => [
         tournament.tournamentName,
         tournament.clubName,
         formatTournamentStatus(tournament.tournamentStatus),
         tournament.billableUnits,
         formatCurrency(tournament.amountArs),
+        formatCurrency(allocations.get(tournament.tournamentId)!.amountPaidArs),
+        formatCurrency(allocations.get(tournament.tournamentId)!.balanceArs),
       ]),
-      startY: 52,
+      startY: tournamentTableY,
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [32, 51, 93] },
     })
@@ -614,6 +661,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
   })()
 
   const renderActions = (item: BillingItem) => {
+    if (item.collectionId) return (
+      <Button variant="outline" size="sm" asChild>
+        <a href={`#collection-${item.collectionId}`}>Ver cuotas</a>
+      </Button>
+    )
     if (item.status !== "PENDING") {
       return (
         <Button
@@ -773,7 +825,16 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 <div>
                   <p className="text-sm text-slate-500">{statusLabels[summary.status]}</p>
                   <p className="text-2xl font-bold text-slate-900">{formatCurrency(summary.amount)}</p>
-                  <p className="text-xs text-slate-500">{summary.count} torneos</p>
+                  <p className="text-xs text-slate-500">{summary.count} torneos{data.billingModel === "FV_LEAGUE" && summary.status === "PAID" ? " completos" : ""}</p>
+                  {data.billingModel === "FV_LEAGUE" && summary.status === "PENDING" && (
+                    <p className="mt-2 text-xs text-slate-600">
+                      Torneos: {formatCurrency(financialSummary.tournamentPendingArs)}<br />
+                      Mantenimiento: {formatCurrency(financialSummary.maintenancePendingArs)}
+                    </p>
+                  )}
+                  {data.billingModel === "FV_LEAGUE" && summary.status === "PAID" && (
+                    <p className="mt-2 text-xs text-slate-600">Incluye cuotas parciales y mantenimiento recibidos</p>
+                  )}
                 </div>
                 <Icon className="h-8 w-8 text-slate-400" />
               </CardContent>
@@ -788,16 +849,21 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               className="pl-10"
-              placeholder="Buscar torneo..."
+              placeholder="Buscar torneo o club..."
+              aria-label="Buscar torneo o club"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
             />
           </div>
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "ALL" | BillingStatus)}>
-            <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as BillingStatusFilter)}>
+            <SelectTrigger aria-label="Filtrar por estado de cobro"><SelectValue placeholder="Estado" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Todos los estados</SelectItem>
-              <SelectItem value="PENDING">Pendientes</SelectItem>
+              <SelectItem value="PENDING">Pendientes de cobro</SelectItem>
+              {data.billingModel === "FV_LEAGUE" && <>
+                <SelectItem value="UNPAID">Sin pagos</SelectItem>
+                <SelectItem value="PARTIALLY_PAID">Cobro parcial</SelectItem>
+              </>}
               <SelectItem value="PAID">Cobrados</SelectItem>
               <SelectItem value="DISMISSED">Descartados</SelectItem>
             </SelectContent>
@@ -855,8 +921,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
           <CardHeader>
             <CardTitle>Crear cobro en cuotas</CardTitle>
             <CardDescription>
-              El total se congela al crear el cobro. Podés combinar torneos pendientes de Padel FV.
+              Una cuota por mes, con torneos y mantenimiento separados. El total se congela al crear el cobro.
             </CardDescription>
+            {!data.monthlyMaintenanceAvailable && (
+              <p className="text-sm text-amber-700" role="status">Los nuevos cobros mensuales estarán disponibles cuando se publique la actualización de la base de datos. Los saldos actuales ya reflejan las cuotas cobradas.</p>
+            )}
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem_14rem_auto] md:items-end">
             <div className="min-w-0 flex-1">
@@ -882,7 +951,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
               />
             </div>
             <div className="w-full space-y-2">
-              <Label htmlFor="maintenance-per-installment">Mantenimiento por cuota (ARS)</Label>
+              <Label htmlFor="maintenance-per-installment">Mantenimiento mensual (ARS)</Label>
               <Input
                 id="maintenance-per-installment"
                 type="number"
@@ -892,7 +961,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 inputMode="numeric"
                 value={maintenanceAmountPerInstallment}
                 onChange={(event) => setMaintenanceAmountPerInstallment(event.target.value)}
-                placeholder="Ej. equivalente a USD 45"
+                placeholder="Importe mensual en pesos"
               />
               <p className="text-xs text-slate-500">Opcional. Ingresalo ya convertido a pesos.</p>
             </div>
@@ -900,6 +969,19 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
               <ReceiptText className="mr-2 h-4 w-4" />
               Crear cobro
             </Button>
+            <div className="space-y-2 md:col-span-full">
+              <Label htmlFor="billing-first-month">Primer mes facturado</Label>
+              <Input id="billing-first-month" type="month" min="2000-01" max="9998-12" className="w-full sm:w-56"
+                value={firstMonth} onChange={(event) => setFirstMonth(event.target.value)} />
+              <p className="text-xs text-slate-500">Cada cuota corresponde a un mes consecutivo. El mantenimiento de cada mes se factura una sola vez por cuenta.</p>
+              {monthlyPreview.length > 0 && <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                {monthlyPreview.map((i) => <li key={i.installmentNumber} className="rounded-md bg-slate-50 p-3">
+                  <p className="font-medium">Cuota {i.installmentNumber} · {formatBillingMonth(i.month)}</p>
+                  <p className="text-slate-600">Torneos {formatCurrency(i.amountArs - parsedMaintenanceAmount)} + mantenimiento {formatCurrency(parsedMaintenanceAmount)}</p>
+                  <p className="font-semibold">Total {formatCurrency(i.amountArs)}</p>
+                </li>)}
+              </ul>}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -908,14 +990,16 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         <Card>
           <CardHeader>
             <CardTitle>Cobros en cuotas</CardTitle>
-            <CardDescription>Saldo y estado persistidos por cada comprobante.</CardDescription>
+            <CardDescription>Cuotas mensuales con el detalle de torneos, mantenimiento y pagos recibidos.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {data.collections.map((collection) => (
-              <div key={collection.id} className="rounded-lg border p-4">
+              <div key={collection.id} id={`collection-${collection.id}`} tabIndex={-1}
+                className="scroll-mt-6 rounded-lg border p-4 focus:outline-none focus:ring-2 focus:ring-sky-500">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p className="font-semibold text-slate-900">{collection.organizerLabel}</p>
+                    <p className="text-xs text-slate-500">Cobro #{collection.id.slice(0, 8).toUpperCase()} · creado el {formatDate(collection.createdAt)}</p>
                     <p className="text-sm text-slate-500">{collection.tournaments.length} torneos · Total {formatCurrency(collection.totalAmountArs)}</p>
                   </div>
                   <Badge className={collection.status === "PAID" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>
@@ -924,11 +1008,25 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 </div>
                 <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
                   <p><span className="text-slate-500">Torneos:</span> {formatCurrency(collection.tournamentSubtotalArs)}</p>
-                  <p><span className="text-slate-500">Mantenimiento/cuota:</span> {formatCurrency(collection.maintenanceAmountPerInstallmentArs)}</p>
+                  <p><span className="text-slate-500">Mantenimiento total:</span> {formatCurrency(collection.installments.reduce((sum, i) => sum + i.maintenanceAmountArs, 0))}</p>
                   <p><span className="text-slate-500">Total:</span> {formatCurrency(collection.totalAmountArs)}</p>
                   <p><span className="text-slate-500">Cobrado:</span> {formatCurrency(collection.amountPaidArs)}</p>
                   <p><span className="text-slate-500">Saldo:</span> {formatCurrency(collection.balanceArs)}</p>
                 </div>
+                <details className="mt-3 rounded-md border p-3">
+                  <summary className="cursor-pointer text-sm font-medium">Ver {collection.tournaments.length} torneos incluidos por club</summary>
+                  <div className="mt-3 space-y-3">
+                    {Array.from(new Set(collection.tournaments.map((t) => t.clubName))).sort().map((club) => (
+                      <div key={club}><p className="text-sm font-semibold">{club}</p>
+                        <ul className="mt-1 space-y-1 text-sm text-slate-600">
+                          {collection.tournaments.filter((t) => t.clubName === club).map((t) => <li key={t.tournamentId}>
+                            {t.tournamentName} · {formatCurrency(t.amountArs)}
+                          </li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </details>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={() => handleDownloadCollectionPdf(collection)}>
                     <Download className="mr-2 h-4 w-4" />
@@ -950,14 +1048,17 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                     <div key={installment.id} className="flex flex-col gap-2 rounded-md bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
                       <div>
                         <p className="font-medium text-slate-900">Cuota {installment.installmentNumber} de {collection.installments.length} — {formatCurrency(installment.amountArs)}</p>
-                        {collection.maintenanceAmountPerInstallmentArs > 0 && (
-                          <p className="text-xs text-slate-500">
-                            Incluye {formatCurrency(collection.maintenanceAmountPerInstallmentArs)} de mantenimiento
-                          </p>
-                        )}
-                        <p className="text-xs text-slate-500">{installment.status === "PAID" ? "Cobrada" : installment.status === "ISSUED" ? "Emitida" : "Pendiente de emisión"}</p>
+                        <p className="text-sm font-medium text-slate-700">{formatBillingMonth(installment.billingMonth)}</p>
+                        <p className="text-xs text-slate-500">Torneos: {formatCurrency(installment.amountArs - installment.maintenanceAmountArs)} · Mantenimiento: {formatCurrency(installment.maintenanceAmountArs)}</p>
+                        <p className={installment.status === "PAID" ? "text-xs font-medium text-emerald-700" : "text-xs text-slate-500"}>
+                          {installment.status === "PAID" ? `Cobrada el ${formatDate(installment.paidAt)}` : installment.status === "ISSUED" ? "Emitida · pendiente de cobro" : "Pendiente de emisión"}
+                        </p>
+                        {!installment.billingMonth && data.monthlyMaintenanceAvailable && <InstallmentMonthEditor installmentId={installment.id} />}
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        {installment.status === "PAID" && <Button size="sm" variant="outline" onClick={() => handleDownloadInstallmentPdf(collection, installment)}>
+                          <Download className="mr-2 h-4 w-4" />Recibo PDF
+                        </Button>}
                         {installment.status !== "PAID" && (
                           <Button size="sm" variant="outline" disabled={isPending} onClick={() => handleIssueAndDownloadInstallment(collection, installment)}>
                             <Download className="mr-2 h-4 w-4" />
@@ -976,6 +1077,26 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {data.billingModel === "FV_LEAGUE" && data.collections.some((c) => c.installments.some((i) => i.maintenanceAmountArs > 0)) && (
+        <Card>
+          <CardHeader><CardTitle>Mantenimiento mensual</CardTitle>
+            <CardDescription>Estos importes ya están incluidos en las cuotas y en el resumen de cobros.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {data.collections.flatMap((c) => c.installments.filter((i) => i.maintenanceAmountArs > 0).map((i) => (
+              <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-3 text-sm">
+                <div><p className="font-medium">{formatBillingMonth(i.billingMonth)}</p>
+                  <a href={`#collection-${c.id}`} className="text-xs text-sky-700 underline underline-offset-2">{c.organizerLabel} · Cobro #{c.id.slice(0, 8).toUpperCase()} · Cuota {i.installmentNumber}</a>
+                </div>
+                <div className="flex items-center gap-3"><span className="font-semibold">{formatCurrency(i.maintenanceAmountArs)}</span>
+                  <Badge className={i.status === "PAID" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>{i.status === "PAID" ? "Cobrado" : "Pendiente"}</Badge>
+                </div>
+              </div>
+            )))}
           </CardContent>
         </Card>
       )}
@@ -1007,7 +1128,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                   </>
                 )}
                 <th className="px-3 py-3 font-medium">Tarifa</th>
-                <th className="px-3 py-3 font-medium">Importe</th>
+                <th className="px-3 py-3 font-medium">{data.billingModel === "FV_LEAGUE" ? "Total / Cobrado / Saldo" : "Importe"}</th>
                 <th className="px-3 py-3 font-medium">Estado</th>
                 <th className="px-3 py-3 font-medium">Acciones</th>
               </tr>
@@ -1016,7 +1137,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
               {filteredItems.map((item) => (
                 <tr key={item.tournamentId} className="border-b align-top hover:bg-slate-50">
                   <td className="px-3 py-4">
-                    {item.status === "PENDING" ? (
+                    {canSelectBillingItem(item) ? (
                       <Checkbox
                         checked={selectedTournamentIds.includes(item.tournamentId)}
                         onCheckedChange={() => handleToggleItemSelection(item.tournamentId)}
@@ -1040,8 +1161,14 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                       ? item.pricingRule === "FV_UP_TO_16" ? "Hasta 16" : "Más de 16"
                       : `${formatCurrency(item.unitAmountArs)} c/u`}
                   </td>
-                  <td className="px-3 py-4 font-semibold">{formatCurrency(item.amountArs)}</td>
-                  <td className="px-3 py-4">{getStatusBadge(item.status)}</td>
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <p className="font-semibold">{formatCurrency(item.amountArs)}</p>
+                    {data.billingModel === "FV_LEAGUE" && <>
+                      <p className="text-xs text-emerald-700">Cobrado: {formatCurrency(item.amountPaidArs)}</p>
+                      <p className="text-xs font-medium text-slate-700">Saldo: {formatCurrency(item.balanceArs)}</p>
+                    </>}
+                  </td>
+                  <td className="px-3 py-4">{getItemStatusBadge(item)}</td>
                   <td className="px-3 py-4">{renderActions(item)}</td>
                 </tr>
               ))}
@@ -1063,8 +1190,8 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                   <CardDescription>{item.clubName} · {formatDate(item.startDate)}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  {getStatusBadge(item.status)}
-                  {item.status === "PENDING" ? (
+                  {getItemStatusBadge(item)}
+                  {canSelectBillingItem(item) ? (
                     <Checkbox
                       checked={selectedTournamentIds.includes(item.tournamentId)}
                       onCheckedChange={() => handleToggleItemSelection(item.tournamentId)}
@@ -1084,6 +1211,10 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
               )}
               <div className="flex justify-between"><span className="text-slate-500">Tarifa</span><span>{formatCurrency(item.unitAmountArs)}</span></div>
               <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{formatCurrency(item.amountArs)}</span></div>
+              {data.billingModel === "FV_LEAGUE" && <>
+                <div className="flex justify-between text-emerald-700"><span>Cobrado</span><span>{formatCurrency(item.amountPaidArs)}</span></div>
+                <div className="flex justify-between font-semibold"><span>Saldo pendiente</span><span>{formatCurrency(item.balanceArs)}</span></div>
+              </>}
               {!item.isEligible && <p className="text-xs text-amber-700">Este es un registro histórico.</p>}
               <div className="pt-2">{renderActions(item)}</div>
             </CardContent>
