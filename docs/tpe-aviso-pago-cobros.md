@@ -19,6 +19,12 @@ No hay carga adicional de importes ni una copia de los datos. No suspende autom�
 
 **No se ejecutó la migración en remoto. El propietario la publica mediante su CI/CD de Supabase**, de acuerdo con `AGENTS.md`.
 
+### Historial previo de pruebas
+
+TPE ya tenía aplicada `20261023155112_tpe_billing_statements.sql`, mientras FV ya tenía `20261023160819_tpe_billing_notice.sql`. La versión anterior se recuperó del historial remoto y se conserva en el repositorio con operaciones idempotentes para admitir ambos órdenes de instalación. La migración nueva también admite que la tabla y su trigger ya existan. Se preservan los datos y el estado del interruptor; las tablas de publicaciones manuales permanecen como legado privado y la aplicación no las usa.
+
+No marcar la versión anterior como revertida ni ejecutar `db pull` para resolver este caso: el SQL sí fue aplicado. Publicar ambos archivos mediante el CI habitual y conservar `--include-all` permite que cada entorno aplique sólo la versión que le falta. Antes de publicar se puede ejecutar `db push --include-all --dry-run --skip-vault` con el `--project-ref` explícito para verificar el plan sin modificar secretos ni ejecutar migraciones.
+
 Se valida sesión, rol y pertenencia activa a TPE antes de leer los datos de la cuenta. Las lecturas del portal no crean configuraciones ni escriben en la base. FV no muestra el aviso ni ofrece acceso a `/cobros`.
 
 ## Pruebas locales

@@ -1,4 +1,6 @@
-CREATE TABLE public.tenant_billing_notices (
+-- La versión 20261023155112 ya creó esta tabla en los entornos que probaron
+-- el diseño inicial. Conservar tanto el estado del interruptor como su historial.
+CREATE TABLE IF NOT EXISTS public.tenant_billing_notices (
   organization_id uuid PRIMARY KEY REFERENCES public.organizaciones(id) ON DELETE CASCADE,
   enabled boolean NOT NULL DEFAULT false,
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -6,6 +8,7 @@ CREATE TABLE public.tenant_billing_notices (
 ALTER TABLE public.tenant_billing_notices ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.tenant_billing_notices FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.tenant_billing_notices TO service_role;
+DROP TRIGGER IF EXISTS tenant_billing_notices_updated_at ON public.tenant_billing_notices;
 CREATE TRIGGER tenant_billing_notices_updated_at
   BEFORE UPDATE ON public.tenant_billing_notices
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
