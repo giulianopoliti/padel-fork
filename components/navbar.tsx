@@ -32,7 +32,7 @@ const publicLinks = [
 
 const fvMainLinks = publicLinks.filter((link) => link.path !== "/clubes")
 
-const profileLinkPaths = ["/edit-profile", "/panel"]
+const profileLinkPaths = ["/edit-profile", "/panel", "/cobros"]
 
 const useNavbarLinks = (userRole: Role | null, authState: AuthState) => {
   return useMemo(() => {

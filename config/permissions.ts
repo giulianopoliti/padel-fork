@@ -14,6 +14,7 @@ export type IconName =
   | "User"
   | "LayoutDashboard"
   | "BookOpen"
+  | "ClipboardList"
 
 interface RouteConfig {
   path: string
@@ -69,7 +70,8 @@ const routePermissions: RouteConfig[] = [
 
 export function getLinksForRole(role: Role) {
   const soloRoute: RouteConfig = { path: "/jugadores-sueltos", label: "Jugadores sueltos", icon: "Users", roles: ["PLAYER", "CLUB", "COACH", "ADMIN", "ORGANIZADOR"] }
-  return [...routePermissions, ...(isSoloPlayersEnabled() ? [soloRoute] : [])]
+  const billingRoute: RouteConfig = { path: "/cobros", label: "Cobros", icon: "ClipboardList", roles: ["ORGANIZADOR", "ADMIN"] }
+  return [...routePermissions, ...(isSoloPlayersEnabled() ? [soloRoute] : []), ...(getTenantBranding().key === "padel-elite" ? [billingRoute] : [])]
     .filter((permission) => permission.roles.includes(role))
     .map((permission) => ({
       label: permission.label,
@@ -79,6 +81,9 @@ export function getLinksForRole(role: Role) {
 }
 
 export function checkRoutePermission(path: string, role?: Role | null): boolean {
+  if (path === "/cobros" || path.startsWith("/cobros/")) {
+    return getTenantBranding().key === "padel-elite" && (role === "ORGANIZADOR" || role === "ADMIN")
+  }
   // The page handles the feature gate; guests see a sign-in prompt without player data.
   if (path === "/jugadores-sueltos" || path.startsWith("/jugadores-sueltos/") || path === "/notificaciones") return true
   if (path === "/admin-login") {

@@ -2,6 +2,7 @@ import "server-only"
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { attachCollectionFinancials } from "@/lib/billing/financials"
+import { getPendingBillingWeeks } from "@/lib/billing/payment-details"
 import { getTenantBranding } from "@/config/tenant"
 import { getTenantOrganization } from "@/lib/services/tenant-organization.service"
 import {
@@ -146,6 +147,7 @@ export const getBillingContext = async (): Promise<BillingContext> => {
 
 export const getOrCreateBillingSettings = async (
   context: BillingContext,
+  createIfMissing = true,
 ): Promise<BillingSettings> => {
   const { data: existing, error: existingError } = await supabaseAdmin
     .from("tenant_billing_settings")
@@ -161,6 +163,13 @@ export const getOrCreateBillingSettings = async (
       throw new Error("La configuración de cobros no coincide con el tenant actual")
     }
     return toBillingSettings(existing as BillingSettingsRow)
+  }
+
+  if (!createIfMissing) {
+    return {
+      organizationId: context.organizationId, billingModel: context.billingModel, currency: "ARS",
+      ...BILLING_DEFAULTS, updatedAt: "",
+    }
   }
 
   const { data: created, error: createError } = await supabaseAdmin
@@ -354,9 +363,10 @@ const getSnapshotFromStoredCharge = (charge: BillingChargeRow): BillingSnapshot 
 
 export const getTenantBillingDashboard = async (
   requestedWeekStart?: string | null,
+  options?: { readOnly?: boolean },
 ): Promise<BillingDashboardData> => {
   const context = await getBillingContext()
-  const settings = await getOrCreateBillingSettings(context)
+  const settings = await getOrCreateBillingSettings(context, !options?.readOnly)
   const week = context.billingModel === "TPE_PLAYER" ? getWeekRange(requestedWeekStart) : null
 
   const [charges, tournaments, collectionData] = await Promise.all([
@@ -382,7 +392,11 @@ export const getTenantBillingDashboard = async (
     return isEligible && isStartDateInWeek(tournament.start_date, week.start, week.end)
   })
 
-  const inscriptions = await fetchInscriptions(visibleTournaments.map((tournament) => tournament.id))
+  // El resumen de deuda abarca todas las semanas, aunque se esté consultando otra.
+  const calculationTournaments = context.billingModel === "TPE_PLAYER"
+    ? tournaments.filter((tournament) => isTournamentEligibleForBilling(tournament, context.billingModel) || chargeByTournament.has(tournament.id))
+    : visibleTournaments
+  const inscriptions = await fetchInscriptions(calculationTournaments.map((tournament) => tournament.id))
   const inscriptionsByTournament = new Map<string, BillingInscription[]>()
 
   for (const inscription of inscriptions) {
@@ -391,7 +405,7 @@ export const getTenantBillingDashboard = async (
     inscriptionsByTournament.set(inscription.tournament_id, current)
   }
 
-  const items: BillingItem[] = visibleTournaments.map((tournament) => {
+  const calculatedItems: BillingItem[] = calculationTournaments.map((tournament) => {
     const charge = chargeByTournament.get(tournament.id)
     const useStoredSnapshot = charge && charge.status !== "PENDING"
     const snapshot = useStoredSnapshot
@@ -428,6 +442,11 @@ export const getTenantBillingDashboard = async (
     }
   })
 
+  const pendingWeeks = context.billingModel === "TPE_PLAYER"
+    ? getPendingBillingWeeks(calculatedItems, getWeekRange().start)
+    : []
+  const visibleTournamentIds = new Set(visibleTournaments.map((tournament) => tournament.id))
+  const items = calculatedItems.filter((item) => visibleTournamentIds.has(item.tournamentId))
   const visibleIds = new Set(items.map((item) => item.tournamentId))
   for (const collection of collections) {
     for (const tournament of collection.tournaments) {
@@ -460,6 +479,7 @@ export const getTenantBillingDashboard = async (
     monthlyMaintenanceAvailable,
     weekStart: week?.start || null,
     weekEnd: week?.end || null,
+    pendingWeeks,
   }
 }
 

@@ -125,6 +125,12 @@ export interface BillingCollection {
   installments: BillingInstallment[]
 }
 
+export interface BillingPendingWeek {
+  weekStart: string
+  weekEnd: string
+  amountArs: number
+}
+
 export interface BillingDashboardData {
   tenantKey: "padel-fv" | "padel-elite"
   tenantName: string
@@ -136,4 +142,5 @@ export interface BillingDashboardData {
   monthlyMaintenanceAvailable: boolean
   weekStart: string | null
   weekEnd: string | null
+  pendingWeeks?: BillingPendingWeek[]
 }

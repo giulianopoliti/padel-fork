@@ -1,7 +1,8 @@
 import type { BillingTournamentRow } from "../types"
 
 jest.mock("server-only", () => ({}), { virtual: true })
-jest.mock("@/config/tenant", () => ({ getTenantBranding: () => ({ key: "padel-fv", shortName: "FV" }) }))
+let mockTenantKey = "padel-fv"
+jest.mock("@/config/tenant", () => ({ getTenantBranding: () => ({ key: mockTenantKey, shortName: "FV" }) }))
 jest.mock("@/lib/services/tenant-organization.service", () => ({ getTenantOrganization: async () => ({ id: "org-fv" }) }))
 
 type Row = Record<string, unknown>
@@ -49,9 +50,43 @@ const seed = (count: number): void => {
   }
 }
 
-beforeEach(() => { mockLegacySchema=false; mockQueries.length=0; seed(2) })
+beforeEach(() => { mockTenantKey="padel-fv"; mockLegacySchema=false; mockQueries.length=0; seed(2) })
 
 describe("billing dashboard financial integration", () => {
+  it("counts all pending TPE weeks independently of the displayed week using the live rate", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-23T12:00:00Z"))
+    try {
+      mockTenantKey = "padel-elite"
+      mockTables.tenant_billing_settings[0].billing_model = "TPE_PLAYER"
+      mockTables.tenant_billing_settings[0].tpe_amount_per_player = 500
+      mockTables.tournaments = ["2026-10-13", "2026-10-15", "2026-10-20", "2026-10-27"].map((date, index) => ({
+        id: `t-${index}`, name: `Torneo ${index}`, organization_id: "org-fv", type: "AMERICAN",
+        status: "NOT_STARTED", es_prueba: false, start_date: `${date}T18:00:00Z`, created_at: `${date}T18:00:00Z`,
+      }))
+      mockTables.inscriptions = mockTables.tournaments.map((tournament) => ({
+        tournament_id: tournament.id, player_id: tournament.id, es_prueba: false,
+        player: { id: tournament.id, es_prueba: false },
+      }))
+      const first = await getTenantBillingDashboard("2026-10-19", { readOnly: true })
+      const other = await getTenantBillingDashboard("2026-10-26", { readOnly: true })
+      expect(first.items.map((row) => row.tournamentId)).toEqual(["t-2"])
+      expect(first.pendingWeeks).toEqual([
+        { weekStart: "2026-10-12", weekEnd: "2026-10-18", amountArs: 1000 },
+        { weekStart: "2026-10-19", weekEnd: "2026-10-25", amountArs: 500 },
+      ])
+      expect(other.pendingWeeks).toEqual(first.pendingWeeks)
+    } finally { jest.useRealTimers() }
+  })
+  it("uses exactly the same financial rows for the read-only portal", async () => {
+    expect(await getTenantBillingDashboard(null, { readOnly: true })).toEqual(await getTenantBillingDashboard())
+  })
+
+  it("does not create billing settings when the read-only portal is opened", async () => {
+    mockTables.tenant_billing_settings = []
+    // The query mock has no insert method: a write would fail this test.
+    const dashboard = await getTenantBillingDashboard(null, { readOnly: true })
+    expect(dashboard.settings.fvAmountUpTo16).toBe(50_000)
+  })
   it("reads legacy installments before the migration and reconstructs partial balances without guessing months", async () => {
     mockLegacySchema=true
     for (const row of mockTables.billing_collection_installments) {

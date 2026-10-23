@@ -45,6 +45,8 @@ import {
 import { addDaysToDateOnly, buildBillingInstallments } from "@/lib/billing/rules"
 import { addBillingMonths, allocateCollection, canSelectBillingItem, formatBillingMonth, isBillingMonth, matchesBillingStatus, summarizeBilling, type BillingStatusFilter } from "@/lib/billing/financials"
 import { InstallmentMonthEditor } from "./installment-month-editor"
+import { PaymentSummary } from "@/components/billing/payment-summary"
+import { TPE_BILLING_PAYMENT_ALIAS } from "@/lib/billing/payment-details"
 import type { BillingCollection, BillingDashboardData, BillingInstallment, BillingItem, BillingStatus } from "@/lib/billing/types"
 
 const formatCurrency = (amount: number) =>
@@ -112,7 +114,7 @@ type Confirmation =
   | { kind: "collection"; collection: BillingCollection }
   | null
 
-export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
+export const BillingClient = ({ data, readOnly = false }: { data: BillingDashboardData; readOnly?: boolean }) => {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -211,10 +213,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
     )
 
     const [head, ...body] = getWeekReportRows()
+    document.text(`Alias para transferencias: ${TPE_BILLING_PAYMENT_ALIAS}`, 14, 35)
     autoTable(document, {
       head: [head.map(String)],
       body: body.map((row) => row.map(String)),
-      startY: 35,
+      startY: 41,
       styles: { fontSize: 8, cellPadding: 2.5 },
       headStyles: { fillColor: [15, 118, 110] },
       columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 45 } },
@@ -289,7 +292,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
 
   const handleNavigateWeek = (days: number) => {
     if (!data.weekStart) return
-    router.push(`/admin/cobros?week=${addDaysToDateOnly(data.weekStart, days)}`)
+    router.push(`${readOnly ? "/cobros" : "/admin/cobros"}?week=${addDaysToDateOnly(data.weekStart, days)}`)
   }
 
   const handleCreateCollection = () => {
@@ -716,7 +719,9 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         </p>
       </div>
 
-      <Card>
+      {data.billingModel === "TPE_PLAYER" && <PaymentSummary weeks={data.pendingWeeks ?? []} basePath={readOnly ? "/cobros" : "/admin/cobros"} />}
+      {readOnly && <Card><CardContent className="pt-6"><p className="text-sm text-slate-500">Precio vigente por jugador</p><p className="mt-1 text-2xl font-semibold text-slate-900">{formatCurrency(data.settings.tpeAmountPerPlayer)}</p><p className="mt-2 text-sm text-slate-500">Los cobros pendientes usan la tarifa vigente. Los cerrados conservan su importe.</p></CardContent></Card>}
+      {!readOnly && <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings2 className="h-5 w-5" />
@@ -774,8 +779,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
             </div>
           </div>
         </CardContent>
-      </Card>
-
+      </Card>}
       {data.billingModel === "TPE_PLAYER" && data.weekStart && data.weekEnd && (
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between">
@@ -794,23 +798,23 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
-            <Button
+            {!readOnly && <Button
               disabled={isPending || pendingWeekItems.length === 0}
               className="bg-emerald-600 hover:bg-emerald-700"
               onClick={() => setConfirmation({ kind: "week" })}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
               Marcar semana como cobrada
-            </Button>
+            </Button>}
             <div className="flex flex-wrap gap-2">
               <Button disabled={data.items.length === 0} onClick={handleDownloadPdf}>
                 <Download className="mr-2 h-4 w-4" />
                 Descargar PDF
               </Button>
-              <Button variant="outline" disabled={data.items.length === 0} onClick={handleDownloadCsv}>
+              {!readOnly && <Button variant="outline" disabled={data.items.length === 0} onClick={handleDownloadCsv}>
                 <Download className="mr-2 h-4 w-4" />
                 Descargar CSV
-              </Button>
+              </Button>}
             </div>
           </CardContent>
         </Card>
@@ -871,7 +875,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         </CardContent>
       </Card>
 
-      <Card>
+      {!readOnly && <Card>
         <CardContent className="flex flex-col gap-3 pt-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="font-medium text-slate-900">{selectedPendingItems.length} pendientes seleccionados</p>
@@ -914,9 +918,8 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
             </Button>
           </div>
         </CardContent>
-      </Card>
-
-      {data.billingModel === "FV_LEAGUE" && (
+      </Card>}
+      {!readOnly && data.billingModel === "FV_LEAGUE" && (
         <Card>
           <CardHeader>
             <CardTitle>Crear cobro en cuotas</CardTitle>
@@ -1110,13 +1113,13 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-slate-600">
-                <th className="px-3 py-3 font-medium">
+                {!readOnly && <th className="px-3 py-3 font-medium">
                   <Checkbox
                     checked={allVisibleSelected}
                     onCheckedChange={(checked) => handleToggleSelectAllVisible(checked === true)}
                     aria-label="Seleccionar todos los pendientes visibles"
                   />
-                </th>
+                </th>}
                 <th className="px-3 py-3 font-medium">Torneo</th>
                 <th className="px-3 py-3 font-medium">Fecha</th>
                 {data.billingModel === "FV_LEAGUE" ? (
@@ -1130,13 +1133,13 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 <th className="px-3 py-3 font-medium">Tarifa</th>
                 <th className="px-3 py-3 font-medium">{data.billingModel === "FV_LEAGUE" ? "Total / Cobrado / Saldo" : "Importe"}</th>
                 <th className="px-3 py-3 font-medium">Estado</th>
-                <th className="px-3 py-3 font-medium">Acciones</th>
+                {!readOnly && <th className="px-3 py-3 font-medium">Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {filteredItems.map((item) => (
                 <tr key={item.tournamentId} className="border-b align-top hover:bg-slate-50">
-                  <td className="px-3 py-4">
+                  {!readOnly && <td className="px-3 py-4">
                     {canSelectBillingItem(item) ? (
                       <Checkbox
                         checked={selectedTournamentIds.includes(item.tournamentId)}
@@ -1144,7 +1147,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                         aria-label={`Seleccionar ${item.tournamentName}`}
                       />
                     ) : null}
-                  </td>
+                  </td>}
                   <td className="px-3 py-4">
                     <p className="font-medium text-slate-900">{item.tournamentName}</p>
                     <p className="text-xs text-slate-500">{item.clubName}</p>
@@ -1169,11 +1172,11 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                     </>}
                   </td>
                   <td className="px-3 py-4">{getItemStatusBadge(item)}</td>
-                  <td className="px-3 py-4">{renderActions(item)}</td>
+                  {!readOnly && <td className="px-3 py-4">{renderActions(item)}</td>}
                 </tr>
               ))}
               {filteredItems.length === 0 && (
-                <tr><td colSpan={data.billingModel === "TPE_PLAYER" ? 9 : 8} className="py-10 text-center text-slate-500">No hay cobros para estos filtros.</td></tr>
+                <tr><td colSpan={(data.billingModel === "TPE_PLAYER" ? 9 : 8) - (readOnly ? 2 : 0)} className="py-10 text-center text-slate-500">No hay cobros para estos filtros.</td></tr>
               )}
             </tbody>
           </table>
@@ -1191,7 +1194,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   {getItemStatusBadge(item)}
-                  {canSelectBillingItem(item) ? (
+                  {!readOnly && canSelectBillingItem(item) ? (
                     <Checkbox
                       checked={selectedTournamentIds.includes(item.tournamentId)}
                       onCheckedChange={() => handleToggleItemSelection(item.tournamentId)}
@@ -1216,7 +1219,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
                 <div className="flex justify-between font-semibold"><span>Saldo pendiente</span><span>{formatCurrency(item.balanceArs)}</span></div>
               </>}
               {!item.isEligible && <p className="text-xs text-amber-700">Este es un registro histórico.</p>}
-              <div className="pt-2">{renderActions(item)}</div>
+              {!readOnly && <div className="pt-2">{renderActions(item)}</div>}
             </CardContent>
           </Card>
         ))}
@@ -1225,7 +1228,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         )}
       </div>
 
-      <ConfirmDialog
+      {!readOnly && <ConfirmDialog
         isOpen={confirmation !== null}
         onClose={() => setConfirmation(null)}
         onConfirm={executeConfirmation}
@@ -1233,7 +1236,7 @@ export const BillingClient = ({ data }: { data: BillingDashboardData }) => {
         description={confirmationCopy.description}
         confirmText={confirmationCopy.confirmText}
         isDestructive={confirmationCopy.destructive}
-      />
+      />}
     </div>
   )
 }

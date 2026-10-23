@@ -86,6 +86,7 @@ export const updateBillingSettings = async (input: z.infer<typeof settingsSchema
     if (error) throw error
 
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const }
   } catch (error) {
     console.error("[billing] Error updating settings:", error)
@@ -121,6 +122,7 @@ export const setTournamentBillingStatus = async (
     if (error) throw error
 
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const }
   } catch (error) {
     console.error("[billing] Error changing charge status:", error)
@@ -169,6 +171,7 @@ export const setTournamentsBillingStatus = async (
     if (error) throw error
 
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const, updated: payloads.length }
   } catch (error) {
     console.error("[billing] Error bulk-changing charge status:", error)
@@ -213,6 +216,7 @@ export const markTpeWeekPaid = async (weekStart: string) => {
     if (error) throw error
 
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const, updated: payloads.length }
   } catch (error) {
     console.error("[billing] Error settling TPE week:", error)
@@ -287,6 +291,7 @@ export const createBillingCollection = async (input: z.infer<typeof createCollec
       : error.message)
 
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const, collectionId: data as string }
   } catch (error) {
     console.error("[billing] Error creating collection:", error)
@@ -313,6 +318,7 @@ export const assignBillingInstallmentMonth = async (input: z.infer<typeof instal
     })
     if (error) throw new Error(error.code === "23505" ? "El mantenimiento de ese mes ya está facturado para esta cuenta" : error.message)
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const }
   } catch (error) {
     return { success: false as const, error: error instanceof Error ? error.message : "No se pudo asignar el mes" }
@@ -335,6 +341,7 @@ export const cancelBillingCollection = async (input: z.infer<typeof cancelCollec
     if (error) throw new Error(error.message)
 
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const, releasedTournaments: Number(data) }
   } catch (error) {
     console.error("[billing] Error canceling collection:", error)
@@ -367,6 +374,7 @@ export const issueBillingInstallment = async (input: z.infer<typeof issueInstall
     if (error) throw error
 
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const }
   } catch (error) {
     console.error("[billing] Error issuing installment:", error)
@@ -400,6 +408,7 @@ export const registerBillingInstallmentPayment = async (input: z.infer<typeof re
     if (error) throw new Error(error.message)
 
     revalidatePath("/admin/cobros")
+    revalidatePath("/cobros")
     return { success: true as const }
   } catch (error) {
     console.error("[billing] Error registering installment payment:", error)

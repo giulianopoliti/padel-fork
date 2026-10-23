@@ -9,6 +9,7 @@ import Navbar from '@/components/navbar'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { getUserDetails } from '@/utils/db/getUserDetails'
 import { ensureSerializable } from '@/utils/serialization'
+import { PaymentNotice } from '@/components/billing/payment-notice'
 
 export default async function MainLayout({
   children,
@@ -73,6 +74,7 @@ export default async function MainLayout({
         <UserProvider initialUserDetails={serializedUserDetails}> 
           <InscriptionPaymentProvider>
           <Navbar />
+          <PaymentNotice />
           {children}
           <Toaster />
           <SpeedInsights />
