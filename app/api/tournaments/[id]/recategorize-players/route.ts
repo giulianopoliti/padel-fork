@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { PointsReviewError } from '@/lib/services/points/services/points-review.engine'
+import { throwPointsDatabaseError } from '@/lib/services/points/services/points-review.service'
 
 interface TournamentPlayer {
   id: string
@@ -24,10 +28,10 @@ interface RecategorizePlayersResponse {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<RecategorizePlayersResponse>> {
   
-  const tournamentId = params.id
+  const { id: tournamentId } = await params
   
   try {
     const supabase = await createClient()
@@ -169,169 +173,29 @@ export async function GET(
  * POST: Actualizar categorías de players
  * Body: { updates: Array<{playerId: string, newCategory: string}> }
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-): Promise<NextResponse<{ success: boolean; error?: string; updated?: number }>> {
-  
-  const tournamentId = params.id
-  
+const changesSchema = z.object({ updates: z.array(z.object({
+  playerId: z.string().uuid(), newCategory: z.string().min(1).max(60),
+  expectedScore: z.number().int(), expectedCategory: z.string().nullable(),
+}).strict()).min(1).max(512) }).strict()
+
+export const POST = async (request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    
-    // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'No autorizado - Usuario no encontrado'
-      }, { status: 401 })
-    }
-
-    // Verificar permisos usando la función centralizada
-    const permissionCheck = await checkTournamentPermissions(user.id, tournamentId)
-
-    if (!permissionCheck.hasPermission) {
-      return NextResponse.json({
-        success: false,
-        error: permissionCheck.reason || 'No autorizado - No tienes permisos para acceder a este torneo'
-      }, { status: 403 })
-    }
-
-    // Obtener datos del request
-    const body = await request.json()
-    const { updates } = body
-
-    if (!Array.isArray(updates) || updates.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'No se proporcionaron actualizaciones válidas'
-      }, { status: 400 })
-    }
-
-    // Validar que todas las categorías existen y obtener sus rangos
-    const categoryNames = [...new Set(updates.map(u => u.newCategory))]
-    const { data: validCategories, error: categoryError } = await supabase
-      .from('categories')
-      .select('name, lower_range, upper_range')
-      .in('name', categoryNames)
-
-    if (categoryError) {
-      return NextResponse.json({
-        success: false,
-        error: 'Error al validar categorías'
-      }, { status: 500 })
-    }
-
-    const validCategoryNames = new Set(validCategories?.map(c => c.name) || [])
-    const invalidCategories = categoryNames.filter(name => !validCategoryNames.has(name))
-
-    if (invalidCategories.length > 0) {
-      return NextResponse.json({
-        success: false,
-        error: `Categorías inválidas: ${invalidCategories.join(', ')}`
-      }, { status: 400 })
-    }
-
-    // Crear mapa de categorías con sus rangos para ajuste automático de puntaje
-    const categoryRanges = new Map(
-      validCategories?.map(cat => [cat.name, { lower_range: cat.lower_range, upper_range: cat.upper_range }]) || []
-    )
-
-    // Actualizar players por lotes con ajuste automático de puntaje
-    let updatedCount = 0
-    const batchSize = 10
-    const updateDetails: Array<{playerId: string, oldCategory: string, newCategory: string, oldScore: number, newScore: number}> = []
-
-    for (let i = 0; i < updates.length; i += batchSize) {
-      const batch = updates.slice(i, i + batchSize)
-      
-      for (const update of batch) {
-        // Obtener datos actuales del jugador
-        const { data: currentPlayer, error: playerError } = await supabase
-          .from('players')
-          .select('category_name, score')
-          .eq('id', update.playerId)
-          .single()
-
-        if (playerError) {
-          console.error(`Error fetching player ${update.playerId}:`, playerError)
-          continue
-        }
-
-        // Calcular nuevo puntaje basado en la nueva categoría
-        const categoryRange = categoryRanges.get(update.newCategory)
-        if (!categoryRange) {
-          console.error(`Category range not found for ${update.newCategory}`)
-          continue
-        }
-
-        const oldScore = Number(currentPlayer?.score) || 0
-        const newScore = categoryRange.lower_range // Asignar puntaje mínimo de la nueva categoría
-
-        // Actualizar categoría y puntaje
-        const { error } = await supabase
-          .from('players')
-          .update({ 
-            category_name: update.newCategory,
-            score: newScore
-          })
-          .eq('id', update.playerId)
-
-        if (error) {
-          console.error(`Error updating player ${update.playerId}:`, error)
-        } else {
-          updatedCount++
-          
-          // Registrar la recategorización en la tabla de auditoría
-          const recategorizationRecord = {
-            player_id: update.playerId,
-            tournament_id: tournamentId,
-            old_category_name: currentPlayer?.category_name || '',
-            new_category_name: update.newCategory,
-            old_score: oldScore,
-            new_score: newScore,
-            recategorized_by: user.id,
-            reason: 'Recategorización durante torneo - ajuste automático de puntaje',
-            tournament_context: true,
-            es_prueba: false
-          }
-
-          const { error: recategorizationError } = await supabase
-            .from('player_recategorizations')
-            .insert(recategorizationRecord)
-
-          if (recategorizationError) {
-            console.error(`Error registering recategorization for player ${update.playerId}:`, recategorizationError)
-            // No fallar la operación principal por esto, solo logear el error
-          } else {
-            console.log(`✅ Recategorization registered for player ${update.playerId}: ${currentPlayer?.category_name} → ${update.newCategory}`)
-          }
-
-          updateDetails.push({
-            playerId: update.playerId,
-            oldCategory: currentPlayer?.category_name || '',
-            newCategory: update.newCategory,
-            oldScore,
-            newScore
-          })
-        }
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      updated: updatedCount,
-      updateDetails // Devolver detalles de los cambios para mostrar en UI
-    })
-
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 })
+    const permission = await checkTournamentPermissions(user.id, id)
+    if (!permission.hasPermission) return NextResponse.json({ success: false, error: permission.reason }, { status: 403 })
+    const body = changesSchema.safeParse(await request.json().catch(() => null))
+    if (!body.success) return NextResponse.json({ success: false, error: 'Actualizá la lista y revisá los cambios enviados.' }, { status: 400 })
+    const service = await createClientServiceRole()
+    const { data, error: saveError } = await service.rpc('recategorize_tournament_players', { p_tournament_id: id, p_actor_id: user.id, p_updates: body.data.updates })
+    if (saveError) throwPointsDatabaseError(saveError)
+    for (const path of [`/tournaments/${id}`, '/ranking', '/my-players', '/profile']) revalidatePath(path)
+    return NextResponse.json(data)
   } catch (error) {
-    console.error('Error updating player categories:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Error interno del servidor'
-    }, { status: 500 })
+    if (error instanceof PointsReviewError) return NextResponse.json({ success: false, error: error.message }, { status: error.status })
+    console.error('[Manual categories]', error)
+    return NextResponse.json({ success: false, error: 'No se pudieron guardar las categorías.' }, { status: 500 })
   }
 }
-

@@ -46,6 +46,8 @@ interface Category {
 interface PlayerUpdate {
   playerId: string
   newCategory: string
+  expectedScore: number
+  expectedCategory: string | null
 }
 
 interface UpdateDetail {
@@ -156,22 +158,8 @@ const RecategorizePlayersPage: React.FC = () => {
     return pendingUpdates.get(playerId) || originalCategory
   }
 
-  // Calculate new score based on category
-  const getNewScoreForCategory = (categoryName: string): number => {
-    const category = categories.find(c => c.name === categoryName)
-    return category ? category.lower_range : 0
-  }
-
-  // Get preview of score change for a player
-  const getScorePreview = (playerId: string, originalScore: number): { newScore: number; hasChange: boolean } => {
-    const newCategory = pendingUpdates.get(playerId)
-    if (!newCategory) {
-      return { newScore: originalScore, hasChange: false }
-    }
-    
-    const newScore = getNewScoreForCategory(newCategory)
-    return { newScore, hasChange: newScore !== originalScore }
-  }
+  // Category decisions never replace the player's sporting score.
+  const getScorePreview = (_playerId: string, originalScore: number): { newScore: number; hasChange: boolean } => ({ newScore: originalScore, hasChange: false })
 
   // Show confirmation dialog
   const handleSaveClick = () => {
@@ -195,7 +183,9 @@ const RecategorizePlayersPage: React.FC = () => {
       
       const updates: PlayerUpdate[] = Array.from(pendingUpdates.entries()).map(([playerId, newCategory]) => ({
         playerId,
-        newCategory
+        newCategory,
+        expectedScore: players.find(player => player.id === playerId)!.score,
+        expectedCategory: players.find(player => player.id === playerId)!.category_name || null,
       }))
 
       const response = await fetch(`/api/tournaments/${tournamentId}/recategorize-players`, {
@@ -231,7 +221,7 @@ const RecategorizePlayersPage: React.FC = () => {
         setPlayers(prev => prev.map(player => {
           const newCategory = pendingUpdates.get(player.id)
           if (newCategory) {
-            const newScore = getNewScoreForCategory(newCategory)
+            const newScore = player.score
             return {
               ...player,
               category_name: newCategory,
@@ -254,10 +244,9 @@ const RecategorizePlayersPage: React.FC = () => {
 
       // Mostrar detalles de los cambios si están disponibles
       if (data.updateDetails && data.updateDetails.length > 0) {
-        const scoreChanges = data.updateDetails.filter((detail: UpdateDetail) => detail.oldScore !== detail.newScore)
         toast({
           title: "Cambios guardados exitosamente",
-          description: `Se actualizaron ${data.updated} jugadores. ${scoreChanges.length} cambios de puntaje aplicados.`,
+          description: `Se actualizaron ${data.updated} jugadores conservando sus puntajes.`,
           variant: "default"
         })
       } else {
@@ -333,7 +322,7 @@ const RecategorizePlayersPage: React.FC = () => {
                   Recategorizar Jugadores
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  Actualiza las categorías de los jugadores antes de calcular los puntos del torneo
+                  Elegí las categorías manualmente. Cada jugador conservará su puntaje actual.
                 </p>
               </div>
               

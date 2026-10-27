@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import { useToast } from '@/components/ui/use-toast'
 import { Trophy, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,16 +17,20 @@ interface Props {
   tournamentId: string
   finalization: ReturnType<typeof useTournamentFinalization>
   onFinalized?: () => void
+  onReviewPoints?: () => void
 }
 
 const cupNames: Record<BracketKey, string> = { MAIN: 'Torneo', GOLD: 'Copa Oro', SILVER: 'Copa Plata' }
 
-export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinalized }: Props) => {
+export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinalized, onReviewPoints }: Props) => {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [bonuses, setBonuses] = useState<TournamentBonuses>({})
   const [expectedRevision, setExpectedRevision] = useState<number | null | undefined>()
   const [conflict, setConflict] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const savingRef = useRef(false)
+  const { toast } = useToast()
   const router = useRouter()
   const editingBonuses = finalization.status === 'FINISHED_POINTS_PENDING'
   if (finalization.status !== 'BRACKET_PHASE' && !editingBonuses) return null
@@ -39,8 +43,10 @@ export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinali
     const bonus = bonuses[key]
     return bonus && [bonus.champion, bonus.finalist].every(points => Number.isSafeInteger(points) && points >= 0 && points <= 10000)
   })
-  const handleFinalize = async () => {
-    if (saving || conflict) return
+  const handleFinalize = async (reviewPoints: boolean) => {
+    if (savingRef.current || conflict) return
+    savingRef.current = true
+    setError(null)
     setSaving(true)
     let requiresReload = false
     try {
@@ -53,15 +59,18 @@ export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinali
         if (requiresReload) setConflict(true)
         throw new Error(data.error || 'No se pudo finalizar el torneo.')
       }
-      await finalization.refetch()
+      await finalization.refetch().catch(() => undefined)
+      setOpen(false)
+      if (reviewPoints) onReviewPoints?.()
       onFinalized?.()
       router.refresh()
-      setOpen(false)
-      toast.success(editingBonuses ? 'Bonos guardados. Podés revisar los puntos antes de aplicarlos.' : 'Torneo finalizado. Ya podés revisar puntos o recategorizar jugadores.')
+      toast({ title: editingBonuses ? 'Bonos guardados' : 'Torneo cerrado', description: reviewPoints ? 'Revisá los puntos y elegí los cambios manuales de categoría.' : 'Los puntos siguen pendientes. Podés retomar la revisión desde Llaves.' })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'No se pudo finalizar el torneo.')
-      if (!requiresReload) await finalization.refetch()
-    } finally { setSaving(false) }
+      const message = error instanceof Error ? error.message : 'No se pudo finalizar el torneo.'
+      setError(message)
+      toast({ title: 'No se pudo completar el cierre', description: message, variant: 'destructive' })
+      if (!requiresReload) await finalization.refetch().catch(() => undefined)
+    } finally { savingRef.current = false; setSaving(false) }
   }
 
   return (
@@ -73,15 +82,16 @@ export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinali
         </p>
       </div>
       <Button disabled={finalization.loading || (editingBonuses ? !finalization.allMatchesFinished : !finalization.canFinalize)} aria-describedby={`finalize-reason-${tournamentId}`}
-        onClick={() => { setBonuses(structuredClone(finalization.bonuses)); setExpectedRevision(finalization.expectedRevision); setConflict(false); setOpen(true) }}>
+        onClick={() => { setBonuses(structuredClone(finalization.bonuses)); setExpectedRevision(finalization.expectedRevision); setConflict(false); setError(null); setOpen(true) }}>
         <Trophy className="mr-2 h-4 w-4" />{actionLabel}
       </Button>
       <Dialog open={open} onOpenChange={value => { if (!saving) setOpen(value) }}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{actionLabel}</DialogTitle>
-            <DialogDescription>Elegí qué copas reciben bonos y cuántos puntos obtiene cada jugador. Los puntos se revisan y aplican después del cierre.</DialogDescription>
+            <DialogDescription>Elegí los bonos por jugador. Después vas a revisar los puntos y decidir los ascensos manualmente antes de acreditar.</DialogDescription>
           </DialogHeader>
+          {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</p>}
           {conflict && <div role="alert" className="space-y-2 text-sm"><p>La llave cambió. Recargá el estado antes de volver a finalizar.</p><Button variant="outline" onClick={async () => { await finalization.refetch(); setOpen(false); setConflict(false) }}>Recargar estado</Button></div>}
           <div className="space-y-5">
             {finalization.bracketKeys.map(key => {
@@ -97,7 +107,7 @@ export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinali
                   <div className="grid grid-cols-2 gap-3">
                     {(['champion', 'finalist'] as const).map(role => (
                       <div className="space-y-1.5" key={role}>
-                        <Label htmlFor={`${key}-${role}`}>{role === 'champion' ? 'Campeón' : 'Finalista'}</Label>
+                        <Label htmlFor={`${key}-${role}`}>{role === 'champion' ? 'Campeón' : 'Subcampeón'}</Label>
                         <Input id={`${key}-${role}`} type="number" min={0} max={10000} step={1} disabled={!bonus.enabled}
                           value={Number.isNaN(bonus[role]) ? '' : bonus[role]}
                           onChange={event => handleBonusChange(key, { [role]: event.target.value === '' ? NaN : Number(event.target.value) })} />
@@ -109,10 +119,11 @@ export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinali
               )
             })}
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="flex-wrap gap-2">
             <Button variant="outline" disabled={saving} onClick={() => setOpen(false)}>{editingBonuses ? 'Cancelar' : 'Seguir sin finalizar'}</Button>
-            <Button disabled={saving || conflict || !validBonuses} onClick={handleFinalize}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingBonuses ? 'Guardar bonos' : 'Finalizar torneo'}
+            {!editingBonuses && <Button variant="outline" disabled={saving || conflict || !validBonuses} onClick={() => void handleFinalize(false)}>Cerrar y dejar puntos pendientes</Button>}
+            <Button disabled={saving || conflict || !validBonuses} onClick={() => void handleFinalize(true)}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingBonuses ? 'Guardar y revisar puntos' : 'Finalizar y revisar puntos'}
             </Button>
           </DialogFooter>
         </DialogContent>

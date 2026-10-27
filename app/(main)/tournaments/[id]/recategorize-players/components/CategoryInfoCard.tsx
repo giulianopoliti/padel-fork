@@ -25,6 +25,7 @@ export const CategoryInfoCard: React.FC<CategoryInfoCardProps> = ({ categories }
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <p className="mb-4 text-sm text-muted-foreground">Los rangos son de referencia. Superarlos no cambia la categoría automáticamente y recategorizar no modifica el puntaje.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {categories.map(category => (
             <div key={category.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-surface">

@@ -2,7 +2,7 @@
 
 import { isAmericanLibreTournament } from '@/lib/services/americano-libre-format'
 import { AmericanFreeBracket } from '@/components/tournament/american-free-bracket'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import TournamentBracketTab from '@/components/tournament/tournament-bracket-tab'
 import PublicBracketTreeView from '@/components/tournament/bracket-v2/components/PublicBracketTreeView'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -30,11 +30,10 @@ export default function BracketClientWrapper({
     type: 'AMERICAN' | 'LONG'
     format_config: unknown
   } | null>(null)
-  const supabase = createClientComponentClient<Database>()
+  const supabase = useMemo(() => createClientComponentClient<Database>(), [])
 
   // Fetch tournament status
-  useEffect(() => {
-    const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
       const { data } = await supabase
         .from('tournaments')
         .select('status, type, format_config')
@@ -49,12 +48,12 @@ export default function BracketClientWrapper({
           format_config: data.format_config,
         })
       }
-    }
-    fetchStatus()
   }, [tournamentId, supabase])
 
+  useEffect(() => { void fetchStatus() }, [fetchStatus])
+
   const handleDataRefresh = () => {
-    window.location.reload()
+    void fetchStatus()
   }
 
   if (!tournament) {

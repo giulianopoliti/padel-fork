@@ -1,54 +1,32 @@
-jest.mock('@/lib/tournaments/finalization', () => ({
-  loadTournamentFinalization: jest.fn(),
-  getTournamentBonuses: jest.fn(() => ({ MAIN: { enabled: true, champion: 30, finalist: 10 } })),
-}))
-jest.mock('@/lib/services/tournament-disqualifications', () => ({ getActiveDisqualificationMatchIds: jest.fn(async () => new Set()) }))
+jest.mock('@/utils/supabase/server', () => ({ createClientServiceRole: jest.fn() }))
+jest.mock('../services/points-review.service', () => ({ loadPointsReview: jest.fn() }))
 
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { PointsCalculatorService } from '../services/points.calculator.service'
-import { loadTournamentFinalization } from '@/lib/tournaments/finalization'
+import { PointsApplicationService } from '../services/points.application.service'
+import { loadPointsReview } from '../services/points-review.service'
+import { createClientServiceRole } from '@/utils/supabase/server'
 
-describe('Points calculation with restricted player column permissions', () => {
-  it('calculates matches and bonuses without reading private player columns', async () => {
-    jest.mocked(loadTournamentFinalization).mockResolvedValue({
-      tournament: { status: 'FINISHED_POINTS_PENDING', type: 'AMERICAN', format_config: {} },
-      allMatchesFinished: true, bracketKeys: ['MAIN'],
-    } as never)
-    const playerIds = ['winner1', 'winner2', 'loser1', 'loser2']
-    const players = playerIds.map(id => ({ id, first_name: id, last_name: 'Test', score: 1000 }))
-    const snapshots = players.map(player => ({ player_id: player.id, score: player.score, player_name: player.first_name, category: '7ma' }))
-    const matches = [{ id: 'final', type: 'ELIMINATION', round: 'FINAL', bracket_key: 'MAIN', status: 'FINISHED', winner_id: 'winners', couple1_id: 'winners', couple2_id: 'losers' }]
-    const selectedColumns: string[] = []
-    const supabase = {
-      from: jest.fn((table: string) => {
-        let selected = ''
-        let coupleId = ''
-        const response = () => {
-          if (selected.includes('players!') || (table === 'players' && selected.includes('*'))) {
-            return { data: null, error: { code: '42501', message: 'permission denied for table players' } }
-          }
-          if (table === 'tournaments') return { data: { type: 'AMERICAN' }, error: null }
-          if (table === 'ranking_snapshots') return { data: snapshots, error: null }
-          if (table === 'matches') return { data: matches, error: null }
-          if (table === 'players') return { data: players, error: null }
-          if (table === 'couples') return { data: { id: coupleId, player1_id: coupleId === 'winners' ? 'winner1' : 'loser1', player2_id: coupleId === 'winners' ? 'winner2' : 'loser2' }, error: null }
-          throw new Error(`Unexpected table ${table}`)
-        }
-        const query = {
-          select: (columns: string) => { selected = columns; selectedColumns.push(columns); return query },
-          eq: (column: string, value: string) => { if (column === 'id') coupleId = value; return query },
-          in: () => query,
-          limit: async () => ({ data: [{ id: 'existing-snapshot' }], error: null }),
-          single: async () => response(),
-          then: (resolve: (result: unknown) => unknown) => Promise.resolve(resolve(response())),
-        }
-        return query
-      }),
-    }
-    const result = await PointsCalculatorService.calculateTournamentPoints('tournament', supabase)
-    expect(result.totalMatches).toBe(1)
-    expect(result.playerUpdates).toHaveLength(4)
-    expect(result.playerUpdates.find(player => player.playerId === 'winner1')).toMatchObject({ bonus: 30, pointsEarned: 12, newScore: 1042 })
-    expect(result.playerUpdates.find(player => player.playerId === 'loser1')).toMatchObject({ bonus: 10, pointsEarned: -8, newScore: 1002 })
-    expect(selectedColumns.some(columns => columns.includes('players!') || columns.includes('*'))).toBe(false)
+describe('Legacy points adapters', () => {
+  it('requires an authenticated actor and uses the reviewed read-only service', async () => {
+    const service = {} as SupabaseClient
+    jest.mocked(createClientServiceRole).mockResolvedValue(service)
+    jest.mocked(loadPointsReview).mockResolvedValue({ review: {
+      tournamentType: 'AMERICAN', totalMatches: 1,
+      playerScores: [{ playerId: 'p1', playerName: 'Player', pointsBefore: 890, pointsAfter: 932, pointsEarned: 42, matchPoints: 12, bonus: 30 }],
+    }, matchPoints: [] } as never)
+    const userClient = { auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'owner' } } })) } } as unknown as SupabaseClient
+    const result = await PointsCalculatorService.calculateTournamentPoints('tournament', userClient)
+    expect(loadPointsReview).toHaveBeenCalledWith(service, 'tournament', 'owner')
+    expect(result.playerUpdates[0]).toMatchObject({ totalPoints: 42, newScore: 932 })
+    const anonymous = { auth: { getUser: jest.fn(async () => ({ data: { user: null } })) } } as unknown as SupabaseClient
+    await expect(PointsCalculatorService.calculateTournamentPoints('tournament', anonymous)).rejects.toThrow('Iniciá sesión')
+  })
+  it('never lets an old caller bypass atomic confirmation with a calculated payload', async () => {
+    const update = jest.fn()
+    const client = { from: update } as unknown as SupabaseClient
+    const result = await PointsApplicationService.applyPoints({} as never, client)
+    expect(result.success).toBe(false)
+    expect(update).not.toHaveBeenCalled()
   })
 })

@@ -14,8 +14,7 @@ import { AmericanFreeBracketEditor } from './american-free-bracket-editor'
 import BackFromBracketButton from '@/app/(main)/tournaments/[id]/settings/components/BackFromBracketButton'
 import { AmericanFreeSports } from './american-free-sports'
 import { useTournamentFinalization } from './bracket-v2/hooks/useTournamentFinalization'
-import { FinalizeTournamentControl } from './bracket-v2/components/FinalizeTournamentControl'
-import { PointsCalculationBanner } from './bracket-v2/components/PointsCalculationBanner'
+import { TournamentPointsControl } from './tournament-points-control'
 
 const fetchBracket = async (url: string): Promise<FreeBracketView> => {
   const response = await fetch(url, { cache: 'no-store' })
@@ -122,8 +121,7 @@ export const AmericanFreeBracket = ({ tournamentId, isOwner, onDataRefresh }: {
         onSaved={async (saved) => { await mutate(current => current ? { ...current, snapshot: saved } : current, { revalidate: false }) }}
         onReload={async () => { const refreshed = await fetchBracket(url); await mutate(refreshed, { revalidate: false }) }}
       />}
-      {isOwner && data.canManage && <FinalizeTournamentControl tournamentId={tournamentId} finalization={finalization} onFinalized={() => { void mutate(); onDataRefresh?.() }} />}
-      {isOwner && data.canManage && finalization.canShowPointsCalculation && <PointsCalculationBanner tournamentId={tournamentId} winnerId={finalization.winner_id} onPointsCalculated={() => { void mutate(); void finalization.refetch(); onDataRefresh?.() }} />}
+      {isOwner && data.canManage && <TournamentPointsControl tournamentId={tournamentId} onUpdated={() => { void mutate(); onDataRefresh?.() }} />}
 
     </section>
   )

@@ -15,6 +15,7 @@ import UnifiedMatchesTab from "./unified-matches-tab"
 import ReadOnlyMatchesTabNew from "./read-only-matches-tab-new"
 import TournamentBracketTab from "./tournament-bracket-tab"
 import ReadOnlyBracketTab from "./read-only-bracket-tab"
+import { TournamentPointsControl } from './tournament-points-control'
 import TournamentZonesWrapper from "./tournament-zones-wrapper"
 // Simplificado: Solo 2 brackets - ImprovedBracketRenderer (owner) y ReadOnlyBracketVisualization (public)
 
@@ -178,10 +179,10 @@ export default function TournamentPageLayout({
           <div className="h-full overflow-x-auto overflow-y-hidden">
             {!isAmericanLibreTournament(tournament ?? {}) && (isPublicView || tournamentStatus === 'FINISHED_POINTS_CALCULATED') ? (
               // Vista pública unificada (incluye torneos finalizados)
-              <ReadOnlyBracketTab
-                tournamentId={tournamentId}
-                tournamentStatus={tournamentStatus}
-              />
+              <>
+                {isOwner && <TournamentPointsControl tournamentId={tournamentId} onUpdated={onDataRefresh} />}
+                <ReadOnlyBracketTab tournamentId={tournamentId} tournamentStatus={tournamentStatus} />
+              </>
             ) : (
               // Vista club owner con drag & drop (ImprovedBracketRenderer)
               <TournamentBracketTab {...commonTabProps} isAmericanLibre={isAmericanLibreTournament(tournament ?? {})} />

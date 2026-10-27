@@ -54,7 +54,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   const pendingChanges: PendingChange[] = Array.from(pendingUpdates.entries()).map(([playerId, newCategory]) => {
     const player = players.find(p => p.id === playerId)!
     const category = categories.find(c => c.name === newCategory)!
-    const newScore = category.lower_range
+    const newScore = player.score
     const scoreChange = newScore - player.score
 
     return {
@@ -90,7 +90,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Estás a punto de recategorizar <strong>{totalChanges} jugadores</strong>.
-              Los puntajes se ajustarán automáticamente al mínimo de cada nueva categoría.
+              Las categorías se cambiarán por decisión manual. Cada jugador conservará su puntaje actual.
             </AlertDescription>
           </Alert>
 

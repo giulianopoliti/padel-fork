@@ -33,8 +33,7 @@ import { ImprovedBracketRenderer } from './components/ImprovedBracketRenderer'
 import { BracketDragDropProvider, useBracketDragDrop } from './context/bracket-drag-context'
 import { useBracketDragOperations } from './hooks/useBracketDragOperations'
 import { useTournamentFinalization } from './hooks/useTournamentFinalization'
-import { PointsCalculationBanner } from './components/PointsCalculationBanner'
-import { FinalizeTournamentControl } from './components/FinalizeTournamentControl'
+import { TournamentPointsControl } from '../tournament-points-control'
 import ReadOnlyBracketTab from '../read-only-bracket-tab'
 import { Trophy } from 'lucide-react'
 import BackFromBracketButton from '@/app/(main)/tournaments/[id]/settings/components/BackFromBracketButton'
@@ -393,6 +392,7 @@ function BracketVisualizationV2Internal({
   if (tournamentStatus === 'FINISHED_POINTS_CALCULATED' || finalization.status === 'FINISHED_POINTS_CALCULATED') {
     return (
       <div className="space-y-6">
+        {isOwner && <TournamentPointsControl tournamentId={tournamentId} onUpdated={onDataRefresh} />}
         {/* Vista read-only del bracket */}
         <ReadOnlyBracketTab tournamentId={tournamentId} />
       </div>
@@ -401,7 +401,7 @@ function BracketVisualizationV2Internal({
 
   return (
     <div className="bracket-v2-container">
-      {isOwner && <FinalizeTournamentControl tournamentId={tournamentId} finalization={finalization} onFinalized={onDataRefresh} />}
+      {isOwner && <TournamentPointsControl tournamentId={tournamentId} onUpdated={onDataRefresh} />}
       {bracketMode === 'GOLD_SILVER' && (
         <div className="mb-6 flex w-full max-w-md gap-2 rounded-surface border border-slate-200 bg-slate-50 p-1">
           <Button
@@ -423,18 +423,6 @@ function BracketVisualizationV2Internal({
         </div>
       )}
       
-      {/* ✨ NUEVO: Banner de cálculo de puntos */}
-      {finalization.canShowPointsCalculation && isOwner && (
-        <PointsCalculationBanner 
-          tournamentId={tournamentId}
-          winnerId={finalization.winner_id}
-          onPointsCalculated={() => {
-            onDataRefresh?.()
-            finalization.refetch()
-          }}
-        />
-      )}
-
       {isOwner && (
         <BracketControlsPlaceholder
           onProcessBYEs={handleProcessBYEs}
