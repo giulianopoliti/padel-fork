@@ -1,3 +1,5 @@
+import { getInscriptionState, type InscriptionStateInput } from '@/lib/tournaments/inscription-state'
+
 export interface PanelTournament {
   id: string
   seo_slug: string | null
@@ -10,9 +12,11 @@ export interface PanelTournament {
   price: number | string | null
   is_draft: boolean | null
   clubes: { id: string; name: string } | null
+  enable_transfer_proof?: boolean
+  max_participants?: number | null
 }
 
-export interface PanelInscription {
+export interface PanelInscription extends InscriptionStateInput {
   tournament_id: string
   player_id: string | null
   couple_id: string | null
@@ -31,6 +35,9 @@ export interface PanelMetrics {
   players: number
   couples: number
   pendingInscriptions: number
+  occupiedSlots: number
+  pendingWithoutSlot: number
+  proofWithoutSlot: number
   matchesFinished: number
   matchesPending: number
   totalMatches: number
@@ -47,6 +54,9 @@ export const aggregatePanelMetrics = (
     playerIds: new Set<string>(),
     coupleIds: new Set<string>(),
     pendingInscriptions: 0,
+    occupiedSlots: 0,
+    pendingWithoutSlot: 0,
+    proofWithoutSlot: 0,
     matchesFinished: 0,
     matchesPending: 0,
     totalMatches: 0,
@@ -55,7 +65,13 @@ export const aggregatePanelMetrics = (
   for (const inscription of inscriptions) {
     const summary = metrics.get(inscription.tournament_id)
     if (!summary) continue
-    if (inscription.is_pending) {
+    const tournament = tournaments.find(item => item.id === inscription.tournament_id)
+    const state = getInscriptionState(inscription, tournament?.enable_transfer_proof)
+    if (inscription.couple_id) {
+      if (state.occupiesSlot) summary.occupiedSlots++
+      else { summary.pendingWithoutSlot++; if (inscription.payment_proof_path) summary.proofWithoutSlot++ }
+    }
+    if (inscription.is_pending || inscription.couple_id && !state.confirmed) {
       summary.pendingInscriptions += 1
       continue
     }
@@ -85,6 +101,9 @@ export const aggregatePanelMetrics = (
       players: summary.playerIds.size,
       couples: summary.coupleIds.size,
       pendingInscriptions: summary.pendingInscriptions,
+      occupiedSlots: summary.occupiedSlots,
+      pendingWithoutSlot: summary.pendingWithoutSlot,
+      proofWithoutSlot: summary.proofWithoutSlot,
       matchesFinished: summary.matchesFinished,
       matchesPending: summary.matchesPending,
       totalMatches: summary.totalMatches,

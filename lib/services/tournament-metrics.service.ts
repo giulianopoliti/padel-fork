@@ -25,7 +25,7 @@ export const readTournamentMetrics = async (supabase: SupabaseClient, tournament
     return rows
   }
   const [inscriptions, matches] = await Promise.all([
-    readRows<PanelInscription>('inscriptions', 'tournament_id,player_id,couple_id,is_pending,couples!inscriptions_couple_id_fkey(player1_id,player2_id)'),
+    readRows<PanelInscription>('inscriptions', 'tournament_id,player_id,couple_id,is_pending,occupies_slot,payment_method,payment_proof_path,proof_waived_at,couples!inscriptions_couple_id_fkey(player1_id,player2_id)'),
     readRows<PanelMatch>('matches', 'tournament_id,status,couple1_id,couple2_id'),
   ])
   return { inscriptions, matches }

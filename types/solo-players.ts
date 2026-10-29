@@ -150,7 +150,8 @@ export interface SoloPlayerRpcContracts {
     }
     Returns: {
       inscription: { id: string; couple_id: string; tournament_id: string; is_pending: boolean;
-        created_at: string; payment_method: 'CASH' | 'TRANSFER' | null; payment_proof_path: string | null }
+        created_at: string; payment_method: 'CASH' | 'TRANSFER' | null; payment_proof_path: string | null;
+        occupies_slot: boolean; proof_waived_at: string | null }
       created: boolean; request_status?: 'ACCEPTED' | null
     }
   }

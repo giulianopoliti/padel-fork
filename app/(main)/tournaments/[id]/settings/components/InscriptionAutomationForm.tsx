@@ -4,21 +4,22 @@ import { useMemo, useRef, useState, type ReactNode } from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { AlertTriangle, Eye, Landmark, Loader2, Mail, Receipt, ShieldCheck } from "lucide-react"
+import { AlertTriangle, Eye, Landmark, Loader2, Mail, Receipt } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useSWRConfig } from "swr"
+import { RegistrationPolicyFields, type RegistrationPolicyValues } from '@/components/tournament/registration-policy-fields'
+import { reserveOnSignupRequired, validateTournamentPaymentSettings } from '@/lib/tournaments/inscription-state'
 
 interface InscriptionAutomationFormProps {
   tournamentId: string
-  initialValidateInscriptions: boolean
   initialShowPublicInscriptions: boolean
   initialShowFewSlotsAlert: boolean
   initialEnablePaymentCheckboxes: boolean
   initialEnableTransferProof: boolean
   initialAllowCashPayment?: boolean
+  initialReserveSlotWithoutProof?: boolean
   initialMessagesEnabled: boolean
   initialTransferAlias: string | null
   initialTransferAmount: number | null
@@ -33,6 +34,7 @@ interface PersistPatch {
   enable_payment_checkboxes?: boolean
   enable_transfer_proof?: boolean
   allow_cash_payment?: boolean
+  reserve_slot_without_proof?: boolean
   messages_enabled?: boolean
   transfer_alias?: string | null
   transfer_amount?: number | null
@@ -114,61 +116,43 @@ function SettingGroup({
 
 export default function InscriptionAutomationForm({
   tournamentId,
-  initialValidateInscriptions,
   initialShowPublicInscriptions,
   initialShowFewSlotsAlert,
   initialEnablePaymentCheckboxes,
   initialEnableTransferProof,
   initialAllowCashPayment = false,
+  initialReserveSlotWithoutProof = true,
   initialMessagesEnabled,
   initialTransferAlias,
   initialTransferAmount,
 }: InscriptionAutomationFormProps) {
-  const [validateInscriptions, setValidateInscriptions] = useState(initialValidateInscriptions)
   const [showPublicInscriptions, setShowPublicInscriptions] = useState(initialShowPublicInscriptions)
   const [showFewSlotsAlert, setShowFewSlotsAlert] = useState(initialShowFewSlotsAlert)
   const [enablePaymentCheckboxes, setEnablePaymentCheckboxes] = useState(initialEnablePaymentCheckboxes)
-  const [enableTransferProof, setEnableTransferProof] = useState(initialEnableTransferProof)
-  const [allowCash, setAllowCash] = useState(initialAllowCashPayment)
-  const [cashStatus, setCashStatus] = useState<SaveState>('idle')
   const [messagesEnabled, setMessagesEnabled] = useState(initialMessagesEnabled)
-  const [transferAlias, setTransferAlias] = useState(initialTransferAlias || "")
-  const [transferAmount, setTransferAmount] = useState(
-    initialTransferAmount !== null && initialTransferAmount !== undefined ? String(initialTransferAmount) : ""
-  )
-
-  const [validationStatus, setValidationStatus] = useState<SaveState>("idle")
+  const [policy, setPolicy] = useState<RegistrationPolicyValues>({
+    requestDeposit: initialEnableTransferProof,
+    reserveOnSignup: initialReserveSlotWithoutProof || reserveOnSignupRequired(initialEnableTransferProof),
+    allowCash: initialAllowCashPayment, alias: initialTransferAlias || '',
+    amount: initialTransferAmount == null ? '' : String(initialTransferAmount),
+  })
+  const [savedPolicy, setSavedPolicy] = useState(policy)
+  const [policyStatus, setPolicyStatus] = useState<SaveState>('idle')
+  const [policyError, setPolicyError] = useState<string | null>(null)
+  const policySaveInFlight = useRef(false)
   const [publicStatus, setPublicStatus] = useState<SaveState>("idle")
   const [fewSlotsStatus, setFewSlotsStatus] = useState<SaveState>("idle")
   const [checkboxStatus, setCheckboxStatus] = useState<SaveState>("idle")
   const [messagesStatus, setMessagesStatus] = useState<SaveState>("idle")
-  const [transferFieldsStatus, setTransferFieldsStatus] = useState<SaveState>("idle")
-  const [transferFieldsError, setTransferFieldsError] = useState<string | null>(null)
-
   const { toast } = useToast()
   const { mutate } = useSWRConfig()
-  const transferSaveInFlight = useRef(false)
-  const [savedTransfer, setSavedTransfer] = useState({
-    alias: initialTransferAlias || "",
-    amount:
-      initialTransferAmount !== null && initialTransferAmount !== undefined
-        ? String(initialTransferAmount)
-        : "",
-  })
-
-  const parsedTransferAmount = useMemo(() => {
-    if (!transferAmount) return null
-    const value = Number(transferAmount)
-    return Number.isFinite(value) ? value : null
-  }, [transferAmount])
-
-  const transferFieldsChanged =
-    transferAlias !== savedTransfer.alias || transferAmount !== savedTransfer.amount
-  const transferFieldsValid = !!transferAlias.trim() && parsedTransferAmount !== null && parsedTransferAmount > 0
-  const isSavingTransfer = transferFieldsStatus === "saving"
-  const transferStatus = transferFieldsStatus === "saving" || transferFieldsStatus === "error"
-    ? transferFieldsStatus
-    : transferFieldsChanged ? "dirty" : transferFieldsStatus
+  const parsedAmount = useMemo(() => {
+    if (!policy.amount.trim()) return null
+    const amount = Number(policy.amount)
+    return Number.isFinite(amount) ? amount : null
+  }, [policy.amount])
+  const policyChanged = (Object.keys(policy) as (keyof RegistrationPolicyValues)[]).some(key => policy[key] !== savedPolicy[key])
+  const displayedPolicyStatus = policyStatus === 'saving' || policyStatus === 'error' ? policyStatus : policyChanged ? 'dirty' : policyStatus
 
   const persistSettings = async (
     patch: PersistPatch,
@@ -198,7 +182,7 @@ export default function InscriptionAutomationForm({
       handlers?.onSuccess?.()
       // A committed settings change must not leave stale "proof missing" cards around.
       void mutate(key => Array.isArray(key) && (key[0] === 'own-payments' || (typeof key[0] === 'string' && (key[0].startsWith('/api/solo-players') || key[0].includes(`/tournaments/${tournamentId}/`))))).catch(() => {})
-      return { success: true as const }
+      return { success: true as const, data: result.data as PersistPatch }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "No se pudo guardar la configuracion."
@@ -267,36 +251,6 @@ export default function InscriptionAutomationForm({
     }
   }
 
-  const handleValidationToggle = async (checked: boolean) => {
-    setValidateInscriptions(checked)
-
-    const result = await persistSettings(
-      { validate_inscriptions: checked },
-      {
-        onStart: () => setValidationStatus("saving"),
-        onSuccess: () => setValidationStatus("saved"),
-        onError: (message) => {
-          setValidationStatus("error")
-          setValidateInscriptions((current) => !current)
-          toast({
-            title: "No se pudo actualizar la validacion",
-            description: message,
-            variant: "destructive",
-          })
-        },
-      }
-    )
-
-    if (result.success) {
-      toast({
-        title: checked ? "Validacion activada" : "Validacion desactivada",
-        description: checked
-          ? "Las nuevas inscripciones de jugadores requeriran aprobacion."
-          : "Las inscripciones pendientes fueron aprobadas y las nuevas ingresaran directamente.",
-      })
-    }
-  }
-
   const handleFewSlotsToggle = async (checked: boolean) => {
     setShowFewSlotsAlert(checked)
 
@@ -357,47 +311,31 @@ export default function InscriptionAutomationForm({
     }
   }
 
-  const handleSaveTransfer = async (enabled: boolean): Promise<void> => {
-    if (transferSaveInFlight.current || (enabled && !transferFieldsValid)) return
+  const handlePolicyChange = (patch: Partial<RegistrationPolicyValues>): void => {
+    setPolicy(current => {
+      const next = { ...current, ...patch }
+      return { ...next, reserveOnSignup: reserveOnSignupRequired(next.requestDeposit) || next.reserveOnSignup }
+    })
+    setPolicyError(null)
+    setPolicyStatus('idle')
+  }
 
-    transferSaveInFlight.current = true
-    setTransferFieldsError(null)
-    const wasEnabled = enableTransferProof
-    const alias = transferAlias.trim()
-    const amount = parsedTransferAmount
-    const result = await persistSettings(
-      enabled
-        ? { enable_transfer_proof: true, transfer_alias: alias, transfer_amount: amount }
-        : { enable_transfer_proof: false },
-      {
-        onStart: () => setTransferFieldsStatus("saving"),
-        onSuccess: () => {
-          setEnableTransferProof(enabled)
-          setTransferFieldsStatus("saved")
-          if (enabled) {
-            setTransferAlias(alias)
-            setTransferAmount(String(amount))
-            setSavedTransfer({ alias, amount: String(amount) })
-          }
-        },
-        onError: (message) => {
-          setTransferFieldsStatus("error")
-          setTransferFieldsError(message)
-        },
-      }
-    )
-    transferSaveInFlight.current = false
-
-    if (result.success) {
-      toast({
-        title: enabled
-          ? wasEnabled ? "Datos de transferencia actualizados" : "Transferencia con comprobante habilitada"
-          : "Transferencia con comprobante deshabilitada",
-        description: enabled
-          ? "Los jugadores verán el alias y el importe guardados al inscribirse."
-          : "Los jugadores ya no verán alias, importe ni carga de comprobante.",
-      })
-    }
+  const handleSavePolicy = async (): Promise<void> => {
+    if (policySaveInFlight.current || !policyChanged) return
+    const patch = { enable_transfer_proof: policy.requestDeposit, reserve_slot_without_proof: reserveOnSignupRequired(policy.requestDeposit) || policy.reserveOnSignup,
+      allow_cash_payment: policy.allowCash, transfer_alias: policy.alias.trim() || null, transfer_amount: parsedAmount }
+    const error = validateTournamentPaymentSettings(patch)
+    if (error) { setPolicyError(error); setPolicyStatus('error'); return }
+    policySaveInFlight.current = true
+    setPolicyStatus('saving'); setPolicyError(null)
+    try {
+      const result = await persistSettings(patch)
+      if (!result.success) { setPolicyError(result.message); setPolicyStatus('error'); return }
+      const saved = { ...policy, reserveOnSignup: result.data.reserve_slot_without_proof ?? patch.reserve_slot_without_proof,
+        alias: patch.transfer_alias || '', amount: parsedAmount == null ? '' : String(parsedAmount) }
+      setPolicy(saved); setSavedPolicy(saved); setPolicyStatus('saved')
+      toast({ title: 'Configuración guardada', description: 'La seña y la reserva de cupo se actualizaron juntas para las nuevas inscripciones.' })
+    } finally { policySaveInFlight.current = false }
   }
 
   return (
@@ -497,46 +435,6 @@ export default function InscriptionAutomationForm({
       >
         <div className="space-y-5">
           <SettingCard
-            icon={<ShieldCheck className="h-4 w-4 text-emerald-600" />}
-            title="Validar inscripciones"
-            description="Decide si las inscripciones realizadas por jugadores requieren aprobacion del organizador."
-            status={validationStatus}
-          >
-            <div className="flex flex-col gap-4 rounded-elevated border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={validateInscriptions ? "default" : "secondary"}
-                    className={validateInscriptions ? "bg-emerald-600 hover:bg-emerald-600" : ""}
-                  >
-                    {validateInscriptions ? "Requiere aprobacion" : "Inscripcion directa"}
-                  </Badge>
-                  <span className="text-sm font-medium text-slate-900">
-                    {validateInscriptions
-                      ? "El organizador valida cada nueva inscripcion"
-                      : "Los jugadores quedan inscriptos automaticamente"}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Al desactivarla, las inscripciones pendientes actuales se aprueban automaticamente.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Label htmlFor="validate-inscriptions" className="text-sm font-medium">
-                  Validar inscripciones
-                </Label>
-                <Switch
-                  id="validate-inscriptions"
-                  checked={validateInscriptions}
-                  onCheckedChange={handleValidationToggle}
-                  disabled={validationStatus === "saving"}
-                />
-              </div>
-            </div>
-          </SettingCard>
-
-          <SettingCard
             icon={<Mail className="h-4 w-4 text-sky-600" />}
             title="Mensajes automaticos"
             description="Controla si este torneo envia avisos por inscripcion, aprobacion, cancelacion y partidos programados."
@@ -617,143 +515,18 @@ export default function InscriptionAutomationForm({
         </div>
           </SettingCard>
 
-          <SettingCard
-        icon={<Receipt className="h-4 w-4" />}
-        title="Permitir efectivo"
-        description="El jugador puede elegir efectivo sin adjuntar comprobante. No marca el pago como cobrado."
-        status={cashStatus}
-      >
-        <div className="flex items-center gap-3">
-          <Switch id="allow-cash" checked={allowCash} disabled={cashStatus === 'saving'} onCheckedChange={async checked => {
-            setCashStatus('saving')
-            const result = await persistSettings({ allow_cash_payment: checked })
-            if (result.success) { setAllowCash(checked); setCashStatus('saved') }
-            else { setCashStatus('error'); toast({ title: 'No se pudo guardar', description: result.message, variant: 'destructive' }) }
-          }} />
-          <Label htmlFor="allow-cash">Habilitar efectivo para este torneo</Label>
-        </div>
-          </SettingCard>
-          <SettingCard
-        icon={<Landmark className="h-4 w-4 text-amber-600" />}
-        title="Transferencia con comprobante"
-        description="Completá los datos de pago y habilitá la carga de comprobantes para este torneo."
-        status={transferStatus}
-      >
-        <div className="space-y-4 rounded-elevated border border-amber-200 bg-amber-50/60 p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={enableTransferProof ? "default" : "secondary"}
-                  className={enableTransferProof ? "bg-amber-600 hover:bg-amber-600" : ""}
-                >
-                  {enableTransferProof ? "Habilitada" : "Deshabilitada"}
-                </Badge>
-                <span className="text-sm font-medium text-slate-900">
-                  {enableTransferProof ? "Los jugadores deben adjuntar su comprobante" : "Prepará los datos de la transferencia"}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {enableTransferProof
-                  ? "Podés editar los datos. Los jugadores verán los cambios cuando los guardes."
-                  : "Indicá el alias de destino y el importe por pareja. Después pulsá Habilitar."}
-              </p>
-            </div>
-
-          </div>
-
-          <form
-            className="space-y-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (enableTransferProof && !transferFieldsChanged) return
-              void handleSaveTransfer(true)
-            }}
-          >
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="transfer-alias">Alias</Label>
-              <Input
-                id="transfer-alias"
-                value={transferAlias}
-                onChange={(event) => {
-                  setTransferAlias(event.target.value)
-                  setTransferFieldsError(null)
-                  setTransferFieldsStatus("idle")
-                }}
-                placeholder="alias.del.club"
-                autoComplete="off"
-                required
-                aria-describedby="transfer-alias-help"
-                disabled={isSavingTransfer}
-              />
-              <p id="transfer-alias-help" className="text-xs text-muted-foreground">
-                Alias de la cuenta que recibirá el pago.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="transfer-amount">Importe por pareja</Label>
-              <Input
-                id="transfer-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                inputMode="decimal"
-                value={transferAmount}
-                onChange={(event) => {
-                  setTransferAmount(event.target.value)
-                  setTransferFieldsError(null)
-                  setTransferFieldsStatus("idle")
-                }}
-                placeholder="15000"
-                required
-                aria-describedby="transfer-amount-help"
-                disabled={isSavingTransfer}
-              />
-              <p id="transfer-amount-help" className="text-xs text-muted-foreground">
-                Total por pareja en pesos argentinos. Debe ser mayor a $0.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 border-t border-amber-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-600" aria-live="polite">
-              {!transferFieldsValid
-                ? `Completá el alias y un importe mayor a $0 para ${enableTransferProof ? "guardar los cambios" : "habilitar"}.`
-                : transferFieldsChanged
-                  ? "Los datos se guardarán cuando confirmes."
-                  : enableTransferProof
-                    ? "Los datos de pago están guardados."
-                    : "Todo listo para habilitar la transferencia con comprobante."}
-            </p>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              {enableTransferProof && (
-                <Button type="button" variant="outline" disabled={isSavingTransfer} onClick={() => void handleSaveTransfer(false)}>
-                  Deshabilitar
+          <SettingCard icon={<Landmark className="h-4 w-4" />} title="Seña y reserva de cupo"
+            description="Elegí si pedís una seña y cuándo obtiene lugar cada pareja." status={displayedPolicyStatus}>
+            <form noValidate className="space-y-5" onSubmit={event => { event.preventDefault(); void handleSavePolicy() }}>
+              <RegistrationPolicyFields id="settings-registration-policy" value={policy} onChange={handlePolicyChange}
+                disabled={policyStatus === 'saving'} error={policyError} />
+              <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-slate-600">{policyChanged ? 'Tenés cambios sin guardar.' : 'Estas opciones se guardan juntas.'}</p>
+                <Button type="submit" disabled={!policyChanged || policyStatus === 'saving'}>
+                  {policyStatus === 'saving' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando…</> : 'Guardar configuración'}
                 </Button>
-              )}
-              <Button type="submit" disabled={isSavingTransfer || !transferFieldsValid || (enableTransferProof && !transferFieldsChanged)}>
-                {isSavingTransfer ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando…</> : enableTransferProof ? "Guardar cambios" : "Habilitar"}
-              </Button>
-            </div>
-          </div>
-          </form>
-
-          {enableTransferProof && (
-            <Alert className="border-amber-200 bg-white">
-              <AlertDescription className="text-amber-950">
-                El jugador elige compañero, ve los datos de transferencia y adjunta el comprobante para confirmar su inscripción.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {transferFieldsError && (
-            <Alert className="border-red-200 bg-red-50">
-              <AlertDescription className="text-red-700">{transferFieldsError}</AlertDescription>
-            </Alert>
-          )}
-        </div>
+              </div>
+            </form>
           </SettingCard>
         </div>
       </SettingGroup>

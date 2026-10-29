@@ -64,9 +64,9 @@ export const loadSoloDirectory = async (client: Client, userId: string): Promise
     if (individualInscriptions.error) throw individualInscriptions.error
     soloTournamentIds.push(...(individualInscriptions.data || []).map(i => i.tournament_id))
     if (couples.data?.length) {
-      const inscriptions = await client.from("inscriptions").select("id,couple_id,tournament_id,is_pending,is_eliminated,payment_method,payment_proof_path,tournaments(enable_transfer_proof),solo_player_requests(status)")
+      const inscriptions = await client.from("inscriptions").select("id,couple_id,tournament_id,is_pending,is_eliminated,occupies_slot,payment_method,payment_proof_path,tournaments(enable_transfer_proof),solo_player_requests(status)")
         .in("couple_id", couples.data.map(couple => couple.id)).eq("es_prueba", false)
-        .returns<{ id: string; couple_id: string; tournament_id: string; is_pending: boolean; is_eliminated: boolean | null; payment_method: string | null; payment_proof_path: string | null;
+        .returns<{ id: string; couple_id: string; tournament_id: string; is_pending: boolean; is_eliminated: boolean | null; occupies_slot: boolean; payment_method: string | null; payment_proof_path: string | null;
           solo_player_requests: { status: string }[];
           tournaments: { enable_transfer_proof: boolean | null } | { enable_transfer_proof: boolean | null }[] | null }[]>()
       if (inscriptions.error) throw inscriptions.error
@@ -77,7 +77,7 @@ export const loadSoloDirectory = async (client: Client, userId: string): Promise
           return []
         }
         const tournament = Array.isArray(i.tournaments) ? i.tournaments[0] : i.tournaments
-        return [{ tournament_id: i.tournament_id, inscription_id: i.id, pendingApproval: i.is_pending === true,
+        return [{ tournament_id: i.tournament_id, inscription_id: i.id, pendingApproval: false, occupiesSlot: i.occupies_slot !== false,
           formedViaSoloPlayers: i.solo_player_requests.some(request => request.status === "ACCEPTED"),
           isEliminated: i.is_eliminated === true,
           transferProofEnabled: tournament?.enable_transfer_proof === true,

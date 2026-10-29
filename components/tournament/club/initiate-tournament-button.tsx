@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react";
+import { RegistrationReadinessNotice, useRegistrationReadiness } from '../registration-readiness-notice';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -51,7 +52,7 @@ interface InitiateTournamentButtonProps {
 export default function InitiateTournamentButton({
   tournamentId,
   tournament,
-  couplesCount = 0,
+  couplesCount: initialCouplesCount = 0,
   playersCount = 0
 }: InitiateTournamentButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -130,6 +131,8 @@ export default function InitiateTournamentButton({
     }
   };
 
+  const { data: readiness } = useRegistrationReadiness(tournamentId);
+  const couplesCount = readiness?.eligibleCount ?? initialCouplesCount;
   const totalParticipants = couplesCount * 2;
   const canStartTournament = couplesCount > 0;
 
@@ -158,6 +161,7 @@ export default function InitiateTournamentButton({
         </DialogHeader>
 
         <div className="space-y-6">
+          <RegistrationReadinessNotice tournamentId={tournamentId} />
           {/* Información principal del torneo */}
           <Card>
             <CardContent className="pt-6">

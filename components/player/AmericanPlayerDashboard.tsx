@@ -170,11 +170,10 @@ export default function AmericanPlayerDashboard({
       <div className="container mx-auto px-4 py-8 lg:py-12">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Alert className="border-green-200 bg-green-50 sm:flex-1">
-              <Users className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                <strong>¡Estás inscripto!</strong> Puedes ver tu progreso y próximos partidos.
-                <div className="mt-3"><InscriptionPaymentPanel tournamentId={tournamentId} /></div>
+            <Alert className="border-slate-200 bg-white sm:flex-1">
+              <Users className="h-4 w-4 text-slate-600" />
+              <AlertDescription className="text-slate-800">
+                <InscriptionPaymentPanel tournamentId={tournamentId} />
               </AlertDescription>
             </Alert>
 

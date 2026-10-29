@@ -112,7 +112,7 @@ export default function PlayerTournamentDashboard({ tournamentId, tournament, ov
         {tournament.publicInfo && <TournamentHeroDetails publicInfo={tournament.publicInfo} variant="dark" className="mt-4" />}
       </header>
 
-      <div className="space-y-2"><p className="font-semibold">Ya estás inscripto</p><InscriptionPaymentPanel tournamentId={tournamentId} /></div>
+      <div className="space-y-2"><p className="font-semibold">Tu inscripción</p><InscriptionPaymentPanel tournamentId={tournamentId} /></div>
 
       {isEliminated ? (
         <Alert className="border-amber-300 bg-amber-50">
@@ -279,7 +279,7 @@ const PendingRegistrationView = ({
             <h2 className="text-xl font-bold text-amber-950">{PLAYER_INSCRIPTION_COPY.pendingTitle}</h2>
             <div className="mt-3"><InscriptionPaymentPanel tournamentId={tournamentId} /></div>
             <p className="mt-2 text-sm text-amber-900">
-              El organizador recibio tu solicitud. Cuando la apruebe vas a poder cargar disponibilidad y acceder a todas las funciones de jugador.
+              Tu inscripción está guardada. Arriba podés consultar qué falta completar para confirmar tu participación.
             </p>
           </div>
         </div>

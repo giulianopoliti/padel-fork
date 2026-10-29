@@ -38,12 +38,15 @@ describe("solo player publication boundaries", () => {
     expect(getSoloPostLabel(post, Date.parse("2026-10-16T00:00:00Z"))).toBe("Vencida")
   })
   it.each([
-    [true, true, "Pareja pendiente de aprobación y comprobante"],
-    [true, false, "Pareja pendiente de aprobación"],
-    [false, true, "Pareja pendiente de comprobante"],
+    [true, true, "Inscripción confirmada · Seña pendiente"],
+    [true, false, "Inscripción confirmada"],
+    [false, true, "Inscripción confirmada · Seña pendiente"],
     [false, false, "Inscripción confirmada"],
   ])("keeps couple requirements separate (%s, %s)", (pendingApproval, pendingProof, label) => {
     expect(getSoloPairLabel({ tournament_id: "t", inscription_id: "i", pendingApproval: Boolean(pendingApproval), pendingProof: Boolean(pendingProof) })).toBe(label)
+  })
+  it('identifies a formed couple that has not obtained a place yet',()=>{
+    expect(getSoloPairLabel({tournament_id:'t',inscription_id:'i',pendingApproval:false,pendingProof:true,occupiesSlot:false})).toBe('Pareja sin cupo reservado')
   })
   it("distinguishes matching production and local backends", () => {
     const previous = { ...process.env }

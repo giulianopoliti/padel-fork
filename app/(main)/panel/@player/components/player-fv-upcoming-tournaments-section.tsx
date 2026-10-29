@@ -258,7 +258,7 @@ export default function PlayerFvUpcomingTournamentsSection({
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   {tournament.is_inscribed ? (
                     <p className="flex min-h-10 items-center justify-center px-2 text-center text-xs font-semibold text-court-100 sm:text-sm">
-                      Ya estás inscripto
+                      Inscripción guardada
                     </p>
                   ) : canRegister ? (
                     <PublicRegistrationLauncher

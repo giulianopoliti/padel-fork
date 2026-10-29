@@ -84,18 +84,26 @@ describe('resumable inscription payments', () => {
     })
     jest.mocked(supabaseAdmin.rpc).mockImplementation((async (_name: string, params: any) => {
       if (rejectUpdate || !inscription) return { data: null, error: null } as never
+      if (_name === 'manage_inscription_admission') {
+        if (params.p_revision !== inscription.payment_revision) return {data:null,error:{code:'PT409'}} as never
+        inscription={...inscription,occupies_slot:params.p_operation==='approve'?inscription.occupies_slot:true,
+          is_pending:params.p_operation==='assign'?inscription.is_pending:false,
+          proof_waived_at:params.p_operation==='admit-without-proof'?'2026-10-27':inscription.proof_waived_at,
+          payment_revision:inscription.payment_revision+1}
+        return (commitWithError?{data:null,error:{code:'TransportError'}}:{data:[inscription],error:null}) as never
+      }
       if (_name === 'approve_inscription_proof') {
-        if (params.p_path !== inscription.payment_proof_path) return { data: null, error: { code: '40001' } } as never
+        if (params.p_path !== inscription.payment_proof_path) return { data: null, error: { code: 'PT409' } } as never
         if (inscription.payment_revision === params.p_revision + 1 && inscription.payment_proof_status === 'APPROVED') return { data: [inscription], error: null } as never
-        if (params.p_revision !== inscription.payment_revision) return { data: null, error: { code: '40001' } } as never
+        if (params.p_revision !== inscription.payment_revision) return { data: null, error: { code: 'PT409' } } as never
         inscription = { ...inscription, payment_proof_status: 'APPROVED', payment_reviewed_at: '2026-10-12T19:00:00Z', payment_reviewed_by: params.p_reviewer, payment_revision: inscription.payment_revision + 1 }
         return (commitWithError ? { data: null, error: { code: 'TransportError' } } : { data: [inscription], error: null }) as never
       }
-      if (params.p_revision !== inscription.payment_revision) return { data: null, error: { code: '40001' } } as never
+      if (params.p_revision !== inscription.payment_revision) return { data: null, error: { code: 'PT409' } } as never
       if (!params.p_manager && inscription.payment_proof_status === 'APPROVED') return { data: null, error: { code: '42501' } } as never
       const op = params.p_operation
       if ((op === 'attach' && inscription.payment_proof_path) || (op === 'replace' && !inscription.payment_proof_path)) {
-        return { data: null, error: { code: '40001' } } as never
+        return { data: null, error: { code: 'PT409' } } as never
       }
       const patch = op === 'attach' || op === 'replace'
         ? { payment_proof_path: params.p_path, payment_proof_status: 'PENDING_REVIEW' }
@@ -120,6 +128,34 @@ describe('resumable inscription payments', () => {
     inscription!.payment_proof_path = 'original'
     inscription!.payment_proof_status = 'PENDING_REVIEW'
   }
+  it.each(['approve','assign','admit','admit-without-proof'])('denies player admission operations: %s',async operation=>{
+    expect((await run(operation,{inscriptionId:'inscription',revision:'0'})).status).toBe(403)
+    expect(supabaseAdmin.rpc).not.toHaveBeenCalled()
+  })
+  it.each([true,false])('recovers a lost no-deposit approval response only if the place was assigned (slot=%s)',async slot=>{
+    prepareApproval()
+    settings.enable_transfer_proof=false
+    inscription={...initial,payment_method:null,is_pending:true,occupies_slot:false}
+    jest.mocked(supabaseAdmin.rpc).mockImplementationOnce((async()=>{
+      inscription={...inscription!,is_pending:false,occupies_slot:slot,payment_revision:1}
+      return {data:null,error:{code:'TransportError'}} as never
+    }) as never)
+    expect((await run('approve',{inscriptionId:'inscription',revision:'0'})).status).toBe(slot?200:409)
+    expect(supabaseAdmin.rpc).toHaveBeenCalledTimes(1)
+  })
+  it('recovers a committed admission after a lost response without repeating it',async()=>{
+    prepareApproval(); inscription!.occupies_slot=false; inscription!.is_pending=true; commitWithError=true
+    const response=await run('admit',{inscriptionId:'inscription',revision:'0'})
+    expect(response.status).toBe(200)
+    expect(inscription).toMatchObject({occupies_slot:true,is_pending:false,payment_revision:1})
+    expect(supabaseAdmin.rpc).toHaveBeenCalledTimes(1)
+    expect(supabaseAdmin.rpc).toHaveBeenCalledWith('manage_inscription_admission',expect.objectContaining({p_actor:'user'}))
+  })
+  it('rejects an old admission revision after another organizer changed it',async()=>{
+    prepareApproval(); inscription!.payment_revision=1
+    expect((await run('admit',{inscriptionId:'inscription',revision:'0'})).status).toBe(409)
+    expect(inscription!.payment_revision).toBe(1)
+  })
   it.each([true, false])('approves a proof without changing inscription approval (%s)', async pending => {
     prepareApproval()
     inscription!.is_pending = pending
@@ -164,7 +200,7 @@ describe('resumable inscription payments', () => {
     prepareApproval()
     jest.mocked(supabaseAdmin.rpc).mockImplementationOnce((async () => {
       inscription!.payment_revision = 1; inscription!.payment_proof_path = 'replacement'
-      return { data: null, error: { code: '40001' } } as never
+      return { data: null, error: { code: 'PT409' } } as never
     }) as never)
     expect((await run('approve-proof', { inscriptionId: 'inscription', revision: '0' })).status).toBe(409)
     expect(inscription!.payment_proof_status).toBe('PENDING_REVIEW')
@@ -316,6 +352,24 @@ describe('resumable inscription payments', () => {
     expect((await run('cash', { inscriptionId: 'inscription', revision: '0' })).status).toBe(200)
     expect(update).toHaveBeenCalledWith({ payment_method: 'CASH', payment_proof_path: null })
     expect(inscription?.is_pending).toBe(false)
+  })
+  it('allows the verified organizer to record cash when it is disabled for players',async()=>{
+    jest.mocked(getUserDetails).mockResolvedValue({role:'CLUB'} as never)
+    jest.mocked(checkTournamentPermissions).mockResolvedValue({hasPermission:true})
+    const response=await run('cash',{inscriptionId:'inscription',revision:'0'})
+    expect(response.status).toBe(200)
+    expect(supabaseAdmin.rpc).toHaveBeenCalledWith('change_inscription_payment',expect.objectContaining({p_operation:'cash',p_manager:true}))
+    expect(settings.allow_cash_payment).toBe(false)
+  })
+  it('does not trust a player request claiming to be a manager when cash is disabled',async()=>{
+    expect((await run('cash',{inscriptionId:'inscription',revision:'0',manager:'true',p_manager:'true'})).status).toBe(400)
+    expect(supabaseAdmin.rpc).not.toHaveBeenCalled()
+  })
+  it('does not grant the organizer cash override to a club without access to this tournament',async()=>{
+    jest.mocked(getUserDetails).mockResolvedValue({role:'CLUB'} as never)
+    jest.mocked(checkTournamentPermissions).mockResolvedValue({hasPermission:false})
+    expect((await run('cash',{inscriptionId:'inscription',revision:'0'})).status).toBe(403)
+    expect(supabaseAdmin.rpc).not.toHaveBeenCalled()
   })
 
   it('requires ownership even when an inscription ID is known', async () => {

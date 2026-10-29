@@ -9,6 +9,7 @@ import { ArrowLeft, ListChecks } from 'lucide-react';
 import TournamentZonesWrapper from '@/components/tournament/tournament-zones-wrapper';
 import InitiateTournamentButton from '@/components/tournament/club/initiate-tournament-button';
 import BuildZonesButton from '@/components/tournament/club/build-zones-button';
+import { RegistrationReadinessNotice } from '@/components/tournament/registration-readiness-notice';
 
 /**
  * 🎯 CLIENT COMPONENT: VISTA DE ZONAS
@@ -73,6 +74,7 @@ const ZonesView: React.FC<ZonesViewProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {isOwner && <div className="mx-auto max-w-7xl p-4"><RegistrationReadinessNotice tournamentId={tournament.id} /></div>}
       {/* ========================================
           HEADER PERSONALIZADO
           ======================================== */}

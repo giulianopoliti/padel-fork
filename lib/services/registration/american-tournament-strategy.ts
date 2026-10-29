@@ -14,7 +14,7 @@ import { validateMixedPairGender } from '@/lib/services/tournament-category-conf
 import { normalizePlayerDni } from '@/lib/utils/player-dni'
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity'
 import { shouldRequireInscriptionValidation } from './inscription-validation'
-import { isInscriptionProofPending } from '@/lib/tournaments/inscription-requirements'
+import { isInscriptionEligible } from '@/lib/tournaments/inscription-state'
 import { createClientServiceRole } from '@/utils/supabase/server'
 import { ensureAmericanSingleZone } from '@/lib/services/tournaments/american-single-zone'
 import type {
@@ -126,7 +126,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
             isOrganizerRegistration,
           })
         })
-        .select('id, is_pending, payment_method, payment_proof_path')
+        .select('id, couple_id, is_pending, payment_method, payment_proof_path, occupies_slot, proof_waived_at')
         .single()
 
       if (inscriptionError) {
@@ -137,7 +137,7 @@ export class AmericanTournamentStrategy extends BaseRegistrationStrategy {
       let zoneAssigned = false
       const isSingleZone = context.tournament.format_config?.version === 2
         && context.tournament.format_config.zoneMode === 'SINGLE_ZONE'
-      if (!inscription.is_pending && isSingleZone && !isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof)) {
+      if (isSingleZone && isInscriptionEligible(inscription, context.tournament.enable_transfer_proof)) {
         context.trace?.step('assign-general-zone')
         const zoneResult = await ensureAmericanSingleZone(tournamentId)
         if (!zoneResult.success) {

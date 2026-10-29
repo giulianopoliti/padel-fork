@@ -670,6 +670,8 @@ export async function generateTournamentSeeding(
   totalCouples: number;
   strategy: SeedingStrategy;
 }> {
+  const { assertRegistrationExclusionsReviewed } = await import('@/lib/services/registration/registration-readiness')
+  await assertRegistrationExclusionsReviewed(tournamentId)
   // 1. Auto-detect strategy based on tournament type if not provided
   if (!strategy) {
     console.log(`[generateTournamentSeeding] Auto-detecting strategy for tournament: ${tournamentId}`)

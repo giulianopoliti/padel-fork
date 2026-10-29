@@ -7,6 +7,7 @@ import { ArrowLeft, Users, Trophy, AlertCircle } from 'lucide-react';
 import { useUser } from '@/contexts/user-context';
 import { useTournamentPermissions } from '@/hooks/use-tournament-permissions';
 import { useTournamentInscriptions } from '@/hooks/use-tournament-inscriptions';
+import { RegistrationReadinessNotice } from '@/components/tournament/registration-readiness-notice';
 
 // ✅ REUTILIZAR: Componentes de tabs del americano (completo)
 import TournamentCouplesTab from '@/components/tournament/tournament-couples-tab';
@@ -235,6 +236,7 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
             </div>
           )}
 
+          {isOwner && <div className="mt-6"><RegistrationReadinessNotice tournamentId={tournamentId} /></div>}
           {isOwner && (
             <div className="mt-6 flex justify-end">
               <ImportInscriptionsExcelDialog

@@ -9,13 +9,17 @@ import { uploadInscriptionProof, scheduleInscriptionProofCleanup } from '@/lib/s
 import { createRegistrationTrace } from '@/lib/tournaments/registration-log'
 import { MAX_INSCRIPTION_PROOF_BYTES, validateInscriptionProof } from '@/lib/tournaments/inscription-proof'
 import { reconcileCompleteInscriptions } from '@/lib/services/registration/reconcile-complete-inscriptions'
-import type { ProofApprovalArgs } from '@/lib/tournaments/payment-types'
+import { presentPayment, type ProofApprovalArgs } from '@/lib/tournaments/payment-types'
+import { isInscriptionProofPending } from '@/lib/tournaments/inscription-requirements'
+import { getTournamentCoupleCount, buildTournamentCapacitySummary } from '@/lib/services/tournament-capacity.service'
+import { canAssignInscriptionSlot } from '@/lib/tournaments/inscription-state'
+import { scheduleRegistrationNotifications } from '@/lib/services/messages/registration-delivery'
 
 type RouteContext = { params: Promise<{ id: string }> }
 class PaymentContextError extends Error {
   constructor(message: string, readonly status: number) { super(message) }
 }
-const columns = 'id, couple_id, player_id, payment_method, payment_proof_path, payment_proof_status, payment_proof_uploaded_at, payment_alias_snapshot, payment_amount_snapshot, payment_reviewed_at, payment_reviewed_by, is_pending, payment_revision'
+const columns = 'id, couple_id, player_id, payment_method, payment_proof_path, payment_proof_status, payment_proof_uploaded_at, payment_alias_snapshot, payment_amount_snapshot, payment_reviewed_at, payment_reviewed_by, is_pending, payment_revision, occupies_slot, proof_waived_at, proof_waived_by, proof_waiver_reason'
 const loadContext = async (request: NextRequest, context: RouteContext, trace: ReturnType<typeof createRegistrationTrace>) => {
   const { id: tournamentId } = await context.params
   trace.tournament(tournamentId)
@@ -26,7 +30,7 @@ const loadContext = async (request: NextRequest, context: RouteContext, trace: R
   const profile = await getUserDetails()
   if (!profile) throw new PaymentContextError('No se pudo cargar tu perfil.', 403)
   const { data: tournament, error: tournamentError } = await supabase.from('tournaments')
-    .select('id, name, type, allow_cash_payment, enable_transfer_proof, transfer_alias, transfer_amount, validate_inscriptions')
+    .select('id, name, type, status, bracket_status, registration_locked, registration_locked_by_capacity, max_participants, allow_cash_payment, enable_transfer_proof, reserve_slot_without_proof, transfer_alias, transfer_amount, validate_inscriptions')
     .eq('id', tournamentId).single()
   if (tournamentError || !tournament) { trace.log('tournament_unavailable', 'error', tournamentError); throw new PaymentContextError('No se pudo cargar el torneo.', 404) }
   const manager = profile.role !== 'PLAYER' && (await checkTournamentPermissions(user.id, tournamentId)).hasPermission
@@ -45,17 +49,21 @@ const loadContext = async (request: NextRequest, context: RouteContext, trace: R
     if (data && !manager && !owns) throw new PaymentContextError('No tenés permiso para esta inscripción.', 403)
     return data
   }
-  return { trace, tournamentId, tournament, profile, manager, userId: user.id, ownCouples: ownCouples.data || [], findInscription }
+  const capacity = buildTournamentCapacitySummary(tournament.max_participants, await getTournamentCoupleCount(supabaseAdmin, tournamentId))
+  const settings = { cash: tournament.allow_cash_payment, transfer: tournament.enable_transfer_proof,
+    alias: tournament.transfer_alias, amount: tournament.transfer_amount, reserveSlot: tournament.reserve_slot_without_proof !== false,
+    requireApproval: tournament.validate_inscriptions === true, isFull: capacity.isFull, admissionsOpen: canAssignInscriptionSlot(tournament) }
+  return { trace, tournamentId, tournament, profile, manager, settings, userId: user.id, ownCouples: ownCouples.data || [], findInscription }
 }
 
 const present = (inscription: Record<string, any> | null, enableTransferProof = true) => inscription ? {
-  id: inscription.id, method: inscription.payment_method, hasProof: !!inscription.payment_proof_path,
-  proofStatus: inscription.payment_proof_status, isPending: inscription.is_pending,
+  ...presentPayment(inscription as Parameters<typeof presentPayment>[0], enableTransferProof),
   alias: inscription.payment_alias_snapshot, amount: inscription.payment_amount_snapshot,
   revision: inscription.payment_revision, uploadedAt: inscription.payment_proof_uploaded_at,
   reviewedAt: inscription.payment_reviewed_at,
   individual: !inscription.couple_id,
-  proofRequired: enableTransferProof && inscription.payment_method === 'TRANSFER',
+  proofWaivedAt: inscription.proof_waived_at,
+  proofWaiverReason: inscription.proof_waiver_reason,
 } : null
 
 export const GET = async (request: NextRequest, context: RouteContext) => {
@@ -67,24 +75,20 @@ export const GET = async (request: NextRequest, context: RouteContext) => {
       const { data, error } = await supabaseAdmin.from('inscriptions').select(columns).eq('tournament_id', ctx.tournamentId)
       if (error) return trace.reply({ success: false }, 500, 'payments_query_failed', error)
       return trace.reply({ success: true, inscription: null, inscriptions: (data || []).map(row => present(row, ctx.tournament.enable_transfer_proof)),
-        incompleteCount: ctx.tournament.enable_transfer_proof ? (data || []).filter(row => row.couple_id && row.payment_method === 'TRANSFER' && !row.payment_proof_path).length : 0,
+        incompleteCount: (data || []).filter(row => row.couple_id && isInscriptionProofPending(row, ctx.tournament.enable_transfer_proof)).length,
         manager: ctx.manager, tournamentName: ctx.tournament.name,
-        settings: { cash: ctx.tournament.allow_cash_payment, transfer: ctx.tournament.enable_transfer_proof,
-          alias: ctx.tournament.transfer_alias, amount: ctx.tournament.transfer_amount } }, 200, 'complete')
+        settings: ctx.settings }, 200, 'complete')
     }
     if (request.nextUrl.searchParams.has('incomplete')) {
       if (!ctx.manager) return ctx.trace.reply({ success: false, message: 'Sin permisos' }, 403, 'permission_denied')
       if (!ctx.tournament.enable_transfer_proof) return ctx.trace.reply({ success: true, incompleteCount: 0 }, 200, 'complete')
       const { count, error } = await supabaseAdmin.from('inscriptions').select('id', { head: true, count: 'exact' })
-        .eq('tournament_id', ctx.tournamentId).not('couple_id', 'is', null).eq('payment_method', 'TRANSFER').is('payment_proof_path', null)
+        .eq('tournament_id', ctx.tournamentId).not('couple_id', 'is', null).eq('payment_method', 'TRANSFER').is('payment_proof_path', null).is('proof_waived_at', null)
       if (error) return ctx.trace.reply({ success: false }, 500, 'incomplete_query_failed', error)
       return ctx.trace.reply({ success: true, incompleteCount: count || 0 }, 200, 'complete')
     }
     const inscription = await ctx.findInscription(request.nextUrl.searchParams.get('inscriptionId'))
-    return ctx.trace.reply({ success: true, inscription: present(inscription, ctx.tournament.enable_transfer_proof), manager: ctx.manager, tournamentName: ctx.tournament.name, settings: {
-      cash: ctx.tournament.allow_cash_payment, transfer: ctx.tournament.enable_transfer_proof,
-      alias: ctx.tournament.transfer_alias, amount: ctx.tournament.transfer_amount,
-    } }, 200, 'complete')
+    return ctx.trace.reply({ success: true, inscription: present(inscription, ctx.tournament.enable_transfer_proof), manager: ctx.manager, tournamentName: ctx.tournament.name, settings: ctx.settings }, 200, 'complete')
   } catch (error) {
     return trace.reply({ success: false, message: error instanceof PaymentContextError ? error.message : 'No se pudo consultar la inscripción.' }, error instanceof PaymentContextError ? error.status : 500, 'read_failed', error)
   }
@@ -128,6 +132,26 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
       }
     } else if (!inscription) {
       return trace.reply({ success: false, message: 'La inscripción ya no existe. Revisá el torneo.' }, 404, 'inscription_missing')
+    } else if (['approve', 'assign', 'admit', 'admit-without-proof'].includes(operation)) {
+      if (!ctx.manager) return trace.reply({ success: false, message: 'Sólo el organizador puede admitir una pareja.' }, 403, 'permission_denied')
+      const revisionText = form.get('revision')
+      if (typeof revisionText !== 'string' || !/^\d+$/.test(revisionText) || !Number.isSafeInteger(Number(revisionText))) {
+        return trace.reply({ success: false, message: 'Actualizá la inscripción antes de continuar.' }, 400, 'revision_missing')
+      }
+      const { data, error } = await supabaseAdmin.rpc('manage_inscription_admission', {
+        p_id: inscription.id, p_tournament_id: tournamentId, p_revision: Number(revisionText), p_actor: ctx.userId, p_operation: operation,
+      })
+      if (error || !data?.[0]) {
+        const saved = await ctx.findInscription(inscription.id)
+        const confirmed = saved && saved.payment_revision === Number(revisionText) + 1
+          && (operation === 'approve' ? !saved.is_pending && (!inscription.couple_id || inscription.is_pending !== true
+            || isInscriptionProofPending(inscription,tournament.enable_transfer_proof) || saved.occupies_slot === true) : saved.occupies_slot === true)
+          && (!['admit','admit-without-proof'].includes(operation) || !saved.is_pending)
+          && (operation !== 'admit-without-proof' || !isInscriptionProofPending(saved,tournament.enable_transfer_proof))
+        if (confirmed) inscription = saved
+        else return trace.reply({ success: false, message: error?.message || 'No se pudo confirmar la admisión. Consultá el estado antes de repetir.' },
+          error?.code === '42501' ? 403 : 409, 'admission_unconfirmed', error)
+      } else inscription = data[0]
     } else if (operation === 'approve-proof') {
       if (!ctx.manager) return trace.reply({ success: false, message: 'Sólo el organizador puede aprobar el comprobante.' }, 403, 'permission_denied')
       const revisionText = form.get('revision')
@@ -164,7 +188,7 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
         return trace.reply({ success: false, message: 'El comprobante aprobado sólo puede modificarlo el organizador.' }, 403, 'proof_approved')
       }
       if (revision !== inscription.payment_revision) return trace.reply({ success: false, message: 'El pago cambió. Actualizá antes de guardar.' }, 409, 'payment_conflict')
-      if (operation === 'cash' && !tournament.allow_cash_payment) return trace.reply({ success: false, message: 'Este torneo no permite efectivo.' }, 400, 'cash_disabled')
+      if (operation === 'cash' && !tournament.allow_cash_payment && !ctx.manager) return trace.reply({ success: false, message: 'Este torneo no permite efectivo.' }, 400, 'cash_disabled')
       if (operation === 'transfer' && !tournament.enable_transfer_proof) return trace.reply({ success: false, message: 'Este torneo no acepta transferencias.' }, 400, 'transfer_disabled')
       let filePath: string | null = null
       if (operation === 'attach' || operation === 'replace') {
@@ -203,16 +227,10 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
 
     let assignmentPending = false
     if (operation !== 'approve-proof') {
-      try { assignmentPending = (await reconcileCompleteInscriptions(tournamentId)) === 'WAITING_PROOF' }
+      try { await reconcileCompleteInscriptions(tournamentId) }
       catch (error) { assignmentPending = true; trace.log('zone_reconciliation_deferred', 'error', error) }
     }
-    if ((operation === 'attach' || operation === 'cash') && inscription) {
-      try {
-        const { sendTournamentMessage } = await import('@/lib/services/messages')
-        const result = await sendTournamentMessage({ type: 'INSCRIPTION_APPROVED_PLAYER', supabase: supabaseAdmin, inscriptionId: inscription.id })
-        if (result.some(message => !message.success)) trace.log('confirmation_message_failed', 'warn')
-      } catch (error) { trace.log('confirmation_message_failed', 'warn', error) }
-    }
+    scheduleRegistrationNotifications()
     try {
       revalidatePath(`/tournaments/${tournamentId}`)
       revalidatePath(`/tournaments/${tournamentId}/inscriptions`)
@@ -221,8 +239,10 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
       revalidatePath('/torneos', 'layout')
       revalidatePath('/tournaments', 'layout')
     } catch (error) { trace.log('refresh_failed_after_save', 'error', error) }
+    const noSlot = inscription?.occupies_slot === false && inscription?.couple_id
     return trace.reply({ success: true, inscription: present(inscription, tournament.enable_transfer_proof),
-      message: assignmentPending ? 'Cambios guardados. Pendiente de asignación; completá los comprobantes faltantes o reintentá la asignación.' : undefined }, 200, 'complete')
+      message: noSlot ? 'Cambios guardados. La inscripción sigue sin cupo asignado; el organizador revisará el caso.'
+        : assignmentPending ? 'Cambios guardados. Pendiente de asignación deportiva; se reintentará al actualizar.' : undefined }, 200, 'complete')
   } catch (error) {
     return trace.reply({ success: false, message: error instanceof PaymentContextError ? error.message : 'No se pudo confirmar el resultado. Tu inscripción no se cancela por una falla del archivo. Actualizá antes de repetir.' }, error instanceof PaymentContextError ? error.status : 500, 'result_unknown', error)
   }

@@ -38,7 +38,7 @@ export const readFreeEditorData = async (client: SupabaseClient, tournamentId: s
   if (canManage) {
     const service = await createClientServiceRole()
     const [inscriptions, bans, matches] = await Promise.all([
-      service.from('inscriptions').select('couple_id').eq('tournament_id', tournamentId).or('is_pending.eq.false,is_pending.is.null').not('couple_id', 'is', null),
+      service.from('inscriptions').select('couple_id').eq('tournament_id', tournamentId).eq('occupies_slot',true).or('is_pending.eq.false,is_pending.is.null').not('couple_id', 'is', null),
       service.from('tournament_couple_disqualifications').select('couple_id').eq('tournament_id', tournamentId).eq('status', 'ACTIVE'),
       service.from('matches').select('id,result_couple1,result_couple2,court,sets:set_matches(id),history:match_results_history(id,operation_metadata),agenda:fecha_matches(id)')
         .eq('tournament_id', tournamentId).eq('type', 'ELIMINATION').eq('bracket_key', 'MAIN'),

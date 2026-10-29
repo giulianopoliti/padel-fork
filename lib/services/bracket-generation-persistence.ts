@@ -1,4 +1,5 @@
 import { createClientServiceRole } from '@/utils/supabase/server'
+import { assertRegistrationExclusionsReviewed } from '@/lib/services/registration/registration-readiness'
 import type {
   BracketMatch,
   MatchHierarchy,
@@ -18,6 +19,7 @@ export async function savePlaceholderBracketToDatabase(
   hierarchy: MatchHierarchy[],
   options: { replaceExisting?: boolean } = {}
 ): Promise<{ savedMatches: PersistedBracketMatch[] }> {
+  await assertRegistrationExclusionsReviewed(tournamentId)
   const supabase = await createClientServiceRole()
   const bracketKey: BracketKey =
     seeds[0]?.bracket_key || matches[0]?.bracket_key || hierarchy[0]?.bracket_key || DEFAULT_BRACKET_KEY
@@ -129,6 +131,7 @@ export async function savePlaceholderSeedingToDatabase(
   seeds: PlaceholderSeed[],
   options: { replaceExisting?: boolean } = {}
 ): Promise<{ savedSeeds: Array<{ id: string; seed: number; bracket_position: number | null; couple_id: string | null; bracket_key: BracketKey }> }> {
+  await assertRegistrationExclusionsReviewed(tournamentId)
   const supabase = await createClientServiceRole()
   const bracketKey: BracketKey = seeds[0]?.bracket_key || DEFAULT_BRACKET_KEY
   const replaceExisting = options.replaceExisting ?? true

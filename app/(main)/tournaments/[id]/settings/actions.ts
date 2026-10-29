@@ -743,6 +743,7 @@ export async function updateTournamentBasicInfo(
         .from('inscriptions')
         .select('*', { count: 'exact', head: true })
         .eq('tournament_id', params.tournamentId)
+        .eq('occupies_slot', true)
         .eq('es_prueba', false)
 
       if (countError) {

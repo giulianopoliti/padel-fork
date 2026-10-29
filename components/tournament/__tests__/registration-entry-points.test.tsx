@@ -33,11 +33,12 @@ describe('registration configuration shared by /torneos, /panel and tournament d
   })
 
   it('offers payment for an existing inscription even when full and closed', () => {
-    jest.mocked(useOwnPayments).mockReturnValue({ inscriptions: { test: { id: 'i', method: 'TRANSFER', hasProof: false, proofStatus: 'NOT_REQUIRED', isPending: true, revision: 0 } }, loading: false } as never)
+    jest.mocked(useOwnPayments).mockReturnValue({ inscriptions: { test: { id: 'i', method: 'TRANSFER', hasProof: false, proofStatus: 'NOT_REQUIRED', isPending: false, revision: 0, occupiesSlot: true, proofRequired: true, confirmed: true, registrationLabel: 'Confirmada' } }, loading: false } as never)
     const html = renderToStaticMarkup(<PublicTournamentCards tournaments={[{ id: 'test', name: 'Test', status: 'IN_PROGRESS', club: null, isFull: true, enablePublicInscriptions: false }]} emptyTitle="Empty" emptyDescription="Empty" />)
-    expect(html).toContain('Ya estás inscripto')
+    expect(html).toContain('Tu inscripción')
     expect(html).toContain('Subir comprobante')
-    expect(html).toContain('espera aprobación')
+    expect(html).toContain('Tu cupo está reservado')
+    expect(html).not.toContain('espera aprobación')
     expect(html).not.toContain('data-registration=')
   })
 

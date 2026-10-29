@@ -35,7 +35,7 @@ export default async function SettingsDatosPage({ params }: SettingsDatosPagePro
 
   const {
     tournament,
-    inscriptionsCount,
+    occupiedSlots,
     imageSectionTournament,
     isAmericanTournament,
     currentClubs,
@@ -68,7 +68,7 @@ export default async function SettingsDatosPage({ params }: SettingsDatosPagePro
               type: tournament.type ?? null,
               hide_venue: Boolean((tournament as any).hide_venue),
             }}
-            inscriptionsCount={inscriptionsCount}
+            inscriptionsCount={occupiedSlots}
           />
         </SettingsShellCard>
 

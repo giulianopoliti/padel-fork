@@ -44,6 +44,16 @@ describe('resolvePlayerTournamentStatus', () => {
     expect(result.isInscribed).toBe(false)
   })
 
+  it('keeps a saved couple without a place in the pending view',()=>{
+    const result=resolvePlayerTournamentStatus(playerId,tournamentId,[makeCoupleInscription({occupies_slot:false})],[])
+    expect(result).toMatchObject({state:'REGISTERED_PENDING',isInscribed:true,isPending:true})
+  })
+
+  it('preserves existing matches after the receipt is removed',()=>{
+    const result=resolvePlayerTournamentStatus(playerId,tournamentId,[makeCoupleInscription({occupies_slot:true,registration_incomplete:true})],[makeMatch()])
+    expect(result.uiState).toBe('REGISTERED_ACTIVE')
+  })
+
   it('returns REGISTERED_ACTIVE for active couple inscription', () => {
     const result = resolvePlayerTournamentStatus(
       playerId,

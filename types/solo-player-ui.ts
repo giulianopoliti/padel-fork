@@ -7,6 +7,7 @@ export interface SoloPairState {
   inscription_id: string
   pendingApproval: boolean
   pendingProof: boolean
+  occupiesSlot?: boolean
   transferProofEnabled?: boolean
   formedViaSoloPlayers?: boolean
   isEliminated?: boolean
@@ -59,5 +60,5 @@ export interface SoloSearchNotificationData {
 export interface SoloNotificationsData { notifications: SoloNotificationEntry[]; unreadCount: number; hasMore: boolean }
 
 export interface SoloManagerTournament { id: string; name: string; type: string; enableTransferProof: boolean; allowCash: boolean }
-export interface SoloManagerPair { inscriptionId: string; tournamentId: string; tournamentName: string; player1Id: string; player2Id: string; player1Name: string; player2Name: string; player1Side: string | null; player2Side: string | null; player1Hand: string | null; player2Hand: string | null; pendingApproval: boolean; pendingProof: boolean; assigned: boolean }
+export interface SoloManagerPair { inscriptionId: string; tournamentId: string; tournamentName: string; player1Id: string; player2Id: string; player1Name: string; player2Name: string; player1Side: string | null; player2Side: string | null; player1Hand: string | null; player2Hand: string | null; pendingApproval: boolean; pendingProof: boolean; occupiesSlot?: boolean; assigned: boolean }
 export interface SoloManagerData { tournaments: SoloManagerTournament[]; pairs: SoloManagerPair[]; requests: SoloRequestEntry[]; hasMoreRequests: boolean; hasMorePairs: boolean }

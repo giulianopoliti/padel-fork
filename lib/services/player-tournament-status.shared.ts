@@ -23,6 +23,8 @@ export interface PlayerTournamentStatusInscription {
   player_id: string | null
   is_eliminated: boolean | null
   is_pending: boolean | null
+  occupies_slot?: boolean
+  registration_incomplete?: boolean
   created_at?: string | null
   couples?: {
     id: string
@@ -63,7 +65,7 @@ function mapInscriptionToUiState(
   inscription: PlayerTournamentStatusInscription
 ): PlayerTournamentUIState {
   if (inscription.is_eliminated) return 'REGISTERED_ELIMINATED'
-  if (inscription.is_pending) return 'REGISTERED_PENDING'
+  if (inscription.is_pending || inscription.couple_id && (inscription.occupies_slot === false || inscription.registration_incomplete)) return 'REGISTERED_PENDING'
   return 'REGISTERED_ACTIVE'
 }
 
@@ -162,7 +164,10 @@ export function resolvePlayerTournamentStatus(
     }
   }
 
-  const uiState = mapInscriptionToUiState(bestInscription)
+  // Receipt edits do not hide an already scheduled participant's matches.
+  const effectiveInscription = bestInscription.occupies_slot !== false && !bestInscription.is_pending && activeMatches.length > 0
+    ? { ...bestInscription, registration_incomplete: false } : bestInscription
+  const uiState = mapInscriptionToUiState(effectiveInscription)
 
   if (uiState === 'REGISTERED_ELIMINATED' && activeMatches.length > 0) {
     return {

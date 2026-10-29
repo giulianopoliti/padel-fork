@@ -399,13 +399,13 @@ export default function TournamentBasicInfoForm({
         />
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            Inscripciones actuales: <strong>{inscriptionsCount} parejas</strong>
+            Cupos ocupados: <strong>{inscriptionsCount} parejas</strong>
           </p>
           {maxParticipants !== '' && !isMaxParticipantsValid() && (
             <Alert variant="destructive" className="py-2">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                El máximo debe ser al menos {inscriptionsCount} (inscripciones actuales) y no más de 256
+                El máximo debe ser al menos {inscriptionsCount} (cupos ocupados) y no más de 256
               </AlertDescription>
             </Alert>
           )}

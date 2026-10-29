@@ -205,7 +205,7 @@ export default function PlayerFvInscribedTournamentsSection({
                       </Link>
                     </Button>
                   ) : null}
-                  <p className="text-center text-sm font-semibold text-court-100">Ya estás inscripto</p>
+                  <p className="text-center text-sm font-semibold text-court-100">{inscription.payment?.registrationLabel || 'Inscripción guardada'}</p>
                   <Button asChild variant="outline" className="h-11 border-white/25 bg-transparent text-sm font-semibold text-white hover:bg-white/10 hover:text-white">
                     <Link href={getPublicTournamentHref(tournament)}>
                       Ver detalles

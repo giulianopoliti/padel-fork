@@ -4,16 +4,8 @@ interface InscriptionValidationInput {
   isOrganizerRegistration?: boolean
 }
 
-const MANAGEMENT_ROLES = new Set(['ADMIN', 'CLUB', 'ORGANIZADOR'])
-
-export const shouldRequireInscriptionValidation = ({
-  validateInscriptions,
-  actorRole,
-  isOrganizerRegistration = false,
-}: InscriptionValidationInput): boolean => {
-  if (!validateInscriptions || isOrganizerRegistration) return false
-  return !actorRole || !MANAGEMENT_ROLES.has(actorRole)
-}
+// Retain the legacy call signature while retiring manual registration approval.
+export const shouldRequireInscriptionValidation = (_input: InscriptionValidationInput): boolean => false
 
 export const getTournamentInscriptionPendingState = async ({
   supabase,

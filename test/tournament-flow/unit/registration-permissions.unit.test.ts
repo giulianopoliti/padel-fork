@@ -1,5 +1,8 @@
 import { AmericanTournamentStrategy } from '@/lib/services/registration/american-tournament-strategy'
 import { LongTournamentStrategy } from '@/lib/services/registration/long-tournament-strategy'
+import { createClientServiceRole } from '@/utils/supabase/server'
+
+jest.mock('@/utils/supabase/server', () => ({ createClientServiceRole: jest.fn() }))
 
 const context = {
   tournament: {
@@ -55,6 +58,7 @@ describe.each([
       }),
     }
     const supabase = { from: jest.fn().mockReturnValue(query) }
+    jest.mocked(createClientServiceRole).mockResolvedValue(supabase as never)
 
     const result = await strategy.checkExistingPlayerInscriptions(
       'player-1',
@@ -68,7 +72,7 @@ describe.each([
   })
 
   it.each([
-    { actorRole: 'PLAYER', isOrganizerRegistration: false, expectedPending: true },
+    { actorRole: 'PLAYER', isOrganizerRegistration: false, expectedPending: false },
     { actorRole: 'ORGANIZADOR', isOrganizerRegistration: true, expectedPending: false },
   ])(
     'stores is_pending=$expectedPending for $actorRole registrations when validation is enabled',

@@ -1913,7 +1913,8 @@ export async function getOrganizationBySlug(slug: string) {
             .from('inscriptions')
             .select('*', { count: 'exact', head: true })
             .eq('tournament_id', tournament.id)
-            .eq('is_pending', false),
+            .eq('occupies_slot', true)
+            .eq('es_prueba', false),
           supabase
             .from('matches')
             .select('*', { count: 'exact', head: true })

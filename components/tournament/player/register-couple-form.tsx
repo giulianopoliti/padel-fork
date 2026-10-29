@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import useSWR from "swr"
 import { paymentFetcher } from "@/components/tournament/inscription-payment-panel"
+import { registrationSignupDescription } from '@/lib/tournaments/inscription-state'
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -215,9 +216,9 @@ export default function RegisterCoupleForm({
   useEffect(() => {
     if (!savedInscriptionId || handedOff.current) return
     handedOff.current = true
-    if (onPaymentReady) onPaymentReady(savedInscriptionId)
+    if (onPaymentReady && ((paymentData?.settings.transfer ?? transferConfig?.enabled) || paymentData?.settings.cash)) onPaymentReady(savedInscriptionId)
     else onComplete(true)
-  }, [savedInscriptionId, onComplete, onPaymentReady])
+  }, [savedInscriptionId, onComplete, onPaymentReady, transferConfig?.enabled, paymentData?.settings.transfer, paymentData?.settings.cash])
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER' | 'NONE'>(transferConfig?.enabled ? 'TRANSFER' : 'NONE')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
@@ -249,9 +250,9 @@ export default function RegisterCoupleForm({
   const registrationInFlight = useRef(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
 
-  const transferProofEnabled = !!transferConfig?.enabled
-  const transferAlias = transferConfig?.alias?.trim() || null
-  const transferAmount = transferConfig?.amount ?? null
+  const transferProofEnabled = paymentData?.settings.transfer ?? !!transferConfig?.enabled
+  const transferAlias = (paymentData?.settings.alias ?? transferConfig?.alias)?.trim() || null
+  const transferAmount = paymentData?.settings.amount ?? transferConfig?.amount ?? null
   const transferConfigInvalid = transferProofEnabled && (!transferAlias || transferAmount === null || transferAmount <= 0)
 
 
@@ -532,10 +533,9 @@ export default function RegisterCoupleForm({
 
       if (result.success) {
         toast({
-          title: transferProofEnabled ? "Inscripción registrada" : "¡Pareja registrada!",
-          description: transferProofEnabled
-            ? "Tu inscripción quedó guardada. Podés completar el comprobante desde aquí."
-            : "Se ha registrado la pareja exitosamente",
+          title: 'Inscripción guardada',
+          description: 'message' in result && typeof result.message === 'string' ? result.message
+            : registrationSignupDescription(paymentData?.settings,paymentMethod),
         })
         return true
       }
@@ -712,7 +712,7 @@ export default function RegisterCoupleForm({
 
   const renderTransferProofStep = (_stepLabel: string, _inputId: string, _companionName?: string | null) => (
     <div className="space-y-3 rounded-lg border p-4">
-      <p className="text-sm">Primero guardamos tu inscripción y reservamos el cupo. Después podés subir el comprobante.</p>
+      <p className="text-sm">{registrationSignupDescription(paymentData?.settings,paymentMethod)}</p>
       {paymentData?.settings.cash && (
         <label className="block space-y-2 text-sm">
           <span>Forma de pago</span>
@@ -843,7 +843,7 @@ export default function RegisterCoupleForm({
   if (existingId) return (
     <div className="space-y-4">
       <p className="font-medium">Tu inscripción está guardada.</p>
-      <Button onClick={() => onPaymentReady ? onPaymentReady(existingId) : onComplete(true)}>Pago de la inscripción</Button>
+      {(transferProofEnabled || paymentData?.settings.cash || paymentData?.inscription?.hasProof || paymentData?.inscription?.method) && <Button onClick={() => onPaymentReady ? onPaymentReady(existingId) : onComplete(true)}>Pago de la inscripción</Button>}
       <Button onClick={() => onComplete(true)}>Volver al torneo</Button>
     </div>
   )
@@ -960,7 +960,7 @@ export default function RegisterCoupleForm({
 
             {selectedCompanionId && !showPhoneForm && (
               <div className="space-y-4 pt-4">
-                {(transferProofEnabled || paymentData?.settings.cash) && renderTransferProofStep(
+                {renderTransferProofStep(
                   "Paso 3",
                   "payment-proof-search",
                   selectedCompanion
@@ -971,7 +971,7 @@ export default function RegisterCoupleForm({
                 {!transferProofEnabled && (
                   <div className="rounded-display border border-emerald-200 bg-emerald-50 p-3">
                     <p className="text-sm font-medium text-emerald-800">
-                      La pareja ya está lista para registrarse.
+                      Podés guardar la inscripción sin adjuntar archivos.
                     </p>
                   </div>
                 )}
@@ -1118,7 +1118,7 @@ export default function RegisterCoupleForm({
                   )}
                 />
 
-                {(transferProofEnabled || paymentData?.settings.cash) && renderTransferProofStep("Paso 3", "payment-proof-new")}
+                {renderTransferProofStep("Paso 3", "payment-proof-new")}
 
                 {renderTermsAcceptance()}
 

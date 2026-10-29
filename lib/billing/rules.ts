@@ -74,7 +74,7 @@ export const countBillableCouples = (inscriptions: BillingInscription[]) => {
   const coupleIds = new Set<string>()
 
   for (const inscription of inscriptions) {
-    if (inscription.es_prueba === true || !inscription.couple_id) continue
+    if (inscription.es_prueba === true || !inscription.couple_id || inscription.occupies_slot === false) continue
 
     const couple = normalizeRelation(inscription.couple)
     if (!couple || couple.es_prueba === true) continue
@@ -93,7 +93,7 @@ export const countBillablePlayers = (inscriptions: BillingInscription[]) => {
   const playerIds = new Set<string>()
 
   for (const inscription of inscriptions) {
-    if (inscription.es_prueba === true) continue
+    if (inscription.es_prueba === true || inscription.couple_id && inscription.occupies_slot === false) continue
 
     if (inscription.couple_id) {
       const couple = normalizeRelation(inscription.couple)

@@ -245,7 +245,7 @@ export default function PublicTournamentList({
 
               <div className="flex flex-col justify-between gap-3">
                 <TournamentSoloStatus tournamentId={tournament.id} tone="dark" />
-                {payments.loading ? <p role="status" className="text-sm">Consultando inscripción…</p> : payments.error ? <div role="alert" className="text-sm">No se pudo consultar tu inscripción. <Button variant="outline" onClick={() => void payments.retry().catch(() => {})}>Reintentar</Button></div> : ownInscription ? <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={ownInscription} /></div> : canRegister ? (
+                {payments.loading ? <p role="status" className="text-sm">Consultando inscripción…</p> : payments.error ? <div role="alert" className="text-sm">No se pudo consultar tu inscripción. <Button variant="outline" onClick={() => void payments.retry().catch(() => {})}>Reintentar</Button></div> : ownInscription ? <div className="space-y-2 text-sm"><p className="font-semibold">Tu inscripción</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={ownInscription} /></div> : canRegister ? (
                   <PublicRegistrationLauncher
                     tournamentId={tournament.id}
                     tournamentName={tournament.name}

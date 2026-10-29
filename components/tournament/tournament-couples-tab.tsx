@@ -1,5 +1,5 @@
 "use client"
-import { InscriptionPaymentPanel } from '@/components/tournament/inscription-payment-panel'
+import { InscriptionPaymentPanel, InscriptionStatus } from '@/components/tournament/inscription-payment-panel'
 
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -609,6 +609,7 @@ export default function TournamentCouplesTab({
                     )}
                     {canManageTournament && (
                       <TableCell className="text-center">
+                        {couple.inscription_id && <InscriptionStatus tournamentId={tournamentId} inscriptionId={couple.inscription_id} />}
                         {couple.is_pending && couple.inscription_id ? (
                           <div className="flex items-center justify-center gap-1">
                             <Button
@@ -641,9 +642,7 @@ export default function TournamentCouplesTab({
                               )}
                             </Button>
                           </div>
-                        ) : (
-                          <span className="text-green-600 text-sm">Aprobada</span>
-                        )}
+                        ) : null}
                       </TableCell>
                     )}
                     {!isRegistrationBlocked && (

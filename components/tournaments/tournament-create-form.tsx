@@ -28,6 +28,7 @@ import { useForm, type FieldPath } from 'react-hook-form';
 import * as z from 'zod';
 
 import { createTournamentAction } from '@/app/api/tournaments/actions';
+import { RegistrationPolicyFields } from '@/components/tournament/registration-policy-fields';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -139,6 +140,10 @@ const tournamentSchema = z.object({
   max_participants: z.number().min(2, 'Minimo 2 parejas').max(64, 'Maximo 64 parejas').optional(),
   show_public_inscriptions: z.boolean().default(true),
   allow_cash_payment: z.boolean().default(false),
+  enable_transfer_proof: z.boolean().default(false),
+  reserve_slot_without_proof: z.boolean().default(true),
+  transfer_alias: z.string().default(''),
+  transfer_amount: z.number().optional(),
   club_id: z.string().min(1, 'Selecciona un club'),
   extra_club_ids: z.array(z.string()).default([]),
   price: z.number().int('El precio debe ser un numero entero').min(0, 'El precio no puede ser negativo').max(MAX_TOURNAMENT_PRICE, 'El precio es demasiado alto').optional(),
@@ -151,6 +156,10 @@ const tournamentSchema = z.object({
   silver_count: z.number().int().min(0, 'No puede ser negativo').optional(),
   eliminated_count: z.number().int().min(0, 'No puede ser negativo').optional(),
   advancement_allocation_mode: z.enum(['AUTO', 'CUSTOM']).default('AUTO'),
+}).refine(data => !data.enable_transfer_proof || Boolean(data.transfer_alias.trim()), {
+  message: 'Ingresá el alias de la cuenta que recibirá la transferencia', path: ['transfer_alias'],
+}).refine(data => !data.enable_transfer_proof || (Number.isFinite(data.transfer_amount) && Number(data.transfer_amount) > 0), {
+  message: 'Ingresá un importe por pareja mayor a cero', path: ['transfer_amount'],
 }).refine((data) => {
   if (data.type === 'AMERICAN' && !data.start_time) {
     return false;
@@ -387,6 +396,10 @@ export default function TournamentCreateForm() {
       max_participants: undefined,
       show_public_inscriptions: true,
       allow_cash_payment: false,
+      enable_transfer_proof: false,
+      reserve_slot_without_proof: true,
+      transfer_alias: '',
+      transfer_amount: undefined,
       club_id: '',
       extra_club_ids: [],
       price: undefined,
@@ -759,7 +772,7 @@ export default function TournamentCreateForm() {
         : ['start_date', 'end_date'];
     }
 
-    const finalFields: FieldPath<TournamentFormData>[] = ['max_participants', 'show_public_inscriptions', 'advancement_allocation_mode'];
+    const finalFields: FieldPath<TournamentFormData>[] = ['max_participants', 'show_public_inscriptions', 'advancement_allocation_mode', 'enable_transfer_proof', 'allow_cash_payment', 'reserve_slot_without_proof', 'transfer_alias', 'transfer_amount'];
     if (watchedValues.advancement_allocation_mode === 'CUSTOM') {
       if (selectedPreset?.advancementConfig.kind === 'SINGLE') finalFields.push('single_bracket_advance_count');
       if (selectedPreset?.advancementConfig.kind === 'PER_ZONE_TOP') finalFields.push('american_couples_per_zone');
@@ -871,6 +884,10 @@ export default function TournamentCreateForm() {
         max_participants: data.max_participants || null,
         show_public_inscriptions: data.show_public_inscriptions,
         allow_cash_payment: data.allow_cash_payment,
+        enable_transfer_proof: data.enable_transfer_proof,
+        reserve_slot_without_proof: data.reserve_slot_without_proof,
+        transfer_alias: data.transfer_alias.trim() || null,
+        transfer_amount: data.transfer_amount ?? null,
         club_id: data.club_id,
         extra_club_ids: (data.extra_club_ids || []).filter((id) => id && id !== data.club_id),
         price: data.price ?? null,
@@ -1974,12 +1991,21 @@ export default function TournamentCreateForm() {
                             </FormItem>
                           )}
                         />
-                        <FormField control={form.control} name="allow_cash_payment" render={({ field }) => (
-                          <FormItem className="flex items-center justify-between gap-4 rounded-lg border p-4">
-                            <div><FormLabel>Permitir efectivo</FormLabel><FormDescription>El jugador puede elegir efectivo sin comprobante. No se marca como cobrado.</FormDescription></div>
-                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          </FormItem>
-                        )} />
+                        <div className="md:col-span-2">
+                          <RegistrationPolicyFields id="create-registration-policy" value={{
+                            requestDeposit: watchedValues.enable_transfer_proof,
+                            reserveOnSignup: watchedValues.reserve_slot_without_proof,
+                            allowCash: watchedValues.allow_cash_payment,
+                            alias: watchedValues.transfer_alias,
+                            amount: watchedValues.transfer_amount == null ? '' : String(watchedValues.transfer_amount),
+                          }} onChange={patch => {
+                            if (patch.requestDeposit !== undefined) form.setValue('enable_transfer_proof', patch.requestDeposit, { shouldDirty: true })
+                            if (patch.reserveOnSignup !== undefined) form.setValue('reserve_slot_without_proof', patch.reserveOnSignup, { shouldDirty: true })
+                            if (patch.allowCash !== undefined) form.setValue('allow_cash_payment', patch.allowCash, { shouldDirty: true })
+                            if (patch.alias !== undefined) form.setValue('transfer_alias', patch.alias, { shouldDirty: true, shouldValidate: true })
+                            if (patch.amount !== undefined) form.setValue('transfer_amount', patch.amount === '' ? undefined : Number(patch.amount), { shouldDirty: true, shouldValidate: true })
+                          }} disabled={isSubmitting} error={form.formState.errors.transfer_alias?.message || form.formState.errors.transfer_amount?.message} />
+                        </div>
                       </div>
 
                       {selectedPreset?.bracketMode !== 'NONE' && !isSelectedAmericanLibre && (

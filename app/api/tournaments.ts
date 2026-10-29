@@ -102,7 +102,9 @@ export async function getTournaments() {
                 const { data: inscriptions, error: inscriptionsError } = await supabase
                     .from("inscriptions")
                     .select("couple_id")
-                    .eq("tournament_id", rawTournament.id);
+                    .eq("tournament_id", rawTournament.id)
+                    .eq('occupies_slot',true)
+                    .eq('es_prueba',false);
 
                 if (inscriptionsError) {
                     console.error(`Error fetching inscriptions for tournament ${rawTournament.id}:`, inscriptionsError);

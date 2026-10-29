@@ -19,6 +19,7 @@ export interface BillingInscription {
   player_id: string | null
   couple_id: string | null
   es_prueba: boolean | null
+  occupies_slot?: boolean
   couple?: {
     id: string
     player1_id: string | null

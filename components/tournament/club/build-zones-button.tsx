@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react";
+import { RegistrationReadinessNotice, useRegistrationReadiness } from '../registration-readiness-notice';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -39,13 +40,15 @@ interface BuildZonesButtonProps {
 export default function BuildZonesButton({
   tournamentId,
   tournament,
-  couplesCount = 0,
+  couplesCount: initialCouplesCount = 0,
   playersCount = 0,
   pendingInscriptionsCount = 0
 }: BuildZonesButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { data: readiness } = useRegistrationReadiness(tournamentId);
+  const couplesCount = readiness?.eligibleCount ?? initialCouplesCount;
 
   const getTournamentTypeLabel = (type?: string) => {
     switch (type) {
@@ -159,6 +162,7 @@ export default function BuildZonesButton({
         </DialogHeader>
 
         <div className="space-y-6">
+          <RegistrationReadinessNotice tournamentId={tournamentId} />
           {/* Información principal del torneo */}
           <Card>
             <CardContent className="pt-6">

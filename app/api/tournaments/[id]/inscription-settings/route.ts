@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
+import { reserveOnSignupRequired, validateTournamentPaymentSettings } from '@/lib/tournaments/inscription-state'
+import { scheduleRegistrationNotifications } from '@/lib/services/messages/registration-delivery'
 
 interface InscriptionSettingsPayload {
   validate_inscriptions: boolean
@@ -10,6 +12,7 @@ interface InscriptionSettingsPayload {
   enable_payment_checkboxes: boolean
   enable_transfer_proof: boolean
   allow_cash_payment: boolean
+  reserve_slot_without_proof: boolean
   messages_enabled: boolean
   transfer_alias: string | null
   transfer_amount: number | null
@@ -22,6 +25,10 @@ export async function PATCH(
   try {
     const { id: tournamentId } = await params
     const payload = (await request.json()) as Partial<InscriptionSettingsPayload>
+    if (payload.validate_inscriptions === true) return NextResponse.json({ success: false, message: 'La aprobación manual de inscripciones ya no se utiliza.' }, { status: 400 })
+    if (payload.reserve_slot_without_proof !== undefined && typeof payload.reserve_slot_without_proof !== 'boolean') {
+      return NextResponse.json({ success: false, message: 'La opción de reservar cupo debe ser verdadero o falso.' }, { status: 400 })
+    }
     if (payload.allow_cash_payment !== undefined && typeof payload.allow_cash_payment !== 'boolean') {
       return NextResponse.json({ success: false, message: 'La opción de efectivo debe ser verdadero o falso.' }, { status: 400 })
     }
@@ -56,6 +63,7 @@ export async function PATCH(
         enable_payment_checkboxes,
         enable_transfer_proof,
         allow_cash_payment,
+        reserve_slot_without_proof,
         messages_enabled,
         transfer_alias,
         transfer_amount
@@ -70,8 +78,10 @@ export async function PATCH(
       )
     }
 
-    const validateInscriptions =
-      payload.validate_inscriptions ?? currentTournament.validate_inscriptions ?? false
+    const settingsError = validateTournamentPaymentSettings({ ...currentTournament, ...payload, validate_inscriptions: false })
+    if (settingsError) return NextResponse.json({ success: false, message: settingsError }, { status: 400 })
+
+    const validateInscriptions = false
     const showPublicInscriptions =
       payload.show_public_inscriptions ?? currentTournament.show_public_inscriptions ?? true
     const showFewSlotsAlert =
@@ -118,6 +128,8 @@ export async function PATCH(
       enable_payment_checkboxes: enablePaymentCheckboxes,
       enable_transfer_proof: enableTransferProof,
       allow_cash_payment: payload.allow_cash_payment ?? currentTournament.allow_cash_payment ?? false,
+      reserve_slot_without_proof: reserveOnSignupRequired(enableTransferProof)
+        || (payload.reserve_slot_without_proof ?? currentTournament.reserve_slot_without_proof ?? true),
       messages_enabled: messagesEnabled,
       transfer_alias: transferAlias,
       transfer_amount: transferAmount,
@@ -126,17 +138,11 @@ export async function PATCH(
     const shouldApprovePendingInscriptions =
       currentTournament.validate_inscriptions === true && validateInscriptions === false
 
-    const { data: pendingInscriptionsToNotify } = shouldApprovePendingInscriptions
-      ? await supabase
-          .from('inscriptions')
-          .select('id')
-          .eq('tournament_id', tournamentId)
-          .eq('is_pending', true)
-      : { data: [] }
-
     const { error: updateError } = await supabase
       .from('tournaments')
-      .update(updatePayload)
+      .update(Object.fromEntries(Object.entries(updatePayload).filter(([key])=>Object.prototype.hasOwnProperty.call(payload,key)
+        || key === 'reserve_slot_without_proof' && updatePayload[key] !== currentTournament.reserve_slot_without_proof
+        || key === 'validate_inscriptions' && currentTournament.validate_inscriptions === true)))
       .eq('id', tournamentId)
 
     if (updateError) {
@@ -156,23 +162,7 @@ export async function PATCH(
       }
     }
 
-    if (pendingInscriptionsToNotify && pendingInscriptionsToNotify.length > 0) {
-      try {
-        const { sendTournamentMessage } = await import('@/lib/services/messages')
-        await Promise.allSettled(
-          pendingInscriptionsToNotify.map((inscription) =>
-            sendTournamentMessage({
-              type: 'INSCRIPTION_APPROVED_PLAYER',
-              supabase,
-              inscriptionId: inscription.id,
-            })
-          )
-        )
-      } catch (messageError) {
-        console.error('[inscription-settings] Error sending approval messages:', messageError)
-      }
-    }
-
+    scheduleRegistrationNotifications()
     revalidatePath(`/tournaments/${tournamentId}`)
     revalidatePath(`/tournaments/${tournamentId}/settings`, 'layout')
     revalidatePath(`/tournaments/${tournamentId}/inscriptions`)

@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import InitiateTournamentButton from '@/components/tournament/club/initiate-tournament-button';
 import BuildZonesButton from '@/components/tournament/club/build-zones-button';
+import { RegistrationReadinessNotice } from '@/components/tournament/registration-readiness-notice';
 import { formatDateArgentina, formatTimeArgentina } from '@/lib/utils';
 import type { AccessLevel, TournamentPermission } from '@/utils/tournament-permissions';
 
@@ -99,6 +100,7 @@ export default function AmericanOrganizerView({
 
   return (
     <div className="bg-slate-50">
+      {permissions.includes('manage_inscriptions') && <div className="container mx-auto px-4 pt-4"><RegistrationReadinessNotice tournamentId={tournamentId} /></div>}
       {/* Hero Section - Versión Organizador */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white">
         <div className="container mx-auto px-4 py-12 lg:py-16">

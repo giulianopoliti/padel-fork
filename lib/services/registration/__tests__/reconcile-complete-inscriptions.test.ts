@@ -9,45 +9,42 @@ jest.mock('@/lib/services/tournaments/long-general-zone', () => ({ ensureLongTou
 jest.mock('@/lib/services/tournaments/american-single-zone', () => ({ ensureAmericanSingleZone: jest.fn() }))
 jest.mock('@/lib/services/tournament-zone-membership', () => ({ ensureCanonicalZoneMembership: jest.fn() }))
 
-let pending:boolean, proof:boolean, requiresProof:boolean, type:string, status:string
-describe('one eligibility gate after approval, proof or retry', () => {
+let pending:boolean, proof:boolean, requiresProof:boolean, type:string, status:string, slot:boolean
+describe('sporting participation follows assigned places', () => {
   beforeEach(() => {
-    jest.resetAllMocks();pending=true;proof=false;requiresProof=true;type='LONG';status='NOT_STARTED'
+    jest.resetAllMocks();pending=false;proof=false;requiresProof=true;type='LONG';status='NOT_STARTED';slot=true
     jest.mocked(createClientServiceRole).mockResolvedValue({from:(table:string)=>{
       const query={select:()=>query,eq:()=>query,is:()=>query,not:()=>query,
         single:async()=>({data:{type,status,enable_transfer_proof:requiresProof},error:null}),
         then:(resolve:(result:unknown)=>unknown)=>Promise.resolve(resolve(table==='tournaments'
           ? {data:{type,status},error:null}
-          : {count:proof?0:1,data:pending?[]:[{couple_id:'couple'}],error:null}))}
+          : {data:pending?[]:[{couple_id:'couple',is_pending:pending,occupies_slot:slot,payment_method:'TRANSFER',payment_proof_path:proof?'saved/file':null}],error:null}))}
       return query
     }} as never)
     jest.mocked(ensureLongTournamentGeneralZone).mockResolvedValue({success:true,zoneId:'zone'} as never)
     jest.mocked(ensureAmericanSingleZone).mockResolvedValue({success:true,applies:true,zoneId:'zone'})
     jest.mocked(ensureCanonicalZoneMembership).mockResolvedValue({success:true} as never)
   })
-  it.each(['approval-first','proof-first'])('waits for both requirements: %s',async order=>{
-    if(order==='approval-first')pending=false;else proof=true
-    await reconcileCompleteInscriptions('tournament')
-    expect(ensureCanonicalZoneMembership).not.toHaveBeenCalled()
-    pending=false;proof=true
+  it.each([true,false])('assigns a reserved couple whether its receipt is present or pending: %s',async attached=>{
+    proof=attached
     expect(await reconcileCompleteInscriptions('tournament')).toBe('READY')
     expect(ensureCanonicalZoneMembership).toHaveBeenCalledWith(expect.objectContaining({tournamentId:'tournament',zoneId:'zone',coupleId:'couple'}))
   })
-  it('retains the global missing-proof guard even for another otherwise eligible couple',async()=>{
-    pending=false
-    expect(await reconcileCompleteInscriptions('tournament')).toBe('WAITING_PROOF')
+  it('leaves a couple without capacity unassigned without vetoing the tournament',async()=>{
+    slot=false
+    expect(await reconcileCompleteInscriptions('tournament')).toBe('READY')
     expect(ensureLongTournamentGeneralZone).not.toHaveBeenCalled()
   })
-  it('assigns an approved historical transfer when proof is disabled, and blocks again when enabled',async()=>{
+  it('never removes sporting eligibility when a receipt requirement changes',async()=>{
     pending=false;requiresProof=false
     expect(await reconcileCompleteInscriptions('tournament')).toBe('READY')
     expect(ensureCanonicalZoneMembership).toHaveBeenCalledTimes(1)
     requiresProof=true
-    expect(await reconcileCompleteInscriptions('tournament')).toBe('WAITING_PROOF')
-    expect(ensureCanonicalZoneMembership).toHaveBeenCalledTimes(1)
+    expect(await reconcileCompleteInscriptions('tournament')).toBe('READY')
+    expect(ensureCanonicalZoneMembership).toHaveBeenCalledTimes(2)
   })
-  it('still waits for administrative approval when proof is disabled',async()=>{
-    requiresProof=false
+  it('still excludes an unreserved couple when proof is disabled',async()=>{
+    requiresProof=false;slot=false
     expect(await reconcileCompleteInscriptions('tournament')).toBe('READY')
     expect(ensureCanonicalZoneMembership).not.toHaveBeenCalled()
   })

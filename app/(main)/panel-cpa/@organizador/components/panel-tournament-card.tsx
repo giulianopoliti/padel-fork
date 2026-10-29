@@ -57,6 +57,8 @@ const PanelTournamentCard = ({ tournament }: { tournament: PanelTournamentWithMe
         <p className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{dateLabel}{isAmerican && tournament.start_date ? ` · ${formatTimeArgentina(tournament.start_date, { hour: '2-digit', minute: '2-digit', hour12: false })} hs` : ''}</p>
         <p>Inscripción: <span className="font-medium text-foreground">{formatPrice(tournament.price)}</span></p>
         {tournament.pendingInscriptions > 0 && <p className="font-medium text-amber-700 dark:text-amber-300">{tournament.pendingInscriptions} solicitudes de inscripción pendientes</p>}
+        {tournament.pendingWithoutSlot > 0 && <p className="font-semibold text-amber-800 dark:text-amber-200">{tournament.max_participants != null && tournament.occupiedSlots >= tournament.max_participants ? 'Torneo completo · ' : ''}{tournament.pendingWithoutSlot} parejas sin cupo reservado</p>}
+        {tournament.proofWithoutSlot > 0 && <p className="font-semibold text-red-700 dark:text-red-300">{tournament.proofWithoutSlot} con comprobante recibido sin cupo · Requiere atención</p>}
       </div>
     </Link>
   )

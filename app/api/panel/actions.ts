@@ -436,7 +436,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
     const { data: rawInscriptions, error: inscriptionsError } = await supabase
       .from('inscriptions')
       .select(`
-        id, couple_id, tournament_id, is_eliminated, is_pending, payment_method, payment_proof_path, payment_proof_status, payment_revision,
+        id, couple_id, tournament_id, is_eliminated, is_pending, payment_method, payment_proof_path, payment_proof_status, payment_revision, occupies_slot, proof_waived_at,
         tournaments!inner(
           id, seo_slug, name, type, start_date, end_date, status, category_name, category_config,
           gender, hide_venue, is_draft, enable_transfer_proof,
@@ -761,7 +761,7 @@ export async function getPlayerUpcomingTournaments(
     if (!canReadPlayer) return { upcomingTournaments: [], error: 'No autorizado' }
     const { data: inscriptions, error: inscriptionsError } = await supabase
       .from('inscriptions')
-      .select('id, tournament_id, is_pending, payment_method, payment_proof_path, payment_proof_status, payment_revision')
+      .select('id, tournament_id, couple_id, is_pending, payment_method, payment_proof_path, payment_proof_status, payment_revision, occupies_slot, proof_waived_at')
       .or(`and(couple_id.is.null,player_id.eq.${playerId})${coupleIds.length ? `,couple_id.in.(${coupleIds.join(',')})` : ''}`)
       .in('tournament_id', tournamentIds)
     if (inscriptionsError) throw inscriptionsError

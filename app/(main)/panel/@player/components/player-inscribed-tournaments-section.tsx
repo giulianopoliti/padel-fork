@@ -106,7 +106,7 @@ export default function PlayerInscribedTournamentsSection({
               </div>
 
               <div className="flex flex-col gap-3">
-                <p className="text-center text-sm font-semibold text-white">Ya estás inscripto</p>
+                <p className="text-center text-sm font-semibold text-white">{inscription.payment?.registrationLabel || 'Inscripción guardada'}</p>
                 <Button
                   asChild
                   variant="outline"

@@ -5,12 +5,12 @@ import {
 
 describe('inscription validation policy', () => {
   it.each(['PLAYER', 'COACH', undefined])(
-    'requires approval for a %s actor when validation is enabled',
+    'keeps registration direct for a %s actor even with an old validation flag',
     (actorRole) => {
       expect(shouldRequireInscriptionValidation({
         validateInscriptions: true,
         actorRole,
-      })).toBe(true)
+      })).toBe(false)
     }
   )
 
@@ -54,7 +54,7 @@ describe('inscription validation policy', () => {
       supabase,
       tournamentId: 'tournament-1',
       actorRole: 'PLAYER',
-    })).resolves.toBe(true)
+    })).resolves.toBe(false)
   })
 
   it('fails closed when the tournament setting cannot be loaded', async () => {

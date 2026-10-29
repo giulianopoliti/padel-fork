@@ -413,7 +413,7 @@ export default function PlayerTournamentClient({
               {/* Mensaje de confirmación */}
               <div className="flex items-center bg-green-50 text-green-700 px-4 py-2 rounded-surface border border-green-200">
                 <Trophy className="mr-2 h-5 w-5" />
-                <span className="font-medium">Ya estás registrado en este torneo</span>
+                <span className="font-medium">Tu inscripción está guardada</span>
               </div>
               
               {/* Botón eliminar inscripción */}

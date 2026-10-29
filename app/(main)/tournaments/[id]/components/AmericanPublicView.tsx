@@ -199,14 +199,12 @@ export default function AmericanPublicView({
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
                   <p className="text-base font-semibold">
-                    Ya estás inscripto
+                    Tu inscripción
                   </p>
                   <div className="mt-3"><InscriptionPaymentPanel tournamentId={tournamentId} /></div>
                 </div>
                 <p className="mt-2 text-sm text-emerald-50">
-                  {isPending
-                    ? "Los organizadores deben aprobarla antes de confirmar tu participación."
-                    : "Tu inscripción fue confirmada correctamente."}
+                  Consultá el estado de la inscripción, el cupo y el comprobante.
                 </p>
               </div>
             ) : null}

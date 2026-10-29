@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { getTournamentCategoryDisplay } from '@/lib/services/tournament-category-config'
 import { shouldUseLegacyQualifying } from '@/lib/services/tournament-format-policy'
 import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
+import { getTournamentCoupleCount } from '@/lib/services/tournament-capacity.service'
 
 export const getTournamentSettingsData = cache(async (tournamentId: string) => {
   const supabase = await createClient()
@@ -30,6 +31,7 @@ export const getTournamentSettingsData = cache(async (tournamentId: string) => {
       enable_payment_checkboxes,
       enable_transfer_proof,
       allow_cash_payment,
+      reserve_slot_without_proof,
       messages_enabled,
       transfer_alias,
       transfer_amount,
@@ -53,6 +55,7 @@ export const getTournamentSettingsData = cache(async (tournamentId: string) => {
   }
 
   const tournamentCategoryDisplay = getTournamentCategoryDisplay(tournament)
+  const occupiedSlots = await getTournamentCoupleCount(supabase,tournamentId)
 
   const { count: inscriptionsCount } = await supabase
     .from('inscriptions')
@@ -158,6 +161,7 @@ export const getTournamentSettingsData = cache(async (tournamentId: string) => {
     tournament,
     tournamentCategoryDisplay,
     inscriptionsCount: inscriptionsCount || 0,
+    occupiedSlots,
     rankingConfig,
     couplesCount: couplesCount || 0,
     playersCount: playersCount || 0,

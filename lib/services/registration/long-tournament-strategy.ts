@@ -19,7 +19,7 @@ import {
 import { normalizePlayerDni } from '@/lib/utils/player-dni'
 import { findExistingPlayerByIdentity } from '@/lib/utils/player-identity'
 import { shouldRequireInscriptionValidation } from './inscription-validation'
-import { isInscriptionProofPending } from '@/lib/tournaments/inscription-requirements'
+import { isInscriptionEligible } from '@/lib/tournaments/inscription-state'
 import { createClientServiceRole } from '@/utils/supabase/server'
 import type {
   RegisterCoupleRequest,
@@ -125,7 +125,7 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
             isOrganizerRegistration,
           })
         })
-        .select('id, is_pending, payment_method, payment_proof_path')
+        .select('id, couple_id, is_pending, payment_method, payment_proof_path, occupies_slot, proof_waived_at')
         .single()
 
       if (inscriptionError) {
@@ -134,7 +134,7 @@ export class LongTournamentStrategy extends BaseRegistrationStrategy {
       }
 
       // 2. Asignar automáticamente a la zona general (específico de LONG)
-      if (inscription.is_pending || isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof)) {
+      if (!isInscriptionEligible(inscription, context.tournament.enable_transfer_proof)) {
         return { success: true, inscriptionId: inscription.id, coupleId, inscription, zoneAssigned: false }
       }
       context.trace?.step('assign-general-zone')

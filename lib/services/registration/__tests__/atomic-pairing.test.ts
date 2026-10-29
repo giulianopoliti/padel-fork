@@ -56,7 +56,7 @@ describe('atomic pairing service boundary', () => {
   })
   it('keeps an incomplete transfer saved for the resumable payment dialog', async () => {
     rpc.mockResolvedValue({ data: { inscription: { ...inscription,payment_method:'TRANSFER' }, created:true },error:null })
-    expect(await new RegistrationService().convertIndividualToCouple(pair)).toMatchObject({ success:true,inscriptionId:'inscription',message:expect.stringContaining('Adjuntá el comprobante') })
+    expect(await new RegistrationService().convertIndividualToCouple(pair)).toMatchObject({ success:true,inscriptionId:'inscription',message:expect.stringContaining('confirmada con cupo reservado') })
   })
   it('does not reopen payment for a historical transfer after proof is disabled', async () => {
     requiresProof=false
@@ -77,5 +77,12 @@ describe('atomic pairing service boundary', () => {
     rpc.mockResolvedValue({data:null,error:{message:'Cupos llenos'}})
     expect(await new RegistrationService().convertIndividualToCouple(pair)).toEqual({success:false,error:'Cupos llenos'})
     expect(reconcileCompleteInscriptions).not.toHaveBeenCalled()
+  })
+  it('reports a no-deposit inscription without a place as pending, not confirmed',async()=>{
+    requiresProof=false
+    rpc.mockResolvedValue({data:{inscription:{...inscription,occupies_slot:false},created:true},error:null})
+    const result=await new RegistrationService().convertIndividualToCouple(pair)
+    expect(result).toMatchObject({success:true,paymentRequired:false,message:expect.stringContaining('sin cupo reservado')})
+    expect(result.message).toContain('El organizador debe asignarte lugar')
   })
 })

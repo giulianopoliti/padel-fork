@@ -30,8 +30,8 @@ export const loadSoloManagement = async (client: Client, userId: string, offset:
   const ids = tournaments.map(t => t.id)
   const [inbox, inscriptions] = await Promise.all([
     loadSoloRequests(client, userId, history, offset, undefined, undefined, ids),
-    client.from("inscriptions").select("id,tournament_id,couple_id,is_pending,payment_method,payment_proof_path,solo_player_requests!inner(id)").in("tournament_id", ids).eq("solo_player_requests.status", "ACCEPTED").eq("es_prueba", false).order("created_at", { ascending: false }).order("id").range(pairOffset, pairOffset + 50)
-      .returns<{ id: string; tournament_id: string; couple_id: string; is_pending: boolean; payment_method: string | null; payment_proof_path: string | null }[]>(),
+    client.from("inscriptions").select("id,tournament_id,couple_id,is_pending,occupies_slot,payment_method,payment_proof_path,solo_player_requests!inner(id)").in("tournament_id", ids).eq("solo_player_requests.status", "ACCEPTED").eq("es_prueba", false).order("created_at", { ascending: false }).order("id").range(pairOffset, pairOffset + 50)
+      .returns<{ id: string; tournament_id: string; couple_id: string; is_pending: boolean; occupies_slot: boolean; payment_method: string | null; payment_proof_path: string | null }[]>(),
   ])
   if (inscriptions.error) throw inscriptions.error
   const rows = (inscriptions.data || []).slice(0, 50), coupleIds = [...new Set(rows.map(i => i.couple_id))]
@@ -59,6 +59,6 @@ export const loadSoloManagement = async (client: Client, userId: string, offset:
       return [{ inscriptionId: i.id, tournamentId: i.tournament_id, tournamentName: tournaments.find(t => t.id === i.tournament_id)?.name || "Torneo",
         player1Id: c.player1_id, player2Id: c.player2_id, player1Name: name(c.player1_id), player2Name: name(c.player2_id),
         player1Side: first?.preferred_side || null, player1Hand: first?.preferred_hand || null, player2Side: second?.preferred_side || null, player2Hand: second?.preferred_hand || null,
-        pendingApproval: i.is_pending, pendingProof: isInscriptionProofPending(i, tournaments.find(t => t.id === i.tournament_id)?.enable_transfer_proof), assigned: assignments.has(`${i.couple_id}:${i.tournament_id}`) }]
+        pendingApproval: false, occupiesSlot: i.occupies_slot !== false, pendingProof: isInscriptionProofPending(i, tournaments.find(t => t.id === i.tournament_id)?.enable_transfer_proof), assigned: assignments.has(`${i.couple_id}:${i.tournament_id}`) }]
     }) }
 }

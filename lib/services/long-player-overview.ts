@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { createClient } from '@/utils/supabase/server'
+import { getInscriptionState } from '@/lib/tournaments/inscription-state'
 import {
   LongPlayerAvailabilitySummary,
   LongPlayerOverview,
@@ -82,6 +83,7 @@ export const getLongPlayerOverview = async (
     .from('inscriptions')
     .select(`
       id, player_id, couple_id, is_pending, is_eliminated, eliminated_at, eliminated_in_round,
+      occupies_slot, payment_method, payment_proof_path, proof_waived_at, tournaments(enable_transfer_proof),
       couples:couple_id(
         id, player1_id, player2_id,
         player1:players!couples_player1_id_fkey(first_name, last_name),
@@ -98,7 +100,9 @@ export const getLongPlayerOverview = async (
   }) as any
 
   if (!inscription) return emptyOverview
-  if (inscription.is_pending) {
+  const paymentTournament = getRelation(inscription.tournaments) as { enable_transfer_proof?: boolean } | null
+  const state = getInscriptionState(inscription, paymentTournament?.enable_transfer_proof)
+  if (inscription.couple_id && !state.confirmed) {
     const pendingCouple = getRelation(inscription.couples) as any
     return {
       ...emptyOverview,

@@ -102,6 +102,12 @@ describe("billing rules", () => {
 
     expect(countBillableCouples([valid, duplicate, testCouple, testPlayer])).toBe(1)
   })
+  it('excludes saved couples without a place from new billing calculations',()=>{
+    const withoutSlot=coupleInscription(1,{occupies_slot:false})
+    expect(countBillableCouples([withoutSlot])).toBe(0)
+    expect(countBillablePlayers([withoutSlot])).toBe(0)
+    expect(countBillablePlayers([withoutSlot,coupleInscription(2,{occupies_slot:true})])).toBe(2)
+  })
 
   it("counts unique players per tournament from couples and individual inscriptions", () => {
     const couple = coupleInscription(1)

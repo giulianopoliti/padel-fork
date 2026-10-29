@@ -67,6 +67,7 @@ export async function getTournamentCoupleCount(supabase: any, tournamentId: stri
     .select('id', { count: 'exact', head: true })
     .eq('tournament_id', tournamentId)
     .eq('es_prueba', false)
+    .eq('occupies_slot', true)
     .not('couple_id', 'is', null)
 
   if (error) {
@@ -89,6 +90,7 @@ export async function getTournamentCoupleCounts(
     .select('tournament_id')
     .in('tournament_id', tournamentIds)
     .eq('es_prueba', false)
+    .eq('occupies_slot', true)
     .not('couple_id', 'is', null)
 
   if (error) {

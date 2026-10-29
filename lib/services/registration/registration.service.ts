@@ -38,6 +38,8 @@ import { getTenantBranding } from '@/config/tenant'
 import { createRegistrationTrace, registrationErrorDetails } from '@/lib/tournaments/registration-log'
 import { reconcileCompleteInscriptions } from './reconcile-complete-inscriptions'
 import { isInscriptionProofPending } from '@/lib/tournaments/inscription-requirements'
+import { getInscriptionState } from '@/lib/tournaments/inscription-state'
+import { scheduleRegistrationNotifications } from '@/lib/services/messages/registration-delivery'
 import {
   assertTpePlayersCanRegister,
   recordTpeLateWithdrawal,
@@ -284,11 +286,10 @@ export class RegistrationService {
       if (error) return { success: false, error: error.message }
       const result = data as SoloPlayerRpcContracts['confirm_tournament_pair']['Returns']
       const inscription = result.inscription
+      const state = getInscriptionState(inscription,context.tournament.enable_transfer_proof)
       let assignmentPending = false
       try {
-        const gate = await reconcileCompleteInscriptions(request.tournamentId)
-        assignmentPending = gate === 'WAITING_PROOF' && !inscription.is_pending
-          && !isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof)
+        await reconcileCompleteInscriptions(request.tournamentId)
       }
       catch { assignmentPending = true }
       // A notification/cache failure cannot turn a committed reservation into an error.
@@ -299,10 +300,9 @@ export class RegistrationService {
         alreadyRegistered: result.created === false,
         paymentRequired: isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof),
         message: result.created === false ? 'Esta pareja ya está inscripta en este torneo.'
+          : !state.confirmed ? `Inscripción guardada sin cupo reservado.${state.proofMissing ? ' Al cargar el comprobante obtenés lugar, si hay disponibilidad.' : ' El organizador debe asignarte lugar.'}`
           : assignmentPending ? 'Pareja guardada. Pendiente de asignación; se reintentará al actualizar las inscripciones.'
-          : inscription.is_pending ? 'Pareja guardada. Pendiente de aprobación del organizador.'
-            : isInscriptionProofPending(inscription, context.tournament.enable_transfer_proof)
-              ? 'Pareja guardada. Adjuntá el comprobante para completar la inscripción.' : 'Pareja inscripta.' }
+          : state.proofMissing ? 'Inscripción confirmada con cupo reservado. Queda pendiente el comprobante de la seña.' : 'Inscripción confirmada con cupo reservado.' }
     } catch (error) {
       console.error('[RegistrationService] confirm_pair_failed', error)
       return { success: false, error: 'No se pudo confirmar la pareja.' }
@@ -336,14 +336,14 @@ export class RegistrationService {
 
       const { data: inscription } = await context.context.supabase
         .from('inscriptions')
-        .select('id')
+        .select('id, occupies_slot')
         .eq('tournament_id', request.tournamentId)
         .eq('couple_id', request.coupleId)
         .maybeSingle()
 
       const result = await strategy.removeCouple(request, context.context)
       if (result.success) scheduleInscriptionProofCleanup()
-      if (result.success && couple && inscription) {
+      if (result.success && couple && inscription && inscription.occupies_slot !== false) {
         const cancellationSource = context.context.user.role === 'PLAYER' ? 'PLAYER' : 'ORGANIZER'
         await recordTpeLateWithdrawal({
           tournamentId: request.tournamentId,
@@ -491,21 +491,7 @@ export class RegistrationService {
   ): Promise<void> {
     if (!inscriptionId) return
 
-    try {
-      await sendTournamentMessage({
-        type: 'INSCRIPTION_SUBMITTED_ADMIN',
-        supabase: context.supabase,
-        inscriptionId,
-      })
-
-      await sendTournamentMessage({
-        type: 'INSCRIPTION_APPROVED_PLAYER',
-        supabase: context.supabase,
-        inscriptionId,
-      })
-    } catch (error) {
-      console.error('[RegistrationService] Error enviando email de inscripcion:', error)
-    }
+    scheduleRegistrationNotifications()
   }
 
   private async notifyInscriptionCancelled(

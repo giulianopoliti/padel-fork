@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { getInscriptionState } from '@/lib/tournaments/inscription-state'
 import {
   resolvePlayerTournamentStatus,
   type PlayerTournamentStatus,
@@ -31,6 +32,11 @@ async function fetchTournamentInscriptions(
       player_id,
       is_eliminated,
       is_pending,
+      occupies_slot,
+      payment_method,
+      payment_proof_path,
+      proof_waived_at,
+      tournaments(enable_transfer_proof),
       created_at,
       couples (
         id,
@@ -55,6 +61,8 @@ async function fetchTournamentInscriptions(
     player_id: row.player_id,
     is_eliminated: row.is_eliminated,
     is_pending: row.is_pending,
+    occupies_slot: row.occupies_slot,
+    registration_incomplete: !getInscriptionState(row, (Array.isArray(row.tournaments) ? row.tournaments[0] : row.tournaments)?.enable_transfer_proof).confirmed,
     created_at: row.created_at,
     couples: Array.isArray(row.couples) ? row.couples[0] || null : row.couples || null
   }))

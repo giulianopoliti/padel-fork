@@ -72,12 +72,12 @@ export default async function SettingsInscripcionesPage({
         >
           <InscriptionAutomationForm
             tournamentId={tournament.id}
-            initialValidateInscriptions={tournament.validate_inscriptions ?? false}
             initialShowPublicInscriptions={tournament.show_public_inscriptions ?? true}
             initialShowFewSlotsAlert={tournament.show_few_slots_alert ?? true}
             initialEnablePaymentCheckboxes={tournament.enable_payment_checkboxes ?? false}
             initialEnableTransferProof={tournament.enable_transfer_proof ?? false}
             initialAllowCashPayment={tournament.allow_cash_payment ?? false}
+            initialReserveSlotWithoutProof={tournament.reserve_slot_without_proof ?? true}
             initialMessagesEnabled={tournament.messages_enabled ?? true}
             initialTransferAlias={tournament.transfer_alias ?? null}
             initialTransferAmount={tournament.transfer_amount ?? null}

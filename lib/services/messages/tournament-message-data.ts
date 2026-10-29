@@ -26,6 +26,8 @@ export type InscriptionMessageData = {
     is_pending: boolean
     payment_method?: string | null
     payment_proof_path?: string | null
+    occupies_slot?: boolean
+    proof_waived_at?: string | null
     created_at: string | null
   }
   tournament: TournamentEmailContext & {
@@ -143,7 +145,7 @@ const loadClubLocation = async (
 const countCurrentInscriptions = async (supabase: SupabaseLike, tournamentId: string) => {
   const { data, error } = await supabase
     .from("inscriptions")
-    .select("id, es_prueba")
+    .select("id, es_prueba, couple_id, occupies_slot")
     .eq("tournament_id", tournamentId)
 
   if (error) {
@@ -151,7 +153,7 @@ const countCurrentInscriptions = async (supabase: SupabaseLike, tournamentId: st
     return null
   }
 
-  return (data || []).filter((inscription: any) => inscription.es_prueba !== true).length
+  return (data || []).filter((inscription: { es_prueba?: boolean; couple_id?: string | null; occupies_slot?: boolean }) => inscription.es_prueba !== true && inscription.couple_id && inscription.occupies_slot !== false).length
 }
 
 export const loadInscriptionMessageData = async (
@@ -163,7 +165,7 @@ export const loadInscriptionMessageData = async (
 
   const { data: inscription, error: inscriptionError } = await supabase
     .from("inscriptions")
-    .select("id, tournament_id, couple_id, player_id, is_pending, created_at, payment_method, payment_proof_path")
+    .select("id, tournament_id, couple_id, player_id, is_pending, created_at, payment_method, payment_proof_path, occupies_slot, proof_waived_at")
     .eq("id", inscriptionId)
     .single()
 

@@ -1,5 +1,6 @@
 'use server';
 
+import { scheduleRegistrationNotifications } from '@/lib/services/messages/registration-delivery'
 import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
 import { getTenantBranding } from '@/config/tenant';
@@ -91,6 +92,11 @@ interface CreateTournamentData {
   format_config?: any;
   show_public_inscriptions?: boolean;
   allow_cash_payment?: boolean;
+  enable_transfer_proof?: boolean;
+  validate_inscriptions?: boolean;
+  reserve_slot_without_proof?: boolean;
+  transfer_alias?: string | null;
+  transfer_amount?: number | null;
 }
 
 // Interface for couple with extended stats used in sorting (extends the imported CoupleWithStats)
@@ -295,6 +301,9 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
   const supabase = await createClient();
 
   try {
+    const { reserveOnSignupRequired, validateTournamentPaymentSettings } = await import('@/lib/tournaments/inscription-state');
+    const paymentSettingsError = validateTournamentPaymentSettings(formData);
+    if (paymentSettingsError) return { success: false, error: paymentSettingsError };
     // 1. Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
@@ -467,6 +476,12 @@ export async function createTournamentAction(formData: CreateTournamentData & { 
       show_public_inscriptions:
         formData.show_public_inscriptions ?? (getTenantBranding().key !== 'padel-elite'),
       allow_cash_payment: formData.allow_cash_payment === true,
+      enable_transfer_proof: formData.enable_transfer_proof === true,
+      validate_inscriptions: false,
+      reserve_slot_without_proof: reserveOnSignupRequired(formData.enable_transfer_proof === true)
+        || formData.reserve_slot_without_proof !== false,
+      transfer_alias: formData.transfer_alias?.trim() || null,
+      transfer_amount: formData.transfer_amount ?? null,
       // Ensure date fields are correctly formatted if they come as strings
       start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
       end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
@@ -1337,17 +1352,7 @@ export async function registerPlayerForTournament(tournamentId: string, playerId
   revalidatePath(`/my-tournaments/${tournamentId}`);
 
   try {
-    const { sendTournamentMessage } = await import('@/lib/services/messages');
-    await sendTournamentMessage({
-      type: 'INSCRIPTION_SUBMITTED_ADMIN',
-      supabase,
-      inscriptionId: data.id,
-    });
-    await sendTournamentMessage({
-      type: 'INSCRIPTION_APPROVED_PLAYER',
-      supabase,
-      inscriptionId: data.id,
-    });
+    scheduleRegistrationNotifications();
   } catch (emailError) {
     console.error('[registerPlayerForTournament] Error enviando mensajes:', emailError);
   }
@@ -2507,17 +2512,7 @@ export async function requestSoloInscription(
     }
 
     try {
-      const { sendTournamentMessage } = await import('@/lib/services/messages');
-      await sendTournamentMessage({
-        type: 'INSCRIPTION_SUBMITTED_ADMIN',
-        supabase,
-        inscriptionId: inscription.id,
-      });
-      await sendTournamentMessage({
-        type: 'INSCRIPTION_APPROVED_PLAYER',
-        supabase,
-        inscriptionId: inscription.id,
-      });
+      scheduleRegistrationNotifications();
     } catch (emailError) {
       console.error('[requestSoloInscription] Error enviando mensajes:', emailError);
     }
@@ -2636,17 +2631,7 @@ export async function requestCoupleInscription(
     }
 
     try {
-      const { sendTournamentMessage } = await import('@/lib/services/messages');
-      await sendTournamentMessage({
-        type: 'INSCRIPTION_SUBMITTED_ADMIN',
-        supabase,
-        inscriptionId: inscription.id,
-      });
-      await sendTournamentMessage({
-        type: 'INSCRIPTION_APPROVED_PLAYER',
-        supabase,
-        inscriptionId: inscription.id,
-      });
+      scheduleRegistrationNotifications();
     } catch (emailError) {
       console.error('[requestCoupleInscription] Error enviando mensajes:', emailError);
     }
@@ -2807,20 +2792,12 @@ export async function acceptInscriptionRequest(inscriptionId: string, tournament
     }
 
     if (inscription.couple_id) {
-      const zoneResult = await ensureAmericanSingleZone(tournamentId)
-      if (!zoneResult.success) {
-        console.error('[acceptInscriptionRequest] Error assigning single-zone membership:', zoneResult.error)
-        return { success: false, message: 'La inscripción fue aceptada, pero no se pudo actualizar la Zona General.', error: zoneResult.error }
-      }
+      try { await reconcileCompleteInscriptions(tournamentId) }
+      catch { console.warn('[acceptInscriptionRequest] assignment_deferred') }
     }
 
     try {
-      const { sendTournamentMessage } = await import('@/lib/services/messages');
-      await sendTournamentMessage({
-        type: 'INSCRIPTION_APPROVED_PLAYER',
-        supabase,
-        inscriptionId,
-      });
+      scheduleRegistrationNotifications();
     } catch (emailError) {
       console.error('[acceptInscriptionRequest] Error enviando email de aprobacion:', emailError);
     }
@@ -3181,7 +3158,6 @@ export async function retryTournamentPairAssignment(tournamentId: string) {
   if (!permissions.hasPermission) return { success: false, error: 'Sin permisos sobre el torneo' }
   try {
     const status = await reconcileCompleteInscriptions(tournamentId)
-    if (status === 'WAITING_PROOF') return { success: false, error: 'Hay parejas sin comprobante. Completá o cancelá esas inscripciones antes de asignar.' }
     if (status === 'CLOSED') return { success: false, error: 'El torneo ya no admite nuevas asignaciones.' }
     revalidatePath(`/tournaments/${tournamentId}`)
     return { success: true }
@@ -5577,23 +5553,18 @@ export async function approveInscription(inscriptionId: string): Promise<{
   
   if (updateError) {
     console.error('[approveInscription] Error actualizando inscripcion:', updateError);
-    return { success: false, error: 'Error al aprobar la inscripcion' };
+    return { success: false, error: updateError.message || 'Error al aprobar la inscripcion' };
   }
 
 
   let assignmentPending = false
   if (inscription.couple_id) {
-    try { assignmentPending = (await reconcileCompleteInscriptions(inscription.tournament_id)) === 'WAITING_PROOF' }
+    try { await reconcileCompleteInscriptions(inscription.tournament_id) }
     catch { assignmentPending = true; console.error('[approveInscription] zone_reconciliation_deferred') }
   }
 
   try {
-    const { sendTournamentMessage } = await import('@/lib/services/messages');
-    await sendTournamentMessage({
-      type: 'INSCRIPTION_APPROVED_PLAYER',
-      supabase,
-      inscriptionId,
-    });
+    scheduleRegistrationNotifications();
   } catch (emailError) {
     console.error('[approveInscription] Error enviando email de aprobacion:', emailError);
   }

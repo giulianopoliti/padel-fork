@@ -36,6 +36,7 @@ const INSCRIPTION_SELECT = `
   player_id,
   couple_id,
   es_prueba,
+  occupies_slot,
   couple:couples!inscriptions_couple_id_fkey(
     id,
     player1_id,

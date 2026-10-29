@@ -1,4 +1,6 @@
-import { isInscriptionProofPending } from "@/lib/tournaments/inscription-requirements"
+import { getInscriptionState } from '@/lib/tournaments/inscription-state'
+import { getRegistrationReadiness } from '@/lib/services/registration/registration-readiness'
+import { sendRegistrationEmail } from './registration-delivery'
 import {
   buildAppUrl,
   detailsList,
@@ -62,14 +64,13 @@ const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEve
   if (data.adminEmails.length === 0) return skipped("no admin recipients")
 
   const tournamentUrl = buildAppUrl(`/tournaments/${data.tournament.id}/inscriptions`)
-  const statusLabel = isInscriptionProofPending(data.inscription, data.tournament.enable_transfer_proof)
-    ? "Falta comprobante (cupo reservado)"
-    : data.inscription.is_pending ? "Pendiente de revision" : "Confirmada"
+  const state = getInscriptionState(data.inscription, data.tournament.enable_transfer_proof)
+  const statusLabel = `${state.label}${data.inscription.couple_id ? state.occupiesSlot ? ' · Cupo reservado' : ' · Sin cupo reservado' : ''}${state.proofMissing ? ' · Seña pendiente' : ''}`
   const tournamentStartLabel = formatTournamentDateTime(data.tournament.start_date)
   const currentInscriptionsLabel =
     typeof data.currentInscriptions === "number" ? String(data.currentInscriptions) : "A confirmar"
 
-  return sendSafely(
+  return sendRegistrationEmail(
     {
       to: data.adminEmails,
       subject: `Nueva inscripcion: ${data.tournament.name} - ${tournamentStartLabel} - ${currentInscriptionsLabel} inscriptos`,
@@ -101,6 +102,7 @@ const sendInscriptionSubmittedAdmin = async (event: Extract<TournamentMessageEve
       ],
     },
     "message inscription submitted admin",
+    event,
   )
 }
 
@@ -109,13 +111,13 @@ const sendInscriptionApprovedPlayer = async (event: Extract<TournamentMessageEve
   if (!data) return skipped("missing inscription data")
   if (!isTournamentMessagesEnabled(data.tournament)) return skipped("messages disabled")
   if (data.inscription.is_pending) return skipped("inscription still pending")
-  if (isInscriptionProofPending(data.inscription, data.tournament.enable_transfer_proof)) return skipped("inscription missing proof")
+  if (data.inscription.couple_id && data.inscription.occupies_slot === false) return skipped('inscription has no slot')
   if (data.playerEmails.length === 0) return skipped("no player recipients")
 
   const tournamentUrl = buildAppUrl(`/tournaments/${data.tournament.id}`)
   const title = "Inscripcion confirmada"
 
-  return sendSafely(
+  return sendRegistrationEmail(
     {
       to: data.playerEmails,
       subject: `${title}: ${data.tournament.name}`,
@@ -125,6 +127,7 @@ const sendInscriptionApprovedPlayer = async (event: Extract<TournamentMessageEve
         body: `
           <p style="margin:0 0 14px;">Hola,</p>
           <p style="margin:0 0 14px;">Tu inscripcion quedo confirmada correctamente.</p>
+          ${getInscriptionState(data.inscription,data.tournament.enable_transfer_proof).proofMissing ? '<p>Tenés pendiente adjuntar el comprobante de la seña. Tu cupo está reservado.</p>' : ''}
           ${detailsList([
             { label: "Torneo", value: data.tournament.name },
             { label: "Pareja/Jugador", value: data.participantName },
@@ -146,6 +149,7 @@ const sendInscriptionApprovedPlayer = async (event: Extract<TournamentMessageEve
       ],
     },
     "message inscription approved player",
+    event,
   )
 }
 
@@ -244,6 +248,30 @@ const sendLongMatchConfirmedPlayer = async (event: Extract<TournamentMessageEven
   )
 }
 
+const sendRegistrationAttention = async (event: Extract<TournamentMessageEvent, { type: 'REGISTRATION_ATTENTION_ADMIN' }>) => {
+  const overview = await getRegistrationReadiness(event.tournamentId)
+  const pair = event.inscriptionId ? overview.excluded.find(row => row.id === event.inscriptionId) : null
+  if (event.kind === 'CAPACITY_FULL' && (!overview.isFull || !overview.pendingWithoutSlot)) return skipped('capacity conflict resolved')
+  if (event.kind === 'PROOF_WITHOUT_SLOT' && (!pair?.hasProof || pair.occupiesSlot)) return skipped('receipt conflict resolved')
+  const data = await loadCancelledInscriptionMessageData({ fallbackSupabase: event.supabase, tournamentId: event.tournamentId })
+  if (!data || !isTournamentMessagesEnabled(data.tournament)) return skipped('messages disabled or tournament unavailable')
+  if (!data.adminEmails.length) return skipped('no admin recipients')
+  const title = event.kind === 'CAPACITY_FULL' ? 'Torneo completo con inscripciones pendientes' : 'Comprobante recibido sin cupo'
+  const description = event.kind === 'CAPACITY_FULL'
+    ? `Hay ${overview.pendingWithoutSlot} parejas pendientes sin lugar reservado.`
+    : `${pair?.name || 'Una pareja'} adjuntó un comprobante y no obtuvo lugar. Revisá su inscripción para resolver el caso.`
+  const href = buildAppUrl(`/tournaments/${event.tournamentId}/inscriptions`)
+  return sendRegistrationEmail({
+    to: data.adminEmails, subject: `${title}: ${data.tournament.name}`,
+    html: renderEmailLayout({ title, preview: description,
+      body: `<p>${escapeHtml(description)}</p>${detailsList([{ label: 'Torneo', value: data.tournament.name },
+        { label: 'Cupos ocupados', value: `${overview.occupied}/${overview.maximum ?? 'Sin límite'}` }])}`,
+      cta: { label: 'Revisar inscripciones', href } }),
+    text: `${title}\n${data.tournament.name}\n${description}\n${href}`,
+    idempotencyKey: `registration-event-${event.delivery?.eventId || `${event.kind}-${event.inscriptionId || event.tournamentId}`}`,
+  }, 'registration attention', event)
+}
+
 export const emailMessageAdapter: TournamentMessageAdapter = {
   channel: "email",
   send: async (event) => {
@@ -256,6 +284,8 @@ export const emailMessageAdapter: TournamentMessageAdapter = {
         return sendInscriptionCancelledAdmin(event)
       case "LONG_MATCH_CONFIRMED_PLAYER":
         return sendLongMatchConfirmedPlayer(event)
+      case 'REGISTRATION_ATTENTION_ADMIN':
+        return sendRegistrationAttention(event)
       default:
         return skipped("unsupported event")
     }

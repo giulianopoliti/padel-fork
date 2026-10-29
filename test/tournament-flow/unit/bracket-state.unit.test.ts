@@ -1,8 +1,12 @@
 jest.mock('@/app/api/tournaments/actions', () => ({
   advanceWinnerUsingHierarchy: jest.fn(async () => ({ success: true, message: 'advanced' })),
 }))
+jest.mock('@/lib/services/registration/registration-readiness', () => ({
+  assertRegistrationExclusionsReviewed: jest.fn(async () => {}),
+}))
 
 import { generateBracketFromSeeding } from '@/utils/bracket-generator-core'
+import { assertRegistrationExclusionsReviewed } from '@/lib/services/registration/registration-readiness'
 
 const query = (terminal: any = { data: null, error: null }) => ({
   select: jest.fn().mockReturnThis(),
@@ -62,6 +66,7 @@ describe('tournament flow unit: bracket state', () => {
     )
 
     expect(order).toEqual(['match_hierarchy', 'matches-delete'])
+    expect(assertRegistrationExclusionsReviewed).toHaveBeenCalledWith('tournament-1')
     expect(updateTournament.update).toHaveBeenCalledWith(expect.objectContaining({
       bracket_status: 'BRACKET_GENERATED',
       status: 'BRACKET_PHASE',

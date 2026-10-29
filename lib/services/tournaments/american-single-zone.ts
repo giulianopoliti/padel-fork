@@ -2,6 +2,7 @@ import { TournamentFormatResolver } from '@/lib/services/tournament-format-resol
 import { ensureCanonicalZoneMembership } from '@/lib/services/tournament-zone-membership'
 import { ZoneRulesSyncService } from '@/lib/services/zone-rules-sync.service'
 import { createClientServiceRole } from '@/utils/supabase/server'
+import { isInscriptionEligible } from '@/lib/tournaments/inscription-state'
 
 const GENERAL_ZONE_NAME = 'Zona General'
 const DEFAULT_CAPACITY = 32
@@ -38,7 +39,7 @@ export const ensureAmericanSingleZone = async (
     const supabase = await createClientServiceRole()
     const { data: tournament, error: tournamentError } = await supabase
       .from('tournaments')
-      .select('id, type, format_type, format_config, max_participants')
+      .select('id, type, format_type, format_config, max_participants, enable_transfer_proof')
       .eq('id', tournamentId)
       .single()
 
@@ -114,7 +115,7 @@ export const ensureAmericanSingleZone = async (
 
     const { data: inscriptions, error: inscriptionsError } = await supabase
       .from('inscriptions')
-      .select('couple_id')
+      .select('couple_id,is_pending,occupies_slot,payment_method,payment_proof_path,proof_waived_at')
       .eq('tournament_id', tournamentId)
       .eq('is_pending', false)
       .not('couple_id', 'is', null)
@@ -126,6 +127,7 @@ export const ensureAmericanSingleZone = async (
 
     const coupleIds = Array.from(new Set(
       (inscriptions || [])
+        .filter(inscription => isInscriptionEligible(inscription, tournament.enable_transfer_proof))
         .map((inscription) => inscription.couple_id)
         .filter((coupleId): coupleId is string => Boolean(coupleId))
     ))

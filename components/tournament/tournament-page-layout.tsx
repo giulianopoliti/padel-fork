@@ -16,6 +16,7 @@ import ReadOnlyMatchesTabNew from "./read-only-matches-tab-new"
 import TournamentBracketTab from "./tournament-bracket-tab"
 import ReadOnlyBracketTab from "./read-only-bracket-tab"
 import { TournamentPointsControl } from './tournament-points-control'
+import { RegistrationReadinessNotice } from './registration-readiness-notice'
 import TournamentZonesWrapper from "./tournament-zones-wrapper"
 // Simplificado: Solo 2 brackets - ImprovedBracketRenderer (owner) y ReadOnlyBracketVisualization (public)
 
@@ -215,6 +216,7 @@ export default function TournamentPageLayout({
       >
         {/* Content Container - Single scroll container */}
         <div className="flex-1 bg-white lg:rounded-tl-elevated shadow-sm lg:ml-2 h-full overflow-y-auto overflow-x-hidden">
+          {isOwner && !isPublicView && <div className="p-4 lg:px-8"><RegistrationReadinessNotice tournamentId={tournamentId} /></div>}
           {/* Tab Content */}
           {renderContent()}
         </div>

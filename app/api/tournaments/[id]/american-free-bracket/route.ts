@@ -97,13 +97,15 @@ export const GET = async (_request: NextRequest, { params }: Context) => {
     if (!canManage) return NextResponse.json({ success: true, snapshot: null, canManage, status: tournament.status, showZoneReferences })
     const service = await createClientServiceRole()
     const [inscriptions, disqualified, zones, artifacts] = await Promise.all([
-      service.from('inscriptions').select('couple_id').eq('tournament_id', id).or('is_pending.eq.false,is_pending.is.null').not('couple_id', 'is', null),
+      service.from('inscriptions').select('couple_id,occupies_slot,payment_method,payment_proof_path,proof_waived_at').eq('tournament_id', id).or('is_pending.eq.false,is_pending.is.null').eq('occupies_slot',true).not('couple_id', 'is', null),
       getActiveDisqualifiedCoupleIds(id, service),
       service.from('zones').select('id', { count: 'exact', head: true }).eq('tournament_id', id),
       getPersistedBracketArtifacts(id),
     ])
     if (inscriptions.error || zones.error) throw new Error(inscriptions.error?.message || zones.error?.message)
-    const suggestedCount = new Set((inscriptions.data || []).map((row) => row.couple_id as string).filter((coupleId) => !disqualified.has(coupleId))).size
+    const { getRegistrationReadiness } = await import('@/lib/services/registration/registration-readiness')
+    const readiness = await getRegistrationReadiness(id)
+    const suggestedCount = readiness.eligibleCoupleIds.filter(coupleId => !disqualified.has(coupleId)).length
     const blockedReason = tournament.status !== 'ZONE_PHASE' ? 'La generación requiere fase de zonas'
       : artifacts.exists || tournament.bracket_generated_at || ['BRACKET_GENERATED', 'BRACKET_ACTIVE'].includes(tournament.bracket_status) ? 'Ya existe una llave o artefactos previos'
       : !zones.count ? 'Primero creá las zonas del torneo' : null

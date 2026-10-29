@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import type { PaymentInscription } from '@/lib/tournaments/payment-types'
+import { presentPayment, type PaymentInscription } from '@/lib/tournaments/payment-types'
 
 export const GET = async (request: NextRequest) => {
   const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store' } })
@@ -19,15 +19,14 @@ export const GET = async (request: NextRequest) => {
     if (couplesError) throw couplesError
     const coupleIds = (couples || []).map(couple => couple.id)
     const { data: rows, error } = await supabaseAdmin.from('inscriptions')
-      .select('id, tournament_id, payment_method, payment_proof_path, payment_proof_status, is_pending, payment_revision,tournaments(enable_transfer_proof)')
+      .select('id, tournament_id, couple_id, occupies_slot, proof_waived_at, payment_method, payment_proof_path, payment_proof_status, is_pending, payment_revision,tournaments(enable_transfer_proof)')
       .in('tournament_id', ids)
       .or(`and(couple_id.is.null,player_id.eq.${player.id})${coupleIds.length ? `,couple_id.in.(${coupleIds.join(',')})` : ''}`)
     if (error) throw error
     const inscriptions: Record<string, PaymentInscription> = {}
     for (const row of rows || []) inscriptions[row.tournament_id] = {
-      id: row.id, method: row.payment_method, hasProof: Boolean(row.payment_proof_path),
-      proofStatus: row.payment_proof_status, isPending: row.is_pending, revision: row.payment_revision,
-      proofRequired: (Array.isArray(row.tournaments) ? row.tournaments[0] : row.tournaments)?.enable_transfer_proof === true && row.payment_method === 'TRANSFER',
+      ...presentPayment(row, (Array.isArray(row.tournaments) ? row.tournaments[0] : row.tournaments)?.enable_transfer_proof === true),
+      individual: !row.couple_id,
     }
     return reply({ success: true, inscriptions })
   } catch { return reply({ success: false, message: 'No se pudieron consultar tus inscripciones.' }, 500) }

@@ -7,14 +7,13 @@ import { InscriptionPaymentEditor, type PaymentTarget, type PaymentDialogCopy } 
 import { OrganizerInscriptionPaymentDialog } from './organizer-inscription-payment-dialog'
 
 const playerCopy: PaymentDialogCopy = {
-  introduction: 'Tu inscripción está guardada y conserva el cupo.',
+  introduction: 'Tu inscripción está guardada.',
   cash: 'Abonás en efectivo al organizador.',
   transfer: 'Abonás por transferencia al organizador.',
   missingAmount: 'Consultar al organizador',
-  changeMethod: 'Guardá la forma de pago. Después podés adjuntar el comprobante; la inscripción conserva el cupo.',
+  changeMethod: 'Guardá la forma de pago. Después podés adjuntar el comprobante. El estado de cupo se muestra arriba.',
   approved: 'Para modificar un comprobante aprobado, contactá al organizador.',
-  pending: 'La inscripción espera aprobación del organizador.',
-  removeConfirmation: 'Tu inscripción conserva el cupo y quedará pendiente de comprobante.',
+  removeConfirmation: 'Se quitará el comprobante. Tu cupo se conserva.',
   cashConfirmation: 'Al guardar efectivo se eliminará el comprobante. Tu inscripción conserva el cupo.',
 }
 const PaymentDialogContext = createContext<(target: PaymentTarget) => void>(() => {})

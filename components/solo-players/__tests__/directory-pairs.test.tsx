@@ -36,7 +36,8 @@ describe("own pairs in the solo player directory", () => {
 
   it("keeps tournament filtering and pending requirements for solo pairs", () => {
     const html = renderDirectory([pair({ pendingApproval: true, pendingProof: true }), pair({ tournament_id: "regular", inscription_id: "other-solo" })], "solo")
-    expect(html).toContain("Pareja pendiente de aprobación y comprobante")
+    expect(html).toContain("Inscripción confirmada · Seña pendiente")
+    expect(html).not.toContain("pendiente de aprobación")
     expect(html).not.toContain('href="/tournaments/regular"')
   })
 

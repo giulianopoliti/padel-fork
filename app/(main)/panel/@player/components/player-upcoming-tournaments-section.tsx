@@ -237,7 +237,7 @@ export default function PlayerUpcomingTournamentsSection({
                 <TournamentSoloStatus tournamentId={tournament.id} tone="dark" />
                 {tournament.is_inscribed ? (
                   <p className="flex min-h-10 items-center justify-center text-center text-sm font-semibold text-white">
-                    Ya estás inscripto
+                    Inscripción guardada
                   </p>
                 ) : canRegister ? (
                   <PublicRegistrationLauncher

@@ -170,6 +170,8 @@ export async function getTournamentCoupleInscriptions(
   tournamentId: string
 ): Promise<Couple[]> {
   const supabase = await createClient();
+  const { getRegistrationReadiness } = await import('@/lib/services/registration/registration-readiness');
+  const readiness = await getRegistrationReadiness(tournamentId);
 
   const { data: rows, error } = await supabase
     .from("inscriptions")
@@ -197,9 +199,10 @@ export async function getTournamentCoupleInscriptions(
   }
 
   if (!rows) return [];
+  const eligibleRows = rows.filter(row => readiness.eligibleCoupleIds.includes(Array.isArray(row.couples) ? row.couples[0]?.id : row.couples?.id));
 
   // Mapear a Couple
-  const couples: Couple[] = rows.map((row) => {
+  const couples: Couple[] = eligibleRows.map((row) => {
     const c = row.couples;
     return {
       couple_id: c.id,
@@ -284,6 +287,8 @@ export type ZoneSkeleton = {
 
 export async function createTournamentZones(tournamentId: string) {
   await assertTournamentManagementPermission(tournamentId)
+  const { assertRegistrationExclusionsReviewed } = await import('@/lib/services/registration/registration-readiness')
+  await assertRegistrationExclusionsReviewed(tournamentId)
   const supabase = await createClient();
   const couples = await getTournamentCoupleInscriptions(tournamentId);
   const { data: tournament, error: tournamentError } = await supabase
@@ -970,6 +975,9 @@ export async function fetchAvailableCouples(
   couples?: AvailableCouple[]
   error?: string
 }> {
+  await assertTournamentManagementPermission(tournamentId)
+  const { getRegistrationReadiness } = await import('@/lib/services/registration/registration-readiness')
+  const eligible = new Set((await getRegistrationReadiness(tournamentId)).eligibleCoupleIds)
   const supabase = await createClient()
 
   // 1. Obtener IDs de parejas que ya están en zonas del torneo
@@ -1024,7 +1032,7 @@ export async function fetchAvailableCouples(
 
   // 3. Filtrar las que no están asignadas y procesar los datos
   const couples: AvailableCouple[] = (inscriptionRows || [])
-    .filter((row: any) => !assignedCoupleIds.includes(row.couples.id))
+    .filter((row: any) => eligible.has(row.couple_id) && !assignedCoupleIds.includes(row.couples.id))
     .map((row: any) => {
       const c = row.couples
       // Handle both array and single object cases from Supabase relationships
@@ -2879,21 +2887,11 @@ export async function startTournament(tournamentId: string) {
   const supabase = await createClient()
   
   try {
-    // Verificar si hay inscripciones pendientes de aprobacion
-    const { data: pendingInscriptions, error: pendingError } = await supabase
-      .from('inscriptions')
-      .select('id')
-      .eq('tournament_id', tournamentId)
-      .eq('is_pending', true)
-      .eq('es_prueba', false)
-    
-    if (pendingError) throw pendingError
-    
-    if (pendingInscriptions && pendingInscriptions.length > 0) {
-      return { 
-        success: false, 
-        error: `No se puede iniciar el torneo. Hay ${pendingInscriptions.length} inscripcion(es) pendiente(s) de aprobacion.` 
-      }
+    await assertTournamentManagementPermission(tournamentId)
+    const { getRegistrationReadiness } = await import('@/lib/services/registration/registration-readiness')
+    const readiness = await getRegistrationReadiness(tournamentId)
+    if (readiness.excluded.length && !readiness.acknowledged) return {
+      success: false, error: 'Hay parejas pendientes. Revisalas y confirmá Continuar sin estas parejas antes de iniciar.',
     }
     
     // Cambiar estado a ZONE_PHASE (en lugar de PAIRING/ZONE_REGISTRATION)

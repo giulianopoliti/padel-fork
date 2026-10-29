@@ -77,12 +77,12 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   // PASO 4: VERIFICAR QUE HAY PAREJAS INSCRITAS
   // ========================================
 
-  const { count: couplesCount } = await supabase
-    .from("inscriptions")
-    .select("*", { count: "exact", head: true })
-    .eq("tournament_id", tournamentId)
-    .not("couple_id", "is", null)
-    .eq("is_pending", false)
+  const { getRegistrationReadiness } = await import('@/lib/services/registration/registration-readiness')
+  const readiness = await getRegistrationReadiness(tournamentId)
+  if (readiness.excluded.length && !readiness.acknowledged) return NextResponse.json({
+    success: false, error: 'Hay parejas pendientes. Revisalas y confirmá Continuar sin estas parejas antes de iniciar.',
+  }, { status: 409 })
+  const couplesCount = readiness.eligibleCount
 
   if (!couplesCount || couplesCount === 0) {
     return NextResponse.json({

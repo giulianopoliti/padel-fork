@@ -9,6 +9,7 @@ import { getTournamentFormatPreset } from '@/config/tournament-format-presets'
 import { getPersistedBracketArtifacts } from '../bracket-generation-validation'
 import { getActiveDisqualifiedCoupleIds } from '../tournament-disqualifications'
 import { buildFreeBracket } from '../americano-libre-generator'
+import { getRegistrationReadiness } from '../registration/registration-readiness'
 
 jest.mock('@/utils/supabase/server', () => ({ createClient: jest.fn(), createClientServiceRole: jest.fn() }))
 jest.mock('@/utils/tournament-permissions', () => ({ checkTournamentPermissions: jest.fn() }))
@@ -17,6 +18,7 @@ jest.mock('../americano-libre-editor-read', () => ({ readFreeEditorData: jest.fn
 jest.mock('../americano-libre-persistence', () => ({ ...jest.requireActual('../americano-libre-persistence'), saveFreeBracket: jest.fn() }))
 jest.mock('../bracket-generation-validation', () => ({ getPersistedBracketArtifacts: jest.fn() }))
 jest.mock('../tournament-disqualifications', () => ({ getActiveDisqualifiedCoupleIds: jest.fn() }))
+jest.mock('../registration/registration-readiness', () => ({ getRegistrationReadiness: jest.fn() }))
 const id = '12345678-1234-4234-8234-123456789abc'
 const context = { params: Promise.resolve({ id }) }
 const request = (body: unknown) => new NextRequest(`http://localhost/api/tournaments/${id}/american-free-bracket`, {
@@ -50,6 +52,7 @@ describe('LIBRE HTTP boundary', () => {
     jest.mocked(checkTournamentPermissions).mockResolvedValue({ hasPermission: true })
     jest.mocked(getPersistedBracketArtifacts).mockResolvedValue({ exists: false } as never)
     jest.mocked(getActiveDisqualifiedCoupleIds).mockResolvedValue(new Set(['disqualified']))
+    jest.mocked(getRegistrationReadiness).mockImplementation(async()=>({eligibleCoupleIds:[...new Set(((responses.inscriptions as {data:{couple_id:string}[]}).data).map(row=>row.couple_id))]} as never))
     jest.mocked(generateFreeBracket).mockResolvedValue({ requested_count: 20 } as never)
   })
   it('saves the full layout once with trusted actor and revision', async () => {

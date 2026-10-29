@@ -1,10 +1,12 @@
 import { advanceWinnerUsingHierarchy } from '@/app/api/tournaments/actions'
+import { assertRegistrationExclusionsReviewed } from '@/lib/services/registration/registration-readiness'
 
 /**
  * Genera bracket basado en seeding existente
  * Función utilitaria extraída para evitar llamadas fetch internas
  */
 export async function generateBracketFromSeeding(tournamentId: string, supabase: any) {
+  await assertRegistrationExclusionsReviewed(tournamentId)
   console.log(`[generateBracketFromSeeding] 🏗️ Generating bracket for tournament: ${tournamentId}`)
 
   // 1. Obtener seeding existente

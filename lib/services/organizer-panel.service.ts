@@ -7,7 +7,7 @@ import { scopedTournamentQuery } from './tournament-club-filter.service'
 import { getTournamentSortColumn, type TournamentSortRule } from '@/lib/tournaments/tournament-sort'
 
 export const PANEL_PAGE_SIZE = 8
-const SELECT = 'id,seo_slug,name,status,start_date,category_name,gender,type,price,is_draft,clubes(id,name)'
+const SELECT = 'id,seo_slug,name,status,start_date,category_name,gender,type,price,is_draft,max_participants,enable_transfer_proof,clubes(id,name)'
 
 // organizationId comes from the authenticated user's active membership.
 export const getOrganizerPanelTournamentPage = async (

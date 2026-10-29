@@ -413,20 +413,20 @@ export function PublicTournamentCards({
                       ) : null}
                       {tournament.maxParticipants ? (
                         <div className={isLightSurface ? "inline-flex items-center rounded-full border border-[#20335d]/12 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 sm:text-sm" : "inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-200 sm:text-sm"}>
-                          {ownInscription ? "Ya estás inscripto" : tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
+                          {ownInscription ? (ownInscription.registrationLabel || "Inscripción guardada") : tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
                         </div>
                       ) : null}
                     </div>
                   ) : tournament.maxParticipants ? (
                     <div className={isLightSurface ? "inline-flex w-fit items-center rounded-full border border-[#20335d]/12 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 sm:text-sm" : "inline-flex w-fit items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-200 sm:text-sm"}>
-                      {ownInscription ? "Ya estás inscripto" : tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
+                      {ownInscription ? (ownInscription.registrationLabel || "Inscripción guardada") : tournament.isFull ? "Cupos completos" : "Cupos disponibles"}
                     </div>
                   ) : null}
 
                 </div>
 
                 <div className="flex w-full flex-col justify-end gap-2 lg:w-52 lg:items-center">
-                  {payments.loading ? <p role="status" className="text-sm">Consultando inscripción…</p> : payments.error ? <div role="alert" className="text-sm">No se pudo consultar tu inscripción. <Button variant="outline" onClick={() => void payments.retry().catch(() => {})}>Reintentar</Button></div> : ownInscription ? <div className="space-y-2 text-sm"><p className="font-semibold">Ya estás inscripto</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={ownInscription} /></div> : canRegister ? (
+                  {payments.loading ? <p role="status" className="text-sm">Consultando inscripción…</p> : payments.error ? <div role="alert" className="text-sm">No se pudo consultar tu inscripción. <Button variant="outline" onClick={() => void payments.retry().catch(() => {})}>Reintentar</Button></div> : ownInscription ? <div className="space-y-2 text-sm"><p className="font-semibold">Tu inscripción</p><PaymentCompact tournamentId={tournament.id} tournamentName={tournament.name} inscription={ownInscription} /></div> : canRegister ? (
                     <PublicRegistrationLauncher
                       tournamentId={tournament.id}
                       tournamentName={tournament.name}

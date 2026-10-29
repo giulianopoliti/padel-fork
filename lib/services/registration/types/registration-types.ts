@@ -38,6 +38,8 @@ export interface Inscription {
   couple_id?: string
   player_id?: string
   is_pending: boolean
+  occupies_slot?: boolean
+  proof_waived_at?: string | null
   created_at: string
 }
 
@@ -154,6 +156,7 @@ export interface Tournament {
   validate_inscriptions: boolean
   enable_transfer_proof?: boolean
   allow_cash_payment?: boolean
+  reserve_slot_without_proof?: boolean
   format_config?: {
     version?: number
     zoneMode?: string
