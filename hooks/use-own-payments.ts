@@ -12,6 +12,6 @@ export const useOwnPayments = (tournamentIds: string[]) => {
     const result = await response.json()
     if (!response.ok || !result.success) throw new Error('No se pudieron consultar tus inscripciones.')
     return result.inscriptions as Record<string, PaymentInscription>
-  })
+  }, { refreshInterval: 30000 })
   return { inscriptions: data, error, retry: mutate, loading: authState !== 'guest' && !error && (!user || !data) }
 }

@@ -46,7 +46,7 @@ import { addDaysToDateOnly, buildBillingInstallments } from "@/lib/billing/rules
 import { addBillingMonths, allocateCollection, canSelectBillingItem, formatBillingMonth, isBillingMonth, matchesBillingStatus, summarizeBilling, type BillingStatusFilter } from "@/lib/billing/financials"
 import { InstallmentMonthEditor } from "./installment-month-editor"
 import { PaymentSummary } from "@/components/billing/payment-summary"
-import { TPE_BILLING_PAYMENT_ALIAS } from "@/lib/billing/payment-details"
+import { BILLING_WEEK_STATUS_LABELS, TPE_BILLING_PAYMENT_ALIAS } from "@/lib/billing/payment-details"
 import type { BillingCollection, BillingDashboardData, BillingInstallment, BillingItem, BillingStatus } from "@/lib/billing/types"
 
 const formatCurrency = (amount: number) =>
@@ -783,18 +783,27 @@ export const BillingClient = ({ data, readOnly = false }: { data: BillingDashboa
       {data.billingModel === "TPE_PLAYER" && data.weekStart && data.weekEnd && (
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="icon" onClick={() => handleNavigateWeek(-7)} aria-label="Semana anterior">
+            <div className="flex w-full min-w-0 items-center gap-3 md:w-auto">
+              <Button className="shrink-0" variant="outline" size="icon" onClick={() => handleNavigateWeek(-7)} aria-label="Semana anterior">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div className="min-w-0 text-center">
+              <div className="min-w-0 flex-1 text-center md:min-w-72">
                 <p className="flex items-center justify-center gap-2 font-semibold text-slate-900">
                   <CalendarDays className="h-4 w-4" />
                   {formatDate(data.weekStart)} — {formatDate(data.weekEnd)}
                 </p>
                 <p className="text-xs text-slate-500">Lunes a domingo · horario de Argentina</p>
+                <label className="mt-3 block text-left text-xs font-medium text-slate-600" htmlFor="billing-week">Todas las semanas · pagadas y pendientes</label>
+                <select id="billing-week" aria-label="Semana de cobros" value={data.weekStart}
+                  onChange={(event) => router.push(`${readOnly ? "/cobros" : "/admin/cobros"}?week=${event.target.value}`)}
+                  className="mt-1 h-10 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500">
+                  {!data.weeks?.some((week) => week.weekStart === data.weekStart) && <option value={data.weekStart}>{formatDate(data.weekStart)} al {formatDate(data.weekEnd)} · Sin torneos</option>}
+                  {data.weeks?.map((week) => <option key={week.weekStart} value={week.weekStart}>
+                    {formatDate(week.weekStart)} al {formatDate(week.weekEnd)} · {BILLING_WEEK_STATUS_LABELS[week.status]}
+                  </option>)}
+                </select>
               </div>
-              <Button variant="outline" size="icon" onClick={() => handleNavigateWeek(7)} aria-label="Semana siguiente">
+              <Button className="shrink-0" variant="outline" size="icon" onClick={() => handleNavigateWeek(7)} aria-label="Semana siguiente">
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

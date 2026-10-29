@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { presentPayment, type PaymentInscription } from '@/lib/tournaments/payment-types'
+import { getSlotAvailability, presentPayment, type PaymentInscription, type SlotAvailability } from '@/lib/tournaments/payment-types'
+import { canAssignInscriptionSlot } from '@/lib/tournaments/inscription-state'
+import { buildTournamentCapacitySummary, getTournamentCoupleCount } from '@/lib/services/tournament-capacity.service'
 
 export const GET = async (request: NextRequest) => {
   const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store' } })
@@ -19,14 +21,27 @@ export const GET = async (request: NextRequest) => {
     if (couplesError) throw couplesError
     const coupleIds = (couples || []).map(couple => couple.id)
     const { data: rows, error } = await supabaseAdmin.from('inscriptions')
-      .select('id, tournament_id, couple_id, occupies_slot, proof_waived_at, payment_method, payment_proof_path, payment_proof_status, is_pending, payment_revision,tournaments(enable_transfer_proof)')
+      .select('id, tournament_id, couple_id, occupies_slot, proof_waived_at, payment_method, payment_proof_path, payment_proof_status, is_pending, payment_revision,tournaments(enable_transfer_proof,max_participants,status,bracket_status,registration_locked,registration_locked_by_capacity)')
       .in('tournament_id', ids)
       .or(`and(couple_id.is.null,player_id.eq.${player.id})${coupleIds.length ? `,couple_id.in.(${coupleIds.join(',')})` : ''}`)
     if (error) throw error
+    const availability: Record<string, SlotAvailability | undefined> = {}
+    const pendingRows = [...new Map((rows || []).filter(row => row.couple_id && row.occupies_slot === false)
+      .map(row => [row.tournament_id, row])).values()]
+    await Promise.all(pendingRows.map(async row => {
+      const tournament = Array.isArray(row.tournaments) ? row.tournaments[0] : row.tournaments
+      if (!tournament) return
+      if (!canAssignInscriptionSlot(tournament)) { availability[row.tournament_id] = 'closed'; return }
+      const occupied = await getTournamentCoupleCount(supabaseAdmin, row.tournament_id)
+      availability[row.tournament_id] = getSlotAvailability({
+        admissionsOpen: true, isFull: buildTournamentCapacitySummary(tournament.max_participants, occupied).isFull,
+      })
+    }))
     const inscriptions: Record<string, PaymentInscription> = {}
     for (const row of rows || []) inscriptions[row.tournament_id] = {
       ...presentPayment(row, (Array.isArray(row.tournaments) ? row.tournaments[0] : row.tournaments)?.enable_transfer_proof === true),
       individual: !row.couple_id,
+      ...(availability[row.tournament_id] ? { slotAvailability: availability[row.tournament_id] } : {}),
     }
     return reply({ success: true, inscriptions })
   } catch { return reply({ success: false, message: 'No se pudieron consultar tus inscripciones.' }, 500) }

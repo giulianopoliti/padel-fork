@@ -31,6 +31,7 @@ const artifacts = path.join(os.tmpdir(), 'tpe-billing-qa')
 mkdirSync(artifacts, { recursive: true })
 const tournamentId = randomUUID(), title = `LOCAL QA Cobro ${tournamentId}`
 const pendingTournamentId = randomUUID()
+const historicalPaidTournamentId = randomUUID(), historicalPaidTitle = `LOCAL QA Histórico pagado ${historicalPaidTournamentId}`
 let browser, organizationId, oldNotice, oldSettings
 try {
   organizationId = (await checked(admin.from('organizaciones').select('id').eq('slug', 'padel-elite').single())).id
@@ -46,6 +47,12 @@ try {
   await checked(admin.from('tournament_billing_charges').insert({ tournament_id: tournamentId, organization_id: organizationId,
     billing_model: 'TPE_PLAYER', status: 'PAID', billable_units: 12, pricing_rule: 'TPE_PER_PLAYER', unit_amount_ars: 500,
     amount_ars: 6000, period_start: '2026-10-19', period_end: '2026-10-25', resolved_at: '2026-10-23T18:00:00Z' }))
+  await checked(admin.from('tournaments').insert({ ...base, id: historicalPaidTournamentId, seo_slug: historicalPaidTournamentId, name: historicalPaidTitle,
+    type: 'AMERICAN', status: 'ZONE_PHASE', organization_id: organizationId, es_prueba: false,
+    start_date: '2026-09-02T18:00:00Z', end_date: '2026-09-02T23:00:00Z', messages_enabled: false }))
+  await checked(admin.from('tournament_billing_charges').insert({ tournament_id: historicalPaidTournamentId, organization_id: organizationId,
+    billing_model: 'TPE_PLAYER', status: 'PAID', billable_units: 86, pricing_rule: 'TPE_PER_PLAYER', unit_amount_ars: 1000,
+    amount_ars: 86000, period_start: '2026-08-31', period_end: '2026-09-06', resolved_at: '2026-09-07T18:00:00Z' }))
   await checked(admin.from('tournaments').insert({ ...base, id: pendingTournamentId, seo_slug: pendingTournamentId, name: `LOCAL QA Pendiente ${pendingTournamentId}`,
     type: 'AMERICAN', status: 'NOT_STARTED', organization_id: organizationId, es_prueba: false,
     start_date: '2026-10-13T18:00:00Z', end_date: '2026-10-13T23:00:00Z', messages_enabled: false }))
@@ -117,6 +124,18 @@ try {
   await page.waitForURL('**/cobros?week=2026-10-12')
   assert.equal(new URL(page.url()).pathname, '/cobros')
   await page.getByRole('heading', { name: pendingSummary, exact: true }).waitFor()
+  await page.getByLabel('Semana de cobros', { exact: true }).selectOption('2026-08-31')
+  await page.waitForURL('**/cobros?week=2026-08-31')
+  assert.match(await page.getByLabel('Semana de cobros', { exact: true }).locator('option:checked').textContent(), /31\/08\/2026 al 06\/09\/2026.*Pagada/)
+  const historicalOrganizerRow = page.getByRole('row').filter({ hasText: historicalPaidTitle })
+  await historicalOrganizerRow.waitFor()
+  const historicalOrganizerCells = await historicalOrganizerRow.getByRole('cell').allTextContents()
+  assert.ok(historicalOrganizerCells.some(cell => cell.includes('86.000')) && historicalOrganizerCells.some(cell => cell.includes('Cobrado')))
+  await adminPage.getByLabel('Semana de cobros', { exact: true }).selectOption('2026-08-31')
+  await adminPage.waitForURL('**/admin/cobros?week=2026-08-31')
+  const historicalAdminCells = await adminPage.getByRole('row').filter({ hasText: historicalPaidTitle }).getByRole('cell').allTextContents()
+  assert.deepEqual(historicalOrganizerCells, historicalAdminCells.slice(1, -1), 'Historical paid week matches admin')
+  await page.getByRole('heading', { name: pendingSummary, exact: true }).waitFor()
   await page.goto(`${baseUrl}/cobros?week=2026-10-19`)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.screenshot({ path: path.join(artifacts, 'cobros-mobile.png'), fullPage: true })
@@ -127,9 +146,11 @@ try {
   await page.goto(`${baseUrl}/panel`)
   await page.getByRole('navigation', { name: 'Navegación principal', includeHidden: true }).waitFor({ state: 'attached' })
   assert.equal(await page.getByRole('complementary', { name: 'Aviso de pago del servicio' }).count(), 0)
-  console.log(JSON.stringify({ result: 'PASS', checks: ['manual switch on/off', 'organizer dialog', 'same billing detail', '500 ARS/player', 'historical totals', 'read-only controls', 'alias on page and PDF', 'global pending weeks and links', 'PDF download', 'week navigation', 'mobile layout', 'player denied'], artifacts }))
+  console.log(JSON.stringify({ result: 'PASS', checks: ['manual switch on/off', 'organizer dialog', 'same billing detail', '500 ARS/player', 'paid 31/08–06/09 selectable in both panels', 'frozen historical total 86000', 'read-only controls', 'alias on page and PDF', 'global pending weeks and links', 'PDF download', 'week navigation', 'mobile layout', 'player denied'], artifacts }))
   await guest.close()
 } finally {
+  await admin.from('tournament_billing_charges').delete().eq('tournament_id', historicalPaidTournamentId)
+  await admin.from('tournaments').delete().eq('id', historicalPaidTournamentId)
   await admin.from('inscriptions').delete().eq('tournament_id', pendingTournamentId)
   await admin.from('tournaments').delete().eq('id', pendingTournamentId)
   await admin.from('tournament_billing_charges').delete().eq('tournament_id', tournamentId)

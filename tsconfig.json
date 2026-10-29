@@ -33,6 +33,7 @@
     "**/*.tsx",
     ".next-americano-fix/types/**/*.ts",
     ".next-club-check-fv/types/**/*.ts",
+    ".next-points-qa/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts"
   ],

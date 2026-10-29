@@ -1,6 +1,6 @@
 import { createClientServiceRole } from '@/utils/supabase/server'
 import { buildTournamentCapacitySummary } from '@/lib/services/tournament-capacity.service'
-import { getInscriptionState, type InscriptionStateInput } from '@/lib/tournaments/inscription-state'
+import { canAssignInscriptionSlot, getInscriptionState, type InscriptionStateInput } from '@/lib/tournaments/inscription-state'
 
 export interface RegistrationReadiness {
   tournamentId: string
@@ -13,12 +13,13 @@ export interface RegistrationReadiness {
   proofWithoutSlot: number
   signature: string | null
   acknowledged: boolean
-  excluded: { id: string; coupleId: string; name: string; label: string; hasProof: boolean; occupiesSlot: boolean }[]
+  admissionsOpen: boolean
+  excluded: { id: string; coupleId: string; name: string; label: string; hasProof: boolean; occupiesSlot: boolean; proofMissing: boolean; revision: number }[]
 }
 
-type ReadinessPair = InscriptionStateInput & { id: string; couple_id: string; name: string; has_proof: boolean }
+type ReadinessPair = InscriptionStateInput & { id: string; couple_id: string; name: string; has_proof: boolean; payment_revision: number }
 type ReadinessSnapshot = {
-  tournament: { id: string; max_participants: number | null; enable_transfer_proof: boolean }
+  tournament: { id: string; max_participants: number | null; enable_transfer_proof: boolean; status?: string; bracket_status?: string; registration_locked?: boolean; registration_locked_by_capacity?: boolean }
   pairs: ReadinessPair[]
   exclusions: { signature: string | null; acknowledged: boolean }
 }
@@ -41,12 +42,14 @@ export const getRegistrationReadiness = async (tournamentId: string): Promise<Re
     pendingWithoutSlot: rows.filter(row => !row.state.occupiesSlot).length,
     proofWithoutSlot: rows.filter(row => !row.state.occupiesSlot && row.has_proof).length,
     signature: snapshot.exclusions.signature, acknowledged: snapshot.exclusions.acknowledged,
+    admissionsOpen: canAssignInscriptionSlot(snapshot.tournament),
     excluded: rows.filter(row => !row.state.confirmed).map(row => ({ id: row.id, coupleId: row.couple_id,
-      name: row.name || 'Pareja sin nombre', label: row.state.label, hasProof: row.has_proof, occupiesSlot: row.state.occupiesSlot })),
+      name: row.name || 'Pareja sin nombre', label: row.state.label, hasProof: row.has_proof, occupiesSlot: row.state.occupiesSlot,
+      proofMissing: row.state.proofMissing, revision: row.payment_revision })),
   }
 }
 
 export const assertRegistrationExclusionsReviewed = async (tournamentId: string): Promise<void> => {
   const readiness = await getRegistrationReadiness(tournamentId)
-  if (!readiness.acknowledged) throw new Error('Hay parejas pendientes. Revisá el listado y confirmá Continuar sin estas parejas antes de organizar el torneo.')
+  if (!readiness.acknowledged) throw new Error('Hay inscripciones sin confirmar. Aceptalas o descartalas antes de organizar el torneo.')
 }

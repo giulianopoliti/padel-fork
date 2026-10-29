@@ -53,6 +53,19 @@ const seed = (count: number): void => {
 beforeEach(() => { mockTenantKey="padel-fv"; mockLegacySchema=false; mockQueries.length=0; seed(2) })
 
 describe("billing dashboard financial integration", () => {
+  it("shares the paid 31/08–06/09 history and frozen amount between admin and organizer", async () => {
+    mockTenantKey = "padel-elite"
+    mockTables.tenant_billing_settings[0].billing_model = "TPE_PLAYER"
+    mockTables.tenant_billing_settings[0].tpe_amount_per_player = 500
+    mockTables.tournaments = [{ id: "paid-tpe", name: "Histórico cobrado", organization_id: "org-fv", type: "AMERICAN", status: "ZONE_PHASE", es_prueba: false, start_date: "2026-09-02T18:00:00Z", created_at: "2026-09-01T18:00:00Z" }]
+    mockTables.tournament_billing_charges = [{ tournament_id: "paid-tpe", organization_id: "org-fv", billing_model: "TPE_PLAYER", status: "PAID", billable_units: 86, pricing_rule: "TPE_PER_PLAYER", unit_amount_ars: 1000, amount_ars: 86000, period_start: "2026-08-31", period_end: "2026-09-06" }]
+    const organizer = await getTenantBillingDashboard("2026-08-31", { readOnly: true })
+    const admin = await getTenantBillingDashboard("2026-08-31")
+    expect(organizer).toEqual(admin)
+    expect(organizer.weeks).toEqual([{ weekStart: "2026-08-31", weekEnd: "2026-09-06", amountArs: 86000, amountPaidArs: 86000, balanceArs: 0, status: "PAID" }])
+    expect(organizer.pendingWeeks).toEqual([])
+    expect(organizer.items[0]).toMatchObject({ status: "PAID", unitAmountArs: 1000, amountArs: 86000, balanceArs: 0 })
+  })
   it("counts all pending TPE weeks independently of the displayed week using the live rate", async () => {
     jest.useFakeTimers().setSystemTime(new Date("2026-10-23T12:00:00Z"))
     try {

@@ -9,6 +9,7 @@ Exclusivo de `padel-elite` / `tpepadel.com` (proyecto remoto: `lzowflvgnspjdbvdx
 - `/cobros` utiliza exactamente `getTenantBillingDashboard` y `BillingClient`, los mismos datos y vista del panel administrativo, en modo de sólo lectura. Muestra tarifa vigente por jugador, semanas, torneos, jugadores, parejas, importes, estados y resúmenes. Permite buscar, filtrar, cambiar semana y descargar el mismo PDF semanal.
 - La tarifa se toma de la configuración existente: si administración guarda $500 por jugador, el organizador ve $500. Los cobros cerrados conservan sus importes históricos, igual que en administración.
 - Arriba se muestra el alias `Julivaldez94`, también incluido en el PDF, y el total de semanas con saldo pendiente hasta la semana actual. Cada semana se cuenta una vez aunque tenga varios torneos; el resumen no cambia al consultar otra semana. Se puede desplegar el listado para ir a cada período pendiente.
+- El selector **Todas las semanas · pagadas y pendientes** contiene el historial completo con su estado, tanto en administración como en `/cobros`. Una semana pagada, por ejemplo 31/08–06/09, sigue disponible para consultar y descargar su PDF; sólo queda excluida del contador de deuda.
 - El organizador no puede cambiar tarifas, seleccionar registros, marcar pagos, descartar cargos ni crear cobros. Los Server Actions administrativos siguen exigiendo ADMIN, también si alguien intenta invocarlos directamente.
 
 No hay carga adicional de importes ni una copia de los datos. No suspende automáticamente el servicio.

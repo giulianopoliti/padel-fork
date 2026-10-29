@@ -80,7 +80,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { getRegistrationReadiness } = await import('@/lib/services/registration/registration-readiness')
   const readiness = await getRegistrationReadiness(tournamentId)
   if (readiness.excluded.length && !readiness.acknowledged) return NextResponse.json({
-    success: false, error: 'Hay parejas pendientes. Revisalas y confirmá Continuar sin estas parejas antes de iniciar.',
+    success: false, error: 'Hay inscripciones sin confirmar. Aceptalas o descartalas antes de organizar el torneo.',
   }, { status: 409 })
   const couplesCount = readiness.eligibleCount
 

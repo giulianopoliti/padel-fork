@@ -17,6 +17,16 @@ export type PaymentInscription = {
   proofWaived?: boolean
   registrationLabel?: string
   confirmed?: boolean
+  slotAvailability?: SlotAvailability
+}
+
+export type SlotAvailability = 'available' | 'full' | 'closed' | 'unknown'
+
+export const getSlotAvailability = (settings: { isFull?: boolean; admissionsOpen?: boolean }): SlotAvailability => {
+  if (settings.admissionsOpen === false) return 'closed'
+  if (settings.isFull === true) return 'full'
+  if (settings.isFull === false && settings.admissionsOpen === true) return 'available'
+  return 'unknown'
 }
 
 // Explicit RPC boundary while database.types.ts remains the repository fallback.

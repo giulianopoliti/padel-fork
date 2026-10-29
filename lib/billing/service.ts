@@ -2,7 +2,7 @@ import "server-only"
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { attachCollectionFinancials } from "@/lib/billing/financials"
-import { getPendingBillingWeeks } from "@/lib/billing/payment-details"
+import { getBillingWeeks, getPendingBillingWeeks } from "@/lib/billing/payment-details"
 import { getTenantBranding } from "@/config/tenant"
 import { getTenantOrganization } from "@/lib/services/tenant-organization.service"
 import {
@@ -481,6 +481,7 @@ export const getTenantBillingDashboard = async (
     weekStart: week?.start || null,
     weekEnd: week?.end || null,
     pendingWeeks,
+    weeks: context.billingModel === "TPE_PLAYER" ? getBillingWeeks(calculatedItems) : [],
   }
 }
 

@@ -132,6 +132,15 @@ export interface BillingPendingWeek {
   amountArs: number
 }
 
+export interface BillingWeekSummary {
+  weekStart: string
+  weekEnd: string
+  amountArs: number
+  amountPaidArs: number
+  balanceArs: number
+  status: "PENDING" | "PARTIALLY_PAID" | "PAID" | "DISMISSED" | "NO_CHARGE"
+}
+
 export interface BillingDashboardData {
   tenantKey: "padel-fv" | "padel-elite"
   tenantName: string
@@ -144,4 +153,5 @@ export interface BillingDashboardData {
   weekStart: string | null
   weekEnd: string | null
   pendingWeeks?: BillingPendingWeek[]
+  weeks?: BillingWeekSummary[]
 }

@@ -2891,7 +2891,7 @@ export async function startTournament(tournamentId: string) {
     const { getRegistrationReadiness } = await import('@/lib/services/registration/registration-readiness')
     const readiness = await getRegistrationReadiness(tournamentId)
     if (readiness.excluded.length && !readiness.acknowledged) return {
-      success: false, error: 'Hay parejas pendientes. Revisalas y confirmá Continuar sin estas parejas antes de iniciar.',
+      success: false, error: 'Hay inscripciones sin confirmar. Aceptalas o descartalas antes de organizar el torneo.',
     }
     
     // Cambiar estado a ZONE_PHASE (en lugar de PAIRING/ZONE_REGISTRATION)
