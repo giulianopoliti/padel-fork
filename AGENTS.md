@@ -112,6 +112,17 @@ This is a **Padel Tournament Management System** built with Next.js 15, React 19
 - Real-time updates through Supabase subscriptions for live tournament data
 - Mobile-responsive design optimized for tournament organizers and players
 
+## Tenant architecture: one tenant per database (mandatory)
+
+**Each Supabase project/database contains exactly one tenant.** FV and Elite share this codebase, but each runs against its own separate database. This architecture is confirmed by the repository owner and must be treated as established context in future chats.
+
+- The selected Supabase project and deployment configuration determine the tenant. Do not add a runtime tenant picker, request a tenant ID from the client, or introduce tenant-resolution work for ordinary features inside an already selected database.
+- Do not design FV/Elite isolation as if both tenants coexist in the same database. Do not add `tenant_id` columns, per-row tenant filters, or extra tenant-isolation machinery solely to separate FV from Elite.
+- Keep existing authentication, RLS and authorization for organizations, clubs, tournaments and users. One tenant per database does not grant every user access to every record.
+- Existing `organization_id` fields and `lib/services/tenant-organization.service.ts` may serve authorization or deployment configuration; their existence does not imply that FV and Elite share a database. Do not remove valid checks on that assumption.
+- Cross-club features operate within the selected database and the user's management permissions. They do not require switching tenants or querying the other tenant's project.
+- Do not ask the owner to reconfirm this architecture or list it as an unresolved prerequisite in feature plans. Apply the remote project selection rules below when choosing the database to access.
+
 ## Remote Supabase selection (mandatory)
 
 ## Supabase migrations: deployment prohibition (mandatory)

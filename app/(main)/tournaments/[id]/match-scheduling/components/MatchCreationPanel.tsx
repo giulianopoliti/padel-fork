@@ -68,7 +68,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
   clubes = []
 }) => {
   const [formData, setFormData] = useState({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: '',
     horaInicio: '',
     horaFin: '',
     cancha: '',
@@ -101,7 +101,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
     if (success) {
       // Reset form on success
       setFormData({
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: '',
         horaInicio: '',
         horaFin: '',
         cancha: '',
@@ -199,6 +199,7 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
                 <Button
                   size="sm"
                   variant="ghost"
+                  type="button"
                   onClick={() => onCoupleRemove(couple.id)}
                   className="text-slate-600 hover:bg-red-100 hover:text-red-600 h-6 w-6 p-0"
                   aria-label={`Quitar pareja: ${getCoupleDisplayName(couple)}`}

@@ -1,0 +1,288 @@
+{
+  "tenant": "padel-elite",
+  "project_ref": "lzowflvgnspjdbvdxliy",
+  "date_local": "2026-10-29",
+  "operation": "Owner-authorized retroactive removal of reserved capacity until payment proof is uploaded",
+  "verified_totals": {
+    "con_cupo": 17,
+    "pendientes": 14,
+    "con_cupo_sin_comprobante": 0
+  },
+  "inscriptions": [
+    {
+      "id": "245f0ee4-a98c-4a78-b519-89ebf5710500",
+      "tournament_id": "2802b487-0670-48e6-8aa1-6f334a393b1b",
+      "couple_id": "48bfae7c-d315-4156-9d08-a24a6ab352bf",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "5621cd75-1700-4a33-9e29-cfb5a1f89f09",
+      "tournament_id": "66905470-7715-4ec5-9d00-213e1fb73b5f",
+      "couple_id": "0fe3dab0-57f3-43e4-92c3-3447b2a5305d",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "872f6b34-7579-4f02-8310-d847f1e8fc9e",
+      "tournament_id": "66905470-7715-4ec5-9d00-213e1fb73b5f",
+      "couple_id": "777e0432-b207-471d-b4a1-4ae697fa11ed",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "9eceb133-bff2-494c-8fcf-c28614d30626",
+      "tournament_id": "66905470-7715-4ec5-9d00-213e1fb73b5f",
+      "couple_id": "5e6dc7d0-f45f-4321-aa9a-92735586830a",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "270d6f5b-2429-4128-a2c6-a1080bee2c15",
+      "tournament_id": "74025631-dc5b-4915-bfff-620336dcae2e",
+      "couple_id": "63d14119-4d03-4217-8ade-1656dbc89a29",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "500dfe58-766f-404f-9fd6-068ca89c0ebc",
+      "tournament_id": "74025631-dc5b-4915-bfff-620336dcae2e",
+      "couple_id": "1d2bd25d-368e-4875-acad-213d27763bb2",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "6042aa8b-df2e-4ec9-9e5c-c3357f3c3207",
+      "tournament_id": "8c4b81bb-f956-4ae5-bed0-d9b745f83ab5",
+      "couple_id": "3e9e5a02-7b72-44fb-be64-fec6446836e1",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "ad8a9b12-215c-4f18-a8dd-bcff8b56fafe",
+      "tournament_id": "8c4b81bb-f956-4ae5-bed0-d9b745f83ab5",
+      "couple_id": "b7a6e9e8-c465-4003-88b3-ee78ebce1c1a",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "27d9b421-365a-48b5-b558-229ecc38ea63",
+      "tournament_id": "9818601a-a0ed-4197-9e24-4e53f387ce76",
+      "couple_id": "fc277ac1-31c7-45b8-a4aa-5cf1933879d1",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "bd418a15-a4ff-4ecc-94db-fdf567c9a495",
+      "tournament_id": "9818601a-a0ed-4197-9e24-4e53f387ce76",
+      "couple_id": "e510654b-7be1-4697-aaa5-668af0061198",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "d6662e20-41c9-4274-8b5f-cbe2e1eeed0d",
+      "tournament_id": "a0bff299-c214-4c18-aae9-c8954cba6e88",
+      "couple_id": "2fa05d52-0b65-4ddb-8f27-2eda1a5019e9",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "30000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "bb7a91ab-ccae-48c1-a077-d5fb8e6dd54a",
+      "tournament_id": "ac47a4e1-9ef8-42d8-ac35-c2071046fb02",
+      "couple_id": "ee014be7-a971-4a67-a234-0f3cb0b2cc4a",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "35000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "8303dfe8-cd1d-484d-b16b-2ea7aefab692",
+      "tournament_id": "c27c3c18-91a1-4afb-b610-67243dc6292f",
+      "couple_id": "b30c894e-dfe0-4774-bba7-be561af3b579",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "30000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    },
+    {
+      "id": "d492b173-48c1-4929-a92b-392d42db8983",
+      "tournament_id": "c27c3c18-91a1-4afb-b610-67243dc6292f",
+      "couple_id": "40d55d0d-e787-425f-bf9f-15d3938bda9b",
+      "is_pending": false,
+      "occupies_slot": false,
+      "payment_method": "TRANSFER",
+      "payment_proof_path": null,
+      "payment_proof_status": "NOT_REQUIRED",
+      "payment_alias_snapshot": "padelelite2026",
+      "payment_amount_snapshot": "30000.00",
+      "proof_waived_at": null,
+      "payment_revision": 2
+    }
+  ],
+  "tournaments": [
+    {
+      "name": "AMERICANO CABALLEROS 7MA/8VA",
+      "fecha": "29/10 22:30",
+      "con_cupo": 1,
+      "pendientes_comprobante_sin_cupo": 1,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO MIXTO SUMA 11/12",
+      "fecha": "29/10 22:30",
+      "con_cupo": 3,
+      "pendientes_comprobante_sin_cupo": 2,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO CABALLEROS 5TA / 6TA",
+      "fecha": "30/10 22:30",
+      "con_cupo": 1,
+      "pendientes_comprobante_sin_cupo": 0,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO CABALLEROS 6TA",
+      "fecha": "31/10 16:00",
+      "con_cupo": 0,
+      "pendientes_comprobante_sin_cupo": 1,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO DAMAS 6TA",
+      "fecha": "31/10 16:00",
+      "con_cupo": 6,
+      "pendientes_comprobante_sin_cupo": 3,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO CABALLEROS 7MA",
+      "fecha": "31/10 17:00",
+      "con_cupo": 1,
+      "pendientes_comprobante_sin_cupo": 1,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO DAMAS 5TA",
+      "fecha": "01/11 15:30",
+      "con_cupo": 1,
+      "pendientes_comprobante_sin_cupo": 2,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO DAMAS 7MA/8VA",
+      "fecha": "01/11 17:00",
+      "con_cupo": 2,
+      "pendientes_comprobante_sin_cupo": 2,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO CABALLEROS 4TA",
+      "fecha": "01/11 19:30",
+      "con_cupo": 1,
+      "pendientes_comprobante_sin_cupo": 0,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO CABALLEROS 7MA / 8VA",
+      "fecha": "01/11 19:30",
+      "con_cupo": 1,
+      "pendientes_comprobante_sin_cupo": 2,
+      "con_cupo_sin_comprobante": 0
+    },
+    {
+      "name": "AMERICANO CABALLEROS 6TA / 7MA",
+      "fecha": "01/11 21:00",
+      "con_cupo": 0,
+      "pendientes_comprobante_sin_cupo": 0,
+      "con_cupo_sin_comprobante": 0
+    }
+  ]
+}

@@ -166,6 +166,7 @@ export const useMatchScheduling = (
             ? [
                 ...availabilityWithoutCell,
                 {
+                  ...currentAvailability,
                   couple_id: coupleId,
                   time_slot_id: timeSlotId,
                   is_available: true,
@@ -190,34 +191,16 @@ export const useMatchScheduling = (
   }, [state.availability])
 
   // Validate match creation for conflicts
-  const validateMatchCreation = useCallback((couple1Id: string, couple2Id: string, fecha: string) => {
-    // Find conflicting matches for these couples on this date
-    const conflictingMatches = state.createdMatches.filter(match => {
-      const matchDate = match.scheduled_date
-      const involvesCouples = [match.couple1_id, match.couple2_id].includes(couple1Id) ||
-                             [match.couple1_id, match.couple2_id].includes(couple2Id)
-      return matchDate === fecha && involvesCouples
-    })
-    
-    if (conflictingMatches.length > 0) {
-      const conflictingMatch = conflictingMatches[0]
-      const status = conflictingMatch.status
-      
-      if (status === 'FINISHED' || status === 'COMPLETED') {
-        return { 
-          valid: false, 
-          message: 'Una de las parejas ya jugó un partido en esta fecha' 
-        }
-      } else {
-        return { 
-          valid: false, 
-          message: 'Una de las parejas ya tiene un partido programado en esta fecha' 
-        }
-      }
+  const validateMatchCreation = useCallback((couple1Id: string, couple2Id: string) => {
+    const couples = state.couples.filter(couple => [couple1Id, couple2Id].includes(couple.id))
+    if (couples.some(couple => couple.has_played_in_this_date)) {
+      return { valid: false, message: 'Una de las parejas ya tiene un partido asignado en esta fecha' }
     }
-    
+    if (couples[0]?.opponent_statuses?.[couples[1]?.id]) {
+      return { valid: false, message: 'Estas parejas ya se enfrentaron o tienen un cruce reservado en este torneo' }
+    }
     return { valid: true, message: '' }
-  }, [state.createdMatches])
+  }, [state.couples])
 
   // Create match with server action
   const handleCreateMatch = useCallback(async (formData: MatchFormData): Promise<boolean> => {
@@ -232,7 +215,7 @@ export const useMatchScheduling = (
     const [couple1, couple2] = state.selectedCouples
 
     // Validate for conflicts
-    const validation = validateMatchCreation(couple1.id, couple2.id, formData.fecha)
+    const validation = validateMatchCreation(couple1.id, couple2.id)
     if (!validation.valid) {
       setState(prev => ({
         ...prev,
@@ -251,14 +234,14 @@ export const useMatchScheduling = (
     try {
       
       // Use provided time slot (now optional)
-      let timeSlotId = formData.timeSlotId || undefined
+      const timeSlotId = formData.timeSlotId || undefined
 
       // Prepare custom schedule only if we have specific time/date info
       let customSchedule: CustomSchedule | undefined = undefined
 
       if (formData.fecha || formData.horaInicio || formData.horaFin || formData.cancha) {
         customSchedule = {
-          date: formData.fecha || (timeSlotId ? state.timeSlots.find(ts => ts.id === timeSlotId)?.date : undefined) || new Date().toISOString().split('T')[0],
+          date: formData.fecha || state.timeSlots.find(ts => ts.id === timeSlotId)?.date || '',
           startTime: formData.horaInicio || '',
           endTime: formData.horaFin || '',
           court: formData.cancha || '',
@@ -282,7 +265,7 @@ export const useMatchScheduling = (
           couple1_id: result.data.couple1Id,
           couple2_id: result.data.couple2Id,
           time_slot_id: result.data.timeSlotId || null,
-          status: 'PENDING',
+          status: result.data.status || 'PENDING',
           scheduled_date: result.data.scheduledDate,
           scheduled_start_time: result.data.scheduledStartTime,
           scheduled_end_time: result.data.scheduledEndTime,
@@ -600,17 +583,12 @@ export const useMatchScheduling = (
   // Update data from parent (when fecha changes or after operations)
   const updateData = useCallback((newData: SchedulingData) => {
     setState(prev => {
-      // Merge server data with any local-only matches that might not be in server response yet
-      const serverMatchIds = new Set(newData.existingMatches.map(m => m.id))
-      const localOnlyMatches = prev.createdMatches.filter(m => !serverMatchIds.has(m.id))
-      
       return {
         ...prev,
         couples: newData.couples,
         timeSlots: newData.timeSlots,
         availability: newData.availability,
-        // Merge server matches with local-only matches (preserves instant updates)
-        createdMatches: [...newData.existingMatches, ...localOnlyMatches],
+        createdMatches: newData.existingMatches,
         selectedCouples: [], // Clear selections on data update
         manualAvailabilitySavingKey: null,
         error: null,

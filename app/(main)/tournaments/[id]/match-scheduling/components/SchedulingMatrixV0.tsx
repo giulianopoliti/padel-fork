@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Clock, Edit3, Lock } from 'lucide-react'
+import { Edit3, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SchedulingData } from '../actions'
 import AvailabilityMatrix from './AvailabilityMatrix'
@@ -30,6 +30,7 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
   clubes
 }) => {
   const [manualAvailabilityEnabled, setManualAvailabilityEnabled] = useState(false)
+  const [highlightRivals, setHighlightRivals] = useState(false)
   const {
     couples,
     timeSlots,
@@ -38,6 +39,7 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
     createdMatches,
     draggedCouple,
     manualAvailabilitySavingKey,
+    loading,
     error,
     warning,
     actions
@@ -51,18 +53,6 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
     if (onMatchResultSaved) {
       onMatchResultSaved()
     }
-  }
-
-  if (timeSlots.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <Clock className="h-8 w-8 text-slate-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-slate-700 mb-2">No hay horarios configurados</h3>
-        <p className="text-slate-500">
-          Primero debes crear horarios para esta fecha en la sección de "Fechas & Horarios"
-        </p>
-      </div>
-    )
   }
 
   return (
@@ -82,33 +72,49 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
               Activalo cuando una pareja avise sus horarios por WhatsApp.
             </p>
           </div>
-          <Button
-            type="button"
-            variant={manualAvailabilityEnabled ? 'default' : 'outline'}
-            className={manualAvailabilityEnabled ? 'bg-blue-600 hover:bg-blue-700' : ''}
-            onClick={() => setManualAvailabilityEnabled(value => !value)}
-          >
-            {manualAvailabilityEnabled ? (
-              <>
-                <Lock className="mr-2 h-4 w-4" />
-                Desactivar carga manual
-              </>
-            ) : (
-              <>
-                <Edit3 className="mr-2 h-4 w-4" />
-                Habilitar carga manual de horarios
-              </>
-            )}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant={highlightRivals ? 'default' : 'outline'}
+              aria-pressed={highlightRivals}
+              onClick={() => setHighlightRivals(value => !value)}
+              className="h-auto min-h-10 whitespace-normal"
+            >
+              {highlightRivals ? 'Desactivar resaltado de rivales' : 'Resaltar rivales'}
+            </Button>
+            <Button
+              type="button"
+              disabled={timeSlots.length === 0}
+              aria-pressed={manualAvailabilityEnabled}
+              variant={manualAvailabilityEnabled ? 'default' : 'outline'}
+              className={`h-auto min-h-10 whitespace-normal ${manualAvailabilityEnabled ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+              onClick={() => setManualAvailabilityEnabled(value => !value)}
+            >
+              {manualAvailabilityEnabled ? (
+                <>
+                  <Lock className="mr-2 h-4 w-4 shrink-0" />
+                  Desactivar carga manual
+                </>
+              ) : (
+                <>
+                  <Edit3 className="mr-2 h-4 w-4 shrink-0" />
+                  Habilitar carga manual de horarios
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <AvailabilityMatrix
               couples={couples}
               timeSlots={timeSlots}
               availability={availability}
               draggedCouple={draggedCouple}
+              selectedCouples={selectedCouples}
+              highlightRivals={highlightRivals}
+              durationMinutes={schedulingData.estimatedMatchDurationMinutes || 90}
               onCoupleSelect={actions.handleCoupleSelect}
               onDragStart={actions.handleDragStart}
               onDragEnd={actions.handleDragEnd}
@@ -118,12 +124,13 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
             />
           </div>
 
-          <div>
+          <div className="min-w-0">
             <MatchCreationPanel
               selectedCouples={selectedCouples}
               createdMatches={[]}
               timeSlots={timeSlots}
               error={error}
+              loading={loading}
               warning={warning}
               onCoupleRemove={actions.handleCoupleRemove}
               onMatchCreate={actions.handleCreateMatch}

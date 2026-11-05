@@ -1,5 +1,18 @@
 # Plan de seña y reserva de cupo — Padel Elite
 
+## Ajuste retroactivo completado el 29/10/2026
+
+Después del cambio de configuración, el propietario indicó expresamente que las 14 parejas previamente confirmadas sin comprobante también debían quedar sin cupo hasta adjuntarlo. Esta instrucción reemplaza la decisión inicial de conservar esos 14 lugares.
+
+- Se verificó que seguían sin comprobante, sin excepciones ni efectivo, en 8 torneos no iniciados. Ninguna tenía posiciones, zonas, partidos o semillas asignadas.
+- Se aplicó una corrección de datos transaccional con bloqueos de los torneos y las inscripciones, sin cambiar funciones, desactivar triggers ni ejecutar migraciones. Primero se probó con rollback; después se confirmó y reconsultó.
+- El guard conserva cupos existentes en una actualización directa. Para recalcularlos con los guards activos se desvinculó transitoriamente la pareja y se restauró la misma asociación dentro de la transacción. Se conservaron los IDs de inscripción, las parejas, las aceptaciones y los demás campos, salvo cupo, revisión de concurrencia y la normalización del pago que se detalla abajo. No existían asignaciones deportivas que pudieran eliminarse al desvincular.
+- Las 14 quedaron con `occupies_slot=false`, medio de pago `TRANSFER`, sin comprobante ni excepción. El campo retirado de aprobación manual `is_pending` permanece en false; la espera real está determinada por la falta de cupo y de comprobante.
+- En la pareja de CABALLEROS 6TA del 31/10 se completaron el medio de pago y su snapshot: `padelelite2026`, $35.000. En las otras 13 se conservaron alias e importe.
+- Las validaciones transaccionales comprobaron la conservación de campos y asociaciones y que no se generaran eventos de notificación. No se enviaron avisos.
+- Lectura final de los 11 torneos: **17 parejas con cupo, 14 pendientes sin cupo y 0 con cupo sin comprobante**. Al cargar comprobante, las pendientes obtienen lugar si todavía hay disponibilidad y las inscripciones siguen habilitadas.
+- Snapshots: `elite-inscripciones-sin-comprobante-antes-2026-10-29.json` y `elite-inscripciones-sin-comprobante-despues-2026-10-29.json` en esta carpeta.
+
 ## Ejecución completada el 29/10/2026
 
 Tras la instrucción del propietario de implementar el plan, se actualizaron por MCP los 11 torneos revisados en `lzowflvgnspjdbvdxliy`. Una transacción de actualización de datos verificó previamente su identidad, organización, estado y configuración, y comprobó la política resultante antes de confirmar. No se ejecutaron migraciones ni cambios de esquema.
