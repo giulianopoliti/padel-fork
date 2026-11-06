@@ -1,11 +1,11 @@
 'use client'
 
-import { useRef, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Clock3, Copy, Plus, Scissors, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { applyScheduleDraftOperation, secondsToLocalTime, type ScheduleDraftOperation } from '@/lib/services/schedule-sharing/draft'
-import type { ScheduleDraftSlot, SchedulePeriod } from '@/lib/services/schedule-sharing/types'
+import type { ScheduleDraftSlot, ScheduleIssue, SchedulePeriod } from '@/lib/services/schedule-sharing/types'
 import { getArgentinaToday, isCivilDate, localTimeToSeconds } from '@/lib/services/schedule-sharing/validation'
 import { formatDay } from './display'
 
@@ -75,10 +75,12 @@ interface SlotEditorProps {
   slots: readonly ScheduleDraftSlot[]
   period: SchedulePeriod
   onChange?: (slots: ScheduleDraftSlot[]) => void
+  issue?: ScheduleIssue
+  periodInvalid?: boolean
 }
 
-export const SlotEditor = ({ slots, period, onChange }: SlotEditorProps) => {
-  const [day, setDay] = useState<string>()
+export const SlotEditor = ({ slots, period, onChange, issue, periodInvalid = false }: SlotEditorProps) => {
+  const [selection, setSelection] = useState<{ day: string; periodKey: string }>()
   const [copyDate, setCopyDate] = useState('')
   const [copyError, setCopyError] = useState('')
   const [copyNotice, setCopyNotice] = useState('')
@@ -86,21 +88,43 @@ export const SlotEditor = ({ slots, period, onChange }: SlotEditorProps) => {
   const [error, setError] = useState('')
   const focusSlot = useRef<string | null>(null)
   const today = getArgentinaToday()
+  const minDate = period.start_date && period.start_date > today ? period.start_date : today
+  const endDate = period.end_date
+  const periodKey = `${minDate}/${endDate ?? ''}`
+  const canUseDay = (value: string) => isCivilDate(value) && value >= minDate && (!endDate || value <= endDate)
+  const expiredPeriodMessage = onChange && !periodInvalid && endDate && endDate < today
+    ? `El período de la fecha ya terminó el ${formatDay(endDate)}. Solo se pueden agregar franjas vigentes.`
+    : null
   const days = [...new Set(slots.map(slot => slot.date).filter(isCivilDate))].sort()
-  const selectedDay = day ?? days[0] ?? (period.start_date && period.start_date >= today ? period.start_date : today)
+  const defaultDay = onChange && !periodInvalid && !expiredPeriodMessage ? days.find(canUseDay) ?? minDate : days[0] ?? ''
+  // Keep days with draft slots accessible even if the new period excludes them.
+  const selectedDay = selection && (
+    selection.periodKey === periodKey || canUseDay(selection.day) || days.includes(selection.day)
+  ) ? selection.day : defaultDay
   const daySlots = slots.filter(slot => slot.date === selectedDay)
   if (!onChange) daySlots.sort((a, b) => a.start_time.localeCompare(b.start_time))
-  const minDate = period.start_date && period.start_date > today ? period.start_date : today
-  const handleDayChange = (value: string) => {
-    setDay(value)
+  const handleDayChange = useCallback((value: string) => {
+    setSelection({ day: value, periodKey })
     setCopyDate('')
     setCopyError('')
     setCopyNotice('')
     setError('')
-  }
+  }, [periodKey])
+  useEffect(() => {
+    if (!issue?.slot_key) return
+    const slot = slots.find(candidate => candidate.key === issue.slot_key)
+    if (slot && isCivilDate(slot.date)) handleDayChange(slot.date)
+  }, [handleDayChange, issue, slots])
+
+  useEffect(() => {
+    setError('')
+    setCopyError('')
+    setCopyNotice('')
+  }, [periodKey])
+
   const handleCopy = () => {
     if (!onChange) return
-    if (!isCivilDate(copyDate) || copyDate < minDate || (period.end_date && copyDate > period.end_date)) {
+    if (!canUseDay(copyDate)) {
       setCopyError('Elegí un día vigente dentro del período de la fecha.')
       return
     }
@@ -118,7 +142,7 @@ export const SlotEditor = ({ slots, period, onChange }: SlotEditorProps) => {
     setCopyNotice(`Franjas del ${formatDay(selectedDay)} copiadas al ${formatDay(copyDate)}.`)
   }
   const apply = (operation: ScheduleDraftOperation) => {
-    if (!onChange) return
+    if (!onChange || periodInvalid) return
     const result = applyScheduleDraftOperation(slots, operation, { period, today })
     if (!result.ok) {
       setError(result.issues[0].message)
@@ -132,26 +156,29 @@ export const SlotEditor = ({ slots, period, onChange }: SlotEditorProps) => {
     onChange?.(slots.map(slot => slot.key === key ? { ...slot, ...patch } : slot))
   }
   const add = () => {
-    if (!isCivilDate(selectedDay) || selectedDay < minDate || (period.end_date && selectedDay > period.end_date)) {
-      setError('Elegí un día vigente dentro del período de la fecha.')
+    if (!canUseDay(selectedDay)) {
+      setError(endDate
+        ? `Elegí un día entre el ${formatDay(minDate)} y el ${formatDay(endDate)} para agregar la franja.`
+        : `Elegí el ${formatDay(minDate)} o un día posterior para agregar la franja.`)
       return
     }
     const endTimes = daySlots.map(slot => localTimeToSeconds(slot.end_time) / 60).filter(Number.isFinite)
     const lastEnd = endTimes.length ? Math.ceil(Math.max(...endTimes)) : 8 * 60
     const key = crypto.randomUUID()
     focusSlot.current = key
+    setSelection({ day: selectedDay, periodKey })
     setError('')
     onChange?.([...slots, { key, date: selectedDay, start_time: lastEnd < 1439 ? timeAt(lastEnd) : '', end_time: lastEnd < 1439 ? timeAt(Math.min(lastEnd + 60, 1439)) : '', max_matches: 1 }])
   }
 
   return (
-    <section aria-label="Días y horarios" className="space-y-4">
+    <fieldset aria-label="Días y horarios" disabled={periodInvalid} className="min-w-0 space-y-4 disabled:pointer-events-none">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-lg font-semibold">Franjas por día</h3>
           <p className="text-sm text-muted-foreground">{slots.length} {slots.length === 1 ? 'franja' : 'franjas'} en {days.length} {days.length === 1 ? 'día' : 'días'}</p>
         </div>
-        {onChange && <label className="space-y-1 text-sm">Día<Input type="date" min={minDate} max={period.end_date ?? undefined} value={selectedDay} onChange={event => handleDayChange(event.target.value)} /></label>}
+        {onChange && <label className="space-y-1 text-sm">Día<Input type="date" min={minDate} max={endDate ?? undefined} value={selectedDay} onChange={event => handleDayChange(event.target.value)} /></label>}
       </div>
       {days.length > 0 && (
         <div className="flex flex-wrap gap-2" aria-label="Días con franjas">
@@ -163,9 +190,9 @@ export const SlotEditor = ({ slots, period, onChange }: SlotEditorProps) => {
           ))}
         </div>
       )}
-      {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+      {!periodInvalid && (expiredPeriodMessage || error) && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{expiredPeriodMessage || error}</p>}
       {copyNotice && <p role="status" className="rounded-lg bg-muted/50 p-3 text-sm">{copyNotice}</p>}
-      {daySlots.length === 0 && <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{onChange ? 'Este día está libre. Podés agregar una franja o guardar la fecha sin horarios.' : 'No hay horarios compartidos para este día.'}</p>}
+      {daySlots.length === 0 && !periodInvalid && !expiredPeriodMessage && <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{onChange ? 'Este día está libre. Podés agregar una franja o guardar la fecha sin horarios.' : 'No hay horarios compartidos para este día.'}</p>}
       {daySlots.map((slot, index) => (
         <div key={slot.key} className="space-y-3 rounded-xl border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -203,19 +230,19 @@ export const SlotEditor = ({ slots, period, onChange }: SlotEditorProps) => {
           )}
         </div>
       ))}
-      {onChange && <Button type="button" variant="outline" onClick={add}><Plus aria-hidden /> Agregar franja</Button>}
-      {onChange && daySlots.length > 0 && (!period.end_date || minDate < period.end_date) && (
+      {onChange && <Button type="button" variant="outline" disabled={!!expiredPeriodMessage} onClick={add}><Plus aria-hidden /> Agregar franja</Button>}
+      {onChange && daySlots.length > 0 && (!endDate || minDate < endDate) && (
         <details key={selectedDay} className="space-y-3 rounded-xl border p-4">
-          <summary className="cursor-pointer text-sm font-medium"><Copy className="mr-2 inline size-4" aria-hidden /> Copiar horarios a otro día</summary>
+          <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Copy className="mr-2 inline size-4" aria-hidden /> Copiar horarios a otro día</summary>
           <p className="text-sm text-muted-foreground">Repetí los horarios del {formatDay(selectedDay)} en un día vacío.</p>
           <div className="flex flex-wrap items-end gap-2">
-            <label className="space-y-1 text-sm">Día de destino<Input type="date" min={minDate} max={period.end_date ?? undefined} value={copyDate}
+            <label className="space-y-1 text-sm">Día de destino<Input type="date" min={minDate} max={endDate ?? undefined} value={copyDate}
               onChange={event => { setCopyDate(event.target.value); setCopyError('') }} /></label>
             <Button type="button" variant="secondary" disabled={!copyDate} onClick={handleCopy}>Copiar {daySlots.length} {daySlots.length === 1 ? 'franja' : 'franjas'}</Button>
           </div>
           {copyError && <p role="alert" className="text-sm text-destructive">{copyError}</p>}
         </details>
       )}
-    </section>
+    </fieldset>
   )
 }
