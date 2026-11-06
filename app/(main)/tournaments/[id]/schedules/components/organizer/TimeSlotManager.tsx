@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Plus, Clock, Edit, Trash2, Users, AlertTriangle } from 'lucide-react'
@@ -17,6 +16,7 @@ interface TimeSlotManagerProps {
   selectedFecha: TournamentFecha | undefined
   tournamentId: string
   onTimeSlotChanged: () => void
+  shareAction?: ReactNode
 }
 
 interface TimeSlot {
@@ -33,7 +33,8 @@ interface TimeSlot {
 export default function TimeSlotManager({
   selectedFecha,
   tournamentId,
-  onTimeSlotChanged
+  onTimeSlotChanged,
+  shareAction
 }: TimeSlotManagerProps) {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(false)
@@ -111,30 +112,32 @@ export default function TimeSlotManager({
   return (
     <>
       <Card className="h-full">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Horarios - {selectedFecha.name}
-            </CardTitle>
+        <CardHeader className="gap-3 space-y-0 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1.5">
+              <CardTitle className="flex items-start gap-2 text-xl">
+                <Clock className="size-5 shrink-0" aria-hidden />
+                <span className="break-words">{selectedFecha.name}</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Horarios de la fecha {selectedFecha.fecha_number}
+                {selectedFecha.start_date && ` · ${formatDate(selectedFecha.start_date)}`}
+              </p>
+            </div>
             <Button
+              type="button"
               onClick={() => setIsCreateDialogOpen(true)}
               size="sm"
-              className="flex items-center gap-2"
+              className="max-w-full whitespace-normal text-left"
             >
               <Plus className="h-4 w-4" />
-              Nuevo Horario
+              Nuevo horario
             </Button>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Fecha {selectedFecha.fecha_number}</span>
-            {selectedFecha.start_date && (
-              <span>• {formatDate(selectedFecha.start_date)}</span>
-            )}
-          </div>
+          {shareAction && <div className="flex flex-wrap items-center gap-2">{shareAction}</div>}
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-[calc(100vh-300px)]">
+          <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
             <div className="p-4">
               {loading ? (
                 <div className="space-y-3">
@@ -158,8 +161,8 @@ export default function TimeSlotManager({
               ) : timeSlots.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Clock className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No hay horarios configurados</p>
-                  <p className="text-sm">Crea el primer horario para esta fecha</p>
+                  <p>No hay horarios disponibles</p>
+                  <p className="text-sm">Podés agregar un horario para esta fecha.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -171,7 +174,7 @@ export default function TimeSlotManager({
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
                               <h3 className="font-medium">
                                 {formatTime(timeSlot.start_time)} - {formatTime(timeSlot.end_time)}
                               </h3>
@@ -193,14 +196,18 @@ export default function TimeSlotManager({
                           <div className="flex items-center gap-1 ml-2">
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="icon"
+                              className="size-8"
+                              aria-label={`Editar horario del ${formatDate(timeSlot.date)} a las ${formatTime(timeSlot.start_time)}`}
                               onClick={() => setEditingTimeSlot(timeSlot)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="icon"
+                              className="size-8"
+                              aria-label={`Eliminar horario del ${formatDate(timeSlot.date)} a las ${formatTime(timeSlot.start_time)}`}
                               onClick={() => setDeletingTimeSlot(timeSlot)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -220,7 +227,7 @@ export default function TimeSlotManager({
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 

@@ -18,6 +18,7 @@ import { Trash2, Loader2, AlertTriangle, Clock } from 'lucide-react'
 import { TournamentFecha } from '../../types'
 import { deleteTournamentFecha } from '../../../schedule-management/actions'
 import { toast } from 'sonner'
+import { formatDay } from '@/app/(main)/schedules/display'
 
 interface DeleteFechaAlertProps {
   fecha: TournamentFecha
@@ -78,16 +79,8 @@ export default function DeleteFechaAlert({
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
-
   // Get time slots count from fecha data
-  const timeSlotCount = (fecha as any)._count_time_slots?.[0]?.count || 0
+  const timeSlotCount = fecha._count_time_slots?.[0]?.count ?? 0
   const hasTimeSlots = timeSlotCount > 0
 
   return (
@@ -112,7 +105,7 @@ export default function DeleteFechaAlert({
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span>Fecha #{fecha.fecha_number}</span>
                   {fecha.start_date && (
-                    <span>{formatDate(fecha.start_date)}</span>
+                    <span>{formatDay(fecha.start_date)}</span>
                   )}
                 </div>
 

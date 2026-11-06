@@ -2,6 +2,8 @@ import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 import { checkTournamentPermissions } from "@/utils/tournament-permissions"
 import OrganizerScheduleView from "../components/organizer/OrganizerScheduleView"
+import { isScheduleSharingEnabled, SCHEDULE_SHARING_SCHEMA_VERSION } from "@/config/schedule-sharing"
+import { isScheduleTournamentEligible } from "@/lib/services/schedule-sharing/permissions"
 
 interface OrganizerSchedulePageProps {
   params: {
@@ -69,6 +71,7 @@ export default async function OrganizerSchedulePage({
       _count_time_slots:tournament_time_slots(count)
     `)
     .eq('tournament_id', resolvedParams.id)
+    .eq('_count_time_slots.slot_type', 'TIME_RANGE')
     .order('fecha_number', { ascending: true })
 
   // Handle fecha selection from URL
@@ -89,6 +92,24 @@ export default async function OrganizerSchedulePage({
     redirect(`/tournaments/${resolvedParams.id}/schedules?fecha_id=${fechas[0].id}`)
   }
 
+  let sharedSchedule: { id: string; count: number } | null = null
+  let canShare = false
+  if (isScheduleSharingEnabled() && process.env.SCHEDULE_SHARING_ENABLED === 'true') {
+    const version = await supabase.rpc('schedule_sharing_schema_version')
+    if (version.data === SCHEDULE_SHARING_SCHEMA_VERSION && !version.error) {
+      canShare = isScheduleTournamentEligible({ id: tournament.id, type: tournament.type, status: tournament.status, club_id: null, organization_id: null })
+      if (validatedFechaId) {
+        const { data: member } = await supabase.from('schedule_share_members')
+          .select('group_id').eq('fecha_id', validatedFechaId).eq('status', 'active').maybeSingle()
+        if (member) {
+          const { data: group } = await supabase.from('schedule_workspace_entries')
+            .select('id,tournament_count').eq('kind', 'GROUP').eq('id', member.group_id).maybeSingle()
+          if (group) sharedSchedule = { id: group.id, count: group.tournament_count }
+        }
+      }
+    }
+  }
+
   return (
     <OrganizerScheduleView
       tournamentId={resolvedParams.id}
@@ -97,6 +118,8 @@ export default async function OrganizerSchedulePage({
       fechas={fechas || []}
       initialSelectedFechaId={validatedFechaId}
       userRole={permissionResult.userRole || 'CLUB'}
+      canShare={canShare}
+      sharedSchedule={sharedSchedule}
     />
   )
 }

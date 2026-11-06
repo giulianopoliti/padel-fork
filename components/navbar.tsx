@@ -54,7 +54,7 @@ const useNavbarLinks = (userRole: Role | null, authState: AuthState) => {
     const profileLinks = allAuthLinks.filter((link) => profileLinkPaths.includes(link.path))
 
     if (branding.key === "padel-fv") {
-      return { mainLinks: fvMainLinks, profileLinks }
+      return { mainLinks: [...fvMainLinks, ...allAuthLinks.filter(link => link.path === "/schedules")], profileLinks }
     }
 
     const mainLinks = allAuthLinks.filter((link) => !profileLinkPaths.includes(link.path))

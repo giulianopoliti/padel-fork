@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { TournamentFecha } from '../../types'
 import { getBracketLabel } from '../../utils'
+import { formatPeriod } from '@/app/(main)/schedules/display'
 
 interface QuickActionsProps {
   selectedFecha: TournamentFecha | undefined
@@ -54,14 +55,6 @@ export default function QuickActions({
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
-
   if (!selectedFecha) {
     return (
       <Card className="h-full">
@@ -82,7 +75,7 @@ export default function QuickActions({
     )
   }
 
-  const timeSlotCount = (selectedFecha as any)._count_time_slots?.[0]?.count || 0
+  const timeSlotCount = selectedFecha._count_time_slots?.[0]?.count ?? 0
 
   return (
     <Card className="h-full">
@@ -106,13 +99,10 @@ export default function QuickActions({
              selectedFecha.status === 'CANCELED' ? 'Cancelada' : 'Pendiente'}
           </Badge>
 
-          {selectedFecha.start_date && (
+          {(selectedFecha.start_date || selectedFecha.end_date) && (
             <div className="text-sm text-muted-foreground">
               <Calendar className="h-4 w-4 inline mr-1" />
-              {formatDate(selectedFecha.start_date)}
-              {selectedFecha.end_date && selectedFecha.end_date !== selectedFecha.start_date &&
-                ` - ${formatDate(selectedFecha.end_date)}`
-              }
+              {formatPeriod(selectedFecha.start_date ?? null, selectedFecha.end_date ?? null)}
             </div>
           )}
 
@@ -172,7 +162,7 @@ export default function QuickActions({
             {timeSlotCount > 0 && (
               <div className="text-xs text-muted-foreground p-2 bg-green-50 rounded border border-green-200">
                 <CheckCircle2 className="h-4 w-4 inline mr-1" />
-                Fecha configurada correctamente
+                Esta fecha tiene horarios cargados
               </div>
             )}
           </div>

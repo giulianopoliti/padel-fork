@@ -2,7 +2,7 @@
 
 Fecha: 5 de noviembre de 2026.
 Revisión: 3, panel general aprobado y arquitectura confirmada de un tenant por base de datos.
-Estado: plan listo para continuar en otro chat; la feature todavía no está implementada.
+Estado al 6 de noviembre de 2026. Panel, asistente y accesos desde el torneo implementados. La creación, adopción, ampliación de grupos, compleción de faltantes y desvinculación tienen validación local. Quedan pendientes la propagación de cambios comunes, la verificación integrada con sesiones reales y el contraste remoto de la migración candidata. Ver [avance y validación](implementacion-fechas-horarios-compartidos-2026-11-05.md).
 Pantalla principal nueva: `/schedules`, exclusiva de gestión.
 Acceso contextual conservado: `/tournaments/[id]/schedules`, vista de organizador; los jugadores conservan su vista actual.
 Destino previsto: Padel FV. Las verificaciones remotas futuras deben usar exclusivamente `supabase-fv`, proyecto `bfmaqrythlwbfjuqumom`.

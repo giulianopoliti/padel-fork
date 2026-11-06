@@ -11,7 +11,7 @@ type UserRow = Tables['users']['Row']
 type AvailabilityRow = Tables['couple_time_availability']['Row']
 
 // User roles and permissions
-export type UserRole = 'PLAYER' | 'COACH' | 'CLUB' | 'ORGANIZADOR'
+export type UserRole = 'PLAYER' | 'COACH' | 'CLUB' | 'ORGANIZADOR' | 'ADMIN'
 
 export interface UserAccess {
   userId: string
@@ -48,6 +48,7 @@ export interface TournamentFecha {
   bracket_key: 'MAIN' | 'GOLD' | 'SILVER'
   bracket_label?: string | null
   created_at?: string
+  _count_time_slots?: { count: number }[]
 }
 
 // Time slot related types

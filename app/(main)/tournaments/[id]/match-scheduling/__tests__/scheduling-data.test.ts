@@ -1,4 +1,4 @@
-import { createMatch, getMatchSchedulingData } from '../actions'
+import { createMatch, getBracketMatchFechaOptions, getMatchSchedulingData, modifyMatchSchedule } from '../actions'
 import { createClient } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 
@@ -16,6 +16,86 @@ interface Query {
   insert?: Record<string, unknown>
   offset?: number
 }
+
+describe('bracket scheduling with more than one fecha', () => {
+  const schedule = { matchId: 'match', date: '2099-11-06', startTime: '09:00', endTime: '10:30', court: null }
+  const first = { id: 'first', name: 'Primera jornada', fecha_number: 1, start_date: '2099-11-06', end_date: '2099-11-06',
+    tournament_id: 'tournament', round_type: '8VOS', bracket_key: 'GOLD' }
+  const second = { ...first, id: 'second', name: 'Segunda jornada', fecha_number: 2, start_date: '2099-11-08', end_date: '2099-11-08' }
+  const otherRound = { ...first, id: 'quarterfinal', round_type: '4TOS' }
+  const otherCup = { ...first, id: 'silver', bracket_key: 'SILVER' }
+  const otherTournament = { ...first, id: 'foreign', tournament_id: 'foreign-tournament' }
+  let fechas: (typeof first)[]
+  let linked: string | null
+  const upsert = jest.fn()
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    linked = null
+    fechas = [first, second, otherRound, otherCup, otherTournament]
+    upsert.mockResolvedValue({ error: null })
+    jest.mocked(checkTournamentPermissions).mockResolvedValue({ hasPermission: true })
+    const from = (table: string) => {
+      const filters: [string, unknown][] = []
+      const builder = {
+        select: () => builder,
+        eq: (column: string, value: unknown) => { filters.push([column, value]); return builder },
+        order: () => builder,
+        single: async () => ({ data: { tournament_id: 'tournament', type: 'ELIMINATION', round: '8VOS', bracket_key: 'GOLD', club_id: null }, error: null }),
+        maybeSingle: async () => ({ data: linked ? { fecha_id: linked } : null, error: null }),
+        then: (resolve: (value: unknown) => void) => {
+          resolve({ data: fechas.filter(fecha => filters.every(([key, value]) => fecha[key as keyof typeof fecha] === value)), error: null })
+        },
+        upsert,
+      }
+      if (!['matches', 'fecha_matches', 'tournament_fechas'].includes(table)) throw new Error(`Unexpected table: ${table}`)
+      return builder
+    }
+    jest.mocked(createClient).mockResolvedValue({
+      auth: { getUser: async () => ({ data: { user: { id: 'organizer' } } }) }, from,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+  })
+
+  it('loads only fechas matching the tournament, round and cup', async () => {
+    linked = second.id
+    const result = await getBracketMatchFechaOptions('match')
+    expect(result.data?.fechas.map(fecha => fecha.id)).toEqual([first.id, second.id])
+    expect(result.data?.currentFechaId).toBe(second.id)
+  })
+
+  it('automatically assigns the only compatible fecha', async () => {
+    fechas = fechas.filter(fecha => fecha.id !== second.id)
+    expect((await modifyMatchSchedule(schedule)).success).toBe(true)
+    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ match_id: 'match', fecha_id: first.id }), expect.anything())
+  })
+
+  it('asks the user to choose when multiple compatible fechas exist', async () => {
+    expect((await modifyMatchSchedule(schedule)).error).toMatch(/Elegí en la llave/)
+    expect(upsert).not.toHaveBeenCalled()
+    expect((await modifyMatchSchedule({ ...schedule, fechaId: second.id, date: second.start_date })).success).toBe(true)
+    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ fecha_id: second.id }), expect.objectContaining({ onConflict: 'match_id' }))
+  })
+
+  it('preserves a compatible existing fecha and clears the old slot when switching fechas', async () => {
+    linked = first.id
+    expect((await modifyMatchSchedule(schedule)).success).toBe(true)
+    expect(upsert.mock.calls[0][0]).not.toHaveProperty('scheduled_time_slot_id')
+    expect((await modifyMatchSchedule({ ...schedule, fechaId: second.id, date: second.start_date })).success).toBe(true)
+    expect(upsert.mock.calls[1][0]).toMatchObject({ fecha_id: second.id, scheduled_time_slot_id: null })
+  })
+
+  it.each([otherRound.id, otherCup.id, otherTournament.id])('rejects the incompatible fecha %s even as an existing link', async fechaId => {
+    linked = fechaId
+    expect((await modifyMatchSchedule(schedule)).error).toMatch(/mismo torneo, ronda y copa/)
+    expect(upsert).not.toHaveBeenCalled()
+  })
+
+  it('rejects a move to a different fecha if the match day is outside its period', async () => {
+    linked = first.id
+    expect((await modifyMatchSchedule({ ...schedule, fechaId: second.id })).error).toMatch(/dentro del período/)
+    expect(upsert).not.toHaveBeenCalled()
+  })
+})
 
 describe('match scheduling server boundaries', () => {
   let queries: Query[]

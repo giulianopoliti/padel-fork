@@ -1272,6 +1272,7 @@ export async function modifyMatchResult(
 // Interface for schedule modification
 export interface ModifyScheduleData {
   matchId: string
+  fechaId?: string
   date: string | null
   startTime: string | null
   endTime: string | null
@@ -1280,149 +1281,111 @@ export interface ModifyScheduleData {
   clubId?: string
 }
 
+interface SchedulingMatch {
+  tournament_id: string
+  type: string
+  round: string | null
+  bracket_key: 'MAIN' | 'GOLD' | 'SILVER' | null
+  club_id: string | null
+}
+
+interface BracketFecha {
+  id: string
+  name: string
+  fecha_number: number
+  start_date: string | null
+  end_date: string | null
+}
+
+export interface BracketMatchFechaOptions {
+  fechas: BracketFecha[]
+  currentFechaId: string | null
+  currentClubId: string | null
+}
+
+type ScheduleClient = Awaited<ReturnType<typeof createClient>>
+
+const getAuthorizedSchedulingMatch = async (supabase: ScheduleClient, matchId: string): Promise<SchedulingMatch> => {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Usuario no autenticado')
+
+  const { data: match, error } = await supabase.from('matches')
+    .select('type, bracket_key, round, tournament_id, club_id').eq('id', matchId).single()
+  if (error || !match) throw new Error('Partido no encontrado')
+
+  const permission = await checkTournamentPermissions(user.id, match.tournament_id)
+  if (!permission.hasPermission) throw new Error(permission.reason || 'No tenés permisos para modificar horarios en este torneo.')
+  return match
+}
+
+const getBracketFechaCandidates = async (supabase: ScheduleClient, match: SchedulingMatch): Promise<BracketFecha[]> => {
+  if (match.type !== 'ELIMINATION' || !match.round) return []
+  const { data, error } = await supabase.from('tournament_fechas')
+    .select('id, name, fecha_number, start_date, end_date')
+    .eq('tournament_id', match.tournament_id)
+    .eq('round_type', match.round)
+    .eq('bracket_key', match.bracket_key || 'MAIN')
+    .order('fecha_number')
+    .order('id')
+  if (error) throw error
+  return data ?? []
+}
+
+const getLinkedSchedulingFecha = async (supabase: ScheduleClient, matchId: string): Promise<string | null> => {
+  const { data, error } = await supabase.from('fecha_matches').select('fecha_id').eq('match_id', matchId).maybeSingle()
+  if (error) throw error
+  return data?.fecha_id ?? null
+}
+
+export const getBracketMatchFechaOptions = async (matchId: string): Promise<ActionResult<BracketMatchFechaOptions>> => {
+  try {
+    const supabase = await createClient()
+    const match = await getAuthorizedSchedulingMatch(supabase, matchId)
+    const [fechas, currentFechaId] = await Promise.all([
+      getBracketFechaCandidates(supabase, match),
+      getLinkedSchedulingFecha(supabase, matchId),
+    ])
+    return { success: true, data: { fechas, currentFechaId, currentClubId: match.club_id } }
+  } catch (error) {
+    return { success: false, error: getErrorMessage(error) }
+  }
+}
+
 // 6. Modify Match Schedule
 export async function modifyMatchSchedule(
   scheduleData: ModifyScheduleData
 ): Promise<ActionResult> {
   try {
     const supabase = await createClient()
-    
-    // Verify user authentication
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return {
-        success: false,
-        error: 'Usuario no autenticado'
+    const { matchId, fechaId: requestedFechaId, date, startTime, endTime, court, notes, clubId } = scheduleData
+    const match = await getAuthorizedSchedulingMatch(supabase, matchId)
+    const previousFechaId = await getLinkedSchedulingFecha(supabase, matchId)
+    let fechaId = previousFechaId
+
+    if (match.type === 'ELIMINATION') {
+      const candidates = await getBracketFechaCandidates(supabase, match)
+      const targetId = requestedFechaId ?? previousFechaId
+      const target = targetId ? candidates.find(candidate => candidate.id === targetId)
+        : candidates.length === 1 ? candidates[0] : undefined
+      if (!target) {
+        if (targetId) return { success: false, error: 'Elegí una fecha del mismo torneo, ronda y copa que el partido.' }
+        if (candidates.length > 1) return { success: false, error: 'Elegí en la llave en cuál de las fechas se juega este partido.' }
+        return { success: false, error: `Creá una fecha para esta ronda de ${getFechaBracketLabel(match.bracket_key || 'MAIN')} en Fechas y Horarios.` }
       }
+      if (date && target.id !== previousFechaId &&
+        ((target.start_date && date < target.start_date) || (target.end_date && date > target.end_date))) {
+        return { success: false, error: 'El día del partido debe quedar dentro del período de la fecha elegida.' }
+      }
+      fechaId = target.id
+    } else if (requestedFechaId !== undefined) {
+      return { success: false, error: 'Elegí la fecha de un partido de zonas desde su programación.' }
     }
 
-    const { matchId, date, startTime, endTime, court, notes, clubId } = scheduleData
-
-    // Get match info with round to find fecha
-    const { data: matchData, error: matchError } = await supabase
-      .from('matches')
-      .select(`
-        id,
-        type,
-        bracket_key,
-        round,
-        tournament_id,
-        tournaments!inner (
-          id,
-          type,
-          name
-        )
-      `)
-      .eq('id', matchId)
-      .single()
-
-    if (matchError || !matchData) {
-      return {
-        success: false,
-        error: 'Partido no encontrado'
-      }
-    }
-
-    // Verify user has permissions
-    const permissionResult = await checkTournamentPermissions(user.id, matchData.tournament_id)
-    if (!permissionResult.hasPermission) {
-      return {
-        success: false,
-        error: permissionResult.reason || 'No tienes permisos para modificar horarios en este torneo'
-      }
-    }
-
-    // 🔒 FIX: Preserve existing fecha_id - do NOT try to find/change it
-    // Get current fecha_id from fecha_matches (if exists)
-    const { data: existingFechaMatch } = await supabase
-      .from('fecha_matches')
-      .select('fecha_id')
-      .eq('match_id', matchId)
-      .maybeSingle()
-
-    // Preserve existing fecha_id, or use null if match doesn't have one
-    let fechaId = existingFechaMatch?.fecha_id || null
-
-    // ⚠️ Validation: Warn if ZONE match has no fecha_id assigned
-    if (matchData.round === 'ZONE' && !fechaId) {
-      console.warn(`⚠️  Partido de ZONE ${matchId} no tiene fecha_id asignada. No aparecerá en Match Scheduling filtrado por fecha.`)
-    }
-
-    const isEliminationMatch = matchData.type === 'ELIMINATION'
-    const matchBracketKey = (matchData.bracket_key || 'MAIN') as 'MAIN' | 'GOLD' | 'SILVER'
-
-    if (isEliminationMatch && !fechaId) {
-      if (!matchData.round) {
-        return {
-          success: false,
-          error: 'No se pudo resolver la ronda del partido para asignarlo a una fecha.'
-        }
-      }
-
-      const { data: candidateFechas, error: candidateFechasError } = await supabase
-        .from('tournament_fechas')
-        .select('id, name, bracket_key')
-        .eq('tournament_id', matchData.tournament_id)
-        .eq('round_type', matchData.round)
-        .eq('bracket_key', matchBracketKey)
-        .order('fecha_number', { ascending: true })
-
-      if (candidateFechasError) {
-        throw candidateFechasError
-      }
-
-      if (!candidateFechas || candidateFechas.length === 0) {
-        return {
-          success: false,
-          error: `No existe una fecha para ${matchData.round} en ${getFechaBracketLabel(matchBracketKey)}. Creala en Fechas y Horarios para poder programar este partido.`
-        }
-      }
-
-      if (candidateFechas.length > 1) {
-        return {
-          success: false,
-          error: `Hay más de una fecha para ${matchData.round} en ${getFechaBracketLabel(matchBracketKey)}. Dejá una sola para poder programar automáticamente este partido.`
-        }
-      }
-
-      fechaId = candidateFechas[0].id
-    }
-
-    if (isEliminationMatch && fechaId) {
-      const { data: linkedFecha, error: linkedFechaError } = await supabase
-        .from('tournament_fechas')
-        .select('id, round_type, bracket_key')
-        .eq('id', fechaId)
-        .single()
-
-      if (linkedFechaError || !linkedFecha) {
-        return {
-          success: false,
-          error: 'No se pudo validar la fecha vinculada al partido.'
-        }
-      }
-
-      if (linkedFecha.round_type === 'ZONE') {
-        return {
-          success: false,
-          error: 'No podés programar un partido de llave en una fecha de zonas.'
-        }
-      }
-
-      if ((linkedFecha.bracket_key || 'MAIN') !== matchBracketKey) {
-        return {
-          success: false,
-          error: `No se puede programar un partido de ${getFechaBracketLabel(matchBracketKey)} en una fecha de ${getFechaBracketLabel(linkedFecha.bracket_key || 'MAIN')}.`
-        }
-      }
-    }
-
-    // UPSERT fecha_matches with new schedule (creates if not exists, updates if exists)
-    // fecha_id is PRESERVED from existing value, or NULL for bracket matches without fecha
     const { error: upsertFechaError } = await supabase
       .from('fecha_matches')
       .upsert({
-        fecha_id: fechaId,  // Can be NULL for bracket matches
+        fecha_id: fechaId,
+        ...(fechaId !== previousFechaId ? { scheduled_time_slot_id: null } : {}),
         match_id: matchId,
         scheduled_date: date,
         scheduled_start_time: startTime,
@@ -1452,15 +1415,15 @@ export async function modifyMatchSchedule(
       }
     }
 
-    revalidatePath(`/tournaments/${matchData.tournament_id}/match-scheduling`)
-    revalidatePath(`/tournaments/${matchData.tournament_id}/bracket`)
+    revalidatePath(`/tournaments/${match.tournament_id}/match-scheduling`)
+    revalidatePath(`/tournaments/${match.tournament_id}/bracket`)
 
     return {
       success: true,
       message: `Horario actualizado: ${date} de ${startTime} a ${endTime}${court ? ` en ${court}` : ''}${!fechaId ? ' (sin fecha asignada)' : ''}`,
       data: {
         matchId,
-        fechaId: fechaId,  // Preserved from existing or null
+        fechaId,
         newSchedule: {
           date,
           startTime,

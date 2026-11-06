@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { TournamentFecha } from '../../types'
 import FechaManager from './FechaManager'
 import TimeSlotManager from './TimeSlotManager'
 import QuickActions from './QuickActions'
+import { tournamentSchedulePath } from '@/app/(main)/schedules/display'
 
 interface OrganizerScheduleViewProps {
   tournamentId: string
@@ -21,6 +22,8 @@ interface OrganizerScheduleViewProps {
   fechas: TournamentFecha[]
   initialSelectedFechaId: string | null
   userRole: string
+  canShare?: boolean
+  sharedSchedule?: { id: string; count: number } | null
 }
 
 export default function OrganizerScheduleView({
@@ -29,13 +32,17 @@ export default function OrganizerScheduleView({
   clubName,
   fechas: initialFechas,
   initialSelectedFechaId,
-  userRole
+  userRole,
+  canShare,
+  sharedSchedule
 }: OrganizerScheduleViewProps) {
   const [fechas, setFechas] = useState<TournamentFecha[]>(initialFechas)
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const isMobile = useIsMobile()
+
+  useEffect(() => setFechas(initialFechas), [initialFechas])
 
   // Mobile collapsible state
   const [fechaManagerOpen, setFechaManagerOpen] = useState(!isMobile)
@@ -44,6 +51,20 @@ export default function OrganizerScheduleView({
   // Get selected fecha from URL
   const selectedFechaId = searchParams.get('fecha_id') || initialSelectedFechaId
   const selectedFecha = fechas.find(f => f.id === selectedFechaId)
+  const shareAction = selectedFecha?.id === initialSelectedFechaId && (
+    sharedSchedule ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild size="sm" variant="outline" className="h-auto min-h-8 max-w-full whitespace-normal text-left">
+          <Link href={`/schedules/${sharedSchedule.id}?back=${encodeURIComponent(tournamentSchedulePath(tournamentId, selectedFechaId ?? undefined))}`}>Ver fecha compartida</Link>
+        </Button>
+        <span className="text-sm text-muted-foreground">{sharedSchedule.count} {sharedSchedule.count === 1 ? 'torneo vinculado' : 'torneos vinculados'}</span>
+      </div>
+    ) : canShare && selectedFechaId && (
+      <Button asChild size="sm" variant="outline" className="h-auto min-h-8 max-w-full whitespace-normal text-left">
+        <Link href={`/schedules/new?source=${selectedFechaId}`}>Compartir esta fecha</Link>
+      </Button>
+    )
+  )
 
   const handleFechaSelect = (fechaId: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -157,7 +178,7 @@ export default function OrganizerScheduleView({
                     </CardHeader>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <CardContent>
+                    <CardContent className="px-3 pb-3">
                       <FechaManager
                         fechas={fechas}
                         selectedFechaId={selectedFechaId}
@@ -166,6 +187,7 @@ export default function OrganizerScheduleView({
                         onFechaUpdated={handleFechaUpdated}
                         onFechaDeleted={handleFechaDeleted}
                         tournamentId={tournamentId}
+                        sharedCreateHref={canShare ? `/schedules/new?tournament=${tournamentId}` : undefined}
                       />
                     </CardContent>
                   </CollapsibleContent>
@@ -180,11 +202,12 @@ export default function OrganizerScheduleView({
                     Gestión de Horarios
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-3 pb-3">
                   <TimeSlotManager
                     selectedFecha={selectedFecha}
                     tournamentId={tournamentId}
                     onTimeSlotChanged={handleTimeSlotChanged}
+                    shareAction={shareAction}
                   />
                 </CardContent>
               </Card>
@@ -221,9 +244,9 @@ export default function OrganizerScheduleView({
             </div>
           ) : (
             /* Desktop: Original Grid Layout */
-            <div className="grid grid-cols-12 gap-6 h-[calc(100vh-240px)]">
+            <div className="grid grid-cols-12 gap-4 xl:gap-6">
               {/* Left Sidebar: Fecha Management */}
-              <div className="col-span-3">
+              <div className="col-span-4 min-w-0 xl:col-span-3">
                 <FechaManager
                   fechas={fechas}
                   selectedFechaId={selectedFechaId}
@@ -232,20 +255,22 @@ export default function OrganizerScheduleView({
                   onFechaUpdated={handleFechaUpdated}
                   onFechaDeleted={handleFechaDeleted}
                   tournamentId={tournamentId}
+                  sharedCreateHref={canShare ? `/schedules/new?tournament=${tournamentId}` : undefined}
                 />
               </div>
 
               {/* Main Content: Time Slot Management */}
-              <div className="col-span-6">
+              <div className="col-span-8 min-w-0 xl:col-span-6">
                 <TimeSlotManager
                   selectedFecha={selectedFecha}
                   tournamentId={tournamentId}
                   onTimeSlotChanged={handleTimeSlotChanged}
+                  shareAction={shareAction}
                 />
               </div>
 
               {/* Right Panel: Quick Actions */}
-              <div className="col-span-3">
+              <div className="col-span-12 min-w-0 xl:col-span-3">
                 <QuickActions
                   selectedFecha={selectedFecha}
                   tournamentId={tournamentId}

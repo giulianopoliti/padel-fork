@@ -1,5 +1,7 @@
 import { getTenantBranding } from "@/config/tenant"
 import { isSoloPlayersEnabled } from "@/config/solo-players"
+import { isScheduleSharingEnabled } from "@/config/schedule-sharing"
+import { isScheduleManagementRole } from "@/lib/services/schedule-sharing/permissions"
 
 type Role = "PLAYER" | "CLUB" | "COACH" | "ADMIN" | "ORGANIZADOR"
 
@@ -15,6 +17,7 @@ export type IconName =
   | "LayoutDashboard"
   | "BookOpen"
   | "ClipboardList"
+  | "Calendar"
 
 interface RouteConfig {
   path: string
@@ -71,7 +74,8 @@ const routePermissions: RouteConfig[] = [
 export function getLinksForRole(role: Role) {
   const soloRoute: RouteConfig = { path: "/jugadores-sueltos", label: "Jugadores sueltos", icon: "Users", roles: ["PLAYER", "CLUB", "COACH", "ADMIN", "ORGANIZADOR"] }
   const billingRoute: RouteConfig = { path: "/cobros", label: "Cobros", icon: "ClipboardList", roles: ["ORGANIZADOR", "ADMIN"] }
-  return [...routePermissions, ...(isSoloPlayersEnabled() ? [soloRoute] : []), ...(getTenantBranding().key === "padel-elite" ? [billingRoute] : [])]
+  const scheduleRoute: RouteConfig = { path: "/schedules", label: "Fechas y horarios", icon: "Calendar", roles: ["CLUB", "ORGANIZADOR", "ADMIN"] }
+  return [...routePermissions, ...(isScheduleSharingEnabled() ? [scheduleRoute] : []), ...(isSoloPlayersEnabled() ? [soloRoute] : []), ...(getTenantBranding().key === "padel-elite" ? [billingRoute] : [])]
     .filter((permission) => permission.roles.includes(role))
     .map((permission) => ({
       label: permission.label,
@@ -81,6 +85,9 @@ export function getLinksForRole(role: Role) {
 }
 
 export function checkRoutePermission(path: string, role?: Role | null): boolean {
+  if (path === "/schedules" || path.startsWith("/schedules/")) {
+    return isScheduleSharingEnabled() && isScheduleManagementRole(role)
+  }
   if (path === "/cobros" || path.startsWith("/cobros/")) {
     return getTenantBranding().key === "padel-elite" && (role === "ORGANIZADOR" || role === "ADMIN")
   }

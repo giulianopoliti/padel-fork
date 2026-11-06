@@ -252,7 +252,7 @@ function LongScheduleViewContent({
       scheduled_start_time: bracketMatch.scheduling?.scheduled_time?.split('T')[1]?.substring(0, 5) || null,
       scheduled_end_time: bracketMatch.scheduling?.actual_end_time?.split('T')[1]?.substring(0, 5) || null,
       court_assignment: bracketMatch.scheduling?.court || null,
-      club_id: bracketMatch.couple1_id || null,
+      club_id: null,
       couple1: couple1 ? {
         player1: {
           first_name: couple1.player1_details?.first_name || '',
@@ -633,6 +633,7 @@ function LongScheduleViewContent({
           onOpenChange={() => setScheduleMatch(null)}
           onScheduleModified={handleMatchScheduled}
           clubes={clubes}
+          chooseBracketFecha
         />
       )}
 

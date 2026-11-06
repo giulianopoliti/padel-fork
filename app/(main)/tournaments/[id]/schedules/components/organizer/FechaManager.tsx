@@ -1,16 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Plus, Calendar, Edit, Trash2 } from 'lucide-react'
 import { TournamentFecha } from '../../types'
 import CreateFechaDialog from './CreateFechaDialog'
 import EditFechaDialog from './EditFechaDialog'
 import DeleteFechaAlert from './DeleteFechaAlert'
 import { getBracketLabel } from '../../utils'
+import { formatPeriod } from '@/app/(main)/schedules/display'
 
 interface FechaManagerProps {
   fechas: TournamentFecha[]
@@ -20,6 +21,7 @@ interface FechaManagerProps {
   onFechaUpdated: (fecha: TournamentFecha) => void
   onFechaDeleted: (fechaId: string) => void
   tournamentId: string
+  sharedCreateHref?: string
 }
 
 export default function FechaManager({
@@ -29,7 +31,8 @@ export default function FechaManager({
   onFechaCreated,
   onFechaUpdated,
   onFechaDeleted,
-  tournamentId
+  tournamentId,
+  sharedCreateHref
 }: FechaManagerProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingFecha, setEditingFecha] = useState<TournamentFecha | null>(null)
@@ -48,35 +51,27 @@ export default function FechaManager({
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
-
   return (
     <>
-      <Card className="h-full">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Fechas
-            </CardTitle>
-            <Button
-              onClick={() => setIsCreateDialogOpen(true)}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Nueva Fecha
+      <Card className="h-full min-w-0">
+        <CardHeader className="gap-3 space-y-0 p-4 sm:p-5">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Calendar className="size-5 shrink-0" aria-hidden />
+            Fechas
+          </CardTitle>
+          <div className="flex min-w-0 flex-wrap gap-2">
+            <Button type="button" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal text-left" onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus aria-hidden /> Nueva fecha
             </Button>
+            {sharedCreateHref && (
+              <Button asChild size="sm" variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal text-left">
+                <Link href={sharedCreateHref}>Crear fecha compartida</Link>
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-[calc(100vh-300px)]">
+          <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
             <div className="p-4 space-y-3">
               {fechas.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
@@ -97,14 +92,16 @@ export default function FechaManager({
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
                           <h3 className="font-medium truncate">{fecha.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Fecha {fecha.fecha_number}
-                          </p>
+                          {fecha.name.trim() !== `Fecha ${fecha.fecha_number}` && (
+                            <p className="text-sm text-muted-foreground">Fecha {fecha.fecha_number}</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 ml-2">
                           <Button
                             variant="ghost"
-                            size="sm"
+                              size="icon"
+                              className="size-8"
+                            aria-label={`Editar ${fecha.name}`}
                             onClick={(e) => {
                               e.stopPropagation()
                               setEditingFecha(fecha)
@@ -114,7 +111,9 @@ export default function FechaManager({
                           </Button>
                           <Button
                             variant="ghost"
-                            size="sm"
+                              size="icon"
+                              className="size-8"
+                            aria-label={`Eliminar ${fecha.name}`}
                             onClick={(e) => {
                               e.stopPropagation()
                               setDeletingFecha(fecha)
@@ -128,18 +127,15 @@ export default function FechaManager({
                       <div className="space-y-2">
                         {getStatusBadge(fecha.status)}
 
-                        {fecha.start_date && (
+                        {(fecha.start_date || fecha.end_date) && (
                           <p className="text-sm text-muted-foreground">
-                            {formatDate(fecha.start_date)}
-                            {fecha.end_date && fecha.end_date !== fecha.start_date &&
-                              ` - ${formatDate(fecha.end_date)}`
-                            }
+                            {formatPeriod(fecha.start_date ?? null, fecha.end_date ?? null)}
                           </p>
                         )}
 
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-sm text-muted-foreground">
-                            {(fecha as any)._count_time_slots?.[0]?.count || 0} horarios
+                            {fecha._count_time_slots?.[0]?.count ?? 0} {fecha._count_time_slots?.[0]?.count === 1 ? 'horario' : 'horarios'}
                           </span>
                           <div className="flex items-center gap-1">
                             {fecha.round_type === 'ZONE' && (
@@ -166,7 +162,7 @@ export default function FechaManager({
                 ))
               )}
             </div>
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 

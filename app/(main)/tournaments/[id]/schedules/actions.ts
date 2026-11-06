@@ -16,27 +16,13 @@ import {
   TournamentFecha 
 } from './types'
 import { validateTimeSlot, getBracketLabel, getErrorMessage } from './utils'
-import { checkUserTournamentInscription } from '@/utils/tournament-permissions'
+import { checkTournamentPermissions, checkUserTournamentInscription } from '@/utils/tournament-permissions'
 import { interpretAvailabilityNote } from '@/lib/services/match-recommendation/note-interpreter'
+import { normalizeScheduleSlot, isPlayableScheduleSlot } from '@/lib/services/schedule-sharing/validation'
+import { getScheduleMutationBlocker } from '@/lib/services/schedule-sharing/dependencies'
+import { getScheduleSlotDependencies } from '@/lib/services/schedule-sharing/dependency-reader'
 
 export type { CreateTimeSlotData } from './types'
-
-// Helper: Ensure date is correctly stored for Argentina timezone
-// The issue is that when we send "2025-10-02", Supabase client may interpret it as UTC midnight
-// which becomes 2025-10-01 21:00 in Argentina, causing the date to shift backwards
-const adjustDateForArgentina = (dateString: string): string => {
-  // Create a date object explicitly in Argentina timezone to ensure correct interpretation
-  // We use noon to avoid any midnight boundary issues
-  const argentinaDateTime = `${dateString}T12:00:00-03:00`
-  const date = new Date(argentinaDateTime)
-
-  // Convert back to YYYY-MM-DD format, but using the date as interpreted in Argentina
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
-}
 
 // Helper: Validate user permissions
 const validateUserPermissions = async (
@@ -63,49 +49,12 @@ const validateUserPermissions = async (
 
     if (!tournament) return null
 
-    let isOrganizer = false
+    const management = await checkTournamentPermissions(userId, tournamentId)
+    const isOrganizer = management.hasPermission
     let isInscribed = false
     let coupleId: string | undefined = undefined
     let playerId: string | undefined = undefined
-    let clubId: string | undefined = undefined
-
-    // Check if user is CLUB owner
-    if (userProfile.role === 'CLUB') {
-      const { data: club } = await supabase
-        .from('clubes')
-        .select('id')
-        .eq('user_id', userId)
-        .single()
-
-      if (club && club.id === tournament.club_id) {
-        isOrganizer = true
-        clubId = club.id
-      }
-    }
-
-    // Check if user is ORGANIZADOR that manages this club
-    if (userProfile.role === 'ORGANIZADOR') {
-      const { data: orgMember } = await supabase
-        .from('organization_members')
-        .select('organizacion_id')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .single()
-
-      if (orgMember) {
-        const { data: orgClub } = await supabase
-          .from('organization_clubs')
-          .select('id')
-          .eq('organizacion_id', orgMember.organizacion_id)
-          .eq('club_id', tournament.club_id)
-          .single()
-
-        if (orgClub) {
-          isOrganizer = true
-          clubId = tournament.club_id
-        }
-      }
-    }
+    const clubId = isOrganizer ? tournament.club_id ?? undefined : undefined
 
     // Check if user is inscribed player using centralized function
     if (userProfile.role === 'PLAYER') {
@@ -558,7 +507,7 @@ export async function createTimeSlot(
     // Get tournament ID from fecha
     const { data: fecha } = await supabase
       .from('tournament_fechas')
-      .select('tournament_id')
+      .select('tournament_id, start_date, end_date')
       .eq('id', data.fecha_id)
       .single()
 
@@ -583,14 +532,17 @@ export async function createTimeSlot(
     }
 
     // Get existing time slots for validation
-    const { data: existingSlots } = await supabase
+    const { data: existingSlots, error: existingSlotsError } = await supabase
       .from('tournament_time_slots')
       .select('*')
       .eq('fecha_id', data.fecha_id)
       .eq('slot_type', 'TIME_RANGE')
 
     // Validate time slot
-    const validation = validateTimeSlot(data, existingSlots || [])
+    if (existingSlotsError) throw existingSlotsError
+    const validation = validateTimeSlot({ ...data, id: undefined }, existingSlots || [], {
+      start_date: fecha.start_date, end_date: fecha.end_date,
+    })
     if (!validation.isValid) {
       return {
         success: false,
@@ -598,22 +550,13 @@ export async function createTimeSlot(
       }
     }
 
-    // Create time slot with timezone correction for Argentina (GMT-3)
-    // The date input sends YYYY-MM-DD format, but we need to ensure it's stored correctly
-    // for Argentina timezone users
-    const adjustedDate = adjustDateForArgentina(data.date)
-
+    const normalized = normalizeScheduleSlot({ ...data, is_available: true })
+    if (!normalized.ok) return { success: false, error: normalized.issues.map(issue => issue.message).join(', ') }
     const { error: insertError } = await supabase
       .from('tournament_time_slots')
       .insert({
         fecha_id: data.fecha_id,
-        date: adjustedDate,
-        start_time: data.start_time,
-        end_time: data.end_time,
-        max_matches: data.max_matches || 1,
-        description: data.description,
-        court_name: data.court_name,
-        is_available: true
+        ...normalized.data,
       })
 
     if (insertError) {
@@ -648,6 +591,13 @@ export async function deleteTimeSlot(
       .select(`
         id,
         fecha_id,
+        date,
+        start_time,
+        end_time,
+        court_name,
+        max_matches,
+        slot_type,
+        is_system,
         tournament_fechas!inner(tournament_id)
       `)
       .eq('id', timeSlotId)
@@ -673,28 +623,9 @@ export async function deleteTimeSlot(
       }
     }
 
-    // Check if time slot has availability data
-    const { data: availabilityData, error: availabilityError } = await supabase
-      .from('couple_time_availability')
-      .select('id')
-      .eq('time_slot_id', timeSlotId)
-
-    if (availabilityError) {
-      throw availabilityError
-    }
-
-    const availabilityCount = availabilityData?.length || 0
-
-    if (availabilityCount > 0) {
-      return {
-        success: false,
-        error: `No se puede eliminar este horario. ${availabilityCount} pareja${availabilityCount > 1 ? 's han' : ' ha'} marcado disponibilidad. Si eliminas el horario, sus disponibilidades también se perderán. Usa la opción "Forzar eliminación" si quieres proceder.`,
-        data: { availabilityCount }
-      }
-    }
-
-    // Note: Matches are associated with fechas, not specific time slots
-    // So we don't need to check for time slot specific matches
+    const dependencies = await getScheduleSlotDependencies(supabase, timeSlotId, timeSlot.fecha_id)
+    const blocker = getScheduleMutationBlocker(timeSlot, null, dependencies)
+    if (blocker) return { success: false, error: blocker, data: { availabilityCount: dependencies.availability_count } }
 
     // Delete time slot
     const { error: deleteError } = await supabase
@@ -721,93 +652,11 @@ export async function deleteTimeSlot(
   }
 }
 
-// 5b. Force Delete Time Slot (organizers only) - deletes availability data first
-export async function forceDeleteTimeSlot(
-  timeSlotId: string
-): Promise<ActionResult<void>> {
-  try {
-    const supabase = await createClient()
-
-    // Get time slot with fecha and tournament info
-    const { data: timeSlot, error: timeSlotError } = await supabase
-      .from('tournament_time_slots')
-      .select(`
-        id,
-        fecha_id,
-        tournament_fechas!inner(tournament_id)
-      `)
-      .eq('id', timeSlotId)
-      .single()
-
-    if (timeSlotError || !timeSlot) {
-      return {
-        success: false,
-        error: 'Horario no encontrado'
-      }
-    }
-
-    // Validate user access
-    const accessResult = await checkUserAccess((timeSlot.tournament_fechas as any).tournament_id)
-    if (!accessResult.success || !accessResult.data) {
-      return accessResult as ActionResult<void>
-    }
-
-    if (!accessResult.data.isOrganizer) {
-      return {
-        success: false,
-        error: 'Solo los organizadores pueden eliminar horarios'
-      }
-    }
-
-    // Count availability data before deletion
-    const { data: availabilityData } = await supabase
-      .from('couple_time_availability')
-      .select('id')
-      .eq('time_slot_id', timeSlotId)
-
-    const availabilityCount = availabilityData?.length || 0
-
-    // First, delete all availability data for this time slot
-    if (availabilityCount > 0) {
-      const { error: deleteAvailabilityError } = await supabase
-        .from('couple_time_availability')
-        .delete()
-        .eq('time_slot_id', timeSlotId)
-
-      if (deleteAvailabilityError) {
-        throw deleteAvailabilityError
-      }
-    }
-
-    // Then delete the time slot
-    const { error: deleteError } = await supabase
-      .from('tournament_time_slots')
-      .delete()
-      .eq('id', timeSlotId)
-
-    if (deleteError) {
-      throw deleteError
-    }
-
-    revalidatePath(`/tournaments/${(timeSlot.tournament_fechas as any).tournament_id}/schedules`)
-
-    const message = availabilityCount > 0
-      ? `Horario eliminado exitosamente junto con ${availabilityCount} disponibilidad${availabilityCount > 1 ? 'es' : ''} de parejas`
-      : 'Horario eliminado exitosamente'
-
-    return {
-      success: true,
-      message
-    }
-
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error)
-    }
-  }
+// Compatibility entry point: existing responses and matches are protected on every path.
+export async function forceDeleteTimeSlot(timeSlotId: string): Promise<ActionResult<void>> {
+  const { success, error, message } = await deleteTimeSlot(timeSlotId)
+  return { success, error, message }
 }
-
 // 6. Update Time Slot (organizers only)
 export async function updateTimeSlot(
   timeSlotId: string,
@@ -825,7 +674,13 @@ export async function updateTimeSlot(
         date,
         start_time,
         end_time,
-        tournament_fechas!inner(tournament_id)
+        court_name,
+        max_matches,
+        description,
+        is_available,
+        slot_type,
+        is_system,
+        tournament_fechas!inner(tournament_id, start_date, end_date)
       `)
       .eq('id', timeSlotId)
       .single()
@@ -850,26 +705,42 @@ export async function updateTimeSlot(
       }
     }
 
-    // Get existing time slots for validation (excluding current one)
-    const { data: existingSlots } = await supabase
+    if (!isPlayableScheduleSlot(timeSlot)) {
+      return { success: false, error: 'Los horarios de sistema no se pueden modificar.' }
+    }
+    if (data.fecha_id !== undefined && data.fecha_id !== timeSlot.fecha_id) {
+      return { success: false, error: 'No se puede trasladar un horario a otra fecha.' }
+    }
+
+    // Keep the original row for safe historical metadata edits and identity comparison.
+    const { data: existingSlots, error: existingSlotsError } = await supabase
       .from('tournament_time_slots')
       .select('*')
       .eq('fecha_id', timeSlot.fecha_id)
-      .neq('id', timeSlotId)
       .eq('slot_type', 'TIME_RANGE')
+    if (existingSlotsError) throw existingSlotsError
 
     // Create validation data combining existing data with updates
-    const validationData: CreateTimeSlotData = {
+    const validationData = {
+      id: timeSlot.id,
       fecha_id: timeSlot.fecha_id,
-      date: data.date ? adjustDateForArgentina(data.date) : timeSlot.date,
-      start_time: data.start_time || timeSlot.start_time,
-      end_time: data.end_time || timeSlot.end_time,
-      max_matches: data.max_matches || 1,
-      description: data.description || undefined
+      date: data.date ?? timeSlot.date,
+      start_time: data.start_time ?? timeSlot.start_time,
+      end_time: data.end_time ?? timeSlot.end_time,
+      court_name: data.court_name ?? timeSlot.court_name,
+      max_matches: data.max_matches ?? timeSlot.max_matches,
+      description: data.description ?? timeSlot.description,
+      is_available: timeSlot.is_available,
     }
 
     // Validate time slot
-    const validation = validateTimeSlot(validationData, existingSlots || [])
+    const relatedFecha = timeSlot.tournament_fechas as unknown as
+      { start_date: string | null; end_date: string | null } | { start_date: string | null; end_date: string | null }[]
+    const fecha = Array.isArray(relatedFecha) ? relatedFecha[0] : relatedFecha
+    if (!fecha) return { success: false, error: 'Fecha no encontrada.' }
+    const validation = validateTimeSlot(validationData, existingSlots || [], {
+      start_date: fecha.start_date, end_date: fecha.end_date,
+    })
     if (!validation.isValid) {
       return {
         success: false,
@@ -878,13 +749,18 @@ export async function updateTimeSlot(
     }
 
     // Prepare update data
-    const updateData: any = {}
-    if (data.date !== undefined) updateData.date = adjustDateForArgentina(data.date)
-    if (data.start_time !== undefined) updateData.start_time = data.start_time
-    if (data.end_time !== undefined) updateData.end_time = data.end_time
-    if (data.max_matches !== undefined) updateData.max_matches = data.max_matches
-    if (data.description !== undefined) updateData.description = data.description
-    if (data.court_name !== undefined) updateData.court_name = data.court_name
+    const normalized = normalizeScheduleSlot(validationData)
+    if (!normalized.ok) return { success: false, error: normalized.issues.map(issue => issue.message).join(', ') }
+    const dependencies = await getScheduleSlotDependencies(supabase, timeSlotId, timeSlot.fecha_id)
+    const blocker = getScheduleMutationBlocker(timeSlot, normalized.data, dependencies)
+    if (blocker) return { success: false, error: blocker }
+    const updateData: Partial<typeof normalized.data> = {}
+    if (data.date !== undefined) updateData.date = normalized.data.date
+    if (data.start_time !== undefined) updateData.start_time = normalized.data.start_time
+    if (data.end_time !== undefined) updateData.end_time = normalized.data.end_time
+    if (data.max_matches !== undefined) updateData.max_matches = normalized.data.max_matches
+    if (data.description !== undefined) updateData.description = normalized.data.description
+    if (data.court_name !== undefined) updateData.court_name = normalized.data.court_name
 
     // Update time slot
     const { error: updateError } = await supabase

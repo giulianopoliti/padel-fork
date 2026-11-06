@@ -11,11 +11,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Trash2, Loader2, AlertTriangle, Clock, Users, MapPin } from 'lucide-react'
-import { deleteTimeSlot, forceDeleteTimeSlot } from '../../actions'
+import { deleteTimeSlot } from '../../actions'
 import { toast } from 'sonner'
 
 interface TimeSlot {
@@ -78,36 +77,6 @@ export default function DeleteTimeSlotAlert({
       setError(error.message || 'Error al eliminar el horario. Intenta nuevamente.')
     } finally {
       console.log('🗑️ [DeleteTimeSlotAlert] Finishing delete process, setIsDeleting(false)')
-      setIsDeleting(false)
-    }
-  }
-
-  const handleForceDelete = async () => {
-    console.log('🗑️ [DeleteTimeSlotAlert] Starting FORCE delete process for:', timeSlot.id)
-    setIsDeleting(true)
-    setError(null)
-
-    try {
-      console.log('🗑️ [DeleteTimeSlotAlert] Calling forceDeleteTimeSlot server action...')
-      const result = await forceDeleteTimeSlot(timeSlot.id)
-      console.log('🗑️ [DeleteTimeSlotAlert] Force delete result:', result)
-
-      if (result.success) {
-        console.log('🗑️ [DeleteTimeSlotAlert] Force delete successful!')
-        onTimeSlotDeleted()
-        toast.success(result.message || 'Horario eliminado exitosamente')
-        onClose()
-      } else {
-        console.log('🗑️ [DeleteTimeSlotAlert] Force delete failed:', result.error)
-        setError(result.error || 'Error al forzar eliminación del horario')
-        return
-      }
-
-    } catch (error: any) {
-      console.error('🗑️ [DeleteTimeSlotAlert] Exception during force delete:', error)
-      setError(error.message || 'Error al forzar eliminación. Intenta nuevamente.')
-    } finally {
-      console.log('🗑️ [DeleteTimeSlotAlert] Finishing force delete process')
       setIsDeleting(false)
     }
   }
@@ -190,7 +159,7 @@ export default function DeleteTimeSlotAlert({
                     <strong>¡Atención!</strong> Este horario tiene {availabilityCount || timeSlot.totalAvailable} pareja{(availabilityCount || timeSlot.totalAvailable || 0) > 1 ? 's' : ''} que {(availabilityCount || timeSlot.totalAvailable || 0) > 1 ? 'han' : 'ha'} marcado disponibilidad.
                     <br />
                     <span className="text-sm">
-                      Si eliminas el horario, sus disponibilidades también se perderán. Puedes usar "Forzar eliminación" para proceder o contactar con las parejas para que remuevan su disponibilidad.
+                      El horario se conserva para proteger las respuestas. Revisá la disponibilidad con las parejas antes de eliminarlo.
                     </span>
                   </AlertDescription>
                 </Alert>
@@ -201,7 +170,7 @@ export default function DeleteTimeSlotAlert({
                 <Alert className="border-yellow-200 bg-yellow-50">
                   <AlertTriangle className="h-4 w-4 text-yellow-600" />
                   <AlertDescription className="text-yellow-800">
-                    <strong>Importante:</strong> Si este horario tiene partidos programados, también serán eliminados.
+                    Si hay partidos programados en este horario, deberás reprogramarlos antes de eliminarlo.
                   </AlertDescription>
                 </Alert>
               )}
@@ -234,7 +203,7 @@ export default function DeleteTimeSlotAlert({
           {/* Normal delete button - only enabled if no availability */}
           {canDelete && (
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(event) => { event.preventDefault(); void handleDelete() }}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
@@ -252,26 +221,6 @@ export default function DeleteTimeSlotAlert({
             </AlertDialogAction>
           )}
 
-          {/* Force delete button - only shown if has availability */}
-          {currentHasAvailability && (
-            <AlertDialogAction
-              onClick={handleForceDelete}
-              disabled={isDeleting}
-              className="bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Eliminando...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Forzar Eliminación
-                </>
-              )}
-            </AlertDialogAction>
-          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

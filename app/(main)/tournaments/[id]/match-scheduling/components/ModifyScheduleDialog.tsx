@@ -26,7 +26,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { AlertCircle, Loader2, Clock, Calendar, Check, ChevronsUpDown } from 'lucide-react'
-import { ExistingMatch, modifyMatchSchedule, ModifyScheduleData } from '../actions'
+import { getBracketMatchFechaOptions, modifyMatchSchedule, type BracketMatchFechaOptions, type ExistingMatch, type ModifyScheduleData } from '../actions'
+import { formatPeriod } from '@/app/(main)/schedules/display'
 import { cn } from '@/lib/utils'
 
 interface Club {
@@ -39,8 +40,9 @@ interface ModifyScheduleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onScheduleModified: () => void
-  onModifySchedule?: (scheduleData: {matchId: string, date: string | null, startTime: string | null, endTime: string | null, court: string | null, notes?: string, clubId?: string}) => Promise<{success: boolean, error?: string}>
+  onModifySchedule?: (scheduleData: ModifyScheduleData) => Promise<{success: boolean, error?: string}>
   clubes: Club[]
+  chooseBracketFecha?: boolean
 }
 
 const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
@@ -49,7 +51,8 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
   onOpenChange,
   onScheduleModified,
   onModifySchedule,
-  clubes
+  clubes,
+  chooseBracketFecha = false
 }) => {
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -60,6 +63,11 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
   const [openClubCombobox, setOpenClubCombobox] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fechaOptions, setFechaOptions] = useState<BracketMatchFechaOptions | null>(null)
+  const [fechaError, setFechaError] = useState('')
+  const [selectedFechaId, setSelectedFechaId] = useState('')
+  const matchId = match.id
+  const initialClubId = (fechaOptions ? fechaOptions.currentClubId : match.club_id) || ''
 
   // Pre-fill form with current match schedule
   useEffect(() => {
@@ -73,6 +81,28 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
       setError(null)
     }
   }, [open, match])
+
+  useEffect(() => {
+    if (!open || !chooseBracketFecha) return
+    let active = true
+    setFechaOptions(null)
+    setFechaError('')
+    setSelectedFechaId('')
+    getBracketMatchFechaOptions(matchId).then(result => {
+      if (!active) return
+      if (!result.success || !result.data) {
+        setFechaError(result.error || 'No se pudieron cargar las fechas.')
+        return
+      }
+      const { fechas, currentFechaId, currentClubId } = result.data
+      setFechaOptions(result.data)
+      setSelectedClubId(currentClubId || '')
+      setSelectedFechaId(fechas.find(fecha => fecha.id === currentFechaId)?.id ?? (fechas.length === 1 ? fechas[0].id : ''))
+    }).catch(() => {
+      if (active) setFechaError('No se pudieron cargar las fechas. Volvé a abrir el partido.')
+    })
+    return () => { active = false }
+  }, [open, chooseBracketFecha, matchId])
 
   // Get couple players for display
   const getCouple1Players = () => {
@@ -97,13 +127,17 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
 
   // Validate form data
   const isValidForm = (): boolean => {
+    if (chooseBracketFecha && (!fechaOptions || !selectedFechaId)) return false
+    const changedFecha = chooseBracketFecha && fechaOptions && selectedFechaId !== fechaOptions.currentFechaId
+      && (fechaOptions.fechas.length > 1 || !!fechaOptions.currentFechaId)
     // Check if there are any changes at all
     const hasChanges =
       date !== (match.scheduled_date || '') ||
       startTime !== (match.scheduled_start_time || '') ||
       endTime !== (match.scheduled_end_time || '') ||
       court !== (match.court_assignment || '') ||
-      selectedClubId !== (match.club_id || '') ||
+      selectedClubId !== initialClubId ||
+      changedFecha ||
       notes.trim() !== ''
 
     if (!hasChanges) return false
@@ -127,34 +161,18 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
     setError(null)
 
     try {
-      const scheduleData = {
+      const scheduleData: ModifyScheduleData = {
         matchId: match.id,
+        ...(chooseBracketFecha && selectedFechaId ? { fechaId: selectedFechaId } : {}),
         date: date || null,
         startTime: startTime || null,
         endTime: endTime || null,
         court: court || null,
         notes: notes || undefined,
-        clubId: selectedClubId || undefined
+        clubId: selectedClubId !== initialClubId ? selectedClubId : undefined
       }
 
-      let result
-
-      // Try optimistic update first if available
-      if (onModifySchedule) {
-        result = await onModifySchedule(scheduleData)
-      } else {
-        // Fallback to direct server action
-        const serverScheduleData: ModifyScheduleData = {
-          matchId: match.id,
-          date: date || null,
-          startTime: startTime || null,
-          endTime: endTime || null,
-          court: court || null,
-          notes: notes || undefined,
-          clubId: selectedClubId || undefined
-        }
-        result = await modifyMatchSchedule(serverScheduleData)
-      }
+      const result = await (onModifySchedule ?? modifyMatchSchedule)(scheduleData)
 
       if (result.success) {
         onScheduleModified()
@@ -180,7 +198,7 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md bg-white border-gray-200">
+      <DialogContent className="max-h-[90dvh] max-w-md overflow-y-auto bg-white border-gray-200">
         <DialogHeader>
           <DialogTitle className="text-slate-900 text-center flex items-center gap-2 justify-center">
             <Clock className="h-5 w-5 text-blue-600" />
@@ -203,11 +221,37 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
             </div>
           </div>
 
+          {chooseBracketFecha && (
+            <>
+              {fechaError && <p role="alert" className="text-sm text-destructive">{fechaError}</p>}
+              {!fechaError && !fechaOptions && <p role="status" className="text-sm text-muted-foreground">Cargando fechas de la ronda…</p>}
+              {fechaOptions?.fechas.length === 0 && <p role="status" className="text-sm text-muted-foreground">Creá una fecha para esta ronda y copa en Fechas y Horarios.</p>}
+              {fechaOptions && fechaOptions.fechas.length > 1 && (
+                <div className="space-y-1">
+                  <Label htmlFor="bracket-fecha">Fecha de la ronda</Label>
+                  <select id="bracket-fecha" className="h-10 w-full rounded-control border border-input bg-background px-2 text-sm"
+                    value={selectedFechaId} disabled={loading} onChange={event => {
+                      const id = event.target.value
+                      setSelectedFechaId(id)
+                      setError(null)
+                      const fecha = fechaOptions.fechas.find(candidate => candidate.id === id)
+                      if (fecha?.start_date && fecha.start_date === fecha.end_date) setDate(fecha.start_date)
+                    }}>
+                    <option value="" disabled>Elegí en cuál se juega</option>
+                    {fechaOptions.fechas.map(fecha => <option key={fecha.id} value={fecha.id}>
+                      Fecha {fecha.fecha_number} · {fecha.name} · {formatPeriod(fecha.start_date, fecha.end_date)}
+                    </option>)}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Date Field */}
           <div className="space-y-2">
             <Label htmlFor="date" className="text-sm font-medium text-slate-700 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Fecha (Opcional)
+              {chooseBracketFecha ? 'Día del partido (opcional)' : 'Fecha (Opcional)'}
             </Label>
             <Input
               id="date"
@@ -277,7 +321,7 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
                   role="combobox"
                   aria-expanded={openClubCombobox}
                   className="w-full justify-between bg-white border-gray-300 text-slate-900 hover:bg-gray-50"
-                  disabled={loading}
+                  disabled={loading || (chooseBracketFecha && !fechaOptions)}
                 >
                   {selectedClubId
                     ? clubes.find((club) => club.id === selectedClubId)?.name

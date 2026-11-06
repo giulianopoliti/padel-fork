@@ -106,7 +106,6 @@ export default function EditTimeSlotDialog({
         end_time: data.end_time,
         court_name: data.court_name,
         description: data.description,
-        max_matches: 1,
       }
 
       const result = await updateTimeSlot(timeSlot.id, updateData)
