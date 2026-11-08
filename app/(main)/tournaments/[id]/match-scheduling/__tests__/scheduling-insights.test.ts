@@ -61,11 +61,9 @@ describe('rival highlighting', () => {
   })
 
   it.each([
-    [couple('a'), couple('b', { has_played_in_this_date: true })],
-    [couple('a', { has_played_in_this_date: true }), couple('b')],
     [couple('a'), couple('b', { free_date_blocked: true })],
     [couple('a', { opponent_statuses: undefined }), couple('b')],
-  ])('uses neutral colors for assigned or unconfirmed rivals, reserving yellow for drafts', (first, second) => {
+  ])('uses neutral colors when availability or opponent history is unconfirmed', (first, second) => {
     expect(getRivalInsight(first, second, [], new Map(), 90).tone).toBe('neutral')
   })
 
@@ -76,18 +74,12 @@ describe('rival highlighting', () => {
     expect(getRivalInsight(couple('a', { opponent_statuses: { b: status } }), couple('b'), [], new Map(), 90).tone).toBe(tone)
   })
 
-  it.each([
-    ['DRAFT', 'amber'],
-    ['PENDING', 'blue'],
-  ] as const)('shows the status of a candidate already assigned to another match (%s)', (status, tone) => {
-    expect(getRivalInsight(couple('a'), couple('b', { has_played_in_this_date: true, match_status: status }), [], new Map(), 90).tone).toBe(tone)
-  })
-
-  it('explains the selected-couple block without painting all new rivals as drafts', () => {
+  it('keeps shared availability visible for couples already assigned to different matches', () => {
     const selected = couple('a', { has_played_in_this_date: true, match_status: 'FINISHED', opponent_statuses: { b: 'played' } })
+    const candidate = couple('c', { has_played_in_this_date: true, match_status: 'DRAFT' })
     expect(getRivalInsight(selected, couple('b'), [], new Map(), 90).tone).toBe('red')
-    expect(getRivalInsight(selected, couple('c'), [], new Map(), 90)).toMatchObject({
-      tone: 'neutral', reason: 'La pareja seleccionada ya tiene un partido en esta fecha',
+    expect(getRivalInsight(selected, candidate, [slot], availabilityMap(available('a'), available('c')), 90)).toMatchObject({
+      tone: 'green', commonSlotIds: ['slot'],
     })
   })
 

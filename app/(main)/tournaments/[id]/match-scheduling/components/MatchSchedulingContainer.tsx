@@ -130,15 +130,15 @@ const MatchSchedulingContainer: React.FC<MatchSchedulingContainerProps> = ({
   // Statistics - with null check
   const stats = schedulingData ? {
     totalCouples: schedulingData.couples.length,
-    availableCouples: schedulingData.couples.filter(c => !c.has_played_in_this_date).length,
-    playedCouples: schedulingData.couples.filter(c => c.has_played_in_this_date).length,
+    unassignedCouples: schedulingData.couples.filter(c => !c.has_played_in_this_date).length,
+    assignedCouples: schedulingData.couples.filter(c => c.has_played_in_this_date).length,
     freeDateBlocked: schedulingData.couples.filter(c => c.free_date_blocked).length,
     totalTimeSlots: schedulingData.timeSlots.length,
     existingMatches: schedulingData.existingMatches.length
   } : {
     totalCouples: 0,
-    availableCouples: 0,
-    playedCouples: 0,
+    unassignedCouples: 0,
+    assignedCouples: 0,
     freeDateBlocked: 0,
     totalTimeSlots: 0,
     existingMatches: 0
@@ -330,15 +330,15 @@ const MatchSchedulingContainer: React.FC<MatchSchedulingContainerProps> = ({
             
             <Card>
               <CardContent className="p-3">
-                <div className="text-2xl font-bold text-green-600">{stats.availableCouples}</div>
-                <div className="text-xs text-slate-600">Pueden Jugar</div>
+                <div className="text-2xl font-bold text-green-600">{stats.unassignedCouples}</div>
+                <div className="text-xs text-slate-600">Sin partido en la fecha</div>
               </CardContent>
             </Card>
             
             <Card>
               <CardContent className="p-3">
-                <div className="text-2xl font-bold text-red-600">{stats.playedCouples}</div>
-                <div className="text-xs text-slate-600">Ya Jugaron</div>
+                <div className="text-2xl font-bold text-slate-700">{stats.assignedCouples}</div>
+                <div className="text-xs text-slate-600">Con partido en la fecha</div>
               </CardContent>
             </Card>
 

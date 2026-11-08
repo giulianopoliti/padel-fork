@@ -101,7 +101,7 @@ describe('match scheduling server boundaries', () => {
   let queries: Query[]
   let fechaFound: boolean
   let historyFailure: boolean
-  let assignedStatus: string | null
+  let assignedStatuses: string[]
   let draftMode: boolean
   let registered: string[]
   let opponentReserved: boolean
@@ -113,7 +113,7 @@ describe('match scheduling server boundaries', () => {
     queries = []
     fechaFound = true
     historyFailure = false
-    assignedStatus = null
+    assignedStatuses = []
     draftMode = false
     registered = ['a', 'b']
     opponentReserved = false
@@ -138,7 +138,9 @@ describe('match scheduling server boundaries', () => {
           couples: [{ id: 'a', player1: player, player2: [player], zone_positions: [] }, { id: 'b', player1: player, player2: player, zone_positions: [] }],
           tournament_time_slots: [],
           couple_time_availability: [],
-          fecha_matches: assignedStatus ? [{ matches: { couple1_id: 'a', couple2_id: 'c', status: assignedStatus } }] : [],
+          fecha_matches: assignedStatuses.map((status, index) => ({
+            matches: { id: `assigned-${index}`, round: 'ZONE', couple1_id: 'a', couple2_id: `rival-${index}`, status },
+          })),
           inscriptions: registered.map(couple_id => ({ couple_id })),
           tournaments: { id: 'tournament', type: 'LONG', enable_draft_matches: draftMode },
           zones: { id: 'zone' },
@@ -211,11 +213,27 @@ describe('match scheduling server boundaries', () => {
     })
   })
 
-  it.each(['DRAFT', 'PENDING', 'IN_PROGRESS', 'FINISHED', 'COMPLETED'])('rejects a second match for a couple already assigned in this fecha (%s)', async status => {
-    assignedStatus = status
-    const result = await createMatch('fecha', 'a', 'b')
-    expect(result).toMatchObject({ success: false, error: expect.stringContaining('asignado') })
-    expect(queries.some(query => query.insert)).toBe(false)
+  it.each([
+    ['DRAFT', 'DRAFT'],
+    ['PENDING', 'PENDING'],
+    ['IN_PROGRESS', 'PENDING'],
+    ['FINISHED', 'FINISHED'],
+    ['COMPLETED', 'FINISHED'],
+  ])('reports a %s assignment and allows a second match against a different couple', async (status, expectedStatus) => {
+    assignedStatuses = [status]
+    const schedule = await getMatchSchedulingData('tournament', 'fecha')
+    expect(schedule.data?.couples[0]).toMatchObject({ has_played_in_this_date: true, match_status: expectedStatus })
+    expect(schedule.data?.couples[1]).toMatchObject({ has_played_in_this_date: false, match_status: null })
+    expect((await createMatch('fecha', 'a', 'b')).success).toBe(true)
+    expect(queries.find(query => query.table === 'fecha_matches' && query.insert)?.insert).toMatchObject({
+      match_id: 'new-match', fecha_id: 'fecha',
+    })
+  })
+
+  it('keeps a finished match visible when the same couple also has pending and draft matches', async () => {
+    assignedStatuses = ['COMPLETED', 'PENDING', 'DRAFT']
+    const result = await getMatchSchedulingData('tournament', 'fecha')
+    expect(result.data?.couples[0]).toMatchObject({ match_status: 'FINISHED', matches_in_fecha: 1 })
   })
 
   it('rejects a rematch already reserved in another fecha', async () => {

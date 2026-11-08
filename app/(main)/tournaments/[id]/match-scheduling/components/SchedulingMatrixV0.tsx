@@ -41,7 +41,6 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
     manualAvailabilitySavingKey,
     loading,
     error,
-    warning,
     actions
   } = useMatchScheduling(schedulingData, fechaId, onMatchCreated)
 
@@ -131,7 +130,6 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
               timeSlots={timeSlots}
               error={error}
               loading={loading}
-              warning={warning}
               onCoupleRemove={actions.handleCoupleRemove}
               onMatchCreate={actions.handleCreateMatch}
               onMatchDelete={actions.handleDeleteMatch}

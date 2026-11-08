@@ -263,7 +263,7 @@ export async function getMatchSchedulingData(
     }
 
     // Keep all couples visible and annotate assignments in the selected fecha.
-    const { data: allMatchesForCoupleFiltering, error: allMatchesError } = await supabase
+    const { data: fechaMatches, error: fechaMatchesError } = await supabase
       .from('fecha_matches')
       .select(`
         matches!inner (
@@ -279,8 +279,8 @@ export async function getMatchSchedulingData(
       .eq('matches.bracket_is_active', true)
       .in('matches.status', ['DRAFT', 'PENDING', 'IN_PROGRESS', 'FINISHED', 'COMPLETED'])
 
-    if (allMatchesError) {
-      throw allMatchesError
+    if (fechaMatchesError) {
+      throw fechaMatchesError
     }
 
     // Get existing matches for this fecha with scheduling info, couple names, and club
@@ -349,60 +349,9 @@ export async function getMatchSchedulingData(
       if (!page || page.length < pageSize) break
     }
     const zoneSummaries = summarizeZoneMatches(zoneMatches)
-
-    // Get matches count per couple in this fecha (ANY status - PENDING, FINISHED, COMPLETED, DRAFT)
-    // Track which couples have matches and their status for visual indication
-    const finishedMatchesCounts = new Map<string, number>()
-    const couplesWithMatches = new Set<string>()
-    const coupleMatchStatus = new Map<string, 'DRAFT' | 'PENDING' | 'FINISHED'>() // Track match status for visual indication
-
-    // First, process ALL matches (including DRAFT) to track couples with matches
-    if (allMatchesForCoupleFiltering) {
-      for (const fm of allMatchesForCoupleFiltering) {
-        const match = unwrapRelation<any>(fm.matches)
-        if (!match) continue
-        // Add couples to "has match" set - includes DRAFT, PENDING, FINISHED matches
-        if (match.couple1_id) {
-          couplesWithMatches.add(match.couple1_id)
-          // Store status for visual indication (DRAFT, PENDING, or FINISHED)
-          if (match.status === 'DRAFT') {
-            coupleMatchStatus.set(match.couple1_id, 'DRAFT')
-          } else if (match.status === 'PENDING' || match.status === 'IN_PROGRESS') {
-            coupleMatchStatus.set(match.couple1_id, 'PENDING')
-          } else if (match.status === 'FINISHED' || match.status === 'COMPLETED') {
-            coupleMatchStatus.set(match.couple1_id, 'FINISHED')
-          }
-        }
-        if (match.couple2_id) {
-          couplesWithMatches.add(match.couple2_id)
-          // Store status for visual indication (DRAFT, PENDING, or FINISHED)
-          if (match.status === 'DRAFT') {
-            coupleMatchStatus.set(match.couple2_id, 'DRAFT')
-          } else if (match.status === 'PENDING' || match.status === 'IN_PROGRESS') {
-            coupleMatchStatus.set(match.couple2_id, 'PENDING')
-          } else if (match.status === 'FINISHED' || match.status === 'COMPLETED') {
-            coupleMatchStatus.set(match.couple2_id, 'FINISHED')
-          }
-        }
-      }
-    }
-
-    // Then, process only non-DRAFT matches for statistics
-    if (existingMatchesData) {
-      for (const fm of existingMatchesData) {
-        const match = unwrapRelation<any>(fm.matches)
-        if (!match) continue
-        // Only count finished matches for statistics
-        if (match.status === 'FINISHED' || match.status === 'COMPLETED') {
-          if (match.couple1_id) {
-            finishedMatchesCounts.set(match.couple1_id, (finishedMatchesCounts.get(match.couple1_id) || 0) + 1)
-          }
-          if (match.couple2_id) {
-            finishedMatchesCounts.set(match.couple2_id, (finishedMatchesCounts.get(match.couple2_id) || 0) + 1)
-          }
-        }
-      }
-    }
+    const fechaSummaries = summarizeZoneMatches(
+      (fechaMatches || []).flatMap(row => unwrapRelation<ZoneMatchSummary>(row.matches) ?? [])
+    )
 
     // Transform couples data
     const couples: CoupleWithData[] = (couplesData || []).map(couple => {
@@ -410,6 +359,7 @@ export async function getMatchSchedulingData(
       const player1 = unwrapRelation<any>(couple.player1)
       const player2 = unwrapRelation<any>(couple.player2)
       const zone = unwrapRelation<any>(zonePosition?.zones)
+      const fechaCounts = fechaSummaries.get(couple.id)?.counts
       const freeDatePreference = (availabilityData || []).find(item => {
         const slot = unwrapRelation<any>(item.tournament_time_slots)
         return item.couple_id === couple.id && slot?.slot_type === 'FREE_DATE' && item.is_available
@@ -432,11 +382,11 @@ export async function getMatchSchedulingData(
           position: zonePosition.position || 0,
           points: zonePosition.points || 0
         } : null,
-        matches_in_fecha: finishedMatchesCounts.get(couple.id) || 0,
+        matches_in_fecha: fechaCounts?.played ?? 0,
         zone_match_counts: zoneSummaries.get(couple.id)?.counts || { played: 0, draft: 0, pending: 0 },
         opponent_statuses: zoneSummaries.get(couple.id)?.opponents || {},
-        has_played_in_this_date: couplesWithMatches.has(couple.id), // Now checks for ANY match, not just finished
-        match_status: coupleMatchStatus.get(couple.id) || null, // DRAFT, PENDING, or null
+        has_played_in_this_date: Boolean(fechaCounts),
+        match_status: fechaCounts?.played ? 'FINISHED' : fechaCounts?.pending ? 'PENDING' : fechaCounts?.draft ? 'DRAFT' : null,
         free_date_blocked: Boolean(freeDatePreference),
         free_date_notes: freeDatePreference?.notes || null
       }
@@ -588,42 +538,6 @@ export async function createMatch(
       return {
         success: false,
         error: 'Estas dos parejas ya se enfrentaron o tienen un cruce reservado en este torneo.'
-      }
-    }
-
-    // A fecha assignment also reserves the couple when it has no calendar date or time.
-    // Simplified approach: get all matches for this fecha and filter in memory
-    const { data: allFechaMatches, error: checkError } = await supabase
-      .from('fecha_matches')
-      .select(`
-        matches!inner (
-          couple1_id,
-          couple2_id,
-          status
-        )
-      `)
-      .eq('fecha_id', fechaId)
-      .eq('matches.round', 'ZONE')
-      .eq('matches.bracket_is_active', true)
-      .in('matches.status', ['DRAFT', 'PENDING', 'IN_PROGRESS', 'FINISHED', 'COMPLETED'])
-
-    if (checkError) {
-      throw checkError
-    }
-
-    const hasAssignedMatch = allFechaMatches?.some(fm => {
-      const match = unwrapRelation<any>(fm.matches)
-      if (!match) return false
-      const involvesCouple1 = match.couple1_id === couple1Id || match.couple2_id === couple1Id
-      const involvesCouple2 = match.couple1_id === couple2Id || match.couple2_id === couple2Id
-      
-      return involvesCouple1 || involvesCouple2
-    })
-
-    if (hasAssignedMatch) {
-      return {
-        success: false,
-        error: 'Una o ambas parejas ya tienen un partido asignado en esta fecha'
       }
     }
 

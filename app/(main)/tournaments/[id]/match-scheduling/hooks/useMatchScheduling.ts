@@ -13,7 +13,6 @@ interface MatchSchedulingState {
   manualAvailabilitySavingKey: string | null
   loading: boolean
   error: string | null
-  warning: string | null
 }
 
 interface MatchFormData {
@@ -39,19 +38,8 @@ export const useMatchScheduling = (
     draggedCouple: null,
     manualAvailabilitySavingKey: null,
     loading: false,
-    error: null,
-    warning: null
+    error: null
   })
-
-  const getFreeDateWarningMessage = useCallback((selectedCouples: CoupleWithData[]) => {
-    const hasFreeDateBlockedCouple = selectedCouples.some(couple => couple.free_date_blocked)
-
-    if (!hasFreeDateBlockedCouple) {
-      return null
-    }
-
-    return 'Advertencia: una o ambas parejas marcaron FECHA LIBRE. Igual puedes crear el partido.'
-  }, [])
 
   // Handle couple selection (drag from matrix)
   const handleCoupleSelect = useCallback((couple: CoupleWithData) => {
@@ -68,11 +56,10 @@ export const useMatchScheduling = (
       return {
         ...prev,
         selectedCouples,
-        error: null,
-        warning: getFreeDateWarningMessage(selectedCouples)
+        error: null
       }
     })
-  }, [getFreeDateWarningMessage])
+  }, [])
 
   // Handle drag start
   const handleDragStart = useCallback((couple: CoupleWithData) => {
@@ -116,9 +103,9 @@ export const useMatchScheduling = (
     setState(prev => ({
       ...prev,
       selectedCouples: prev.selectedCouples.filter(c => c.id !== coupleId),
-      warning: getFreeDateWarningMessage(prev.selectedCouples.filter(c => c.id !== coupleId))
+      error: null
     }))
-  }, [getFreeDateWarningMessage])
+  }, [])
 
   const handleManualAvailabilityToggle = useCallback(async (
     coupleId: string,
@@ -190,18 +177,6 @@ export const useMatchScheduling = (
     }
   }, [state.availability])
 
-  // Validate match creation for conflicts
-  const validateMatchCreation = useCallback((couple1Id: string, couple2Id: string) => {
-    const couples = state.couples.filter(couple => [couple1Id, couple2Id].includes(couple.id))
-    if (couples.some(couple => couple.has_played_in_this_date)) {
-      return { valid: false, message: 'Una de las parejas ya tiene un partido asignado en esta fecha' }
-    }
-    if (couples[0]?.opponent_statuses?.[couples[1]?.id]) {
-      return { valid: false, message: 'Estas parejas ya se enfrentaron o tienen un cruce reservado en este torneo' }
-    }
-    return { valid: true, message: '' }
-  }, [state.couples])
-
   // Create match with server action
   const handleCreateMatch = useCallback(async (formData: MatchFormData): Promise<boolean> => {
     if (state.selectedCouples.length !== 2) {
@@ -214,12 +189,10 @@ export const useMatchScheduling = (
 
     const [couple1, couple2] = state.selectedCouples
 
-    // Validate for conflicts
-    const validation = validateMatchCreation(couple1.id, couple2.id)
-    if (!validation.valid) {
+    if (couple1.opponent_statuses?.[couple2.id] || couple2.opponent_statuses?.[couple1.id]) {
       setState(prev => ({
         ...prev,
-        error: validation.message
+        error: 'Estas parejas ya se enfrentaron o tienen un cruce reservado en este torneo'
       }))
       return false
     }
@@ -227,8 +200,7 @@ export const useMatchScheduling = (
     setState(prev => ({
       ...prev,
       loading: true,
-      error: null,
-      warning: getFreeDateWarningMessage(prev.selectedCouples)
+      error: null
     }))
 
     try {
@@ -301,8 +273,7 @@ export const useMatchScheduling = (
           selectedCouples: [],
           createdMatches: [...prev.createdMatches, newMatch],
           loading: false,
-          error: null,
-          warning: null
+          error: null
         }))
         
         // Trigger server-side revalidation as fallback
@@ -316,8 +287,7 @@ export const useMatchScheduling = (
           ...prev,
           selectedCouples: [],
           loading: false,
-          error: null,
-          warning: null
+          error: null
         }))
         
         onMatchCreated()
@@ -339,7 +309,7 @@ export const useMatchScheduling = (
       }))
       return false
     }
-  }, [state.selectedCouples, state.timeSlots, fechaId, onMatchCreated, getFreeDateWarningMessage, validateMatchCreation])
+  }, [state.selectedCouples, state.timeSlots, fechaId, onMatchCreated])
 
   // Update match result with optimistic UI update
   const handleUpdateMatchResult = useCallback(async (matchId: string, sets: SetResult[], winnerId: string, resultCouple1: string, resultCouple2: string) => {
@@ -591,8 +561,7 @@ export const useMatchScheduling = (
         createdMatches: newData.existingMatches,
         selectedCouples: [], // Clear selections on data update
         manualAvailabilitySavingKey: null,
-        error: null,
-        warning: null
+        error: null
       }
     })
   }, [])

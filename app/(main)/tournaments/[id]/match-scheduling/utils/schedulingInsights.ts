@@ -69,12 +69,6 @@ export const getRivalInsight = (
   if (opponentStatus === 'played') return { tone: 'red', reason: 'Ya se enfrentaron en este torneo', commonSlotIds: [] }
   if (opponentStatus === 'draft') return { tone: 'amber', reason: 'Cruce ya creado en borrador', commonSlotIds: [] }
   if (opponentStatus === 'pending') return { tone: 'blue', reason: 'Cruce ya creado y todavía sin finalizar', commonSlotIds: [] }
-  if (candidate.match_status === 'DRAFT') return { tone: 'amber', reason: 'Esta pareja tiene un partido en borrador en esta fecha', commonSlotIds: [] }
-  if (candidate.match_status === 'PENDING') return { tone: 'blue', reason: 'Esta pareja tiene un partido creado sin finalizar en esta fecha', commonSlotIds: [] }
-  if (candidate.has_played_in_this_date) return warning('Esta pareja ya tiene un partido en esta fecha')
-  if (selected.has_played_in_this_date) {
-    return warning('La pareja seleccionada ya tiene un partido en esta fecha')
-  }
   if (selected.free_date_blocked || candidate.free_date_blocked) return warning('Una de las parejas pidió fecha libre')
   if (timeSlots.length === 0) return { tone: 'green', reason: 'Rival habilitado · horario a coordinar', commonSlotIds: [] }
 

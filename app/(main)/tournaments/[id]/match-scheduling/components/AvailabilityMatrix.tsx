@@ -29,7 +29,7 @@ const rivalLegend = [
   { background: 'bg-emerald-50', border: 'border-emerald-300', dot: 'bg-emerald-400', text: 'text-emerald-800', label: 'Rival habilitado' },
   { background: 'bg-red-50', border: 'border-red-300', dot: 'bg-red-400', text: 'text-red-800', label: 'Ya se enfrentaron' },
   ...statusLegend.slice(0, 2),
-  { background: 'bg-slate-50', border: 'border-slate-300', dot: 'bg-slate-400', text: 'text-slate-700', label: 'No habilitado / por confirmar' },
+  { background: 'bg-slate-50', border: 'border-slate-300', dot: 'bg-slate-400', text: 'text-slate-700', label: 'Sin horario común / por confirmar' },
 ]
 
 interface AvailabilityMatrixProps {
@@ -176,18 +176,8 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
           Arrastra las parejas para seleccionarlas o haz clic para alternar selección
         </p>
         {highlightRivals && (
-          <div className="mt-3 space-y-1 text-sm text-slate-700" aria-live="polite">
+          <div className="mt-3 text-sm text-slate-700" aria-live="polite">
             <p>{referenceCouple ? `Rivales de ${getCoupleDisplayName(referenceCouple)}` : 'Seleccioná una pareja para comparar sus rivales.'}</p>
-            {referenceCouple?.has_played_in_this_date && (
-              <p role="status" className="text-xs font-medium">
-                {referenceCouple.match_status === 'FINISHED'
-                  ? 'La pareja seleccionada ya jugó en esta fecha.'
-                  : referenceCouple.match_status === 'DRAFT'
-                    ? 'La pareja seleccionada tiene un partido en borrador en esta fecha.'
-                    : 'La pareja seleccionada ya tiene un partido creado en esta fecha.'}
-                {' '}No se puede crear otro partido para ella en esta fecha. El rojo sigue indicando enfrentamientos previos.
-              </p>
-            )}
           </div>
         )}
         <div className="mt-4 flex flex-wrap gap-3">

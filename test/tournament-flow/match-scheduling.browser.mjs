@@ -152,20 +152,52 @@ try {
     Object.assign(window.__data.couples[1], {has_played_in_this_date:true,match_status:'DRAFT'});
     Object.assign(window.__data.couples[2], {has_played_in_this_date:true,match_status:'PENDING'});
     window.__data.couples[0].opponent_statuses['2']='pending';
+    window.__data.existingMatches = [{
+      id: 'first-match', couple1_id: '0', couple2_id: 'prior-rival', status: 'FINISHED',
+      scheduled_date: '2026-11-07', scheduled_start_time: '10:00', scheduled_end_time: '11:30',
+    }];
     window.renderScheduling();
   })
   await row('Ana').locator('td.bg-emerald-50').waitFor()
   assert.match(await row('Belén').getAttribute('class'), /bg-amber-50/)
   assert.match(await row('Carla').getAttribute('class'), /bg-blue-50/)
-  await page.getByRole('button', { name: 'Resaltar rivales', exact: true }).click()
   await handleSelect('Ana')
-  await page.getByRole('status').getByText(/La pareja seleccionada ya jugó en esta fecha/).waitFor()
+  const notices = page.getByRole('status')
+  await notices.getByText('Ana Pérez / Ana compañera López ya jugó en esta fecha.', { exact: true }).waitFor()
+  await page.getByRole('button', { name: 'Resaltar rivales', exact: true }).click()
   assert.match(await row('Ana').getAttribute('class'), /bg-emerald-50/, 'Selection preserves the finished-match color')
   assert.equal(await row('Ana').locator('td.ring-slate-600').count(), 1, 'Selection uses a border instead of the pending color')
   assert.match(await row('Belén').getAttribute('class'), /bg-red-50/, 'Previous opponent takes precedence over their draft assignment')
   assert.match(await row('Carla').getAttribute('class'), /bg-blue-50/, 'Published encounter is blue')
-  assert.match(await row('Diana').getAttribute('class'), /bg-slate-50/, 'Selected couple is unavailable, not every opponent is a draft')
+  assert.match(await row('Diana').getAttribute('class'), /bg-emerald-50/, 'A different opponent remains eligible')
+
+  await handleSelect('Carla')
+  await notices.getByText('Carla Pérez / Carla compañera López ya tiene un partido asignado en esta fecha.', { exact: true }).waitFor()
+  const create = page.getByRole('button', { name: 'Crear Partido', exact: true })
+  await create.click()
+  await page.getByText(/ya se enfrentaron o tienen un cruce reservado/).waitFor()
+  assert.equal(await page.evaluate(() => window.__creates.length), 0, 'A reserved pairing is still rejected')
+  await handleSelect('Carla')
+
+  await handleSelect('Belén')
+  await notices.getByText('Belén Pérez / Belén compañera López tiene un partido en borrador en esta fecha.', { exact: true }).waitFor()
+  await handleSelect('Belén')
+  await handleSelect('Flor')
+  await notices.getByText('Una o ambas parejas marcaron FECHA LIBRE.', { exact: true }).waitFor()
+  await handleSelect('Flor')
+  await handleSelect('Diana')
+  assert.equal(await create.isEnabled(), true, 'The notice still allows creating another match')
+  await page.locator('#fecha').fill('2026-11-07')
+  await page.locator('#horaInicio').fill('15:00')
+  await page.locator('#horaFin').fill('16:30')
   await page.screenshot({ path: path.join(output, 'assigned-couple-desktop.png'), fullPage: true })
+  await create.click()
+  await page.waitForFunction(() => window.__creates.length === 1)
+  assert.deepEqual(await page.evaluate(() => window.__creates[0].slice(0, 3)), ['fecha', '0', '3'])
+  assert.deepEqual(await page.evaluate(() => {
+    const { date, startTime, endTime } = window.__creates[0][4]
+    return { date, startTime, endTime }
+  }), { date: '2026-11-07', startTime: '15:00', endTime: '16:30' })
 
   await reset(false)
   await page.setViewportSize({ width: 390, height: 844 })
@@ -179,7 +211,7 @@ try {
   await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished)))
   await page.screenshot({ path: path.join(output, 'contact-mobile.png'), fullPage: true })
   assert.deepEqual(errors, [])
-  console.log(JSON.stringify({ passed: true, output, checks: ['no-slot matrix', 'keyboard selection', 'zone counters', 'opponent colors', 'shared windows', 'unscheduled creation', 'both player contacts', 'clipboard', 'refresh', 'mobile layout'] }))
+  console.log(JSON.stringify({ passed: true, output, checks: ['no-slot matrix', 'keyboard selection', 'zone counters', 'opponent colors', 'shared windows', 'unscheduled creation', 'named notices', 'second match creation', 'duplicate pairing', 'both player contacts', 'clipboard', 'refresh', 'mobile layout'] }))
 } finally {
   await browser.close()
 }

@@ -30,7 +30,6 @@ interface MatchCreationPanelProps {
   timeSlots: SchedulingData['timeSlots']
   loading?: boolean
   error: string | null
-  warning?: string | null
   showMatchesList?: boolean
   onCoupleRemove: (coupleId: string) => void
   onMatchCreate: (formData: {
@@ -52,13 +51,18 @@ interface Club {
   name: string
 }
 
+const fechaMatchNotices = {
+  FINISHED: 'ya jugó en esta fecha.',
+  PENDING: 'ya tiene un partido asignado en esta fecha.',
+  DRAFT: 'tiene un partido en borrador en esta fecha.',
+}
+
 const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
   selectedCouples,
   createdMatches,
   timeSlots,
   loading,
   error,
-  warning,
   showMatchesList = false,
   onCoupleRemove,
   onMatchCreate,
@@ -139,6 +143,12 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
   }
 
   const isFormValid = selectedCouples.length === 2
+  const assignmentNotices = selectedCouples.flatMap(couple => couple.match_status ? [{
+    id: couple.id,
+    name: getCoupleDisplayName(couple),
+    message: fechaMatchNotices[couple.match_status],
+  }] : [])
+  const hasFreeDateRequest = selectedCouples.some(couple => couple.free_date_blocked)
 
   return (
     <div className="space-y-6">
@@ -218,12 +228,22 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
             </div>
           )}
 
-          {warning && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-surface flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <p className="text-amber-700 text-sm">{warning}</p>
-            </div>
-          )}
+          <div role="status">
+            {(assignmentNotices.length > 0 || hasFreeDateRequest) && (
+              <div className="mb-4 flex items-start gap-2 rounded-surface border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                <div className="space-y-1">
+                  {assignmentNotices.map(notice => (
+                    <p key={notice.id}>
+                      <strong>{notice.name}</strong> {notice.message}
+                    </p>
+                  ))}
+                  {hasFreeDateRequest && <p>Una o ambas parejas marcaron FECHA LIBRE.</p>}
+                  <p>Podés programar otro cruce para esta fecha.</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Form */}
           {selectedCouples.length === 2 && (
