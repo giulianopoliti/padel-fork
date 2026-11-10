@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
+import { DisqualificationInfo } from '@/components/tournament/disqualification-info';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -532,14 +533,15 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
                   <p className={pendingIsRevert ? 'font-medium text-slate-800' : 'font-medium text-red-800'}>
                     {pendingIsRevert
                       ? `La pareja ${pendingCoupleName} volvera a quedar habilitada.`
-                      : `Confirmas descalificar a ${pendingCoupleName}?`}
+                      : `¿Confirmás descalificar a ${pendingCoupleName}?`}
                   </p>
                   <p className={pendingIsRevert ? 'mt-1 text-xs text-slate-600' : 'mt-1 text-xs text-red-700'}>
                     {pendingIsRevert
                       ? 'Esto solo se permite mientras no exista una llave generada.'
-                      : 'No avanzara a la llave y se cancelaran sus partidos pendientes. Los resultados ya cargados no se modifican.'}
+                      : 'Los resultados ya cargados no se modifican.'}
                   </p>
                 </div>
+                {!pendingIsRevert && <DisqualificationInfo phase="zones" />}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { freeSportsViewSchema, type FreeSportOperation, type FreeSportsView, type FreeMatchAction } from '@/types/americano-libre-sports'
 import { BracketSingleSetResultDialog } from './bracket-v2/components/BracketSingleSetResultDialog'
+import { DisqualificationInfo } from './disqualification-info'
 import type { Round } from './bracket-v2/types/bracket-types'
 import type { FreeEditorData } from '@/types/americano-libre-editor'
 
@@ -102,7 +103,7 @@ export const AmericanFreeSports = ({ tournamentId, editor, matchId, mode, onClos
                 <Button disabled={!canResult} onClick={() => void handleMutate([{ kind: 'COURT', matchId: match.id, court, start: true }])}>Iniciar partido</Button>
               </div>}
               {mode === 'disqualify' && !match.zone_id && canResult && <div className="space-y-3 text-sm">
-                <p>La pareja elegida quedará descalificada del torneo y su rival avanzará a la siguiente ronda.</p>
+                <DisqualificationInfo phase="bracket" />
                 <select aria-label="Pareja descalificada" value={loser} onChange={(event) => setLoser(event.target.value)} className="w-full rounded-md border bg-background p-2"><option value="">Elegir pareja</option>{[match.couple1_id!, match.couple2_id!].map((id) => <option key={id} value={id}>{name(id)}</option>)}</select>
                 <Label htmlFor="free-dq-reason">Motivo</Label><Input id="free-dq-reason" value={reason} maxLength={1000} onChange={(event) => setReason(event.target.value)} />
                 <Button variant="destructive" disabled={!loser || !reason.trim()} onClick={() => void handleMutate([{ kind: 'DISQUALIFY', matchId: match.id, coupleId: loser, reason }])}>Confirmar descalificación</Button>

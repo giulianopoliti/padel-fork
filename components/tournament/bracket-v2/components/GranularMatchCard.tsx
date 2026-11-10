@@ -31,6 +31,7 @@ import { useBracketDragDrop } from '../context/bracket-drag-context'
 import { useMatchManagement } from '../hooks/useMatchManagement'
 import { ByeActionsDropdown } from './ByeActionsDropdown'
 import { WinnerPhotoMenu } from '@/components/tournament/winner-photo-menu'
+import { DisqualificationInfo } from '@/components/tournament/disqualification-info'
 import { SameZonePlaceholderConflictBadge, ZoneConflictBadge } from './ZoneConflictBadge'
 import { useZoneMatchHistory, havePlayedInZone } from '../hooks/useZoneMatchHistory'
 import { resolveCoupleIds } from '../utils/couple-resolver'
@@ -740,10 +741,15 @@ export function GranularMatchCard({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Descalificar pareja</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingDisqualification
-                ? `Se cerrara este partido y avanzara automaticamente el rival de ${pendingDisqualification.coupleName}.`
-                : 'Se cerrara este partido y avanzara automaticamente el rival.'}
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  {pendingDisqualification
+                    ? `¿Confirmás descalificar a ${pendingDisqualification.coupleName}?`
+                    : 'Confirmá la descalificación de esta pareja.'}
+                </p>
+                <DisqualificationInfo phase="bracket" />
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

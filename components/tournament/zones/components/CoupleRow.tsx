@@ -10,6 +10,7 @@ import React from 'react'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { DisqualificationInfo } from '@/components/tournament/disqualification-info'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -451,14 +452,15 @@ export function CoupleRow({
                   <p className={isDisqualified ? 'font-medium text-slate-800' : 'font-medium text-red-800'}>
                     {isDisqualified
                       ? `La pareja ${couple.player1Name} / ${couple.player2Name} volvera a quedar habilitada.`
-                      : `Confirmas descalificar a ${couple.player1Name} / ${couple.player2Name}?`}
+                      : `¿Confirmás descalificar a ${couple.player1Name} / ${couple.player2Name}?`}
                   </p>
                   <p className={isDisqualified ? 'mt-1 text-xs text-slate-600' : 'mt-1 text-xs text-red-700'}>
                     {isDisqualified
                       ? 'Esto solo se permite mientras no exista una llave generada.'
-                      : 'No avanzara a la llave y se cancelaran sus partidos pendientes. Los resultados ya cargados no se modifican.'}
+                      : 'Los resultados ya cargados no se modifican.'}
                   </p>
                 </div>
+                {!isDisqualified && <DisqualificationInfo phase="zones" />}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
