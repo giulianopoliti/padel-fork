@@ -29,7 +29,7 @@ import {
   isEditableAmericanMultiZonePreset,
   isEditableAmericanSingleZonePreset,
 } from '@/lib/services/tournament-format-policy'
-import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
+import { isTournamentFormatConfigV2, TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
 import { updateTournamentFormatConfig } from '../actions'
 import type { CouplesPerZone, TournamentFormatPresetId } from '@/types/tournament-format-v2'
 
@@ -92,11 +92,17 @@ export default function TournamentFormatConfigForm({
   }, [tournamentType, tournamentStatus, resolvedFormat.presetId, resolvedFormat.bracketAssignment])
 
   const [presetId, setPresetId] = useState<TournamentFormatPresetId>(resolvedFormat.presetId)
-  const [singleAdvanceCount, setSingleAdvanceCount] = useState(
-    resolvedFormat.advancementConfig.kind === 'SINGLE'
-      ? getDefaultSingleAdvanceCount(resolvedFormat.advancementConfig.advanceCount)
-      : getDefaultSingleAdvanceCount(8)
-  )
+  const [singleAdvanceCount, setSingleAdvanceCount] = useState(() => {
+    const { advancementConfig } = resolvedFormat
+    if (advancementConfig.kind !== 'SINGLE') return getDefaultSingleAdvanceCount(8)
+
+    const { advanceCount } = advancementConfig
+    if (!Number.isInteger(advanceCount) || advanceCount < 2) return getDefaultSingleAdvanceCount(8)
+
+    return isTournamentFormatConfigV2(formatConfig) && formatConfig.presetId === resolvedFormat.presetId
+      ? advanceCount
+      : getDefaultSingleAdvanceCount(advanceCount)
+  })
   const [couplesPerZone, setCouplesPerZone] = useState<CouplesPerZone>(
     resolvedFormat.advancementConfig.kind === 'PER_ZONE_TOP'
       ? resolvedFormat.advancementConfig.couplesPerZone

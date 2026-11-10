@@ -12,10 +12,38 @@ jest.mock('@/components/ui/select', () => {
   return { Select, SelectContent: Container, SelectTrigger: Container, SelectValue: () => null,
     SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => <span data-option={value}>{children}</span> }
 })
-const render = (presetId: TournamentFormatPresetId, status = 'ZONE_PHASE', count = 8) => renderToStaticMarkup(
-  <TournamentFormatConfigForm tournamentId="t" tournamentType="AMERICAN" tournamentStatus={status}
-    registeredCouplesCount={count} formatConfig={buildTournamentFormatConfig({ presetId })} />,
+const renderFormat = (type: 'AMERICAN' | 'LONG', formatConfig: unknown, count: number, status = 'ZONE_PHASE') => renderToStaticMarkup(
+  <TournamentFormatConfigForm tournamentId="t" tournamentType={type} tournamentStatus={status}
+    registeredCouplesCount={count} formatConfig={formatConfig} />,
 )
+const render = (presetId: TournamentFormatPresetId, status = 'ZONE_PHASE', count = 8) =>
+  renderFormat('AMERICAN', buildTournamentFormatConfig({ presetId }), count, status)
+
+const getSingleAdvanceCount = (html: string) =>
+  html.match(/<input\b[^>]*\bid="single-advance-count"[^>]*\bvalue="([^"]+)"/)?.[1]
+
+describe('single-bracket advancement count in settings', () => {
+  it.each([
+    ['LONG', 'LONG_SINGLE_ZONE_BRACKET', 'CUSTOM'],
+    ['LONG', 'LONG_SINGLE_ZONE_BRACKET', undefined],
+    ['AMERICAN', 'AMERICAN_SINGLE_ZONE_GLOBAL_2', 'CUSTOM'],
+  ] as const)('loads 12 saved places for %s with %s and mode %s', (type, presetId, allocationMode) => {
+    const config = buildTournamentFormatConfig({ presetId, singleAdvanceCount: 12, allocationMode })
+    expect(getSingleAdvanceCount(renderFormat(type, config, 16))).toBe('12')
+  })
+
+  it('uses the current registration count in automatic mode', () => {
+    const config = buildTournamentFormatConfig({
+      presetId: 'AMERICAN_SINGLE_ZONE_GLOBAL_2', singleAdvanceCount: 12, allocationMode: 'AUTO',
+    })
+    expect(getSingleAdvanceCount(renderFormat('AMERICAN', config, 16))).toBe('16')
+  })
+
+  it('keeps the registration count as the default for a legacy Long without a saved format', () => {
+    expect(getSingleAdvanceCount(renderFormat('LONG', {}, 16))).toBe('16')
+  })
+})
+
 describe('free format selector in settings', () => {
   it('offers Americano libre alongside the existing multizone algorithms', () => {
     expect(render('AMERICAN_MULTI_ZONE_2')).toContain('data-option="MANUAL">Americano libre multizona')

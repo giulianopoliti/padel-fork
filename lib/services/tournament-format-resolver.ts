@@ -17,7 +17,7 @@ function isAdvancementConfig(value: any): value is AdvancementConfig {
   return value && typeof value === 'object' && typeof value.kind === 'string'
 }
 
-function isTournamentFormatConfigV2(value: any): value is TournamentFormatConfigV2 {
+export function isTournamentFormatConfigV2(value: any): value is TournamentFormatConfigV2 {
   return (
     value &&
     typeof value === 'object' &&
