@@ -96,6 +96,14 @@ export default function PlayerTournamentDashboard({ tournamentId, tournament, ov
     return <AwaitingPartnerView tournamentId={tournamentId} tournament={tournament} />
   }
 
+  if (overview.registrationStatus === 'SUBSTITUTE') {
+    return <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
+      <header><p className="text-sm font-medium text-muted-foreground">Participás como suplente</p><h1 className="text-2xl font-bold">{tournament.name}</h1></header>
+      <NextMatchSummary match={overview.nextMatch} />
+      <FinishedMatches matches={overview.finishedMatches} />
+    </div>
+  }
+
   const isEliminated = overview.registrationStatus === 'ELIMINATED'
 
   return (

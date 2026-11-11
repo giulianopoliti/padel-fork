@@ -2,32 +2,27 @@
 
 import React from 'react'
 import { ExistingMatch } from '../../actions'
-import { useIsMobile } from '@/hooks/use-mobile'
+import { Badge } from '@/components/ui/badge'
 
 interface CouplesDisplayProps {
   match: ExistingMatch
 }
 
 const CouplesDisplay: React.FC<CouplesDisplayProps> = ({ match }) => {
-  // Get couple display names from the match data
-  const getCouple1Name = () => {
-    if (match.couple1?.player1 && match.couple1?.player2) {
-      return `${match.couple1.player1.first_name} ${match.couple1.player1.last_name} / ${match.couple1.player2.first_name} ${match.couple1.player2.last_name}`
-    }
-    return 'Pareja 1'
-  }
-
-  const getCouple2Name = () => {
-    if (match.couple2?.player1 && match.couple2?.player2) {
-      return `${match.couple2.player1.first_name} ${match.couple2.player1.last_name} / ${match.couple2.player2.first_name} ${match.couple2.player2.last_name}`
-    }
-    return 'Pareja 2'
+  const renderCouple = (couple: ExistingMatch['couple1'], fallback: string) => {
+    if (!couple?.player1 || !couple.player2) return fallback
+    return <>
+      {couple.player1.first_name} {couple.player1.last_name}
+      {couple.substitute_slot === 1 && <Badge variant="secondary" className="ml-1">Suplente</Badge>}
+      {' / '}{couple.player2.first_name} {couple.player2.last_name}
+      {couple.substitute_slot === 2 && <Badge variant="secondary" className="ml-1">Suplente</Badge>}
+    </>
   }
 
   return (
     <div className="space-y-2">
       <div className="text-sm font-medium text-gray-900">
-        {getCouple1Name()}
+        {renderCouple(match.couple1, 'Pareja 1')}
       </div>
       <div className="flex items-center justify-center">
         <div className="border-t border-gray-300 flex-grow"></div>
@@ -35,7 +30,7 @@ const CouplesDisplay: React.FC<CouplesDisplayProps> = ({ match }) => {
         <div className="border-t border-gray-300 flex-grow"></div>
       </div>
       <div className="text-sm font-medium text-gray-900">
-        {getCouple2Name()}
+        {renderCouple(match.couple2, 'Pareja 2')}
       </div>
     </div>
   )

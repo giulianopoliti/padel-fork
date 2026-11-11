@@ -50,6 +50,12 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
     const couple = row.couple_id ? couples.get(row.couple_id) : null
     for (const id of [couple?.player1_id, couple?.player2_id]) if (id) eligiblePlayers.add(id)
   }
+  const lineups = new Map<string, [string, string]>()
+  for (const lineup of tournament.type === 'LONG' ? context.lineups ?? [] : []) {
+    if (!registeredCouples.has(lineup.couple_id)) throw new PointsReviewError('Una suplencia pertenece a una pareja sin inscripción habilitada.')
+    lineups.set(`${lineup.match_id}:${lineup.couple_id}`, [lineup.player1_id, lineup.player2_id])
+    eligiblePlayers.add(lineup.substitute_slot === 1 ? lineup.player1_id : lineup.player2_id)
+  }
   const updates = new Map<string, PointsReviewPlayer>()
   const getPlayerUpdate = (id: string): PointsReviewPlayer => {
     const player = players.get(id)
@@ -62,12 +68,12 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
     })
     return updates.get(id)!
   }
-  const getCouplePlayers = (id: string): string[] => {
+  const getCouplePlayers = (matchId: string, id: string): string[] => {
     const couple = couples.get(id)
     if (!couple?.player1_id || !couple.player2_id || couple.player1_id === couple.player2_id || !registeredCouples.has(id)) {
       throw new PointsReviewError('Cada pareja debe tener dos jugadores distintos y una inscripción habilitada.')
     }
-    return [couple.player1_id, couple.player2_id]
+    return lineups.get(`${matchId}:${id}`) ?? [couple.player1_id, couple.player2_id]
   }
   // Include all approved participants, even when their net movement is zero.
   for (const id of eligiblePlayers) getPlayerUpdate(id)
@@ -84,8 +90,8 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
       continue // BYE: no match points.
     }
     const loserId = match.winner_id === match.couple1_id ? match.couple2_id : match.couple1_id
-    const winners = getCouplePlayers(match.winner_id)
-    const losers = getCouplePlayers(loserId)
+    const winners = getCouplePlayers(match.id, match.winner_id)
+    const losers = getCouplePlayers(match.id, loserId)
     if (new Set([...winners, ...losers]).size !== 4) throw new PointsReviewError('Un jugador aparece en ambos lados de un partido.')
     if (disqualifiedMatches.has(match.id)) continue
     const average = (ids: string[]): number => ids.reduce((total, id) => total + (snapshots.get(id)?.score ?? players.get(id)!.score!), 0) / 2
@@ -103,7 +109,7 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
     for (const [coupleId, position, points] of [
       [final.winner_id, 'champion', bonus.champion], [finalist, 'finalist', bonus.finalist],
     ] as const) {
-      for (const id of getCouplePlayers(coupleId)) {
+      for (const id of getCouplePlayers(final.id, coupleId)) {
         const update = getPlayerUpdate(id)
         update.bonus! += points
         update.bonusAwards.push({ cup, position, points })
@@ -122,6 +128,7 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
     tournamentId: tournament.id, tournamentType: tournament.type, state: 'PREVIEW', rulesVersion: 'manual-categories-v1',
     fingerprint, playerScores, categories, bonuses, totalMatches: matchPoints.length,
     scoreBasis: withSnapshot === 0 ? 'CURRENT' : withSnapshot === playerScores.length ? 'SNAPSHOT' : 'MIXED',
+    ...(context.snapshots.some(snapshot => snapshot.basis === 'SUBSTITUTION') ? { hasSubstitutionBaselines: true } : {}),
   } }
 }
 

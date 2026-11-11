@@ -7,6 +7,7 @@ import { updateZonePositionsForTournament } from "@/lib/services/ranking"
 import { getFechaBracketLabel } from "@/lib/services/fecha-bracket-policy"
 import { IncrementalPlaceholderUpdater } from "@/lib/services/incremental-placeholder-updater"
 import { sendTournamentMessage } from "@/lib/services/messages"
+import { applyLongMatchLineup, getLongMatchLineupChanges } from '@/lib/services/long-match-lineups'
 import { summarizeZoneMatches, type MatchCounts, type OpponentStatus, type ZoneMatchSummary } from './utils/schedulingInsights'
 
 // Types for match scheduling
@@ -64,6 +65,7 @@ export interface OrganizerAvailabilityData {
 
 export interface ExistingMatch {
   id: string
+  tournament_id?: string
   couple1_id: string | null
   couple2_id: string | null
   time_slot_id: string | null
@@ -75,10 +77,12 @@ export interface ExistingMatch {
   court_assignment: string | null
   // Couple information with player names
   couple1?: {
+    substitute_slot?: 1 | 2
     player1: { first_name: string; last_name: string }
     player2: { first_name: string; last_name: string }
   } | null
   couple2?: {
+    substitute_slot?: 1 | 2
     player1: { first_name: string; last_name: string }
     player2: { first_name: string; last_name: string }
   } | null
@@ -416,11 +420,13 @@ export async function getMatchSchedulingData(
       }))
 
     // Transform existing matches with scheduling information
+    const lineups = await getLongMatchLineupChanges(supabase, (existingMatchesData || []).map(item => item.match_id))
     const existingMatches: ExistingMatch[] = (existingMatchesData || []).flatMap(item => {
       const match = unwrapRelation<any>(item.matches)
       if (!match) return []
       return [{
       id: match.id,
+      tournament_id: tournamentId,
       couple1_id: match.couple1_id,
       couple2_id: match.couple2_id,
       time_slot_id: item.scheduled_time_slot_id,
@@ -431,8 +437,8 @@ export async function getMatchSchedulingData(
       scheduled_end_time: item.scheduled_end_time,
       court_assignment: item.court_assignment,
       // Include couple names data
-      couple1: unwrapRelation<any>(match.couple1),
-      couple2: unwrapRelation<any>(match.couple2),
+      couple1: applyLongMatchLineup(unwrapRelation<any>(match.couple1), match.couple1_id, lineups.get(match.id)),
+      couple2: applyLongMatchLineup(unwrapRelation<any>(match.couple2), match.couple2_id, lineups.get(match.id)),
       // Include club data
       club_id: match.club_id,
       club: unwrapRelation<any>(match.club)
@@ -1479,6 +1485,7 @@ export async function getDraftMatches(
     }
 
     // Transform data
+    const lineups = await getLongMatchLineupChanges(supabase, (draftMatchesData || []).map(item => item.match_id))
     const draftMatches: DraftMatch[] = (draftMatchesData || []).flatMap(item => {
       const match = unwrapRelation<any>(item.matches)
       if (!match) return []
@@ -1492,8 +1499,8 @@ export async function getDraftMatches(
       scheduled_start_time: item.scheduled_start_time,
       scheduled_end_time: item.scheduled_end_time,
       court_assignment: item.court_assignment,
-      couple1: unwrapRelation<any>(match.couple1),
-      couple2: unwrapRelation<any>(match.couple2)
+      couple1: applyLongMatchLineup(unwrapRelation<any>(match.couple1), match.couple1_id, lineups.get(match.id)),
+      couple2: applyLongMatchLineup(unwrapRelation<any>(match.couple2), match.couple2_id, lineups.get(match.id))
       }]
     }).sort(compareDraftMatchesBySchedule)
 

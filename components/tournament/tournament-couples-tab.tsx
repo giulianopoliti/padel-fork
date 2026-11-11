@@ -1,5 +1,6 @@
 "use client"
 import { InscriptionPaymentPanel, InscriptionStatus } from '@/components/tournament/inscription-payment-panel'
+import { SubstitutionDialog, substitutionScopeLabel, useSubstitutionSummaries } from '@/components/tournament/long/substitution-dialog'
 
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -39,6 +40,7 @@ interface CoupleInfo {
   player_1_info: PlayerInfo | null
   player_2_info: PlayerInfo | null
   is_pending?: boolean
+  occupies_slot?: boolean | null
   inscription_id?: string
   payment_proof_status?: 'NOT_REQUIRED' | 'PENDING_REVIEW' | 'APPROVED'
   payment_proof_uploaded_at?: string | null
@@ -108,6 +110,7 @@ export default function TournamentCouplesTab({
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [coupleToReject, setCoupleToReject] = useState<CoupleInfo | null>(null)
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
+  const [substitutionCoupleId, setSubstitutionCoupleId] = useState<string | null>(null)
 
   const { toast } = useToast()
   const { user, userDetails } = useUser()
@@ -129,6 +132,9 @@ export default function TournamentCouplesTab({
 
   // Use centralized permissions instead of basic role checks
   const canManageTournament = hasManagementPermissions || isOwner
+  const canManageSubstitutions = canManageTournament && tournamentType === 'LONG'
+    && !['CANCELED', 'FINISHED', 'FINISHED_POINTS_PENDING', 'FINISHED_POINTS_CALCULATED'].includes(tournamentStatus ?? '')
+  const { data: substitutionSummaries } = useSubstitutionSummaries(canManageSubstitutions ? tournamentId : undefined)
   const canRecordTpeLateWithdrawal = getTenantBranding().key === "padel-elite" && tournamentType === "AMERICAN"
   const millisecondsUntilStart = tournamentStartDate
     ? new Date(tournamentStartDate).getTime() - Date.now()
@@ -405,6 +411,8 @@ export default function TournamentCouplesTab({
 
   return (
     <>
+      {substitutionCoupleId && <SubstitutionDialog tournamentId={tournamentId} coupleId={substitutionCoupleId}
+        onClose={() => setSubstitutionCoupleId(null)} />}
       <div className="p-6 border-b border-gray-200 bg-slate-50">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -610,6 +618,14 @@ export default function TournamentCouplesTab({
                     {canManageTournament && (
                       <TableCell className="text-center">
                         {couple.inscription_id && <InscriptionStatus tournamentId={tournamentId} inscriptionId={couple.inscription_id} />}
+                        {canManageSubstitutions && couple.occupies_slot !== false && <div className="mx-auto mt-1 max-w-52 space-y-1">
+                          {substitutionSummaries?.filter(rule => rule.couple_id === couple.id).map(rule => (
+                            <p key={rule.id} className="text-xs text-muted-foreground">
+                              {rule.player_name} por {rule.replaced_name} · {substitutionScopeLabel(rule.scope, rule.label)}
+                            </p>
+                          ))}
+                          <Button type="button" size="sm" variant="ghost" onClick={() => setSubstitutionCoupleId(couple.id)}>Asignar suplente</Button>
+                        </div>}
                         {couple.is_pending && couple.inscription_id ? (
                           <div className="flex items-center justify-center gap-1">
                             <Button

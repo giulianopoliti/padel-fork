@@ -88,6 +88,7 @@ export const PointsReviewDialog = ({ tournamentId, isOpen, onClose, onApplied }:
         {!loading && review && <>
           {readOnly && <div role="status" className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 className="h-5 w-5" />Puntos acreditados{review.appliedAt ? ` · ${new Date(review.appliedAt).toLocaleString('es-AR')}` : ''}</div>}
           {review.state === 'LEGACY' && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Este cierre es anterior al desglose por copa y categoría. Se muestran los movimientos históricos disponibles; no se recalculan.</p>}
+          {review.hasSubstitutionBaselines && <p className="text-sm text-muted-foreground">Para los suplentes que se incorporaron durante el torneo se usa el puntaje registrado al asignarlos por primera vez.</p>}
           {!readOnly && needsBasisAcceptance && <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
             <p className="font-medium">{review.scoreBasis === 'CURRENT' ? 'Este torneo no tiene una captura inicial de puntajes.' : 'Algunos jugadores no tienen una captura inicial de puntajes.'}</p>
             <p>Para esos jugadores, el cálculo usa el puntaje actual, que puede incluir torneos posteriores. Revisá esta base antes de acreditar.</p>

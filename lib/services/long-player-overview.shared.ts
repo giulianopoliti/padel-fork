@@ -4,9 +4,11 @@ export type LongPlayerRegistrationStatus =
   | 'PENDING'
   | 'ACTIVE'
   | 'ELIMINATED'
+  | 'SUBSTITUTE'
 
 export interface LongPlayerOverviewMatch {
   id: string
+  isSubstitute?: boolean
   status: string
   round: string
   opponentName: string

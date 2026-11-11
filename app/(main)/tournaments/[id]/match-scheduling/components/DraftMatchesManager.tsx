@@ -19,6 +19,7 @@ import {
 import { FileEdit, Send, Clock, MapPin, Building2, Loader2, CheckCircle2, AlertCircle, Info, Trash2, Edit } from 'lucide-react'
 import { getDraftMatches, publishMatches, deleteMatches, modifyMatchSchedule, type DraftMatch, type ExistingMatch, type ModifyScheduleData } from '../actions'
 import ModifyScheduleDialog from './ModifyScheduleDialog'
+import { SubstitutionDialog } from '@/components/tournament/long/substitution-dialog'
 
 interface Club {
   id: string
@@ -38,6 +39,7 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
   const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set())
   const [selectedMatchForEdit, setSelectedMatchForEdit] = useState<DraftMatch | null>(null)
   const [showModifyDialog, setShowModifyDialog] = useState(false)
+  const [substitutionMatchId, setSubstitutionMatchId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -405,6 +407,8 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {match.couple1_id && match.couple2_id && <Button type="button" size="sm" variant="ghost"
+                        onClick={() => setSubstitutionMatchId(match.id)}>Asignar suplente</Button>}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -425,6 +429,9 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
           </>
         )}
       </CardContent>
+
+      {substitutionMatchId && <SubstitutionDialog tournamentId={tournamentId} matchId={substitutionMatchId}
+        onClose={() => setSubstitutionMatchId(null)} onSaved={() => void loadDraftMatches()} />}
 
       {/* Modify Schedule Dialog - Reuses same dialog as published matches */}
       {selectedMatchForEdit && (

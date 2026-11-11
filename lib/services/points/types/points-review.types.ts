@@ -64,6 +64,7 @@ export interface PointsReview {
   bonuses: TournamentBonuses
   totalMatches: number
   scoreBasis: 'SNAPSHOT' | 'CURRENT' | 'MIXED' | 'LEGACY'
+  hasSubstitutionBaselines?: boolean
   appliedAt?: string
 }
 
@@ -83,9 +84,10 @@ export interface PointsContext {
   players: PointsPlayer[]
   couples: PointsCouple[]
   matches: PointsMatch[]
+  lineups?: { match_id: string; couple_id: string; player1_id: string; player2_id: string; substitute_slot: 1 | 2 }[]
   inscriptions: { player_id: string | null; couple_id: string | null; is_pending: boolean | null }[]
   categories: PointsCategory[]
-  snapshots: { player_id: string; score: number; category: string | null }[]
+  snapshots: { player_id: string; score: number; category: string | null; basis?: 'START' | 'SUBSTITUTION' }[]
   disqualifications: { match_id: string | null; couple_id: string }[]
   history: { player_id: string; points_before: number; points_after: number; points_earned: number }[]
 }

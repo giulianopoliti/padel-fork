@@ -531,6 +531,7 @@ export function ImprovedBracketRenderer({
           isEditMode={isEditMode}
           seeds={previewData.seeds}
           onMatchUpdate={onMatchUpdate}
+          onSubstitutionSaved={onDataRefresh}
           onRequestStartMatch={(targetMatch) => setMatchDialogAction({ type: 'start', match: targetMatch })}
           onRequestLoadResult={(targetMatch) => setMatchDialogAction({ type: 'result', match: targetMatch })}
           onRequestModifyResult={(targetMatch) =>

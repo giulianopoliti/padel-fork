@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { ExistingMatch, SetResult } from '../../actions'
+import { SubstitutionDialog } from '@/components/tournament/long/substitution-dialog'
 import LoadMatchResultDialog from '../LoadMatchResultDialog'
 import ModifyScheduleDialog from '../ModifyScheduleDialog'
 
@@ -56,6 +57,7 @@ const MatchActionsDropdown: React.FC<MatchActionsDropdownProps> = ({
   const [showResultDialog, setShowResultDialog] = useState(false)
   const [showModifyResultDialog, setShowModifyResultDialog] = useState(false)
   const [showModifyScheduleDialog, setShowModifyScheduleDialog] = useState(false)
+  const [showSubstitutionDialog, setShowSubstitutionDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
@@ -118,6 +120,7 @@ const MatchActionsDropdown: React.FC<MatchActionsDropdownProps> = ({
 
   // Check if match has results (is FINISHED or COMPLETED)
   const hasResults = match.status === 'FINISHED' || match.status === 'COMPLETED'
+  const canAssignSubstitute = match.tournament_id && match.couple1_id && match.couple2_id && ['DRAFT', 'PENDING'].includes(match.status)
 
   return (
     <>
@@ -136,6 +139,7 @@ const MatchActionsDropdown: React.FC<MatchActionsDropdownProps> = ({
           align="end" 
           className="w-56 bg-white border-gray-200"
         >
+          {canAssignSubstitute && <DropdownMenuItem onSelect={() => setShowSubstitutionDialog(true)}>Asignar suplente</DropdownMenuItem>}
           {/* Show "Cargar Resultado" only if match doesn't have results */}
           {!hasResults && (
             <DropdownMenuItem 
@@ -186,6 +190,9 @@ const MatchActionsDropdown: React.FC<MatchActionsDropdownProps> = ({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {showSubstitutionDialog && match.tournament_id && <SubstitutionDialog tournamentId={match.tournament_id} matchId={match.id}
+        onClose={() => setShowSubstitutionDialog(false)} onSaved={onMatchResultSaved} />}
 
       <AlertDialog 
         open={showDeleteDialog} 

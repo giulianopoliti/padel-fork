@@ -164,6 +164,7 @@ describe('match scheduling server boundaries', () => {
     })
     jest.mocked(createClient).mockResolvedValue({
       auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'organizer' } } }) }, from,
+      rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
     } as unknown as Awaited<ReturnType<typeof createClient>>)
   })
 

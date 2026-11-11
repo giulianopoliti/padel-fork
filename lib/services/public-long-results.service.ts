@@ -3,6 +3,7 @@ import "server-only"
 import { getTenantBranding } from "@/config/tenant"
 import { getTenantOrganization } from "@/lib/services/tenant-organization.service"
 import { createClientServiceRole } from "@/utils/supabase/server"
+import { getLongMatchLineupChanges } from './long-match-lineups'
 
 export interface PublicLongPlayer {
   id: string
@@ -32,6 +33,8 @@ export interface PublicLongMatch {
   zoneId: string | null
   couple1Id: string | null
   couple2Id: string | null
+  lineup1?: PublicLongCouple
+  lineup2?: PublicLongCouple
   winnerId: string | null
   resultCouple1: string | null
   resultCouple2: string | null
@@ -189,13 +192,16 @@ export const getPublicLongResults = async (
 
   const matchRows = matchesResult.data || []
   const matchIds = matchRows.map((match: any) => match.id).filter(Boolean)
-  const { data: setRows, error: setsError } = matchIds.length > 0
-    ? await supabase
+  const [lineups, { data: setRows, error: setsError }] = await Promise.all([
+    getLongMatchLineupChanges(supabase, matchIds),
+    matchIds.length > 0
+    ? supabase
       .from("set_matches")
       .select("id, match_id, set_number, couple1_games, couple2_games")
       .in("match_id", matchIds)
       .order("set_number", { ascending: true })
-    : { data: [], error: null }
+    : { data: [], error: null },
+  ])
 
   if (setsError) {
     console.error("[public-long-results] Set lookup failed:", setsError)
@@ -246,6 +252,13 @@ export const getPublicLongResults = async (
     ),
   }))
 
+  const getMatchCouple = (matchId: string, coupleId: string | null) => {
+    if (!coupleId || !couples[coupleId]) return undefined
+    const change = lineups.get(matchId)?.find(lineup => lineup.couple_id === coupleId)
+    if (!change) return undefined
+    return { ...couples[coupleId], [change.slot === 1 ? 'player1' : 'player2']: toPlayer(change.player) }
+  }
+
   return {
     tournament: {
       id: tournament.id,
@@ -262,6 +275,8 @@ export const getPublicLongResults = async (
       zoneId: match.zone_id ?? null,
       couple1Id: match.couple1_id ?? null,
       couple2Id: match.couple2_id ?? null,
+      lineup1: getMatchCouple(match.id, match.couple1_id),
+      lineup2: getMatchCouple(match.id, match.couple2_id),
       winnerId: match.winner_id ?? null,
       resultCouple1: match.result_couple1 ?? null,
       resultCouple2: match.result_couple2 ?? null,

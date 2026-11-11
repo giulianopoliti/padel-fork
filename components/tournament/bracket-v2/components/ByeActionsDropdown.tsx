@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/components/ui/use-toast'
+import { SubstitutionDialog } from '@/components/tournament/long/substitution-dialog'
 import type { BracketMatchV2 } from '../types/bracket-types'
 
 // ============================================================================
@@ -48,6 +49,8 @@ export interface ByeActionsDropdownProps {
   isOwner: boolean
   /** Callback cuando se completa una acción */
   onActionComplete?: () => void
+  canAssignSubstitute?: boolean
+  onSubstitutionSaved?: () => void
 }
 
 interface ByeState {
@@ -147,12 +150,15 @@ export function ByeActionsDropdown({
   match,
   tournamentId,
   isOwner,
-  onActionComplete
+  onActionComplete,
+  canAssignSubstitute = false,
+  onSubstitutionSaved,
 }: ByeActionsDropdownProps) {
 
   // Estados locales
   const [isProcessing, setIsProcessing] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [substitutionOpen, setSubstitutionOpen] = useState(false)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<'process' | 'undo' | 'changeStatus' | null>(null)
   const { toast } = useToast()
@@ -416,12 +422,14 @@ export function ByeActionsDropdown({
   // ============================================================================
 
   // No mostrar menú si no hay acciones disponibles o no es owner
-  if (!canShowMenu || !isOwner) {
+  if ((!canShowMenu && !canAssignSubstitute) || !isOwner) {
     return null
   }
 
   return (
     <>
+      {substitutionOpen && <SubstitutionDialog tournamentId={tournamentId} matchId={match.id}
+        onClose={() => setSubstitutionOpen(false)} onSaved={onSubstitutionSaved} />}
       {/* Diálogo de Confirmación */}
       <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
@@ -478,11 +486,12 @@ export function ByeActionsDropdown({
             disabled={isProcessing}
           >
             <MoreVertical className="h-4 w-4" />
-            <span className="sr-only">Abrir menú de acciones de BYE</span>
+            <span className="sr-only">Abrir menú de acciones del partido</span>
           </Button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-52 bg-white border-gray-200">
+          {canAssignSubstitute && <DropdownMenuItem onSelect={() => setSubstitutionOpen(true)}>Asignar suplente</DropdownMenuItem>}
           {/* ACCIÓN: Procesar BYE */}
           {isByeProcessable && (
             <DropdownMenuItem
