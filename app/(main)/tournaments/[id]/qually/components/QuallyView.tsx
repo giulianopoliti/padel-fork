@@ -32,7 +32,6 @@ export default function QuallyView({ tournament, coupleInscriptions, canManageTo
     <PositionsTable
       tournament={tournament}
       coupleInscriptions={coupleInscriptions}
-      isSingleSetFormat={isSingleSetFormat}
       canManageTournament={canManageTournament}
       playerCoupleId={playerCoupleId}
     />
