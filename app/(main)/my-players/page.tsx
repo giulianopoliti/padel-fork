@@ -48,6 +48,7 @@ export default async function MyPlayersPage() {
     ...player,
     first_name: player.first_name || "",
     last_name: player.last_name || "",
+    gender: player.gender ?? null,
     profile_image_url: player.profile_image_url || null,
     users: player.users ? { email: player.users.email || null } : null,
   }))

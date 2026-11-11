@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/database.types';
 import { normalizePlayerDni } from '@/lib/utils/player-dni';
+import { PLAYER_GENDERS } from '@/lib/utils/player-gender';
 import { receivesSoloEmails } from '@/lib/solo-players/email-preference';
 // --- Zod Schema for Player Profile Validation ---
 
@@ -19,7 +20,7 @@ const playerProfileSchema = z.object({
   preferred_hand: z.string().nullable().optional(),
   racket: z.string().nullable().optional(),
   description: z.string().max(200, "La descripción no puede tener más de 200 caracteres.").nullable().optional(),
-  gender: z.enum(["MALE", "FEMALE", "MIXED"] as const).nullable().optional(), // Using actual database enum values
+  gender: z.enum(PLAYER_GENDERS).optional(),
   preferred_side: z.enum(["DRIVE", "REVES"] as const).nullable().optional(),
   club_id: z.string().uuid("ID de club inválido").nullable().optional(), // NO_CLUB for placeholder
 });
@@ -51,6 +52,16 @@ export async function completeUserProfile(prevState: FormState, formData: FormDa
     return { success: false, message: "Error de autenticación. Intenta iniciar sesión de nuevo.", errors: null };
   }
 
+  const { data: userProfile, error: roleError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (roleError || userProfile?.role !== 'PLAYER') {
+    return { success: false, message: "Acción no permitida. Se requiere un perfil de jugador.", errors: null };
+  }
+
   const rawFormEntries = Object.fromEntries(formData.entries());
   const avatarFile = formData.get('avatar_file') as File | null;
   const existingAvatarUrl = rawFormEntries.avatar_url_existing as string | undefined;
@@ -65,7 +76,7 @@ export async function completeUserProfile(prevState: FormState, formData: FormDa
     preferred_hand: rawFormEntries.preferred_hand === '' ? null : rawFormEntries.preferred_hand,
     racket: rawFormEntries.racket === '' ? null : rawFormEntries.racket,
     description: rawFormEntries.description === '' ? null : rawFormEntries.description,
-    gender: rawFormEntries.gender === '' ? null : rawFormEntries.gender,
+    gender: rawFormEntries.gender === '' ? undefined : rawFormEntries.gender,
     preferred_side: rawFormEntries.preferred_side === '' ? null : rawFormEntries.preferred_side,
     club_id: (rawFormEntries.club_id === '' || rawFormEntries.club_id === 'NO_CLUB') ? null : rawFormEntries.club_id,
   };
@@ -73,11 +84,12 @@ export async function completeUserProfile(prevState: FormState, formData: FormDa
   const validation = playerProfileSchema.safeParse(dataToValidate);
 
   if (!validation.success) {
-    console.error("Validation Errors:", validation.error.flatten().fieldErrors);
+    const errors = validation.error.flatten().fieldErrors;
+    console.error("Validation Errors:", errors);
     return {
       success: false,
-      message: "Error de validación. Revisa los campos.",
-      errors: validation.error.flatten().fieldErrors,
+      message: errors.gender ? "Seleccioná un sexo válido." : "Error de validación. Revisa los campos.",
+      errors,
     };
   }
 
@@ -178,18 +190,7 @@ export async function completeUserProfile(prevState: FormState, formData: FormDa
         shouldUpdateAvatar = true;
     }
 
-    // Update user role (always set to PLAYER)
-    const { error: userUpdateError } = await supabase
-      .from('users')
-      .update({ role: 'PLAYER' })
-      .eq('id', user.id);
-
-    if (userUpdateError) {
-      console.error("Error updating user role:", userUpdateError);
-      return { success: false, message: `Error al actualizar rol de usuario: ${userUpdateError.message}`, errors: null };
-    }
-
-    const playerUpsertData: any = {
+    const playerUpsertData = {
       user_id: user.id,
       first_name: validatedData.first_name,
       last_name: validatedData.last_name,
@@ -200,15 +201,11 @@ export async function completeUserProfile(prevState: FormState, formData: FormDa
       preferred_hand: validatedData.preferred_hand,
       racket: validatedData.racket,
       description: validatedData.description,
-      gender: validatedData.gender as Database["public"]["Enums"]["GENDER"],
+      ...(validatedData.gender !== undefined && { gender: validatedData.gender }),
       preferred_side: validatedData.preferred_side as Database["public"]["Enums"]["PREFERRED_SIDE"],
       club_id: validatedData.club_id,
+      ...(shouldUpdateAvatar && { profile_image_url: newAvatarPublicUrl }),
     };
-
-    // Add profile image URL to player data if it should be updated
-    if (shouldUpdateAvatar) {
-      playerUpsertData.profile_image_url = newAvatarPublicUrl;
-    }
     
     // First check if player record exists
     const { data: existingPlayer, error: checkError } = await supabase
@@ -228,7 +225,9 @@ export async function completeUserProfile(prevState: FormState, formData: FormDa
       const { error } = await supabase
         .from('players')
         .update(playerUpsertData)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select('id')
+        .single();
       playerUpsertError = error;
     } else {
       // Insert new player record

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useId } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,12 +9,24 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { User, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
+import { isPlayerGender, PLAYER_GENDERS, PLAYER_GENDER_LABELS, type PlayerGender } from "@/lib/utils/player-gender"
 
 interface PersonalDataSectionProps {
-  defaultValues: any
+  defaultValues: {
+    profile_image_url?: string | null
+    first_name?: string
+    last_name?: string
+    dni?: string | null
+    dni_is_temporary?: boolean | null
+    phone?: string | null
+    date_of_birth?: string | null
+  }
+  gender: PlayerGender | ""
+  onGenderChange: (gender: PlayerGender) => void
 }
 
-export function PersonalDataSection({ defaultValues }: PersonalDataSectionProps) {
+export function PersonalDataSection({ defaultValues, gender, onGenderChange }: PersonalDataSectionProps) {
+  const genderId = useId()
   const [avatarPreview, setAvatarPreview] = useState<string | null>(defaultValues.profile_image_url || null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
@@ -141,7 +153,7 @@ export function PersonalDataSection({ defaultValues }: PersonalDataSectionProps)
             <Input
               id="dni"
               name="dni"
-              defaultValue={defaultValues.dni}
+              defaultValue={defaultValues.dni ?? ""}
               className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             />
             <div className="text-xs text-gray-500">
@@ -156,7 +168,7 @@ export function PersonalDataSection({ defaultValues }: PersonalDataSectionProps)
               id="phone"
               name="phone"
               type="tel"
-              defaultValue={defaultValues.phone}
+              defaultValue={defaultValues.phone ?? ""}
               className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
@@ -170,26 +182,29 @@ export function PersonalDataSection({ defaultValues }: PersonalDataSectionProps)
             id="date_of_birth"
             name="date_of_birth"
             type="date"
-            defaultValue={defaultValues.date_of_birth}
+            defaultValue={defaultValues.date_of_birth ?? ""}
             className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
 
         <div className="space-y-3">
-          <Label className="text-sm font-medium text-gray-700">Género (No se puede cambiar)</Label>
-          <RadioGroup name="gender" value={defaultValues.gender} className="flex flex-col space-y-2" disabled>
-            <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-surface border border-gray-200">
-              <RadioGroupItem value="MALE" id="gender-male" className="text-blue-600 border-gray-300" disabled />
-              <Label htmlFor="gender-male" className="text-gray-600">
-                Caballeros
-              </Label>
-            </div>
-            <div className="flex items-center space-x-3 bg-gray-50 p-3 rounded-surface border border-gray-200">
-              <RadioGroupItem value="FEMALE" id="gender-female" className="text-blue-600 border-gray-300" disabled />
-              <Label htmlFor="gender-female" className="text-gray-600">
-                Damas
-              </Label>
-            </div>
+          <Label id={genderId} className="text-sm font-medium text-gray-700">Sexo</Label>
+          <RadioGroup
+            aria-labelledby={genderId}
+            value={gender}
+            onValueChange={(value) => {
+              if (isPlayerGender(value)) onGenderChange(value)
+            }}
+            className="flex flex-col space-y-2"
+          >
+            {PLAYER_GENDERS.map((option) => (
+              <div key={option} className="flex items-center space-x-3 bg-gray-50 p-3 rounded-surface border border-gray-200">
+                <RadioGroupItem value={option} id={`${genderId}-${option}`} className="text-blue-600 border-gray-300" />
+                <Label htmlFor={`${genderId}-${option}`} className="text-gray-600">
+                  {PLAYER_GENDER_LABELS[option]}
+                </Label>
+              </div>
+            ))}
           </RadioGroup>
         </div>
       </CardContent>

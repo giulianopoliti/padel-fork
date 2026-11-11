@@ -11,20 +11,7 @@ import { PaginationControl } from '@/components/ui/pagination'
 import PlayersTableWithActions from '@/components/players/players-table-with-actions'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useToast } from '@/components/ui/use-toast'
-
-interface PlayerData {
-  id: string
-  first_name: string
-  last_name: string
-  dni: string | null
-  phone: string | null
-  score: number | null
-  profile_image_url: string | null
-  category_name: string | null
-  user_id?: string | null
-  email?: string | null
-  users?: { email: string | null } | Array<{ email: string | null }> | null
-}
+import type { PlayerData } from '@/lib/services/players/players.service'
 
 interface Category {
   name: string

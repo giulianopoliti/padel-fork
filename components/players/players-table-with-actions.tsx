@@ -4,21 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import PlayerRowActions from '@/components/players/player-row-actions'
 import PlayerDniDisplay from '@/components/players/player-dni-display'
-
-interface PlayerData {
-  id: string
-  first_name: string
-  last_name: string
-  dni: string | null
-  dni_is_temporary?: boolean | null
-  phone: string | null
-  score: number | null
-  profile_image_url: string | null
-  category_name: string | null
-  user_id?: string | null
-  email?: string | null
-  users?: { email: string | null } | Array<{ email: string | null }> | null
-}
+import type { PlayerData } from '@/lib/services/players/players.service'
 
 interface Category {
   name: string

@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 import OrganizadorDashboard from "./components/organizador-dashboard"
-import { getCategories } from "@/lib/services/players/players.service"
+import { getCategories, type PlayerData } from "@/lib/services/players/players.service"
 import { getTenantBranding } from "@/config/tenant"
 import { getTpeRestrictionPlayers } from "@/lib/services/tpe-registration-restrictions"
 import TpeRegistrationRestrictionsPanel from "@/app/(main)/panel/@organizador/components/tpe-registration-restrictions-panel"
@@ -14,20 +14,6 @@ import { normalizeListPage, getOrganizerPanelHref } from '@/lib/tournaments/tour
 import { getTournamentSortSettings } from '@/lib/services/tournament-sort-settings.service'
 
 export const dynamic = 'force-dynamic'
-
-interface PlayerData {
-  id: string
-  first_name: string
-  last_name: string
-  dni: string | null
-  phone: string | null
-  score: number | null
-  profile_image_url: string | null
-  category_name: string | null
-  user_id?: string | null
-  email?: string | null
-  users?: { email: string | null } | null
-}
 
 export default async function OrganizadorDashboardPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const supabase = await createClient()

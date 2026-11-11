@@ -128,6 +128,10 @@ export function checkRoutePermission(path: string, role?: Role | null): boolean 
     return role === "CLUB" || role === "ORGANIZADOR"
   }
 
+  if (path === "/my-players") {
+    return role === "ORGANIZADOR"
+  }
+
   // Legacy compatibility while /panel becomes the canonical route.
   if (path === "/panel-cpa" || path.startsWith("/panel-cpa/")) {
     return !!role

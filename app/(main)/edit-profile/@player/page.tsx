@@ -15,6 +15,7 @@ import { getPlayerProfile, completeUserProfile, type FormState } from "@/app/(ma
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { User, Trophy, Shield } from "lucide-react"
+import { isPlayerGender, type PlayerGender } from "@/lib/utils/player-gender"
 
 interface Club {
   id: string
@@ -25,11 +26,11 @@ interface Club {
 interface UserProfile {
   id?: string
   email?: string
-  role?: string
   avatar_url?: string | null
   first_name?: string
   last_name?: string
   dni?: string | null
+  dni_is_temporary?: boolean | null
   phone?: string | null
   date_of_birth?: string | null
   category_name?: string | null
@@ -54,10 +55,16 @@ export default function EditProfilePage() {
   const router = useRouter()
   const [activeSection, setActiveSection] = useState<string>("personal")
   const [userProfileData, setUserProfileData] = useState<UserProfile | null>(null)
+  const [genderChange, setGenderChange] = useState<PlayerGender>()
   const [allClubsData, setAllClubsData] = useState<Club[]>([])
   const [isFetchingData, setIsFetchingData] = useState(true)
   const { toast } = useToast()
   const handleEmailPreferenceSaved = (enabled: boolean): void => setUserProfileData(profile => profile ? { ...profile, solo_player_emails: enabled } : profile)
+  const savedGender = userProfileData?.gender
+  const gender = genderChange ?? (isPlayerGender(savedGender) ? savedGender : "")
+  const handleGenderChange = (value: PlayerGender): void => {
+    setGenderChange(value === savedGender ? undefined : value)
+  }
 
   // useActionState for form handling
   const [formState, formAction, isPending] = useActionState<FormState, FormData>(completeUserProfile, initialFormState)
@@ -132,7 +139,7 @@ export default function EditProfilePage() {
     return (
       <>
         <div style={{ display: activeSection === "personal" ? "block" : "none" }}>
-          <PersonalDataSection defaultValues={defaultsForSections} />
+          <PersonalDataSection defaultValues={defaultsForSections} gender={gender} onGenderChange={handleGenderChange} />
           <EmailPreferences enabled={userProfileData.solo_player_emails !== false} onSaved={handleEmailPreferenceSaved} />
         </div>
         <div style={{ display: activeSection === "game" ? "block" : "none" }}>
@@ -240,7 +247,7 @@ export default function EditProfilePage() {
                 </TabsList>
 
                 <form action={formAction} className="space-y-6">
-                  {userProfileData?.role && <input type="hidden" name="role" value={userProfileData.role} />}
+                  {genderChange && <input type="hidden" name="gender" value={genderChange} />}
 
                   {/* Hidden inputs to always preserve all data when submitting from any tab */}
                   {!isFetchingData && userProfileData && activeSection !== "personal" && (
@@ -250,7 +257,6 @@ export default function EditProfilePage() {
                       <input type="hidden" name="dni" value={userProfileData.dni || ""} />
                       <input type="hidden" name="phone" value={userProfileData.phone || ""} />
                       <input type="hidden" name="date_of_birth" value={userProfileData.date_of_birth || ""} />
-                      <input type="hidden" name="gender" value={userProfileData.gender || ""} />
                       <input type="hidden" name="avatar_url_existing" value={userProfileData.profile_image_url || ""} />
                     </>
                   )}
@@ -279,10 +285,10 @@ export default function EditProfilePage() {
                         </div>
                       </div>
                     ) : (
-                      <><PersonalDataSection defaultValues={{
-                        ...userProfileData,
-                        score: userProfileData.score?.toString() ?? "",
-                      }} /><EmailPreferences enabled={userProfileData.solo_player_emails !== false} onSaved={handleEmailPreferenceSaved} /></>
+                      <>
+                        <PersonalDataSection defaultValues={userProfileData} gender={gender} onGenderChange={handleGenderChange} />
+                        <EmailPreferences enabled={userProfileData.solo_player_emails !== false} onSaved={handleEmailPreferenceSaved} />
+                      </>
                     )}
                   </TabsContent>
 
@@ -352,7 +358,7 @@ export default function EditProfilePage() {
                 <div className="max-w-3xl space-y-6">{renderActiveSection()}</div>
               ) : (
                 <form action={formAction} className="max-w-3xl space-y-6">
-                  {userProfileData?.role && <input type="hidden" name="role" value={userProfileData.role} />}
+                  {genderChange && <input type="hidden" name="gender" value={genderChange} />}
 
                   {renderActiveSection()}
 

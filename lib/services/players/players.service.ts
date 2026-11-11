@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { normalizePlayerDni } from '@/lib/utils/player-dni'
+import { isPlayerGender, type PlayerGender } from '@/lib/utils/player-gender'
 
 export interface PlayerData {
   id: string
@@ -12,9 +13,10 @@ export interface PlayerData {
   score: number | null
   profile_image_url: string | null
   category_name: string | null
+  gender: string | null
   user_id?: string | null
   email?: string | null
-  users?: { email: string | null } | null
+  users?: { email: string | null } | Array<{ email: string | null }> | null
 }
 
 export interface PlayerUpdateData {
@@ -23,6 +25,7 @@ export interface PlayerUpdateData {
   dni?: string | null
   phone?: string
   category_name?: string
+  gender?: PlayerGender
 }
 
 /**
@@ -39,7 +42,7 @@ export async function getTenantPlayers(
 
   const { data, error, count } = await supabase
     .from('players')
-    .select('id, first_name, last_name, dni, dni_is_temporary, phone, score, profile_image_url, category_name, user_id, users!players_user_id_fkey(email)', { count: 'exact' })
+    .select('id, first_name, last_name, dni, dni_is_temporary, phone, score, profile_image_url, category_name, gender, user_id, users!players_user_id_fkey(email)', { count: 'exact' })
     .eq('es_prueba', false)
     .order('score', { ascending: false, nullsFirst: false })
     .order('last_name', { ascending: true })
@@ -80,6 +83,11 @@ export async function updatePlayer(
   playerId: string,
   updates: PlayerUpdateData
 ) {
+  const { first_name, last_name, phone, category_name, gender } = updates
+  if (gender !== undefined && !isPlayerGender(gender)) {
+    return { success: false, error: 'Seleccioná un sexo válido para el jugador' }
+  }
+
   const supabase = await createClient()
 
   // 1. Verificar que el jugador pertenece a la organización
@@ -95,7 +103,13 @@ export async function updatePlayer(
   }
 
   // 2. Si cambia la categoría, obtener el nuevo score
-  const finalUpdates: any = { ...updates }
+  const finalUpdates: PlayerUpdateData & { dni_is_temporary?: boolean; score?: number } = {
+    first_name,
+    last_name,
+    phone,
+    category_name,
+    ...(gender !== undefined && { gender }),
+  }
 
   if (updates.dni !== undefined) {
     const normalizedDni = normalizePlayerDni(updates.dni)
@@ -140,7 +154,7 @@ export async function updatePlayer(
     .from('players')
     .update(finalUpdates)
     .eq('id', playerId)
-    .select('id, first_name, last_name, dni, dni_is_temporary, phone, score, profile_image_url, category_name, user_id, users!players_user_id_fkey(email)')
+    .select('id, first_name, last_name, dni, dni_is_temporary, phone, score, profile_image_url, category_name, gender, user_id, users!players_user_id_fkey(email)')
     .single()
 
   if (updateError) {

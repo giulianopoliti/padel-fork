@@ -12,20 +12,7 @@ import type { ActiveTournamentClub } from '@/lib/services/tournament-club-filter
 import { getOrganizerPanelHref, getTournamentListHref } from '@/lib/tournaments/tournament-list-filters'
 import TournamentSortDialog from '@/components/tournament/tournament-sort-dialog'
 import { describeTournamentSort, type TournamentSortSettings } from '@/lib/tournaments/tournament-sort'
-
-interface PlayerData {
-  id: string
-  first_name: string
-  last_name: string
-  dni: string | null
-  phone: string | null
-  score: number | null
-  profile_image_url: string | null
-  category_name: string | null
-  user_id?: string | null
-  email?: string | null
-  users?: { email: string | null } | Array<{ email: string | null }> | null
-}
+import type { PlayerData } from '@/lib/services/players/players.service'
 
 interface Category {
   name: string

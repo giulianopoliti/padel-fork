@@ -11,19 +11,8 @@ import { useToast } from '@/components/ui/use-toast'
 import { updatePlayerAction } from '@/lib/services/players/players.actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import PlayerDniDisplay from '@/components/players/player-dni-display'
-
-interface PlayerData {
-  id: string
-  first_name: string
-  last_name: string
-  dni: string | null
-  phone: string | null
-  score: number | null
-  profile_image_url: string | null
-  category_name: string | null
-  email?: string | null
-  users?: { email: string | null } | Array<{ email: string | null }> | null
-}
+import type { PlayerData } from '@/lib/services/players/players.service'
+import { isPlayerGender, PLAYER_GENDERS, PLAYER_GENDER_LABELS, type PlayerGender } from '@/lib/utils/player-gender'
 
 interface Category {
   name: string
@@ -50,12 +39,14 @@ export default function EditPlayerDialog({
   const [lastName, setLastName] = useState(player.last_name)
   const [dni, setDni] = useState(player.dni || '')
   const [categoryName, setCategoryName] = useState(player.category_name || '')
+  const [genderChange, setGenderChange] = useState<PlayerGender>()
   const [isPending, startTransition] = useTransition()
   const { toast } = useToast()
 
   const categoryChanged = categoryName !== player.category_name && categoryName
   const newCategory = categoryChanged ? categories.find(c => c.name === categoryName) : null
   const email = Array.isArray(player.users) ? player.users[0]?.email : player.users?.email
+  const currentGender = isPlayerGender(player.gender) ? player.gender : ''
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,6 +56,7 @@ export default function EditPlayerDialog({
         first_name: firstName,
         last_name: lastName,
         dni,
+        gender: genderChange,
         category_name: categoryName || undefined
       })
 
@@ -76,6 +68,7 @@ export default function EditPlayerDialog({
             : 'Los datos se guardaron correctamente',
         })
         onPlayerUpdate(result.player as PlayerData)
+        setGenderChange(undefined)
         onOpenChange(false)
       } else {
         toast({
@@ -95,6 +88,7 @@ export default function EditPlayerDialog({
         setLastName(player.last_name)
         setDni(player.dni || '')
         setCategoryName(player.category_name || '')
+        setGenderChange(undefined)
       }
       onOpenChange(open)
     }
@@ -102,7 +96,7 @@ export default function EditPlayerDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Editar Jugador</DialogTitle>
           <DialogDescription>
@@ -160,6 +154,26 @@ export default function EditPlayerDialog({
             <p className="text-xs text-muted-foreground">
               El email no puede modificarse desde aquí
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-player-gender">Sexo</Label>
+            <Select
+              value={genderChange ?? currentGender}
+              onValueChange={(value) => {
+                if (isPlayerGender(value)) setGenderChange(value === currentGender ? undefined : value)
+              }}
+              disabled={isPending}
+            >
+              <SelectTrigger id="edit-player-gender">
+                <SelectValue placeholder="Seleccionar sexo" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAYER_GENDERS.map((gender) => (
+                  <SelectItem key={gender} value={gender}>{PLAYER_GENDER_LABELS[gender]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

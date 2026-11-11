@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { updatePlayer, softDeletePlayer, getCategories } from './players.service'
+import { updatePlayer, softDeletePlayer, getCategories, type PlayerUpdateData } from './players.service'
 import { createClient } from '@/utils/supabase/server'
 import { getPlayerDetails } from './get-player-details'
 import { checkPlayerOwnership } from './check-player-ownership'
@@ -11,13 +11,7 @@ import { checkPlayerOwnership } from './check-player-ownership'
  */
 export async function updatePlayerAction(
   playerId: string,
-  updates: {
-    first_name?: string
-    last_name?: string
-    dni?: string | null
-    phone?: string
-    category_name?: string
-  }
+  updates: PlayerUpdateData
 ) {
   try {
     const supabase = await createClient()

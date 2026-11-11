@@ -7,20 +7,7 @@ import { MoreVertical, Pencil, Trash2, UserX } from 'lucide-react'
 import EditPlayerDialog from '@/components/players/edit-player-dialog'
 import DeleteConfirmationDialog from '@/components/players/delete-confirmation-dialog'
 import PlayerAccountResetDialog from '@/components/players/player-account-reset-dialog'
-
-interface PlayerData {
-  id: string
-  first_name: string
-  last_name: string
-  dni: string | null
-  phone: string | null
-  score: number | null
-  profile_image_url: string | null
-  category_name: string | null
-  user_id?: string | null
-  email?: string | null
-  users?: { email: string | null } | Array<{ email: string | null }> | null
-}
+import type { PlayerData } from '@/lib/services/players/players.service'
 
 interface Category {
   name: string
