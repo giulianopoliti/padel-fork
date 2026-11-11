@@ -95,7 +95,6 @@ type PendingDisqualificationAction = {
 interface PositionsTableProps {
   tournament: Tournament;
   coupleInscriptions: CoupleInscription[];
-  isSingleSetFormat: boolean;
   canManageTournament?: boolean;
   playerCoupleId?: string | null;
 }
@@ -117,7 +116,6 @@ const getInitials = (player: PlayerSummary | null): string => {
 
 const PositionsTable: React.FC<PositionsTableProps> = ({
   tournament,
-  isSingleSetFormat,
   canManageTournament = false,
   playerCoupleId = null
 }) => {
@@ -346,7 +344,7 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
                 <TableStat value={zonePosition.wins + zonePosition.losses} />
                 <TableStat value={zonePosition.wins} />
                 <TableStat value={zonePosition.losses} />
-                <TableStat value={isSingleSetFormat ? 0 : zonePosition.sets_difference} signed={!isSingleSetFormat} />
+                <TableStat value={zonePosition.sets_difference} signed />
                 <TableStat value={zonePosition.games_difference} signed />
               </div>
             );
@@ -423,7 +421,7 @@ const PositionsTable: React.FC<PositionsTableProps> = ({
                       <span className="text-sm font-medium text-slate-800">{zonePosition.losses}</span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <DiffBadge value={isSingleSetFormat ? 0 : zonePosition.sets_difference} />
+                      <DiffBadge value={zonePosition.sets_difference} />
                     </TableCell>
                     <TableCell className="text-center">
                       <DiffBadge value={zonePosition.games_difference} />

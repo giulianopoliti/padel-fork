@@ -41,20 +41,26 @@ const CoupleLabel = ({
   return (
     <Link
       href={`/tournaments/${tournamentId}/resultados/${couple.id}`}
-      className="flex min-w-0 items-center gap-2 rounded-control text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label={`${player1Name} / ${player2Name}`}
+      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-1.5 gap-y-1 rounded-control text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring md:flex md:gap-2"
     >
-      <div className="flex -space-x-2">
+      <div aria-hidden="true" className="contents md:flex md:shrink-0 md:-space-x-2">
         {[couple.player1, couple.player2].map((player, index) => (
-          <Avatar key={player?.id || index} className="h-7 w-7 border-2 border-background">
-            <AvatarImage src={player?.profileImageUrl || undefined} alt={getPlayerName(player, `Jugador ${index + 1}`)} className="object-cover" />
+          <Avatar
+            key={index}
+            className={`col-start-1 h-5 w-5 border border-slate-200 text-[9px] md:h-7 md:w-7 md:border-2 md:border-background md:text-xs ${index === 0 ? 'row-start-1' : 'row-start-2'}`}
+          >
+            <AvatarImage src={player?.profileImageUrl || undefined} alt="" className="object-cover" />
             <AvatarFallback className={index === 0 ? "bg-primary/10 text-primary" : "bg-slate-200 text-slate-700"}>
               {getInitials(player)}
             </AvatarFallback>
           </Avatar>
         ))}
       </div>
-      <span className="min-w-0 truncate text-xs font-semibold leading-tight sm:text-sm">
-        {player1Name} / {player2Name}
+      <span className="contents text-[11px] font-semibold leading-tight md:block md:min-w-0 md:truncate md:text-sm">
+        <span className="col-start-2 row-start-1 break-words">{player1Name}</span>
+        <span className="hidden md:inline"> / </span>
+        <span className="col-start-2 row-start-2 break-words">{player2Name}</span>
       </span>
     </Link>
   )
@@ -130,10 +136,10 @@ export default function PublicResultsMatrix({ results, tournamentId }: PublicRes
           </header>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[680px] w-full border-collapse text-sm">
+            <table className="w-full border-collapse text-sm md:min-w-[680px]">
               <thead className="bg-slate-50/80">
                 <tr className="border-b border-slate-200">
-                  <th className="sticky left-0 z-20 min-w-60 border-r border-slate-200 bg-slate-50 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th className="sticky left-0 z-20 border-r border-slate-200 bg-slate-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 md:min-w-60 md:px-3">
                     Pareja
                   </th>
                   {zone.standings.map((standing, index) => (
@@ -148,9 +154,9 @@ export default function PublicResultsMatrix({ results, tournamentId }: PublicRes
                   const couple = results.couples[standing.coupleId]
                   return (
                     <tr key={standing.coupleId} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                      <th scope="row" className="sticky left-0 z-10 border-r border-slate-200 bg-card px-3 py-3 font-normal">
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                      <th scope="row" className="sticky left-0 z-10 border-r border-slate-200 bg-card px-2 py-2 font-normal md:p-3">
+                        <div className="flex w-40 items-center gap-1.5 md:w-auto md:gap-2">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600 md:h-6 md:w-6 md:text-xs">
                             {standing.position ?? rowIndex + 1}
                           </span>
                           <CoupleLabel couple={couple} tournamentId={tournamentId} />
