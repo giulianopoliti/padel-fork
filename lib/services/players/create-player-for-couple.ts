@@ -2,7 +2,8 @@ import {
   resolveInitialPlayerProfile,
 } from "@/lib/services/tournament-category-config";
 import { normalizePlayerDni } from "@/lib/utils/player-dni";
-import { findExistingPlayerByIdentity } from "@/lib/utils/player-identity";
+import { findExistingPlayerByIdentity, type ExistingPlayerMatch } from "@/lib/utils/player-identity";
+import type { createClientServiceRole } from "@/utils/supabase/server";
 
 const ALLOWED_CREATE_PLAYER_ROLES = new Set([
   "CLUB",
@@ -27,15 +28,15 @@ interface CreatePlayerForCoupleInput {
 export async function createPlayerForCoupleService(
   supabase: any,
   { tournamentId, playerData }: CreatePlayerForCoupleInput,
+  // The caller must verify tournament management access before providing a privileged directory.
+  organizerDirectory?: Awaited<ReturnType<typeof createClientServiceRole>>,
 ): Promise<{
   success: boolean;
   playerId?: string;
   message: string;
+  player?: ExistingPlayerMatch;
+  matchedBy?: 'dni' | 'name' | null;
 }> {
-  console.log(`[createPlayerForCouple] Creando jugador para pareja en torneo ${tournamentId}`, {
-    playerData,
-  });
-
   const {
     data: { user },
     error: authError,
@@ -62,20 +63,19 @@ export async function createPlayerForCoupleService(
     throw new Error("No tienes permisos para crear jugadores para torneos");
   }
 
-  console.log(`[createPlayerForCouple] Usuario autenticado: ${user.email}, Rol: ${role}`);
-
-  const { data: genderData, error: genderError } = await supabase
+  const directory = organizerDirectory ?? supabase;
+  const { data: tournament, error: tournamentError } = await directory
     .from("tournaments")
-    .select("gender")
+    .select("gender, category_name, category_config")
     .eq("id", tournamentId)
     .single();
 
-  if (genderError) {
-    console.error("[createPlayerForCouple] Error fetching tournament gender:", genderError);
+  if (tournamentError) {
+    console.error("[createPlayerForCouple] Error fetching tournament:", tournamentError);
     throw new Error("No se pudo obtener información del torneo");
   }
 
-  const tournamentGenderUpper = (genderData?.gender ?? "").toUpperCase();
+  const tournamentGenderUpper = (tournament?.gender ?? "").toUpperCase();
   const playerGenderUpper = (playerData?.gender ?? "").toUpperCase();
 
   if (tournamentGenderUpper === "FEMALE" && playerGenderUpper !== "FEMALE") {
@@ -87,13 +87,14 @@ export async function createPlayerForCoupleService(
 
   const normalizedDni = normalizePlayerDni(playerData.dni);
 
-  if (!playerData.forceCreateNew) {
+  if (organizerDirectory || !playerData.forceCreateNew) {
     const existingPlayerResult = await findExistingPlayerByIdentity({
-      supabase,
+      supabase: directory,
       firstName: playerData.first_name,
       lastName: playerData.last_name,
       dni: playerData.dni,
       gender: playerData.gender,
+      preferLinkedAccount: Boolean(organizerDirectory),
     });
 
     if (existingPlayerResult.error) {
@@ -102,41 +103,18 @@ export async function createPlayerForCoupleService(
     }
 
     if (existingPlayerResult.player) {
-      console.log(
-        `[createPlayerForCouple] Reutilizando jugador existente por ${existingPlayerResult.matchedBy}:`,
-        existingPlayerResult.player,
-      );
       return {
         success: true,
         playerId: existingPlayerResult.player.id,
         message: "Jugador existente encontrado",
+        ...(organizerDirectory && { player: existingPlayerResult.player, matchedBy: existingPlayerResult.matchedBy }),
       };
     }
   }
 
-  const { data: tournamentData, error: tournamentError } = await supabase
-    .from("tournaments")
-    .select(`
-      category_name,
-      category_config,
-      club:club_id (
-        id,
-        name
-      )
-    `)
-    .eq("id", tournamentId)
-    .single();
-
-  if (tournamentError) {
-    console.error("[createPlayerForCouple] Error fetching tournament:", tournamentError);
-    throw new Error("No se pudo obtener información del torneo");
-  }
-
-  console.log("[createPlayerForCouple] Datos del torneo:", tournamentData);
-
   const initialPlayerProfile = await resolveInitialPlayerProfile({
-    supabase,
-    tournament: tournamentData,
+    supabase: directory,
+    tournament,
   });
 
   const newPlayerData = {
@@ -152,9 +130,7 @@ export async function createPlayerForCoupleService(
     created_at: new Date().toISOString(),
   };
 
-  console.log("[createPlayerForCouple] Datos para crear jugador:", newPlayerData);
-
-  const { data: newPlayer, error: newPlayerError } = await supabase
+  const { data: newPlayer, error: newPlayerError } = await directory
     .from("players")
     .insert(newPlayerData)
     .select("id")
@@ -165,11 +141,10 @@ export async function createPlayerForCoupleService(
     throw new Error("No se pudo crear el nuevo jugador");
   }
 
-  console.log("[createPlayerForCouple] Nuevo jugador creado con ID:", newPlayer.id);
-
   return {
     success: true,
     playerId: newPlayer.id,
     message: "Jugador creado exitosamente",
+    ...(organizerDirectory && { player: { ...newPlayerData, id: newPlayer.id }, matchedBy: null }),
   };
 }

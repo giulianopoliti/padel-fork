@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import PlayerSelector from '@/components/tournament/couple-registration-advanced/components/PlayerSelector'
+import type { ResolveNewPlayer } from '@/components/tournament/couple-registration-advanced/components/NewPlayerForm'
+import type { PlayerInfo } from '@/components/tournament/couple-registration-advanced/types'
 
 type Scope = 'ONLY_MATCH' | 'FROM_MATCH'
 type Player = { id: string; name: string }
@@ -14,7 +16,7 @@ type Couple = { id: string; player1: Player; player2: Player }
 type Rule = { id: string; coupleId: string; slot: 1 | 2; player: Player; scope: Scope; matchId: string | null; label: string; editable: boolean }
 type MatchOption = { id: string; coupleIds: (string | null)[]; label: string; fechaNumber?: number | null;
   couple1Name: string; couple2Name: string; players?: Record<string, [string, string]> }
-type Editor = { couples: Couple[]; substitutions: Rule[]; matches: MatchOption[] }
+type Editor = { couples: Couple[]; substitutions: Rule[]; matches: MatchOption[]; tournamentGender?: string }
 
 export type SubstitutionSummary = { id: string; couple_id: string; slot: 1 | 2; player_name: string; replaced_name: string; scope: Scope; label: string }
 
@@ -54,9 +56,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
   const [anchor, setAnchor] = useState(matchId ?? '')
   const [editing, setEditing] = useState<Rule | null>(null)
   const [confirmedOrder, setConfirmedOrder] = useState('')
-  const [player, setPlayer] = useState<Player | null>(null)
-  const [search, setSearch] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [player, setPlayer] = useState<PlayerInfo | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string>()
   const activeCoupleId = selectedCouple || (data?.couples.length === 1 ? data.couples[0].id : '')
@@ -72,16 +72,18 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
     && matches.some(item => item.id !== currentMatch.id && item.fechaNumber === currentMatch.fechaNumber)
       ? `${activeCoupleId}:${currentMatch.id}` : ''
   const canSave = Boolean(slot && player && anchor && (!orderConfirmation || orderConfirmation === confirmedOrder))
-  const searchKey = couple && searchTerm ? [url, tournamentId, searchTerm, couple.player1.id, couple.player2.id] as const : null
-  const searchResult = useSWR(searchKey, async ([, tournament, term, player1Id, player2Id]) => {
-    const response = await fetch('/api/players/search', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope: 'tournament', tournamentId: tournament, searchTerm: term, pageSize: 15,
-        excludePlayerIds: [player1Id, player2Id] }),
-    })
-    const result = await readResponse<{ players: { id: string; first_name: string; last_name: string; category_name?: string }[] }>(response)
-    return result.players
-  })
+  const resolveNewPlayer: ResolveNewPlayer = async playerData => {
+    setBusy(true)
+    setMessage(undefined)
+    try {
+      return await readResponse<Awaited<ReturnType<ResolveNewPlayer>>>(await fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create-player', coupleId: activeCoupleId, playerData }),
+      }))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const handleReset = () => {
     setEditing(null)
@@ -90,8 +92,6 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
     setPlayer(null)
     setScope(matchId ? 'ONLY_MATCH' : 'FROM_MATCH')
     setAnchor(matchId ?? '')
-    setSearch('')
-    setSearchTerm('')
     setMessage(undefined)
   }
 
@@ -101,7 +101,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
     setSelectedSlot(rule.slot)
     setScope(rule.scope)
     setAnchor(rule.matchId ?? (rule.scope === 'FROM_MATCH' ? 'first' : ''))
-    setPlayer(rule.player)
+    setPlayer({ id: rule.player.id, first_name: rule.player.name })
   }
 
   const save = async (body: Record<string, string | number | null>, close: boolean) => {
@@ -125,9 +125,8 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
     }
   }
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault()
-    if (!couple || !slot || !player || !canSave) return
+  const handleSubmit = () => {
+    if (busy || !couple || !slot || !player || !canSave) return
     void save({ action: 'save', ruleId: editing?.id ?? null, coupleId: couple.id, slot, playerId: player.id,
       scope, matchId: anchor === 'first' ? null : anchor }, true)
   }
@@ -172,7 +171,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
         </ul>}
 
         {!canEditMatch && couple && <p className="text-sm text-muted-foreground">Este partido ya no admite cambios de alineación.</p>}
-        {showForm && couple && <form onSubmit={handleSubmit} className="space-y-4">
+        {showForm && couple && <div className="space-y-4">
           <div className={playerSlot ? 'space-y-3' : 'grid gap-3 sm:grid-cols-2'}>
             {!playerSlot && <div className="space-y-1.5">
               <Label htmlFor="substitution-slot">Puesto a cubrir</Label>
@@ -211,33 +210,30 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
               onChange={event => setConfirmedOrder(event.target.checked ? orderConfirmation : '')} />
             Confirmo el orden de los partidos de esta fecha.
           </label>}
-          <div className="space-y-1.5">
-            <Label htmlFor="substitution-search">Suplente</Label>
-            {player && <p className="rounded-md border px-3 py-2 text-sm font-medium">{player.name}</p>}
-            <div className="flex gap-2">
-              <Input id="substitution-search" value={search} maxLength={120} placeholder="Nombre o apellido" disabled={busy}
-                onChange={event => setSearch(event.target.value)} onKeyDown={event => {
-                  if (event.key === 'Enter') { event.preventDefault(); setSearchTerm(search.trim()) }
-                }} />
-              <Button type="button" variant="outline" disabled={busy || search.trim().length < 2} onClick={() => setSearchTerm(search.trim())}>Buscar</Button>
-            </div>
-            {searchResult.isLoading && <p role="status" className="text-xs text-muted-foreground">Buscando jugadores…</p>}
-            {searchResult.error && <p role="alert" className="text-xs text-destructive">{searchResult.error.message}</p>}
-            {searchResult.data?.length === 0 && <p className="text-xs text-muted-foreground">No encontramos jugadores.</p>}
-            {searchResult.data && searchResult.data.length > 0 && <ul className="max-h-36 overflow-y-auto rounded-md border">
-              {searchResult.data.map(item => <li key={item.id}>
-                <button type="button" disabled={busy} className="flex w-full justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-                  onClick={() => { setPlayer({ id: item.id, name: `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim() }); setSearchTerm(''); setSearch('') }}>
-                  {item.first_name} {item.last_name}<span className="text-muted-foreground">{item.category_name}</span>
-                </button>
-              </li>)}
-            </ul>}
-          </div>
+          <fieldset disabled={busy} className="min-w-0">
+            <PlayerSelector
+              key={couple.id}
+              playerNumber={slot ?? 1}
+              playerSelection={player ? { type: 'existing', existingPlayer: player } : { type: 'none' }}
+              availablePlayers={[]}
+              isClubMode
+              tournamentId={tournamentId}
+              tournamentGender={data?.tournamentGender}
+              substitute={{ excludePlayerIds: [couple.player1.id, couple.player2.id], resolveNewPlayer }}
+              onUpdateSelection={(_, type, selection) => {
+                if (type === 'existing' && selection && 'id' in selection) {
+                  setPlayer(selection)
+                  setMessage(undefined)
+                }
+              }}
+              onClearSelection={() => { setPlayer(null); setMessage(undefined) }}
+            />
+          </fieldset>
           <div className="flex justify-end gap-2">
             {editing && <Button type="button" variant="ghost" onClick={handleReset} disabled={busy}>Cancelar edición</Button>}
-            <Button type="submit" disabled={busy || !canSave}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Asignar suplente'}</Button>
+            <Button type="button" onClick={handleSubmit} disabled={busy || !canSave}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Asignar suplente'}</Button>
           </div>
-        </form>}
+        </div>}
         {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
       </DialogContent>
     </Dialog>

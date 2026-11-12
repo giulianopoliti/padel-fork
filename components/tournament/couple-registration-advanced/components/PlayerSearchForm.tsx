@@ -23,8 +23,9 @@ interface PlayerSearchFormProps {
   onPlayerSelect: (player: PlayerInfo) => void
   isClubMode: boolean
   userPlayerId?: string | null
-  playerNumber: 1 | 2
+  playerNumber?: 1 | 2
   tournamentId?: string // Optional: si se provee, usa Edge Function en lugar de fuzzy search local
+  excludePlayerIds?: string[]
 }
 
 export default function PlayerSearchForm({
@@ -33,11 +34,13 @@ export default function PlayerSearchForm({
   isClubMode,
   userPlayerId,
   playerNumber,
-  tournamentId
+  tournamentId,
+  excludePlayerIds,
 }: PlayerSearchFormProps) {
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<PlayerInfo[]>([])
   const [hasSearched, setHasSearched] = useState(false)
+  const [searchError, setSearchError] = useState<string>()
 
   const form = useForm<z.infer<typeof searchSchema>>({
     resolver: zodResolver(searchSchema),
@@ -49,6 +52,7 @@ export default function PlayerSearchForm({
   const handleSearch = async (values: z.infer<typeof searchSchema>) => {
     setIsSearching(true)
     setHasSearched(true)
+    setSearchError(undefined)
 
     try {
       // ✅ Si tenemos tournamentId, usar Edge Function (búsqueda optimizada)
@@ -59,15 +63,15 @@ export default function PlayerSearchForm({
           searchTerm: values.searchTerm,
           tournamentId,
           page: 1,
-          pageSize: 50
+          pageSize: 50,
+          excludePlayerIds,
         })
 
         if (result.success && result.players) {
           console.log('[PlayerSearchForm] Edge Function found:', result.players.length, 'players')
           setSearchResults(result.players)
         } else {
-          console.warn('[PlayerSearchForm] No players found:', result.error)
-          setSearchResults([])
+          throw new Error(result.error || 'No se pudo buscar jugadores.')
         }
       }
       // ⚠️ Fallback: Fuzzy search client-side (deprecated, solo si no hay tournamentId)
@@ -79,15 +83,15 @@ export default function PlayerSearchForm({
         // Threshold 0.8 = más estricto, evita matches muy lejanos
         const filteredResults = searchPlayers(
           values.searchTerm,
-          availablePlayers,
+          availablePlayers.filter(player => !excludePlayerIds?.includes(player.id)),
           0.8 // threshold: 0.8 = 80% similitud mínima (más estricto)
         )
 
         setSearchResults(filteredResults)
       }
     } catch (error) {
-      console.error('Error searching players:', error)
       setSearchResults([])
+      setSearchError(error instanceof Error ? error.message : 'No se pudo buscar jugadores.')
     } finally {
       setIsSearching(false)
     }
@@ -106,9 +110,9 @@ export default function PlayerSearchForm({
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-muted-foreground">
+      {playerNumber && <div className="text-sm text-muted-foreground">
         Busque un jugador existente para la posición {playerNumber}
-      </div>
+      </div>}
 
       {/* Current user option for player mode */}
       {showCurrentUserOption && (
@@ -142,8 +146,8 @@ export default function PlayerSearchForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Buscar jugador (nombre, apellido o DNI)</FormLabel>
-                <FormControl>
-                  <div className="flex gap-2">
+                <div className="flex gap-2">
+                  <FormControl>
                     <Input
                       placeholder="Nombre, apellido o DNI..."
                       {...field}
@@ -170,15 +174,15 @@ export default function PlayerSearchForm({
                         // Si no empieza con número, dejar paste normal
                       }}
                     />
-                    <Button type="submit" disabled={isSearching} className="bg-green-600 hover:bg-green-700">
-                      {isSearching ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Search className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </FormControl>
+                  </FormControl>
+                  <Button type="submit" aria-label="Buscar jugador" disabled={isSearching} className="bg-green-600 hover:bg-green-700">
+                    {isSearching ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -187,7 +191,8 @@ export default function PlayerSearchForm({
       </Form>
 
       {/* Search Results */}
-      {hasSearched && (
+      {searchError && <p role="alert" className="text-sm text-destructive">{searchError}</p>}
+      {hasSearched && !isSearching && !searchError && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-gray-700">
             Resultados de búsqueda ({searchResults.length})
@@ -207,15 +212,16 @@ export default function PlayerSearchForm({
                   className="p-3 hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => handlePlayerSelect(player)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="w-8 h-8 shrink-0 bg-green-100 rounded-full flex items-center justify-center">
                         <User className="h-4 w-4 text-green-600" />
                       </div>
-                      <div>
-                        <h5 className="font-medium text-gray-900">
+                      <div className="min-w-0">
+                        <h5 className="break-words font-medium text-gray-900">
                           {player.first_name} {player.last_name}
                         </h5>
+                        {!playerNumber && player.user_id && <p className="text-xs text-muted-foreground">Cuenta vinculada</p>}
                         <div className="text-sm text-gray-500">
                           <PlayerDniDisplay dni={player.dni} />
                         </div>
@@ -227,7 +233,8 @@ export default function PlayerSearchForm({
                           Score: {player.score}
                         </Badge>
                       )}
-                      <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50">
+                      <Button type="button" aria-label={`Seleccionar ${player.first_name ?? ''} ${player.last_name ?? ''}`.trim()}
+                        size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50">
                         Seleccionar
                       </Button>
                     </div>

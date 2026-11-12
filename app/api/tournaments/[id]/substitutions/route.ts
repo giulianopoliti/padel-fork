@@ -4,13 +4,21 @@ import { z } from 'zod'
 import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import { resolveTournamentCategoryConfig, validateCategoryCombination, validateMixedPairGender } from '@/lib/services/tournament-category-config'
+import { createPlayerForCoupleService } from '@/lib/services/players/create-player-for-couple'
 
 const id = z.string().uuid()
 const mutationSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('save'), ruleId: id.nullable(), coupleId: id, slot: z.union([z.literal(1), z.literal(2)]),
     playerId: id, scope: z.enum(['ONLY_MATCH', 'FROM_MATCH']), matchId: id.nullable() }),
   z.object({ action: z.literal('remove'), ruleId: id, coupleId: id }),
+  z.object({ action: z.literal('create-player'), coupleId: id, playerData: z.object({
+    first_name: z.string().trim().min(1).max(120), last_name: z.string().trim().min(1).max(120),
+    dni: z.string().trim().max(20).nullish(), phone: z.string().trim().max(50).nullish(),
+    gender: z.enum(['MALE', 'FEMALE']),
+  }).strict() }),
 ])
+
+const closedStatuses = new Set(['CANCELED', 'FINISHED', 'FINISHED_POINTS_PENDING', 'FINISHED_POINTS_CALCULATED'])
 
 const authorize = async (tournamentId: string) => {
   if (!id.safeParse(tournamentId).success) return NextResponse.json({ error: 'Torneo inválido.' }, { status: 400 })
@@ -19,7 +27,44 @@ const authorize = async (tournamentId: string) => {
   if (!user) return NextResponse.json({ error: 'Iniciá sesión para gestionar suplencias.' }, { status: 401 })
   const permissions = await checkTournamentPermissions(user.id, tournamentId)
   if (!permissions.hasPermission) return NextResponse.json({ error: 'Sin permisos para gestionar este torneo.' }, { status: 403 })
-  return { actorId: user.id, service: await createClientServiceRole() }
+  return { actorId: user.id, client, service: await createClientServiceRole() }
+}
+
+const createSubstitute = async (
+  auth: Exclude<Awaited<ReturnType<typeof authorize>>, NextResponse>,
+  tournamentId: string,
+  { coupleId, playerData }: Extract<z.infer<typeof mutationSchema>, { action: 'create-player' }>,
+) => {
+  const [tournament, inscription] = await Promise.all([
+    auth.service.from('tournaments').select('type, status').eq('id', tournamentId).maybeSingle(),
+    auth.service.from('inscriptions').select('couple:couples!inner(player1_id, player2_id)')
+      .eq('tournament_id', tournamentId).eq('couple_id', coupleId).eq('occupies_slot', true).limit(1).maybeSingle(),
+  ])
+  if (tournament.error) return databaseError(tournament.error)
+  if (inscription.error) return databaseError(inscription.error)
+  if (tournament.data?.type !== 'LONG' || closedStatuses.has(tournament.data.status)) {
+    return NextResponse.json({ error: 'El torneo no admite cambios de suplencia.' }, { status: 400 })
+  }
+  const couple = Array.isArray(inscription.data?.couple) ? inscription.data.couple[0] : inscription.data?.couple
+  if (!couple?.player1_id || !couple.player2_id) {
+    return NextResponse.json({ error: 'Elegí una pareja inscripta en este torneo.' }, { status: 400 })
+  }
+
+  try {
+    const { success, player, matchedBy, message } = await createPlayerForCoupleService(auth.client, { tournamentId, playerData }, auth.service)
+    if (!success) return NextResponse.json({ error: message }, { status: 400 })
+    if (!player) throw new Error('El alta no devolvió un jugador.')
+    if (player.id === couple.player1_id || player.id === couple.player2_id) {
+      return NextResponse.json({ error: 'Los datos coinciden con un titular de esta pareja. Elegí otro jugador.' }, { status: 409 })
+    }
+    const { id, first_name, last_name, dni, score, category_name } = player
+    return NextResponse.json({ player: { id, first_name, last_name, dni, score, category_name }, matchedBy }, {
+      headers: { 'Cache-Control': 'private, no-store' },
+    })
+  } catch (error) {
+    console.error('[substitute player creation]', error)
+    return NextResponse.json({ error: 'No se pudo crear o recuperar al jugador.' }, { status: 500 })
+  }
 }
 
 const databaseError = (error: { code?: string; message: string }) => {
@@ -44,10 +89,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!id.nullable().safeParse(matchId).success || !id.nullable().safeParse(coupleId).success) {
     return NextResponse.json({ error: 'Partido o pareja inválidos.' }, { status: 400 })
   }
-  const { data, error } = await auth.service.rpc('get_long_substitution_editor', {
-    ...args, p_match_id: matchId, p_couple_id: coupleId,
-  })
-  return error ? databaseError(error) : NextResponse.json({ data })
+  const [editor, tournament] = await Promise.all([
+    auth.service.rpc('get_long_substitution_editor', { ...args, p_match_id: matchId, p_couple_id: coupleId }),
+    auth.service.from('tournaments').select('gender').eq('id', tournamentId).single(),
+  ])
+  if (editor.error) return databaseError(editor.error)
+  if (tournament.error) return databaseError(tournament.error)
+  return NextResponse.json({ data: { ...editor.data, tournamentGender: tournament.data?.gender } })
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -57,6 +105,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const parsed = mutationSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Completá los datos de la suplencia.' }, { status: 400 })
   const body = parsed.data
+  if (body.action === 'create-player') return createSubstitute(auth, tournamentId, body)
   const save = body.action === 'save' ? body : null
   if (save) {
     const [tournament, couple] = await Promise.all([

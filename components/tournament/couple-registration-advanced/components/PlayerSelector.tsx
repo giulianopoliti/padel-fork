@@ -9,7 +9,7 @@ import { UserPlus, Search, X, User } from 'lucide-react'
 import PlayerDniDisplay from '@/components/players/player-dni-display'
 
 import { PlayerSelection, PlayerInfo, NewPlayerData, PlayerSelectionType } from '../types'
-import NewPlayerForm from './NewPlayerForm'
+import NewPlayerForm, { type ResolveNewPlayer } from './NewPlayerForm'
 import PlayerSearchForm from './PlayerSearchForm'
 
 interface PlayerSelectorProps {
@@ -22,6 +22,7 @@ interface PlayerSelectorProps {
   userPlayerId?: string | null
   tournamentGender?: string
   tournamentId?: string
+  substitute?: { excludePlayerIds: string[]; resolveNewPlayer: ResolveNewPlayer }
 }
 
 export default function PlayerSelector({
@@ -33,17 +34,13 @@ export default function PlayerSelector({
   isClubMode,
   userPlayerId,
   tournamentGender,
-  tournamentId
+  tournamentId,
+  substitute,
 }: PlayerSelectorProps) {
   const [activeTab, setActiveTab] = useState<'search' | 'new'>('search')
 
   const handleNewPlayerSubmit = (data: NewPlayerData) => {
-    // 🆕 Si viene con flag isExisting, es un jugador existente seleccionado desde el modal
-    if ((data as any).isExisting) {
-      onUpdateSelection(playerNumber, 'existing', data as any)
-    } else {
-      onUpdateSelection(playerNumber, 'new', data)
-    }
+    onUpdateSelection(playerNumber, 'new', data)
   }
 
   const handleExistingPlayerSelect = (player: PlayerInfo) => {
@@ -68,9 +65,9 @@ export default function PlayerSelector({
               <h4 className="font-medium text-green-900">
                 {player.first_name} {player.last_name}
               </h4>
-              <div className="text-sm text-green-700">
+              {(!substitute || player.dni !== undefined) && <div className="text-sm text-green-700">
                 <PlayerDniDisplay dni={player.dni} />
-              </div>
+              </div>}
               {player.score && (
                 <Badge variant="outline" className="text-xs border-green-300 text-green-700">
                   Score: {player.score}
@@ -78,7 +75,7 @@ export default function PlayerSelector({
               )}
             </div>
           </div>
-          <Button 
+          <Button type="button" aria-label="Cambiar jugador"
             variant="ghost" 
             size="sm" 
             onClick={handleClear}
@@ -110,7 +107,7 @@ export default function PlayerSelector({
               </Badge>
             </div>
           </div>
-          <Button 
+          <Button type="button" aria-label="Cambiar jugador"
             variant="ghost" 
             size="sm" 
             onClick={handleClear}
@@ -129,13 +126,13 @@ export default function PlayerSelector({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className={substitute ? 'p-3 pb-2' : undefined}>
+        <CardTitle className={substitute ? 'flex items-center gap-2 text-base' : 'flex items-center gap-2'}>
           <User className="h-5 w-5" />
-          Jugador {playerNumber}
+          {substitute ? 'Suplente' : `Jugador ${playerNumber}`}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className={substitute ? 'p-3 pt-0' : undefined}>
         {selectedPlayer ? (
           selectedPlayer
         ) : (
@@ -143,11 +140,11 @@ export default function PlayerSelector({
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="search" className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
-                Buscar Existente
+                {substitute ? 'Buscar jugador' : 'Buscar Existente'}
               </TabsTrigger>
               <TabsTrigger value="new" className="flex items-center gap-2">
                 <UserPlus className="h-4 w-4" />
-                Crear Nuevo
+                {substitute ? 'Crear jugador' : 'Crear Nuevo'}
               </TabsTrigger>
             </TabsList>
 
@@ -157,15 +154,18 @@ export default function PlayerSelector({
                 onPlayerSelect={handleExistingPlayerSelect}
                 isClubMode={isClubMode}
                 userPlayerId={userPlayerId}
-                playerNumber={playerNumber}
+                playerNumber={substitute ? undefined : playerNumber}
                 tournamentId={tournamentId}
+                excludePlayerIds={substitute?.excludePlayerIds}
               />
             </TabsContent>
 
             <TabsContent value="new" className="mt-4">
               <NewPlayerForm
                 onSubmit={handleNewPlayerSubmit}
-                playerNumber={playerNumber}
+                onExistingPlayerSelect={handleExistingPlayerSelect}
+                resolveNewPlayer={substitute?.resolveNewPlayer}
+                playerNumber={substitute ? undefined : playerNumber}
                 tournamentGender={tournamentGender}
               />
             </TabsContent>

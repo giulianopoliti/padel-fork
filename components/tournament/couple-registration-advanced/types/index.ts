@@ -5,6 +5,7 @@ export interface PlayerInfo {
   score?: number | null
   dni?: string | null
   phone?: string | null
+  user_id?: string | null
 }
 
 export interface NewPlayerData {
