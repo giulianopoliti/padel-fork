@@ -95,9 +95,12 @@ select pg_temp.assert_true((select player2_id from long_substitution_private.mat
   = 'ab100000-0000-4000-8000-000000000004', 'first set freezes the effective players');
 select pg_temp.assert_true((select player2_id from public.couples where id='ab300000-0000-4000-8000-000000000001')
   = 'ab100000-0000-4000-8000-000000000002','the registered couple retains its original player IDs');
-select pg_temp.assert_true(tournament_points_private.context('ab400000-0000-4000-8000-000000000001')->'snapshots'
+set local role service_role;
+select pg_temp.assert_true(public.get_tournament_points_context_with_lineups('ab400000-0000-4000-8000-000000000001',
+  'ab000000-0000-4000-8000-000000000001')->'context'->'snapshots'
   @> '[{"player_id":"ab100000-0000-4000-8000-000000000004","score":1200,"basis":"SUBSTITUTION"}]',
   'points context includes the effective substitute and her captured rating');
+reset role;
 
 update public.matches set status='IN_PROGRESS' where id='ab600000-0000-4000-8000-000000000002';
 set local role service_role;
@@ -118,13 +121,13 @@ set local role service_role;
 do $$
 declare tournament uuid := 'ab400000-0000-4000-8000-000000000001';
   actor uuid := 'ab000000-0000-4000-8000-000000000001';
-  source jsonb := public.get_tournament_points_context(tournament, actor);
+  source jsonb := public.get_tournament_points_context_with_lineups(tournament, actor);
   rows jsonb;
 begin
   select jsonb_agg(jsonb_build_object('playerId', p->>'id', 'pointsBefore', p->'score', 'pointsAfter', p->'score',
     'categoryBefore', p->'category_name', 'categoryAfter', p->'category_name', 'matchPoints', 0, 'bonus', 0, 'pointsEarned', 0))
   into rows from jsonb_array_elements(source->'context'->'players') p;
-  perform public.commit_tournament_points(tournament, actor, source->>'fingerprint', jsonb_build_object('review',
+  perform public.commit_tournament_points_with_lineups(tournament, actor, source->>'fingerprint', jsonb_build_object('review',
     jsonb_build_object('rulesVersion','manual-categories-v1','tournamentId',tournament,'fingerprint',source->>'fingerprint',
       'state','PREVIEW','playerScores',rows),'matchPoints','[]'::jsonb));
 end $$;

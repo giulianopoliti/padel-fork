@@ -24,8 +24,8 @@ describe('Points preview and atomic confirmation API', () => {
     jest.mocked(checkTournamentPermissions).mockResolvedValue({ hasPermission: true })
     jest.mocked(createClientServiceRole).mockResolvedValue({ rpc } as never)
     rpc.mockImplementation(async (name: string, args: { p_calculation?: { review: unknown } }) => {
-      if (name === 'get_tournament_points_context') return { data: source, error: null }
-      if (name === 'commit_tournament_points') return { data: { review: { ...(args.p_calculation?.review as object), state: 'APPLIED' }, alreadyApplied: false }, error: null }
+      if (name === 'get_tournament_points_context_with_lineups') return { data: source, error: null }
+      if (name === 'commit_tournament_points_with_lineups') return { data: { review: { ...(args.p_calculation?.review as object), state: 'APPLIED' }, alreadyApplied: false }, error: null }
       throw new Error(`Unexpected RPC ${name}`)
     })
   })
@@ -34,7 +34,7 @@ describe('Points preview and atomic confirmation API', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toContain('no-store')
     expect((await response.json()).scoreBasis).toBe('CURRENT')
-    expect(rpc.mock.calls.map(call => call[0])).toEqual(['get_tournament_points_context'])
+    expect(rpc.mock.calls.map(call => call[0])).toEqual(['get_tournament_points_context_with_lineups'])
   })
   it('requires authentication and tournament permission before privileged reads', async () => {
     getUser.mockResolvedValueOnce({ data: { user: null } })
@@ -51,17 +51,17 @@ describe('Points preview and atomic confirmation API', () => {
   it('requires explicit acknowledgement for missing historical snapshots', async () => {
     const response = await POST(request({ fingerprint: 'a'.repeat(32), categoryChanges: [], acceptCurrentScoreBasis: false }), context)
     expect(response.status).toBe(400)
-    expect(rpc.mock.calls.some(call => call[0] === 'commit_tournament_points')).toBe(false)
+    expect(rpc.mock.calls.some(call => call[0] === 'commit_tournament_points_with_lineups')).toBe(false)
   })
   it('rejects changed data before applying any points', async () => {
     source.fingerprint = 'b'.repeat(32)
     expect((await POST(request(), context)).status).toBe(409)
-    expect(rpc.mock.calls.some(call => call[0] === 'commit_tournament_points')).toBe(false)
+    expect(rpc.mock.calls.some(call => call[0] === 'commit_tournament_points_with_lineups')).toBe(false)
   })
   it('sends server-calculated values and the authenticated actor in one transaction', async () => {
     const response = await POST(request(), context)
     expect(response.status).toBe(200)
-    const call = rpc.mock.calls.find(row => row[0] === 'commit_tournament_points')![1]
+    const call = rpc.mock.calls.find(row => row[0] === 'commit_tournament_points_with_lineups')![1]
     expect(call.p_actor_id).toBe('owner')
     expect(call.p_calculation.review.playerScores[0]).toMatchObject({ pointsAfter: 932, categoryAfter: '7ma' })
     expect((await response.json()).review.state).toBe('APPLIED')
@@ -70,10 +70,10 @@ describe('Points preview and atomic confirmation API', () => {
     source.settlement = { ...buildPointsReview(source).review, state: 'APPLIED' }
     const response = await POST(request(), context)
     expect((await response.json()).alreadyApplied).toBe(true)
-    expect(rpc.mock.calls.some(call => call[0] === 'commit_tournament_points')).toBe(false)
+    expect(rpc.mock.calls.some(call => call[0] === 'commit_tournament_points_with_lineups')).toBe(false)
   })
   it('surfaces a conflict from the locked transaction', async () => {
-    rpc.mockImplementation(async (name: string) => name === 'get_tournament_points_context' ? { data: source } : { error: { code: '40001', message: 'changed' } })
+    rpc.mockImplementation(async (name: string) => name === 'get_tournament_points_context_with_lineups' ? { data: source } : { error: { code: '40001', message: 'changed' } })
     expect((await POST(request(), context)).status).toBe(409)
   })
   it('fails closed with a visible message when the migration has not been enabled', async () => {

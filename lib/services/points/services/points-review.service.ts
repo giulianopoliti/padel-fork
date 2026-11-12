@@ -23,7 +23,7 @@ export const throwPointsDatabaseError = (error: { code?: string; message: string
 }
 
 export const loadPointsReview = async (service: SupabaseClient, tournamentId: string, actorId: string): Promise<PointsSettlementInput> => {
-  const { data, error } = await service.rpc('get_tournament_points_context', { p_tournament_id: tournamentId, p_actor_id: actorId })
+  const { data, error } = await service.rpc('get_tournament_points_context_with_lineups', { p_tournament_id: tournamentId, p_actor_id: actorId })
   if (error) throwPointsDatabaseError(error)
   if (!data) throw new PointsReviewError('No se pudo cargar la revisión de puntos.', 500)
   return buildPointsReview(data as PointsContextResponse)
@@ -40,7 +40,7 @@ export const confirmPointsReview = async (
     throw new PointsReviewError('Confirmá el uso de los puntajes actuales para los jugadores sin captura inicial.', 400)
   }
   const calculation = applyManualCategoryDecisions(input, body.categoryChanges)
-  const { data, error } = await service.rpc('commit_tournament_points', {
+  const { data, error } = await service.rpc('commit_tournament_points_with_lineups', {
     p_tournament_id: tournamentId, p_actor_id: actorId, p_fingerprint: body.fingerprint, p_calculation: calculation,
   })
   if (error) throwPointsDatabaseError(error)

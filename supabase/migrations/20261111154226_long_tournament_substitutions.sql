@@ -392,8 +392,9 @@ revoke all on function public.get_long_substitution_editor(uuid,uuid,uuid,uuid),
 grant execute on function public.get_long_substitution_editor(uuid,uuid,uuid,uuid), public.list_long_substitution_rules(uuid,uuid),
   public.manage_long_substitution(uuid,uuid,uuid,uuid,integer,uuid,text,uuid,boolean) to service_role;
 
--- Points review and confirmation use the same frozen lineups and fingerprint.
-create or replace function tournament_points_private.context(p_id uuid) returns jsonb
+-- Points review and confirmation share one snapshot of the frozen lineups.
+-- These functions may be installed by a role different from the original points owner.
+create function long_substitution_private.points_context(p_id uuid) returns jsonb
 language sql volatile security invoker set search_path = '' as $$
   with registrations as (
     select id,player_id,couple_id,is_pending from public.inscriptions where tournament_id=p_id
@@ -449,7 +450,17 @@ language sql volatile security invoker set search_path = '' as $$
   )
 $$;
 
-create or replace function public.commit_tournament_points(p_tournament_id uuid,p_actor_id uuid,p_fingerprint text,p_calculation jsonb) returns jsonb
+create function public.get_tournament_points_context_with_lineups(p_tournament_id uuid,p_actor_id uuid) returns jsonb
+language plpgsql security invoker set search_path = '' as $$
+declare source jsonb; saved jsonb;
+begin
+  perform tournament_points_private.assert_actor(p_tournament_id,p_actor_id);
+  source:=long_substitution_private.points_context(p_tournament_id);
+  select summary into saved from public.tournament_points_settlements where tournament_id=p_tournament_id;
+  return jsonb_build_object('context',source,'fingerprint',md5(source::text),'settlement',saved);
+end $$;
+
+create function public.commit_tournament_points_with_lineups(p_tournament_id uuid,p_actor_id uuid,p_fingerprint text,p_calculation jsonb) returns jsonb
 language plpgsql security invoker set search_path = '' as $$
 declare t public.tournaments%rowtype; source jsonb; saved jsonb; review jsonb; row_data jsonb;
   p public.players%rowtype; target_category text; expected_ids uuid[]; submitted_ids uuid[]; changed integer;
@@ -471,12 +482,12 @@ begin
     union select couple1_id from public.matches where tournament_id=p_tournament_id
     union select couple2_id from public.matches where tournament_id=p_tournament_id
   ) order by c.id for share;
-  source:=tournament_points_private.context(p_tournament_id);
+  source:=long_substitution_private.points_context(p_tournament_id);
   perform 1 from public.players where id in (select (value->>'id')::uuid from jsonb_array_elements(source->'players')) order by id for update;
   perform 1 from public.categories order by name for share;
   perform 1 from public.ranking_snapshots where tournament_id=p_tournament_id order by id for share;
   perform 1 from public.tournament_couple_disqualifications where tournament_id=p_tournament_id order by id for share;
-  source:=tournament_points_private.context(p_tournament_id);
+  source:=long_substitution_private.points_context(p_tournament_id);
   if md5(source::text) is distinct from p_fingerprint then
     raise exception 'Los datos cambiaron. Actualizá la revisión de puntos.' using errcode='40001'; end if;
   if exists(select 1 from public.matches where tournament_id=p_tournament_id and bracket_is_active and (status::text<>'FINISHED' or winner_id is null)) then
@@ -538,3 +549,10 @@ begin
   update public.tournaments set status='FINISHED_POINTS_CALCULATED',status_sort_value=null where id=p_tournament_id;
   return jsonb_build_object('review',saved,'alreadyApplied',false);
 end $$;
+
+revoke all on function long_substitution_private.points_context(uuid),
+  public.get_tournament_points_context_with_lineups(uuid,uuid),
+  public.commit_tournament_points_with_lineups(uuid,uuid,text,jsonb) from public, anon, authenticated;
+grant execute on function long_substitution_private.points_context(uuid),
+  public.get_tournament_points_context_with_lineups(uuid,uuid),
+  public.commit_tournament_points_with_lineups(uuid,uuid,text,jsonb) to service_role;
