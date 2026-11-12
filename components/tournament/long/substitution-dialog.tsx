@@ -16,7 +16,7 @@ type MatchOption = { id: string; coupleIds: (string | null)[]; label: string; fe
   couple1Name: string; couple2Name: string; players?: Record<string, [string, string]> }
 type Editor = { couples: Couple[]; substitutions: Rule[]; matches: MatchOption[] }
 
-export type SubstitutionSummary = { id: string; couple_id: string; player_name: string; replaced_name: string; scope: Scope; label: string }
+export type SubstitutionSummary = { id: string; couple_id: string; slot: 1 | 2; player_name: string; replaced_name: string; scope: Scope; label: string }
 
 const readResponse = async <T,>(response: Response): Promise<T> => {
   const payload = await response.json()
@@ -29,23 +29,27 @@ const getData = async <T,>(url: string) => (await readResponse<{ data: T }>(awai
 export const useSubstitutionSummaries = (tournamentId: string | undefined) =>
   useSWR(tournamentId ? `/api/tournaments/${tournamentId}/substitutions` : null, getData<SubstitutionSummary[]>)
 
-export const substitutionScopeLabel = (scope: Scope, label: string) => `${scope === 'ONLY_MATCH' ? 'Solo' : 'Desde'} ${label}`
+export const substitutionScopeLabel = (scope: Scope, label: string) => {
+  if (scope === 'ONLY_MATCH') return `Solo ${label}`
+  return label === 'Primer partido' ? 'Desde el primer partido' : `Desde ${label}`
+}
 
 interface SubstitutionDialogProps {
   tournamentId: string
   coupleId?: string
+  playerSlot?: 1 | 2
   matchId?: string
   onClose: () => void
   onSaved?: () => void
 }
 
-export const SubstitutionDialog = ({ tournamentId, coupleId, matchId, onClose, onSaved }: SubstitutionDialogProps) => {
+export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId, onClose, onSaved }: SubstitutionDialogProps) => {
   const url = `/api/tournaments/${tournamentId}/substitutions`
   const editorUrl = `${url}?${matchId ? `matchId=${matchId}` : `coupleId=${coupleId}`}`
   const { data, error, isLoading, mutate } = useSWR(editorUrl, getData<Editor>)
   const { mutate: refreshCache } = useSWRConfig()
   const [selectedCouple, setSelectedCouple] = useState(coupleId ?? '')
-  const [slot, setSlot] = useState<1 | 2>()
+  const [selectedSlot, setSelectedSlot] = useState<1 | 2>()
   const [scope, setScope] = useState<Scope>(matchId ? 'ONLY_MATCH' : 'FROM_MATCH')
   const [anchor, setAnchor] = useState(matchId ?? '')
   const [editing, setEditing] = useState<Rule | null>(null)
@@ -57,8 +61,11 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, matchId, onClose, o
   const [message, setMessage] = useState<string>()
   const activeCoupleId = selectedCouple || (data?.couples.length === 1 ? data.couples[0].id : '')
   const couple = data?.couples.find(item => item.id === activeCoupleId)
+  const slot = playerSlot ?? selectedSlot
+  const playerName = playerSlot === 1 ? couple?.player1.name : playerSlot === 2 ? couple?.player2.name : undefined
   const matches = data?.matches.filter(item => item.coupleIds.includes(activeCoupleId)) ?? []
-  const rules = data?.substitutions.filter(rule => rule.coupleId === activeCoupleId && (!matchId || rule.matchId === matchId)) ?? []
+  const rules = data?.substitutions.filter(rule => rule.coupleId === activeCoupleId
+    && (!matchId || rule.matchId === matchId) && (!playerSlot || rule.slot === playerSlot)) ?? []
   const currentMatch = matches.find(item => item.id === (matchId ?? anchor))
   const currentPlayers = editing ? undefined : currentMatch?.players?.[activeCoupleId]
   const orderConfirmation = scope === 'FROM_MATCH' && currentMatch?.fechaNumber != null
@@ -79,7 +86,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, matchId, onClose, o
   const handleReset = () => {
     setEditing(null)
     setConfirmedOrder('')
-    setSlot(undefined)
+    setSelectedSlot(undefined)
     setPlayer(null)
     setScope(matchId ? 'ONLY_MATCH' : 'FROM_MATCH')
     setAnchor(matchId ?? '')
@@ -91,7 +98,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, matchId, onClose, o
   const handleEdit = (rule: Rule) => {
     handleReset()
     setEditing(rule)
-    setSlot(rule.slot)
+    setSelectedSlot(rule.slot)
     setScope(rule.scope)
     setAnchor(rule.matchId ?? (rule.scope === 'FROM_MATCH' ? 'first' : ''))
     setPlayer(rule.player)
@@ -139,7 +146,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, matchId, onClose, o
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Suplencias</DialogTitle>
-          <DialogDescription>Elegí quién entra y en qué partidos juega.</DialogDescription>
+          <DialogDescription>{playerName ? `Elegí quién reemplaza a ${playerName} y desde cuándo.` : 'Elegí quién entra y en qué partidos juega.'}</DialogDescription>
         </DialogHeader>
 
         {isLoading && <p role="status" className="text-sm text-muted-foreground">Cargando suplencias…</p>}
@@ -155,7 +162,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, matchId, onClose, o
 
         {couple && rules.length > 0 && <ul aria-label="Suplencias asignadas" className="divide-y rounded-md border px-3">
           {rules.map(rule => <li key={rule.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-            <div><p className="font-medium">{rule.player.name} · puesto de {rule.slot === 1 ? couple.player1.name : couple.player2.name}</p>
+            <div><p className="font-medium">{rule.player.name}{!playerSlot && ` · puesto de ${rule.slot === 1 ? couple.player1.name : couple.player2.name}`}</p>
               <p className="text-xs text-muted-foreground">{substitutionScopeLabel(rule.scope, rule.label)}</p></div>
             {rule.editable && <div className="flex gap-1">
               <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => handleEdit(rule)}>Editar</Button>
@@ -166,14 +173,14 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, matchId, onClose, o
 
         {!canEditMatch && couple && <p className="text-sm text-muted-foreground">Este partido ya no admite cambios de alineación.</p>}
         {showForm && couple && <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
+          <div className={playerSlot ? 'space-y-3' : 'grid gap-3 sm:grid-cols-2'}>
+            {!playerSlot && <div className="space-y-1.5">
               <Label htmlFor="substitution-slot">Puesto a cubrir</Label>
-              <Select value={slot?.toString() ?? ''} onValueChange={value => setSlot(value === '1' ? 1 : 2)} disabled={busy}>
+              <Select value={slot?.toString() ?? ''} onValueChange={value => setSelectedSlot(value === '1' ? 1 : 2)} disabled={busy}>
                 <SelectTrigger id="substitution-slot"><SelectValue placeholder="Elegí un puesto" /></SelectTrigger>
                 <SelectContent><SelectItem value="1">{currentPlayers?.[0] || couple.player1.name}</SelectItem><SelectItem value="2">{currentPlayers?.[1] || couple.player2.name}</SelectItem></SelectContent>
               </Select>
-            </div>
+            </div>}
             <div className="space-y-1.5">
               <Label htmlFor="substitution-scope">Alcance</Label>
               <Select value={scope} onValueChange={value => { setScope(value as Scope); if (value === 'ONLY_MATCH' && anchor === 'first') setAnchor('') }} disabled={busy}>
@@ -182,6 +189,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, matchId, onClose, o
               </Select>
             </div>
           </div>
+          {scope === 'FROM_MATCH' && <p className="text-xs text-muted-foreground">Incluye los partidos posteriores que se creen para esta pareja.</p>}
           {!matchId && <div className="space-y-1.5">
             <Label htmlFor="substitution-match">Partido</Label>
             <Select value={anchor} onValueChange={setAnchor} disabled={busy}>

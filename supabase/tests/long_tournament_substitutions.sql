@@ -61,6 +61,13 @@ insert into public.matches(id, tournament_id, couple1_id, couple2_id, status, ro
    'ab300000-0000-4000-8000-000000000002','PENDING','SEMIFINAL','ELIMINATION','SILVER'),
   ('ab600000-0000-4000-8000-000000000004','ab400000-0000-4000-8000-000000000001','ab300000-0000-4000-8000-000000000001',
    'ab300000-0000-4000-8000-000000000002','DRAFT','FINAL','ELIMINATION','SILVER');
+insert into public.tournament_fechas(id, tournament_id, fecha_number, name, created_at) values
+  ('ab500000-0000-4000-8000-000000000003','ab400000-0000-4000-8000-000000000001',3,'Fecha 3','2026-01-03');
+insert into public.matches(id, tournament_id, couple1_id, couple2_id, status, round, type) values
+  ('ab600000-0000-4000-8000-000000000005','ab400000-0000-4000-8000-000000000001','ab300000-0000-4000-8000-000000000001',
+   'ab300000-0000-4000-8000-000000000002','DRAFT','ZONE','ZONE');
+insert into public.fecha_matches(match_id, fecha_id) values
+  ('ab600000-0000-4000-8000-000000000005','ab500000-0000-4000-8000-000000000003');
 
 set local role service_role;
 select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',null,
@@ -75,6 +82,8 @@ select pg_temp.assert_true((select player->>'first_name' from public.get_long_ma
   'the one-match substitution overrides the permanent rule');
 select pg_temp.assert_true((select player->>'first_name' from public.get_long_match_lineups(array['ab600000-0000-4000-8000-000000000004'::uuid])) = 'Carla',
   'the permanent substitute returns for a newly generated final');
+select pg_temp.assert_true((select player->>'first_name' from public.get_long_match_lineups(array['ab600000-0000-4000-8000-000000000005'::uuid])) = 'Carla',
+  'a group match created and assigned to a later fecha inherits the permanent substitute');
 
 set local role anon;
 select pg_temp.assert_true(not exists(select 1 from public.get_long_match_lineups(array['ab600000-0000-4000-8000-000000000004'::uuid])),
