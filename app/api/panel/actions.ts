@@ -8,6 +8,7 @@ import { getTournamentCategoryDisplay } from '@/lib/services/tournament-category
 import { buildTournamentCapacitySummary } from '@/lib/services/tournament-capacity.service'
 import { buildGoogleMapsSearchUrl } from '@/lib/maps/google-maps'
 import { applyLongMatchLineup, getLongMatchLineupChanges, getMyLongSubstituteMatches } from '@/lib/services/long-match-lineups'
+import { getMyLongFechaSubstitutions } from '@/lib/services/long-fecha-substitutions'
 import {
   resolvePlayerPanelAgenda,
   type PlayerPanelAgendaState,
@@ -37,6 +38,8 @@ export type PlayerNextMatch = {
   status: 'PENDING' | 'IN_PROGRESS'
   is_substitute?: boolean
   fecha_name?: string
+  fecha_id?: string
+  availability_href?: string
 }
 
 export type PlayerTournamentAgenda = {
@@ -221,6 +224,7 @@ interface ClubRelation {
 }
 
 interface MatchScheduleRelation {
+  fecha_id: string | null
   scheduled_date: string | null
   scheduled_start_time: string | null
   court_assignment: string | null
@@ -299,7 +303,7 @@ const loadPlayerMatches = async (
         id, name, type, status, is_draft,
         tournament_club:clubes!club_id(name, address, formatted_address, google_place_id, latitude, longitude, maps_url)
       ),
-      fecha_matches(scheduled_date, scheduled_start_time, court_assignment, tournament_fechas(name)),
+      fecha_matches(fecha_id, scheduled_date, scheduled_start_time, court_assignment, tournament_fechas(name)),
       couple1:couples!couple1_id(
         id, player1_id, player2_id,
         player1:players!couples_player1_id_fkey(id, first_name, last_name, profile_image_url),
@@ -406,7 +410,8 @@ const loadPlayerMatches = async (
         court: schedule?.court_assignment || undefined,
       },
       status: match.status,
-      ...(substituteCoupleId && { is_substitute: true, fecha_name: getRelation(schedule?.tournament_fechas)?.name || undefined }),
+      ...(substituteCoupleId && { is_substitute: true, fecha_id: schedule?.fecha_id || undefined,
+        fecha_name: getRelation(schedule?.tournament_fechas)?.name || undefined }),
     }
   }).filter((match): match is PlayerNextMatch => Boolean(match))
 }
@@ -424,9 +429,21 @@ export async function getPlayerNextMatch(playerId: string): Promise<PlayerNextMa
       getMyLongSubstituteMatches(supabase),
     ])
     const matches = await loadPlayerMatches(supabase, playerId, couples, undefined, substituteMatches)
+    const visibleMatches = getVisibleNextMatches(matches)
+    const tournamentIds = [...new Set(visibleMatches.filter(match => match.is_substitute && match.fecha_id && !match.scheduled_info.time)
+      .map(match => match.tournament_id))]
+    await Promise.all(tournamentIds.map(async tournamentId => {
+      const assignments = await getMyLongFechaSubstitutions(supabase, tournamentId)
+      for (const match of visibleMatches) {
+        if (match.tournament_id !== tournamentId || !match.fecha_id || match.scheduled_info.time || !match.is_substitute) continue
+        if (assignments.some(item => item.fecha_id === match.fecha_id && item.couple_id === match.couple_id && item.is_substitute && item.can_vote)) {
+          match.availability_href = `/tournaments/${tournamentId}/schedules?${new URLSearchParams({ fecha_id: match.fecha_id, couple_id: match.couple_id })}`
+        }
+      }
+    }))
 
     return {
-      nextMatches: getVisibleNextMatches(matches),
+      nextMatches: visibleMatches,
     }
   } catch (error) {
     console.error('Error fetching player matches:', error)

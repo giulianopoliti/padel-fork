@@ -49,7 +49,7 @@ export const createColumns = (
         accessorKey: 'couples',
         header: 'Parejas',
         size: 180,
-        cell: ({ row }) => <CouplesDisplay match={row.original} />
+        cell: ({ row }) => <CouplesDisplay match={row.original} onSubstitutionSaved={onMatchResultSaved} />
       },
       {
         accessorKey: 'schedule',
@@ -90,7 +90,7 @@ export const createColumns = (
       accessorKey: 'couples',
       header: 'Parejas',
       size: 300,
-      cell: ({ row }) => <CouplesDisplay match={row.original} />
+      cell: ({ row }) => <CouplesDisplay match={row.original} onSubstitutionSaved={onMatchResultSaved} />
     },
     {
       accessorKey: 'schedule',

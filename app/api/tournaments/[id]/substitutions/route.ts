@@ -9,7 +9,8 @@ import { createPlayerForCoupleService } from '@/lib/services/players/create-play
 const id = z.string().uuid()
 const mutationSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('save'), ruleId: id.nullable(), coupleId: id, slot: z.union([z.literal(1), z.literal(2)]),
-    playerId: id, scope: z.enum(['ONLY_MATCH', 'FROM_MATCH']), matchId: id.nullable() }),
+    playerId: id, scope: z.enum(['ONLY_MATCH', 'FROM_MATCH', 'ONLY_FECHA', 'FROM_FECHA']),
+    matchId: id.nullable(), fechaId: id.nullable().optional() }),
   z.object({ action: z.literal('remove'), ruleId: id, coupleId: id }),
   z.object({ action: z.literal('create-player'), coupleId: id, playerData: z.object({
     first_name: z.string().trim().min(1).max(120), last_name: z.string().trim().min(1).max(120),
@@ -95,7 +96,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   ])
   if (editor.error) return databaseError(editor.error)
   if (tournament.error) return databaseError(tournament.error)
-  return NextResponse.json({ data: { ...editor.data, tournamentGender: tournament.data?.gender } })
+  return NextResponse.json({ data: { ...editor.data, tournamentGender: tournament.data?.gender } }, {
+    headers: { 'Cache-Control': 'private, no-store' },
+  })
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -127,10 +130,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: composition.error || category.error }, { status: 400 })
     }
   }
-  const { error } = await auth.service.rpc('manage_long_substitution', {
+  const { error } = await auth.service.rpc('manage_long_substitution_with_fecha', {
     p_tournament_id: tournamentId, p_actor_id: auth.actorId, p_rule_id: body.ruleId, p_couple_id: body.coupleId,
     p_slot: save?.slot ?? null, p_substitute_id: save?.playerId ?? null, p_scope: save?.scope ?? null,
-    p_match_id: save?.matchId ?? null, p_remove: body.action === 'remove',
+    p_match_id: save?.matchId ?? null, p_fecha_id: save?.fechaId ?? null, p_remove: body.action === 'remove',
   })
   if (error) return databaseError(error)
   revalidatePath(`/tournaments/${tournamentId}`, 'layout')

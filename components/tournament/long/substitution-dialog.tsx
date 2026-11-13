@@ -10,13 +10,17 @@ import PlayerSelector from '@/components/tournament/couple-registration-advanced
 import type { ResolveNewPlayer } from '@/components/tournament/couple-registration-advanced/components/NewPlayerForm'
 import type { PlayerInfo } from '@/components/tournament/couple-registration-advanced/types'
 
-type Scope = 'ONLY_MATCH' | 'FROM_MATCH'
+type Scope = 'ONLY_MATCH' | 'FROM_MATCH' | 'ONLY_FECHA' | 'FROM_FECHA'
+type Mode = 'fecha' | 'match'
+const isFechaScope = (scope: Scope) => scope === 'ONLY_FECHA' || scope === 'FROM_FECHA'
+export const isPermanentSubstitution = (scope: Scope) => scope === 'FROM_MATCH' || scope === 'FROM_FECHA'
 type Player = { id: string; name: string }
 type Couple = { id: string; player1: Player; player2: Player }
-type Rule = { id: string; coupleId: string; slot: 1 | 2; player: Player; scope: Scope; matchId: string | null; label: string; editable: boolean }
+type Rule = { id: string; coupleId: string; slot: 1 | 2; player: Player; scope: Scope; matchId: string | null; fechaId: string | null; label: string; editable: boolean }
 type MatchOption = { id: string; coupleIds: (string | null)[]; label: string; fechaNumber?: number | null;
-  couple1Name: string; couple2Name: string; players?: Record<string, [string, string]> }
-type Editor = { couples: Couple[]; substitutions: Rule[]; matches: MatchOption[]; tournamentGender?: string }
+  couple1Name: string; couple2Name: string; scheduledDate?: string | null; scheduledTime?: string | null }
+type FechaOption = { id: string; label: string; coupleIds: string[] }
+type Editor = { couples: Couple[]; substitutions: Rule[]; matches: MatchOption[]; fechas?: FechaOption[]; tournamentGender?: string }
 
 export type SubstitutionSummary = { id: string; couple_id: string; slot: 1 | 2; player_name: string; replaced_name: string; scope: Scope; label: string }
 
@@ -32,8 +36,9 @@ export const useSubstitutionSummaries = (tournamentId: string | undefined) =>
   useSWR(tournamentId ? `/api/tournaments/${tournamentId}/substitutions` : null, getData<SubstitutionSummary[]>)
 
 export const substitutionScopeLabel = (scope: Scope, label: string) => {
-  if (scope === 'ONLY_MATCH') return `Solo ${label}`
-  return label === 'Primer partido' ? 'Desde el primer partido' : `Desde ${label}`
+  if (scope === 'ONLY_MATCH') return `Un partido · ${label}`
+  if (scope === 'ONLY_FECHA') return `Solo ${label}`
+  return label === 'Primer partido' ? 'Desde el primer partido' : `Desde ${label} en adelante`
 }
 
 interface SubstitutionDialogProps {
@@ -41,19 +46,25 @@ interface SubstitutionDialogProps {
   coupleId?: string
   playerSlot?: 1 | 2
   matchId?: string
+  fechaId?: string
   onClose: () => void
   onSaved?: () => void
 }
 
-export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId, onClose, onSaved }: SubstitutionDialogProps) => {
+export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId, fechaId, onClose, onSaved }: SubstitutionDialogProps) => {
   const url = `/api/tournaments/${tournamentId}/substitutions`
-  const editorUrl = `${url}?${matchId ? `matchId=${matchId}` : `coupleId=${coupleId}`}`
-  const { data, error, isLoading, mutate } = useSWR(editorUrl, getData<Editor>)
+  const editorParams = new URLSearchParams()
+  if (matchId) editorParams.set('matchId', matchId)
+  if (coupleId) editorParams.set('coupleId', coupleId)
+  const editorUrl = `${url}?${editorParams}`
+  const { data, error, isLoading } = useSWR(editorUrl, getData<Editor>)
   const { mutate: refreshCache } = useSWRConfig()
   const [selectedCouple, setSelectedCouple] = useState(coupleId ?? '')
   const [selectedSlot, setSelectedSlot] = useState<1 | 2>()
-  const [scope, setScope] = useState<Scope>(matchId ? 'ONLY_MATCH' : 'FROM_MATCH')
-  const [anchor, setAnchor] = useState(matchId ?? '')
+  const initialMode: Mode = matchId ? 'match' : 'fecha'
+  const initialScope: Scope = matchId ? 'ONLY_MATCH' : 'ONLY_FECHA'
+  const [scope, setScope] = useState<Scope>(initialScope)
+  const [anchor, setAnchor] = useState(matchId ?? fechaId ?? '')
   const [editing, setEditing] = useState<Rule | null>(null)
   const [confirmedOrder, setConfirmedOrder] = useState('')
   const [player, setPlayer] = useState<PlayerInfo | null>(null)
@@ -64,10 +75,13 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
   const slot = playerSlot ?? selectedSlot
   const playerName = playerSlot === 1 ? couple?.player1.name : playerSlot === 2 ? couple?.player2.name : undefined
   const matches = data?.matches.filter(item => item.coupleIds.includes(activeCoupleId)) ?? []
+  const fechas = data?.fechas?.filter(item => item.coupleIds.includes(activeCoupleId)) ?? []
+  const mode: Mode = isFechaScope(scope) ? 'fecha' : 'match'
+  const fixedAnchor = matchId ?? fechaId
   const rules = data?.substitutions.filter(rule => rule.coupleId === activeCoupleId
-    && (!matchId || rule.matchId === matchId) && (!playerSlot || rule.slot === playerSlot)) ?? []
+    && (!matchId || rule.matchId === matchId) && (!fechaId || rule.fechaId === fechaId)
+    && isFechaScope(rule.scope) === (mode === 'fecha') && (!playerSlot || rule.slot === playerSlot)) ?? []
   const currentMatch = matches.find(item => item.id === (matchId ?? anchor))
-  const currentPlayers = editing ? undefined : currentMatch?.players?.[activeCoupleId]
   const orderConfirmation = scope === 'FROM_MATCH' && currentMatch?.fechaNumber != null
     && matches.some(item => item.id !== currentMatch.id && item.fechaNumber === currentMatch.fechaNumber)
       ? `${activeCoupleId}:${currentMatch.id}` : ''
@@ -90,8 +104,8 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
     setConfirmedOrder('')
     setSelectedSlot(undefined)
     setPlayer(null)
-    setScope(matchId ? 'ONLY_MATCH' : 'FROM_MATCH')
-    setAnchor(matchId ?? '')
+    setScope(mode === initialMode ? initialScope : 'ONLY_MATCH')
+    setAnchor(fixedAnchor ?? '')
     setMessage(undefined)
   }
 
@@ -100,7 +114,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
     setEditing(rule)
     setSelectedSlot(rule.slot)
     setScope(rule.scope)
-    setAnchor(rule.matchId ?? (rule.scope === 'FROM_MATCH' ? 'first' : ''))
+    setAnchor(rule.fechaId ?? rule.matchId ?? (rule.scope === 'FROM_MATCH' ? 'first' : ''))
     setPlayer({ id: rule.player.id, first_name: rule.player.name })
   }
 
@@ -111,13 +125,10 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
       await readResponse(await fetch(url, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       }))
-      void refreshCache(url)
+      void refreshCache(key => typeof key === 'string' && (key === url || key.startsWith(`${url}?`)))
       onSaved?.()
       if (close) onClose()
-      else {
-        handleReset()
-        void mutate()
-      }
+      else handleReset()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'No se pudo guardar la suplencia.')
     } finally {
@@ -128,24 +139,33 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
   const handleSubmit = () => {
     if (busy || !couple || !slot || !player || !canSave) return
     void save({ action: 'save', ruleId: editing?.id ?? null, coupleId: couple.id, slot, playerId: player.id,
-      scope, matchId: anchor === 'first' ? null : anchor }, true)
+      scope, matchId: mode === 'match' && anchor !== 'first' ? anchor : null,
+      fechaId: mode === 'fecha' ? anchor : null }, true)
   }
 
   const canEditMatch = !matchId || Boolean(currentMatch)
-  const showForm = Boolean(couple) && (canEditMatch || Boolean(editing))
+  const fixedFecha = fechas.find(item => item.id === fechaId)
+  const canEditFecha = !fechaId || Boolean(fixedFecha)
+  const showForm = Boolean(couple) && ((canEditMatch && canEditFecha) || Boolean(editing))
   const anchorIndex = matches.findIndex(item => item.id === anchor)
   const affectedMatches = anchor === 'first' ? matches : anchorIndex >= 0 ? matches.slice(anchorIndex) : []
   const matchName = (item: MatchOption) => {
     const opponent = (item.coupleIds[0] === activeCoupleId ? item.couple2Name : item.couple1Name).trim()
-    return `${item.label} · ${opponent === '/' ? 'Rival a definir' : `vs. ${opponent}`}`
+    const schedule = item.scheduledDate ? ` · ${item.scheduledDate.split('-').reverse().join('/')}` : ''
+    const time = item.scheduledTime ? ` ${item.scheduledTime.slice(0, 5)}` : ''
+    return `${item.label} · ${opponent === '/' ? 'Rival a definir' : `vs. ${opponent}`}${schedule}${time}`
+  }
+  const handleModeChange = (next: Mode) => {
+    handleReset()
+    setScope(next === 'fecha' ? 'ONLY_FECHA' : 'ONLY_MATCH')
   }
 
   return (
     <Dialog open onOpenChange={open => { if (!open && !busy) onClose() }}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Suplencias</DialogTitle>
-          <DialogDescription>{playerName ? `Elegí quién reemplaza a ${playerName} y desde cuándo.` : 'Elegí quién entra y en qué partidos juega.'}</DialogDescription>
+          <DialogTitle>{fechaId ? 'Suplencia para la fecha' : matchId ? 'Suplencia para el partido' : 'Suplencias'}</DialogTitle>
+          <DialogDescription>{playerName ? `Elegí quién reemplaza a ${playerName} y desde cuándo.` : 'Elegí a quién reemplazar y desde cuándo.'}</DialogDescription>
         </DialogHeader>
 
         {isLoading && <p role="status" className="text-sm text-muted-foreground">Cargando suplencias…</p>}
@@ -159,37 +179,68 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
           </Select>
         </div>}
 
+        {couple && !fixedAnchor && <div role="group" aria-label="Tipo de suplencia" className="grid grid-cols-2 gap-2">
+          <Button type="button" variant={mode === 'fecha' ? 'default' : 'outline'} aria-pressed={mode === 'fecha'} disabled={busy} onClick={() => handleModeChange('fecha')}>Fecha y horarios</Button>
+          <Button type="button" variant={mode === 'match' ? 'default' : 'outline'} aria-pressed={mode === 'match'} disabled={busy} onClick={() => handleModeChange('match')}>Partidos</Button>
+        </div>}
+        {couple && <p className="text-sm text-muted-foreground">{mode === 'fecha'
+          ? 'El suplente puede votar horarios y juega los cruces de la fecha que le corresponda. Si cambia la dupla, esa fecha queda pendiente de respuesta.'
+          : 'Elegí un cruce ya armado. La suplencia conserva el horario de ese partido.'}</p>}
+
         {couple && rules.length > 0 && <ul aria-label="Suplencias asignadas" className="divide-y rounded-md border px-3">
-          {rules.map(rule => <li key={rule.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-            <div><p className="font-medium">{rule.player.name}{!playerSlot && ` · puesto de ${rule.slot === 1 ? couple.player1.name : couple.player2.name}`}</p>
-              <p className="text-xs text-muted-foreground">{substitutionScopeLabel(rule.scope, rule.label)}</p></div>
-            {rule.editable && <div className="flex gap-1">
-              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => handleEdit(rule)}>Editar</Button>
-              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void save({ action: 'remove', ruleId: rule.id, coupleId: rule.coupleId }, false)}>Quitar</Button>
-            </div>}
-          </li>)}
+          {rules.map(rule => {
+            const anchorMatch = matches.find(item => item.id === rule.matchId)
+            return <li key={rule.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <div><p className="font-medium">{rule.player.name}{!playerSlot && ` · reemplaza a ${rule.slot === 1 ? couple.player1.name : couple.player2.name}`}</p>
+                <p className="text-xs text-muted-foreground">{substitutionScopeLabel(rule.scope, anchorMatch ? matchName(anchorMatch) : rule.label)}</p></div>
+              {rule.editable && <div className="flex gap-1">
+                <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => handleEdit(rule)}>Editar</Button>
+                <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void save({ action: 'remove', ruleId: rule.id, coupleId: rule.coupleId }, false)}>Quitar</Button>
+              </div>}
+            </li>
+          })}
         </ul>}
 
         {!canEditMatch && couple && <p className="text-sm text-muted-foreground">Este partido ya no admite cambios de alineación.</p>}
+        {!canEditFecha && couple && <p className="text-sm text-muted-foreground">Esta fecha no está disponible para la pareja.</p>}
         {showForm && couple && <div className="space-y-4">
           <div className={playerSlot ? 'space-y-3' : 'grid gap-3 sm:grid-cols-2'}>
             {!playerSlot && <div className="space-y-1.5">
-              <Label htmlFor="substitution-slot">Puesto a cubrir</Label>
+              <Label htmlFor="substitution-slot">Jugador a reemplazar</Label>
               <Select value={slot?.toString() ?? ''} onValueChange={value => setSelectedSlot(value === '1' ? 1 : 2)} disabled={busy}>
-                <SelectTrigger id="substitution-slot"><SelectValue placeholder="Elegí un puesto" /></SelectTrigger>
-                <SelectContent><SelectItem value="1">{currentPlayers?.[0] || couple.player1.name}</SelectItem><SelectItem value="2">{currentPlayers?.[1] || couple.player2.name}</SelectItem></SelectContent>
+                <SelectTrigger id="substitution-slot"><SelectValue placeholder="Elegí un jugador" /></SelectTrigger>
+                <SelectContent><SelectItem value="1">{couple.player1.name}</SelectItem><SelectItem value="2">{couple.player2.name}</SelectItem></SelectContent>
               </Select>
             </div>}
             <div className="space-y-1.5">
               <Label htmlFor="substitution-scope">Alcance</Label>
               <Select value={scope} onValueChange={value => { setScope(value as Scope); if (value === 'ONLY_MATCH' && anchor === 'first') setAnchor('') }} disabled={busy}>
                 <SelectTrigger id="substitution-scope"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="ONLY_MATCH">Solo un partido</SelectItem><SelectItem value="FROM_MATCH">Desde un partido en adelante</SelectItem></SelectContent>
+                <SelectContent>{mode === 'fecha' ? <>
+                  <SelectItem value="ONLY_FECHA">Solo esta fecha</SelectItem><SelectItem value="FROM_FECHA">Desde esta fecha en adelante</SelectItem>
+                </> : <>
+                  <SelectItem value="ONLY_MATCH">Solo este partido</SelectItem><SelectItem value="FROM_MATCH">Desde este partido en adelante</SelectItem>
+                </>}</SelectContent>
               </Select>
             </div>
           </div>
-          {scope === 'FROM_MATCH' && <p className="text-xs text-muted-foreground">Incluye los partidos posteriores que se creen para esta pareja.</p>}
-          {!matchId && <div className="space-y-1.5">
+          {scope === 'FROM_MATCH' && <p className="text-xs text-muted-foreground">{anchor === 'first'
+            ? 'Incluye todos los partidos de la pareja y permite votar en las fechas abiertas.'
+            : 'Incluye los partidos posteriores y habilita votar horarios desde la siguiente fecha.'}</p>}
+          {scope === 'FROM_FECHA' && <p className="text-xs text-muted-foreground">Incluye esta fecha y las siguientes, también si los partidos se crean más adelante.</p>}
+          {fixedAnchor && <p className="text-sm font-medium">{mode === 'fecha' ? fixedFecha?.label ?? editing?.label : currentMatch ? matchName(currentMatch) : editing?.label}</p>}
+          {!fixedAnchor && mode === 'fecha' && <div className="space-y-1.5">
+            <Label htmlFor="substitution-fecha">{scope === 'FROM_FECHA' ? 'Fecha de inicio' : 'Fecha'}</Label>
+            <Select value={anchor} onValueChange={setAnchor} disabled={busy}>
+              <SelectTrigger id="substitution-fecha"><SelectValue placeholder="Elegí una fecha" /></SelectTrigger>
+              <SelectContent>
+                {editing?.fechaId && !fechas.some(item => item.id === editing.fechaId) && <SelectItem value={editing.fechaId}>{editing.label}</SelectItem>}
+                {fechas.map(item => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {fechas.length === 0 && <p className="text-xs text-muted-foreground">Creá una fecha para asignar la suplencia y habilitar el voto.</p>}
+          </div>}
+          {!fixedAnchor && mode === 'match' && <div className="space-y-1.5">
             <Label htmlFor="substitution-match">Partido</Label>
             <Select value={anchor} onValueChange={setAnchor} disabled={busy}>
               <SelectTrigger id="substitution-match"><SelectValue placeholder="Elegí el partido" /></SelectTrigger>

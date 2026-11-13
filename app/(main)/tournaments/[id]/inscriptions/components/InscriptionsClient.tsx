@@ -48,6 +48,7 @@ interface CoupleInfo {
   player_1_info: PlayerInfo | null;
   player_2_info: PlayerInfo | null;
   is_pending?: boolean;
+  occupies_slot?: boolean | null;
   inscription_id?: string;
   payment_proof_status?: 'NOT_REQUIRED' | 'PENDING_REVIEW' | 'APPROVED';
   payment_proof_uploaded_at?: string | null;
@@ -87,6 +88,7 @@ interface InscriptionsClientProps {
   individualInscriptions: PlayerInfo[];
   allPlayers: PlayerInfo[];
   tournamentId: string;
+  canManageTournament: boolean;
 }
 
 
@@ -105,7 +107,8 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
   coupleInscriptions,
   individualInscriptions,
   allPlayers,
-  tournamentId
+  tournamentId,
+  canManageTournament,
 }) => {
 
   // ========================================
@@ -136,7 +139,7 @@ const InscriptionsClient: React.FC<InscriptionsClientProps> = ({
   const isLoggedIn = !!user;
 
   // Use centralized permissions as the single source of truth
-  const isOwner = hasManagementPermissions;
+  const isOwner = permissionsLoading ? canManageTournament : hasManagementPermissions;
   const handleRefresh = async () => {
     await refresh();
   };

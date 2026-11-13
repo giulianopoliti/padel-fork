@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from "@/utils/supabase/server"
+import { createClient, createClientServiceRole } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import { checkTournamentPermissions } from "@/utils/tournament-permissions"
 import { updateZonePositionsForTournament } from "@/lib/services/ranking"
@@ -35,6 +35,7 @@ export interface CoupleWithData {
   match_status: 'DRAFT' | 'PENDING' | 'FINISHED' | null // status of match in this fecha (null if no match)
   free_date_blocked: boolean
   free_date_notes: string | null
+  fecha_substitute?: { slot: 1 | 2; playerName: string }
 }
 
 export interface TimeSlot {
@@ -211,6 +212,15 @@ export async function getMatchSchedulingData(
 
     if (fechaError || !fecha) throw new Error('Fecha de zonas no encontrada en este torneo')
 
+    const service = await createClientServiceRole()
+    const { data: fechaLineups, error: fechaLineupError } = await service.rpc('get_long_fecha_substitution_lineups', {
+      p_fecha_id: fechaId, p_actor_id: user.id,
+    })
+    if (fechaLineupError && fechaLineupError.code !== 'PGRST202') throw fechaLineupError
+    const substitutions = new Map<string, { slot: 1 | 2; player_name: string }>(
+      (fechaLineups ?? []).map((item: { couple_id: string; slot: 1 | 2; player_name: string }) => [item.couple_id, item]),
+    )
+
     // Get all registered couples, independently of their availability or zone assignment.
     const { data: couplesData, error: couplesError } = await supabase
       .from('couples')
@@ -364,6 +374,7 @@ export async function getMatchSchedulingData(
       const player2 = unwrapRelation<any>(couple.player2)
       const zone = unwrapRelation<any>(zonePosition?.zones)
       const fechaCounts = fechaSummaries.get(couple.id)?.counts
+      const substitute = substitutions.get(couple.id)
       const freeDatePreference = (availabilityData || []).find(item => {
         const slot = unwrapRelation<any>(item.tournament_time_slots)
         return item.couple_id === couple.id && slot?.slot_type === 'FREE_DATE' && item.is_available
@@ -371,6 +382,7 @@ export async function getMatchSchedulingData(
 
       return {
         id: couple.id,
+        ...(substitute && { fecha_substitute: { slot: substitute.slot, playerName: substitute.player_name } }),
         player1: {
           name: player1?.first_name || '',
           last_name: player1?.last_name || '',

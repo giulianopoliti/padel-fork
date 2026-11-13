@@ -30,6 +30,7 @@ interface ScheduleContainerProps {
   tournamentId: string
   fechas: TournamentFecha[]
   initialFechaId?: string
+  initialCoupleId?: string
   tournamentName: string
   clubName: string
 }
@@ -38,6 +39,7 @@ export default function ScheduleContainer({
   tournamentId,
   fechas,
   initialFechaId,
+  initialCoupleId,
   tournamentName,
   clubName
 }: ScheduleContainerProps) {
@@ -71,7 +73,7 @@ export default function ScheduleContainer({
   }
 
   // Access denied - not organizer or inscribed
-  if (!userAccess.isOrganizer && !userAccess.isInscribed) {
+  if (!userAccess.isOrganizer && !userAccess.isInscribed && !userAccess.isSubstitute) {
     return <AccessDeniedError onRetry={retry} />
   }
 
@@ -274,12 +276,12 @@ export default function ScheduleContainer({
                   userAccess={userAccess}
                 />
               </Suspense>
-            ) : userAccess.isInscribed ? (
+            ) : userAccess.isInscribed || userAccess.isSubstitute ? (
               <Suspense fallback={<PlayerAvailabilitySkeleton />}>
                 <PlayerView
                   tournamentId={tournamentId}
                   fechaId={selectedFechaId}
-                  userAccess={userAccess}
+                  initialCoupleId={initialCoupleId}
                 />
               </Suspense>
             ) : (

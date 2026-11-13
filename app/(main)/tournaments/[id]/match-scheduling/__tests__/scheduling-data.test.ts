@@ -1,8 +1,8 @@
 import { createMatch, getBracketMatchFechaOptions, getMatchSchedulingData, modifyMatchSchedule } from '../actions'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 
-jest.mock('@/utils/supabase/server', () => ({ createClient: jest.fn() }))
+jest.mock('@/utils/supabase/server', () => ({ createClient: jest.fn(), createClientServiceRole: jest.fn() }))
 jest.mock('@/utils/tournament-permissions', () => ({ checkTournamentPermissions: jest.fn() }))
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }))
 jest.mock('@/lib/services/ranking', () => ({ updateZonePositionsForTournament: jest.fn() }))
@@ -119,6 +119,7 @@ describe('match scheduling server boundaries', () => {
     opponentReserved = false
     paginatedHistory = false
     jest.mocked(checkTournamentPermissions).mockResolvedValue({ hasPermission: true })
+    jest.mocked(createClientServiceRole).mockResolvedValue({ rpc: jest.fn().mockResolvedValue({ data: [], error: null }) } as never)
 
     const from = jest.fn((table: string) => {
       const query: Query = { table, columns: '', filters: [] }

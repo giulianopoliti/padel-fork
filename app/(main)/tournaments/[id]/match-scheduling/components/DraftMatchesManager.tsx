@@ -19,7 +19,7 @@ import {
 import { FileEdit, Send, Clock, MapPin, Building2, Loader2, CheckCircle2, AlertCircle, Info, Trash2, Edit } from 'lucide-react'
 import { getDraftMatches, publishMatches, deleteMatches, modifyMatchSchedule, type DraftMatch, type ExistingMatch, type ModifyScheduleData } from '../actions'
 import ModifyScheduleDialog from './ModifyScheduleDialog'
-import { SubstitutionDialog } from '@/components/tournament/long/substitution-dialog'
+import { SubstitutionMenu } from '@/components/tournament/long/substitution-menu'
 
 interface Club {
   id: string
@@ -39,7 +39,6 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
   const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set())
   const [selectedMatchForEdit, setSelectedMatchForEdit] = useState<DraftMatch | null>(null)
   const [showModifyDialog, setShowModifyDialog] = useState(false)
-  const [substitutionMatchId, setSubstitutionMatchId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -382,8 +381,12 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
                     <div className="flex-1 space-y-2">
                       <div className="font-medium text-gray-900">
                         {formatCoupleName(match, 'couple1')}
+                        {match.couple1_id && <SubstitutionMenu tournamentId={tournamentId} matchId={match.id} coupleId={match.couple1_id}
+                          coupleName={formatCoupleName(match, 'couple1')} onSaved={onMatchesPublished ?? (() => void loadDraftMatches())} />}
                         <span className="mx-2 text-gray-400">vs</span>
                         {formatCoupleName(match, 'couple2')}
+                        {match.couple2_id && <SubstitutionMenu tournamentId={tournamentId} matchId={match.id} coupleId={match.couple2_id}
+                          coupleName={formatCoupleName(match, 'couple2')} onSaved={onMatchesPublished ?? (() => void loadDraftMatches())} />}
                       </div>
                       <div className="flex flex-wrap gap-3 text-sm text-gray-600">
                         {match.scheduled_date && (
@@ -407,8 +410,6 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {match.couple1_id && match.couple2_id && <Button type="button" size="sm" variant="ghost"
-                        onClick={() => setSubstitutionMatchId(match.id)}>Asignar suplente</Button>}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -430,8 +431,6 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
         )}
       </CardContent>
 
-      {substitutionMatchId && <SubstitutionDialog tournamentId={tournamentId} matchId={substitutionMatchId}
-        onClose={() => setSubstitutionMatchId(null)} onSaved={() => void loadDraftMatches()} />}
 
       {/* Modify Schedule Dialog - Reuses same dialog as published matches */}
       {selectedMatchForEdit && (

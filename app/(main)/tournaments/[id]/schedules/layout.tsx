@@ -6,14 +6,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, ArrowLeft, Trophy } from "lucide-react"
 import Link from "next/link"
+import { getMyLongFechaSubstitutions } from '@/lib/services/long-fecha-substitutions'
 
 interface SchedulesLayoutProps {
   children: React.ReactNode
   organizer: React.ReactNode
   player: React.ReactNode
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function SchedulesLayout({
@@ -46,6 +47,8 @@ export default async function SchedulesLayout({
     // User is inscribed and active player
     return player
   }
+  if (permissions.userRole === 'PLAYER' && (await getMyLongFechaSubstitutions(supabase, resolvedParams.id))
+    .some(item => item.is_substitute && item.can_vote)) return player
 
   // Special case: Player is eliminated
   if (inscription.isInscribed && inscription.isEliminated) {

@@ -34,6 +34,7 @@ export interface LongPlayerStanding {
 
 export interface LongPlayerAvailabilitySummary {
   fechaId: string
+  coupleId?: string
   fechaName: string
   fechaNumber: number
   totalSlots: number

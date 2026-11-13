@@ -116,6 +116,9 @@ export default function PlayerFvNextMatchSection({ nextMatches }: PlayerFvNextMa
                 </div>
 
                 <div className="flex w-full flex-col justify-end gap-2 lg:w-48">
+                  {match.availability_href && <Button asChild variant="outline" className="border-white/20 bg-white/5 text-white">
+                    <Link href={match.availability_href}>Votar horarios</Link>
+                  </Button>}
                   <Button asChild className="h-10 bg-court-500 text-sm font-semibold text-brand-900 hover:bg-court-400">
                     <Link href={`/tournaments/${match.tournament_id}`}>
                       Ver torneo

@@ -9,14 +9,16 @@ end $$;
 
 insert into auth.users(id, aud, role) values
   ('ab000000-0000-4000-8000-000000000001','authenticated','authenticated'),
-  ('ab000000-0000-4000-8000-000000000002','authenticated','authenticated');
+  ('ab000000-0000-4000-8000-000000000002','authenticated','authenticated'),
+  ('ab000000-0000-4000-8000-000000000003','authenticated','authenticated');
 insert into public.users(id, role) values
   ('ab000000-0000-4000-8000-000000000001','CLUB'),
-  ('ab000000-0000-4000-8000-000000000002','PLAYER');
+  ('ab000000-0000-4000-8000-000000000002','PLAYER'),
+  ('ab000000-0000-4000-8000-000000000003','PLAYER');
 select set_config('request.jwt.claim.role','service_role',true);
 insert into public.players(id, first_name, last_name, score, user_id) values
   ('ab100000-0000-4000-8000-000000000001','Ana','Original',1000,null),
-  ('ab100000-0000-4000-8000-000000000002','Bea','Original',1000,null),
+  ('ab100000-0000-4000-8000-000000000002','Bea','Original',1000,'ab000000-0000-4000-8000-000000000003'),
   ('ab100000-0000-4000-8000-000000000003','Carla','Suplente',1100,'ab000000-0000-4000-8000-000000000002'),
   ('ab100000-0000-4000-8000-000000000004','Diana','Suplente',1200,null),
   ('ab100000-0000-4000-8000-000000000005','Elena','Rival',1000,null),
@@ -56,6 +58,81 @@ do $$begin
 exception when insufficient_privilege then raise notice 'PASS: player cannot assign a substitute'; end $$;
 reset role;
 
+insert into public.tournament_time_slots(id, fecha_id, date, start_time, end_time, slot_type, is_system) values
+  ('ab700000-0000-4000-8000-000000000001','ab500000-0000-4000-8000-000000000001','2026-03-05','17:00','20:00','TIME_RANGE',false),
+  ('ab700000-0000-4000-8000-000000000002','ab500000-0000-4000-8000-000000000002','2026-03-04','17:00','20:00','TIME_RANGE',false);
+insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
+  ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000001',true),
+  ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000002',true);
+
+set local role service_role;
+select public.manage_long_substitution_with_fecha('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',null,
+  'ab300000-0000-4000-8000-000000000001',2,'ab100000-0000-4000-8000-000000000003','ONLY_FECHA',null,'ab500000-0000-4000-8000-000000000001',false);
+reset role;
+select pg_temp.assert_true((select count(*) from public.couple_time_availability where time_slot_id='ab700000-0000-4000-8000-000000000001') = 0,
+  'a new date lineup clears votes from the replaced lineup');
+select pg_temp.assert_true((select count(*) from public.couple_time_availability where time_slot_id='ab700000-0000-4000-8000-000000000002') = 1,
+  'the match-anchored fixed substitute did not clear votes for its starting fecha');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000002',true);
+select pg_temp.assert_true((select count(*) from public.get_my_long_fecha_substitutions('ab400000-0000-4000-8000-000000000001')
+  where is_substitute and can_vote and fecha_id='ab500000-0000-4000-8000-000000000001') = 1,'the date substitute can vote');
+insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
+  ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000001',false)
+  on conflict (couple_id,time_slot_id) do update set is_available=excluded.is_available;
+insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
+  ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000001',true)
+  on conflict (couple_id,time_slot_id) do update set is_available=excluded.is_available;
+do $$begin
+  insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
+    ('ab300000-0000-4000-8000-000000000002','ab700000-0000-4000-8000-000000000001',true);
+  raise exception 'FAIL: substitute voted for another couple';
+exception when insufficient_privilege then raise notice 'PASS: a substitute cannot vote for another couple'; end $$;
+select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000003',true);
+select pg_temp.assert_true(exists(select 1 from public.get_my_long_fecha_substitutions('ab400000-0000-4000-8000-000000000001')
+  where not is_substitute and not can_vote and fecha_id='ab500000-0000-4000-8000-000000000001'), 'the replaced starter sees the date in read-only mode');
+do $$begin
+  insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
+    ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000001',false)
+    on conflict (couple_id,time_slot_id) do update set is_available=excluded.is_available;
+  raise exception 'FAIL: replaced starter overwrote the substitute vote';
+exception when insufficient_privilege then raise notice 'PASS: the replaced starter cannot overwrite the substitute vote'; end $$;
+reset role;
+
+set local role service_role;
+select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',null,
+  'ab300000-0000-4000-8000-000000000001',2,'ab100000-0000-4000-8000-000000000004','ONLY_MATCH','ab600000-0000-4000-8000-000000000001',false);
+select pg_temp.assert_true((select count(*) from public.couple_time_availability where time_slot_id='ab700000-0000-4000-8000-000000000001') = 1,
+  'a single-match change retains the date vote');
+select pg_temp.assert_true((select player->>'first_name' from public.get_long_match_lineups(array['ab600000-0000-4000-8000-000000000001'::uuid])) = 'Diana',
+  'the single match takes priority over the date rule');
+select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',id,
+  'ab300000-0000-4000-8000-000000000001',null,null,null,null,true)
+  from long_substitution_private.long_substitutions where scope in ('ONLY_MATCH','ONLY_FECHA') and tournament_id='ab400000-0000-4000-8000-000000000001';
+reset role;
+
+insert into public.tournament_fechas(id, tournament_id, fecha_number, name, round_type, bracket_key) values
+  ('ab500000-0000-4000-8000-000000000004','ab400000-0000-4000-8000-000000000001',4,'Semifinal de Plata','SEMIFINAL','SILVER'),
+  ('ab500000-0000-4000-8000-000000000005','ab400000-0000-4000-8000-000000000001',4,'Semifinal de Oro','SEMIFINAL','GOLD'),
+  ('ab500000-0000-4000-8000-000000000006','ab400000-0000-4000-8000-000000000001',4,'Semifinal de llave única','SEMIFINAL','MAIN'),
+  ('ab500000-0000-4000-8000-000000000007','ab400000-0000-4000-8000-000000000001',7,'Fecha futura','ZONE','MAIN');
+set local role service_role;
+select public.manage_long_substitution_with_fecha('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',null,
+  'ab300000-0000-4000-8000-000000000001',2,'ab100000-0000-4000-8000-000000000003','FROM_FECHA',null,'ab500000-0000-4000-8000-000000000007',false);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000002',true);
+select pg_temp.assert_true(exists(select 1 from public.get_my_long_fecha_substitutions('ab400000-0000-4000-8000-000000000001')
+  where is_substitute and can_vote and fecha_id='ab500000-0000-4000-8000-000000000007'),
+  'a fixed date substitute can vote before the first fixture exists');
+reset role;
+set local role service_role;
+select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',id,
+  'ab300000-0000-4000-8000-000000000001',null,null,null,null,true)
+  from long_substitution_private.long_substitutions where scope='FROM_FECHA' and tournament_id='ab400000-0000-4000-8000-000000000001';
+reset role;
+
 insert into public.matches(id, tournament_id, couple1_id, couple2_id, status, round, type, bracket_key) values
   ('ab600000-0000-4000-8000-000000000003','ab400000-0000-4000-8000-000000000001','ab300000-0000-4000-8000-000000000001',
    'ab300000-0000-4000-8000-000000000002','PENDING','SEMIFINAL','ELIMINATION','SILVER'),
@@ -68,6 +145,36 @@ insert into public.matches(id, tournament_id, couple1_id, couple2_id, status, ro
    'ab300000-0000-4000-8000-000000000002','DRAFT','ZONE','ZONE');
 insert into public.fecha_matches(match_id, fecha_id) values
   ('ab600000-0000-4000-8000-000000000005','ab500000-0000-4000-8000-000000000003');
+
+set local role service_role;
+select public.manage_long_substitution_with_fecha('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',null,
+  'ab300000-0000-4000-8000-000000000001',2,'ab100000-0000-4000-8000-000000000004','FROM_FECHA',null,'ab500000-0000-4000-8000-000000000004',false);
+select pg_temp.assert_true((select player->>'first_name' from public.get_long_match_lineups(array['ab600000-0000-4000-8000-000000000003'::uuid])) = 'Diana',
+  'a date rule resolves the only compatible Silver fecha before the match has a schedule');
+select pg_temp.assert_true((select player->>'first_name' from public.get_long_match_lineups(array['ab600000-0000-4000-8000-000000000004'::uuid])) = 'Diana',
+  'a fixed date rule carries through to a later knockout round');
+select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',id,
+  'ab300000-0000-4000-8000-000000000001',null,null,null,null,true)
+  from long_substitution_private.long_substitutions where scope='FROM_FECHA' and tournament_id='ab400000-0000-4000-8000-000000000001';
+reset role;
+
+insert into public.fecha_matches(match_id,fecha_id) values
+  ('ab600000-0000-4000-8000-000000000003','ab500000-0000-4000-8000-000000000004');
+insert into public.tournament_fechas(id,tournament_id,fecha_number,name,round_type,bracket_key) values
+  ('ab500000-0000-4000-8000-000000000008','ab400000-0000-4000-8000-000000000001',5,'Segunda jornada de semifinal','SEMIFINAL','SILVER');
+set local role service_role;
+select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',null,
+  'ab300000-0000-4000-8000-000000000001',2,'ab100000-0000-4000-8000-000000000004','FROM_MATCH','ab600000-0000-4000-8000-000000000003',false);
+reset role;
+select pg_temp.assert_true((long_substitution_private.fecha_rule(f,'ab300000-0000-4000-8000-000000000001')).substitute_player_id =
+  case f.fecha_number when 4 then 'ab100000-0000-4000-8000-000000000003'::uuid else 'ab100000-0000-4000-8000-000000000004'::uuid end,
+  'a knockout match cutoff changes voters from the next jornada even within the same round')
+  from public.tournament_fechas f where f.id in ('ab500000-0000-4000-8000-000000000004','ab500000-0000-4000-8000-000000000008');
+set local role service_role;
+select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',id,
+  'ab300000-0000-4000-8000-000000000001',null,null,null,null,true)
+  from long_substitution_private.long_substitutions where match_id='ab600000-0000-4000-8000-000000000003';
+reset role;
 
 set local role service_role;
 select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',null,

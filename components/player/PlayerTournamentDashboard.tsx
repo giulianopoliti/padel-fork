@@ -99,6 +99,7 @@ export default function PlayerTournamentDashboard({ tournamentId, tournament, ov
   if (overview.registrationStatus === 'SUBSTITUTE') {
     return <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <header><p className="text-sm font-medium text-muted-foreground">Participás como suplente</p><h1 className="text-2xl font-bold">{tournament.name}</h1></header>
+      {overview.availability && <AvailabilityCard tournamentId={tournamentId} overview={overview} />}
       <NextMatchSummary match={overview.nextMatch} />
       <FinishedMatches matches={overview.finishedMatches} />
     </div>
@@ -158,7 +159,9 @@ const AvailabilityCard = ({ tournamentId, overview }: { tournamentId: string; ov
   const pending = summary ? Math.max(summary.totalSlots - summary.respondedSlots, 0) : 0
   const complete = Boolean(summary && summary.totalSlots > 0 && pending === 0)
   const progress = summary && summary.totalSlots > 0 ? (summary.respondedSlots / summary.totalSlots) * 100 : 0
-  const href = summary ? `/tournaments/${tournamentId}/schedules?fecha_id=${summary.fechaId}` : `/tournaments/${tournamentId}/schedules`
+  const href = summary ? `/tournaments/${tournamentId}/schedules?${new URLSearchParams({ fecha_id: summary.fechaId,
+    ...(summary.coupleId && { couple_id: summary.coupleId }),
+  })}` : `/tournaments/${tournamentId}/schedules`
 
   return (
     <Card className="overflow-hidden border-primary/20 shadow-lg shadow-primary/5">
@@ -179,7 +182,7 @@ const AvailabilityCard = ({ tournamentId, overview }: { tournamentId: string; ov
             </div>
           </div>
           <Button asChild size="lg" className="min-h-12 shrink-0 bg-accent font-bold text-accent-foreground hover:bg-accent/85">
-            <Link href={href}>{complete ? 'Revisar disponibilidad' : 'Cargar disponibilidad'}</Link>
+            <Link href={href}>{complete ? 'Revisar disponibilidad' : 'Votar horarios'}</Link>
           </Button>
         </div>
       </CardContent>

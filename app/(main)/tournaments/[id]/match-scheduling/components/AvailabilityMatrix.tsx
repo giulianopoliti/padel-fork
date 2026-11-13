@@ -18,6 +18,7 @@ import { formatTimeRange, formatDateWithDay } from '../utils/dateUtils'
 import { getRivalInsight } from '../utils/schedulingInsights'
 import CoupleMatchCounts, { CoupleMatchLegend } from './CoupleMatchCounts'
 import PlayerContactButton from './PlayerContactButton'
+import { SubstitutionMenu } from '@/components/tournament/long/substitution-menu'
 
 const statusLegend = [
   { background: 'bg-amber-50', border: 'border-amber-300', dot: 'bg-amber-400', text: 'text-amber-800', label: 'Partido en borrador' },
@@ -46,6 +47,7 @@ interface AvailabilityMatrixProps {
   manualAvailabilityEnabled: boolean
   manualAvailabilitySavingKey: string | null
   onManualAvailabilityToggle: (coupleId: string, timeSlotId: string, isAvailable?: boolean, notes?: string | null) => Promise<boolean>
+  substitution?: { tournamentId: string; fechaId: string; onSaved: () => void }
 }
 
 const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
@@ -61,7 +63,8 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
   onDragEnd,
   manualAvailabilityEnabled,
   manualAvailabilitySavingKey,
-  onManualAvailabilityToggle
+  onManualAvailabilityToggle,
+  substitution,
 }) => {
   const [noteDialog, setNoteDialog] = React.useState<{ coupleId: string; timeSlotId: string } | null>(null)
   const [noteDraft, setNoteDraft] = React.useState('')
@@ -286,7 +289,9 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
                           <PlayerContactButton player={couple.player1} />
                           {' / '}
                           <PlayerContactButton player={couple.player2} />
+                          {substitution && <SubstitutionMenu {...substitution} coupleId={couple.id} coupleName={getCoupleDisplayName(couple)} />}
                         </div>
+                        {couple.fecha_substitute && <p className="text-xs text-muted-foreground">Suplente para la fecha · {couple.fecha_substitute.playerName}</p>}
                         <CoupleMatchCounts counts={couple.zone_match_counts} />
                         {/* Zone info if available */}
                         {couple.zone_position && (

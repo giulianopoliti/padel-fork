@@ -47,6 +47,7 @@ describe('inscriptions privacy at the HTTP and SSR boundaries', () => {
     jest.mocked(createClient).mockResolvedValue({
       auth: { getUser: async () => ({ data: { user: { id: 'viewer' } } }) },
       from: () => query,
+      rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
     } as never)
     jest.mocked(getAllPlayersDTO).mockResolvedValue([player] as never)
     jest.mocked(getTournamentDetailsWithInscriptions).mockResolvedValue({
@@ -60,7 +61,7 @@ describe('inscriptions privacy at the HTTP and SSR boundaries', () => {
 
   it.each(['PUBLIC_VIEW', 'PLAYER_ACTIVE', 'PLAYER_ELIMINATED'])(
     'does not send private player fields to %s via HTTP or hydration', async (accessLevel) => {
-      jest.mocked(checkTournamentAccess).mockResolvedValue({ accessLevel } as never)
+      jest.mocked(checkTournamentAccess).mockResolvedValue({ accessLevel, metadata: { userRole: 'PLAYER' } } as never)
       const response = await GET(new NextRequest('http://localhost/api/tournaments/t1/inscriptions'), {
         params: { id: 't1' },
       })
@@ -68,7 +69,7 @@ describe('inscriptions privacy at the HTTP and SSR boundaries', () => {
       const json = await response.json()
       expect(json.individualInscriptions[0]).toMatchObject({ id: 'p1', first_name: 'Ana' })
       const html = await InscriptionsPage({ params: Promise.resolve({ id: 't1' }) })
-      const props = (html.props.children as React.ReactElement<Record<string, unknown>>).props
+      const props = (html.props.children[1] as React.ReactElement<Record<string, unknown>>).props
       expect(props.allPlayers).toMatchObject([{ id: 'p1', first_name: 'Ana', last_name: 'Pérez', score: 800 }])
       for (const payload of [json, props]) {
         expect(JSON.stringify(payload)).not.toMatch(/private-/)
@@ -77,7 +78,7 @@ describe('inscriptions privacy at the HTTP and SSR boundaries', () => {
   )
 
   it('retains management contact data in both paths', async () => {
-    jest.mocked(checkTournamentAccess).mockResolvedValue({ accessLevel: 'FULL_MANAGEMENT' } as never)
+    jest.mocked(checkTournamentAccess).mockResolvedValue({ accessLevel: 'FULL_MANAGEMENT', metadata: { userRole: 'ORGANIZADOR' } } as never)
     const response = await GET(new NextRequest('http://localhost/api/tournaments/t1/inscriptions'), {
       params: { id: 't1' },
     })
@@ -85,12 +86,12 @@ describe('inscriptions privacy at the HTTP and SSR boundaries', () => {
     expect(json.individualInscriptions[0].phone).toBe('private-phone')
     expect(json.coupleInscriptions[0].player_1_info.dni).toBe('private-dni')
     const html = await InscriptionsPage({ params: Promise.resolve({ id: 't1' }) })
-    const props = (html.props.children as React.ReactElement<Record<string, unknown>>).props
+    const props = (html.props.children[1] as React.ReactElement<Record<string, unknown>>).props
     expect(props.allPlayers).toEqual([player])
   })
 
   it('renders a safe return link for a private roster without redirecting or hydrating player data', async () => {
-    jest.mocked(checkTournamentAccess).mockResolvedValue({ accessLevel: 'PUBLIC_VIEW' } as never)
+    jest.mocked(checkTournamentAccess).mockResolvedValue({ accessLevel: 'PUBLIC_VIEW', metadata: { userRole: 'PLAYER' } } as never)
     jest.mocked(getTournamentDetailsWithInscriptions).mockResolvedValue({
       tournament: { ...tournament, show_public_inscriptions: false }, inscriptions,
     } as never)
@@ -101,6 +102,23 @@ describe('inscriptions privacy at the HTTP and SSR boundaries', () => {
     expect(markup).not.toMatch(/private-/)
     expect(getAllPlayersDTO).not.toHaveBeenCalled()
     expect(getTpeLateWithdrawalCounts).not.toHaveBeenCalled()
+  })
+
+  it('shows the private substitute notice before a match has been created', async () => {
+    jest.mocked(checkTournamentAccess).mockResolvedValue({ accessLevel: 'PUBLIC_VIEW', metadata: { userRole: 'PLAYER' } } as never)
+    jest.mocked(getTournamentDetailsWithInscriptions).mockResolvedValue({
+      tournament: { ...tournament, show_public_inscriptions: false }, inscriptions,
+    } as never)
+    const supabase = await createClient()
+    const rpc = supabase.rpc as jest.Mock
+    rpc.mockImplementation(async (name: string) => ({
+      data: name === 'get_my_long_fecha_substitutions' ? [{ fecha_id: 'fecha', is_substitute: true, can_vote: true }] : [],
+      error: null,
+    }))
+    const markup = renderToStaticMarkup(await InscriptionsPage({ params: Promise.resolve({ id: 't1' }) }))
+    expect(markup).toContain('Participás como suplente')
+    expect(markup).not.toMatch(/private-/)
+    expect(getAllPlayersDTO).not.toHaveBeenCalled()
   })
 
   it('normalizes array relations before filtering contact data', async () => {

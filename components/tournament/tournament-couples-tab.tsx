@@ -1,6 +1,6 @@
 "use client"
 import { InscriptionPaymentPanel, InscriptionStatus } from '@/components/tournament/inscription-payment-panel'
-import { SubstitutionDialog, substitutionScopeLabel, useSubstitutionSummaries, type SubstitutionSummary } from '@/components/tournament/long/substitution-dialog'
+import { SubstitutionDialog, isPermanentSubstitution, substitutionScopeLabel, useSubstitutionSummaries, type SubstitutionSummary } from '@/components/tournament/long/substitution-dialog'
 import { PlayerAlertDialog, usePlayerAlerts } from '@/components/tournament/player-alert-dialog'
 
 import { useState } from "react"
@@ -454,7 +454,7 @@ export default function TournamentCouplesTab({
         </DropdownMenu>}
       </div>
       {rules.map(rule => <div key={rule.id} className="text-xs text-muted-foreground">
-        <span className="font-medium text-slate-700">{rule.scope === 'FROM_MATCH' ? 'Suplente fijo' : 'Suplente'} · {rule.player_name}</span>
+        <span className="font-medium text-slate-700">{isPermanentSubstitution(rule.scope) ? 'Suplente fijo' : 'Suplente'} · {rule.player_name}</span>
         <p>{substitutionScopeLabel(rule.scope, rule.label)}</p>
       </div>)}
       {alert && player?.id && <button type="button" className="inline-flex items-center gap-1 text-left text-xs text-amber-800 hover:underline"

@@ -3,6 +3,7 @@ import 'server-only'
 import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { getInscriptionState } from '@/lib/tournaments/inscription-state'
 import { applyLongMatchLineup, getLongMatchLineupChanges, getMyLongSubstituteMatches } from './long-match-lineups'
+import { getMyLongFechaSubstitutions } from './long-fecha-substitutions'
 import {
   LongPlayerAvailabilitySummary,
   LongPlayerOverview,
@@ -81,7 +82,7 @@ export const getLongPlayerOverview = async (
 
   if (!player) return emptyOverview
 
-  const [{ data: inscriptions }, substituteMatches] = await Promise.all([supabase
+  const [{ data: inscriptions }, substituteMatches, fechaAssignments] = await Promise.all([supabase
     .from('inscriptions')
     .select(`
       id, player_id, couple_id, is_pending, is_eliminated, eliminated_at, eliminated_in_round,
@@ -93,7 +94,9 @@ export const getLongPlayerOverview = async (
       )
     `)
     .eq('tournament_id', tournamentId)
-    .eq('es_prueba', false), getMyLongSubstituteMatches(sessionClient, tournamentId)])
+    .eq('es_prueba', false), getMyLongSubstituteMatches(sessionClient, tournamentId), getMyLongFechaSubstitutions(sessionClient, tournamentId)])
+  const substituteFechas = fechaAssignments.filter(item => item.is_substitute && item.can_vote)
+  const hasSubstitutions = substituteMatches.size > 0 || substituteFechas.length > 0
 
   const inscription = (inscriptions || []).find((row: any) => {
     if (row.player_id === player.id && !row.couple_id) return true
@@ -101,10 +104,10 @@ export const getLongPlayerOverview = async (
     return couple?.player1_id === player.id || couple?.player2_id === player.id
   }) as any
 
-  if (!inscription && substituteMatches.size === 0) return emptyOverview
+  if (!inscription && !hasSubstitutions) return emptyOverview
   const paymentTournament = getRelation(inscription?.tournaments) as { enable_transfer_proof?: boolean } | null
   const confirmed = inscription?.couple_id && getInscriptionState(inscription, paymentTournament?.enable_transfer_proof).confirmed
-  if (inscription?.couple_id && !confirmed && substituteMatches.size === 0) {
+  if (inscription?.couple_id && !confirmed && !hasSubstitutions) {
     const pendingCouple = getRelation(inscription.couples) as any
     return {
       ...emptyOverview,
@@ -113,7 +116,7 @@ export const getLongPlayerOverview = async (
       coupleName: inscription.couple_id ? getCoupleName(pendingCouple) : null,
     }
   }
-  if (inscription && !inscription.couple_id && substituteMatches.size === 0) {
+  if (inscription && !inscription.couple_id && !hasSubstitutions) {
     return { ...emptyOverview, registrationStatus: 'INDIVIDUAL' }
   }
 
@@ -124,7 +127,7 @@ export const getLongPlayerOverview = async (
     substituteMatches.size > 0 && `id.in.(${Array.from(substituteMatches.keys()).join(',')})`].filter(Boolean).join(',')
 
   const [matchesResult, standingResult, fechasResult, bracketResult] = await Promise.all([
-    supabase
+    matchFilters ? supabase
       .from('matches')
       .select(`
         id, status, round, couple1_id, couple2_id, winner_id, result_couple1, result_couple2, created_at,
@@ -143,7 +146,7 @@ export const getLongPlayerOverview = async (
       .eq('tournament_id', tournamentId)
       .not('status', 'in', '(DRAFT,CANCELED)')
       .eq('bracket_is_active', true)
-      .or(matchFilters),
+      .or(matchFilters) : Promise.resolve({ data: [] }),
     coupleId ? supabase
       .from('zone_positions')
       .select('position, wins, losses, sets_difference, games_difference')
@@ -152,7 +155,7 @@ export const getLongPlayerOverview = async (
       .order('position', { ascending: true })
       .limit(1)
       .maybeSingle() : Promise.resolve({ data: null }),
-    coupleId ? supabase
+    coupleId || substituteFechas.length ? supabase
       .from('tournament_fechas')
       .select('id, name, fecha_number, round_type, bracket_key, status')
       .eq('tournament_id', tournamentId)
@@ -194,14 +197,17 @@ export const getLongPlayerOverview = async (
     })
 
   let availability: LongPlayerAvailabilitySummary | null = null
-  if (registrationStatus === 'ACTIVE' && coupleId) {
+  if (registrationStatus === 'ACTIVE' || substituteFechas.length) {
     const bracketKey = bracketResult.data?.bracket_key || null
-    const eligibleFechas = (fechasResult.data || []).filter(fecha =>
-      fecha.round_type === 'ZONE' ||
-      !['GOLD', 'SILVER'].includes(fecha.bracket_key || '') ||
-      fecha.bracket_key === bracketKey
-    )
-    const fechaIds = eligibleFechas.map(fecha => fecha.id)
+    const eligibleFechas = (fechasResult.data || []).flatMap(fecha => {
+      const own = fechaAssignments.find(item => item.fecha_id === fecha.id && item.couple_id === coupleId)
+      const assigned = substituteFechas.filter(item => item.fecha_id === fecha.id).map(item => item.couple_id)
+      const canVoteForOwn = registrationStatus === 'ACTIVE' && coupleId && own?.can_vote !== false
+        && (fecha.round_type === 'ZONE' || !['GOLD', 'SILVER'].includes(fecha.bracket_key || '') || fecha.bracket_key === bracketKey)
+      if (canVoteForOwn) assigned.unshift(coupleId)
+      return [...new Set(assigned)].map(id => ({ fecha, coupleId: id }))
+    })
+    const fechaIds = [...new Set(eligibleFechas.map(item => item.fecha.id))]
 
     if (fechaIds.length > 0) {
       const { data: slots } = await supabase
@@ -215,20 +221,21 @@ export const getLongPlayerOverview = async (
       const { data: responses } = slotIds.length > 0
         ? await supabase
             .from('couple_time_availability')
-            .select('time_slot_id')
-            .eq('couple_id', coupleId)
+            .select('time_slot_id, couple_id')
+            .in('couple_id', [...new Set(eligibleFechas.map(item => item.coupleId))])
             .in('time_slot_id', slotIds)
         : { data: [] }
-      const respondedIds = new Set((responses || []).map(response => response.time_slot_id))
+      const respondedIds = new Set((responses || []).map(response => `${response.couple_id}:${response.time_slot_id}`))
 
-      const summaries = eligibleFechas.map(fecha => {
+      const summaries = eligibleFechas.map(({ fecha, coupleId }) => {
         const fechaSlots = (slots || []).filter(slot => slot.fecha_id === fecha.id)
         return {
           fechaId: fecha.id,
           fechaName: fecha.name || `Fecha ${fecha.fecha_number}`,
           fechaNumber: fecha.fecha_number || 0,
+          coupleId,
           totalSlots: fechaSlots.length,
-          respondedSlots: fechaSlots.filter(slot => respondedIds.has(slot.id)).length,
+          respondedSlots: fechaSlots.filter(slot => respondedIds.has(`${coupleId}:${slot.id}`)).length,
           canEdit: true,
           restrictionReason: null,
         }

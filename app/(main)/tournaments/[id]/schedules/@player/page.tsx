@@ -3,14 +3,16 @@ import { redirect } from "next/navigation"
 import { checkUserTournamentInscription } from "@/utils/tournament-permissions"
 import ScheduleContainer from "../components/ScheduleContainer"
 import { TournamentFormatResolver } from "@/lib/services/tournament-format-resolver"
+import { getMyLongFechaSubstitutions } from '@/lib/services/long-fecha-substitutions'
 
 interface PlayerSchedulePageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
-  searchParams: {
+  }>
+  searchParams: Promise<{
     fecha_id?: string
-  }
+    couple_id?: string
+  }>
 }
 
 export default async function PlayerSchedulePage({
@@ -29,9 +31,7 @@ export default async function PlayerSchedulePage({
 
   // Check if user is inscribed
   const inscriptionResult = await checkUserTournamentInscription(user.id, resolvedParams.id)
-  if (!inscriptionResult.isInscribed || inscriptionResult.isPending || inscriptionResult.isEliminated) {
-    redirect(`/tournaments/${resolvedParams.id}`)
-  }
+  const isActiveStarter = inscriptionResult.isInscribed && !inscriptionResult.isPending && !inscriptionResult.isEliminated
 
   // Get tournament basic info
   const { data: tournament, error: tournamentError } = await supabase
@@ -53,6 +53,9 @@ export default async function PlayerSchedulePage({
   if (tournamentError || !tournament) {
     redirect('/tournaments')
   }
+  const substitutes = tournament.type === 'LONG' ? await getMyLongFechaSubstitutions(supabase, resolvedParams.id) : []
+  const substituteFechas = new Set(substitutes.filter(item => item.is_substitute && item.can_vote).map(item => item.fecha_id))
+  if (!isActiveStarter && substituteFechas.size === 0) redirect(`/tournaments/${resolvedParams.id}`)
 
   const resolvedFormat = TournamentFormatResolver.getResolvedFormat(tournament as any)
   const isLongGoldSilver =
@@ -84,11 +87,13 @@ export default async function PlayerSchedulePage({
   // Get tournament fechas
   const { data: rawFechas } = await supabase
     .from('tournament_fechas')
-    .select('id, name, fecha_number, description, status, start_date, end_date, round_type, bracket_key, max_matches_per_couple, tournament_id, created_at')
+    .select('id, name, fecha_number, description, status, start_date, end_date, round_type, bracket_key, max_matches_per_couple, estimated_match_duration_minutes, tournament_id, created_at')
     .eq('tournament_id', resolvedParams.id)
     .order('fecha_number', { ascending: true })
 
   const fechas = (rawFechas || []).filter((fecha) => {
+    if (substituteFechas.has(fecha.id)) return true
+    if (!isActiveStarter) return false
     if (!isLongGoldSilver) return true
     if (fecha.round_type === 'ZONE') return true
     if (!assignedBracketKey) return false
@@ -118,12 +123,17 @@ export default async function PlayerSchedulePage({
   if (!effectiveFechaId && requestedFechaId) {
     redirect(`/tournaments/${resolvedParams.id}/schedules`)
   }
+  const requestedCoupleId = resolvedSearchParams.couple_id
+  const initialCoupleId = requestedCoupleId && (requestedCoupleId === inscriptionResult.coupleId && isActiveStarter
+    || substitutes.some(item => item.fecha_id === effectiveFechaId && item.couple_id === requestedCoupleId && item.is_substitute && item.can_vote))
+    ? requestedCoupleId : undefined
 
   return (
     <ScheduleContainer
       tournamentId={resolvedParams.id}
       fechas={fechas || []}
       initialFechaId={effectiveFechaId || undefined}
+      initialCoupleId={initialCoupleId}
       tournamentName={tournament.name}
       clubName={clubName}
     />

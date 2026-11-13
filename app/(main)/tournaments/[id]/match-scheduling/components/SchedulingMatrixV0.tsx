@@ -11,6 +11,8 @@ import { useMatchScheduling } from '../hooks/useMatchScheduling'
 
 interface SchedulingMatrixV0Props {
   fechaId: string
+  tournamentId: string
+  allowFechaSubstitutions?: boolean
   schedulingData: SchedulingData
   onMatchCreated: () => void
   onMatchResultSaved?: () => void
@@ -24,6 +26,8 @@ interface Club {
 
 const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
   fechaId,
+  tournamentId,
+  allowFechaSubstitutions,
   schedulingData,
   onMatchCreated,
   onMatchResultSaved,
@@ -49,9 +53,7 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
   }, [schedulingData, actions.updateData])
 
   const handleMatchResultSaved = () => {
-    if (onMatchResultSaved) {
-      onMatchResultSaved()
-    }
+    (onMatchResultSaved ?? onMatchCreated)()
   }
 
   return (
@@ -120,6 +122,7 @@ const SchedulingMatrixV0: React.FC<SchedulingMatrixV0Props> = ({
               manualAvailabilityEnabled={manualAvailabilityEnabled}
               manualAvailabilitySavingKey={manualAvailabilitySavingKey}
               onManualAvailabilityToggle={actions.handleManualAvailabilityToggle}
+              substitution={allowFechaSubstitutions ? { tournamentId, fechaId, onSaved: onMatchCreated } : undefined}
             />
           </div>
 

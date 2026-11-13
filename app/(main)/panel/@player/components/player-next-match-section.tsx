@@ -110,6 +110,9 @@ export default function PlayerNextMatchSection({ nextMatches }: PlayerNextMatchS
                 </div>
 
                 <div className="flex w-full flex-col gap-3 lg:max-w-[220px]">
+                  {match.availability_href && <Button asChild variant="outline" className="border-white/20 bg-white/8 text-white">
+                    <Link href={match.availability_href}>Votar horarios</Link>
+                  </Button>}
                   <Button
                     asChild
                     className="w-full rounded-full bg-[var(--tpe-lime)] text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-night)] hover:bg-[#e6ff63]"
