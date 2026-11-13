@@ -1,12 +1,13 @@
 'use server'
 
-import { createClient } from "@/utils/supabase/server"
+import { createClient, createClientServiceRole } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import { checkTournamentPermissions } from "@/utils/tournament-permissions"
 import { updateZonePositionsForTournament } from "@/lib/services/ranking"
 import { getFechaBracketLabel } from "@/lib/services/fecha-bracket-policy"
 import { IncrementalPlaceholderUpdater } from "@/lib/services/incremental-placeholder-updater"
 import { sendTournamentMessage } from "@/lib/services/messages"
+import { applyLongMatchLineup, getLongMatchLineupChanges } from '@/lib/services/long-match-lineups'
 import { summarizeZoneMatches, type MatchCounts, type OpponentStatus, type ZoneMatchSummary } from './utils/schedulingInsights'
 
 // Types for match scheduling
@@ -34,6 +35,7 @@ export interface CoupleWithData {
   match_status: 'DRAFT' | 'PENDING' | 'FINISHED' | null // status of match in this fecha (null if no match)
   free_date_blocked: boolean
   free_date_notes: string | null
+  fecha_substitute?: { slot: 1 | 2; playerName: string }
 }
 
 export interface TimeSlot {
@@ -64,6 +66,7 @@ export interface OrganizerAvailabilityData {
 
 export interface ExistingMatch {
   id: string
+  tournament_id?: string
   couple1_id: string | null
   couple2_id: string | null
   time_slot_id: string | null
@@ -75,10 +78,12 @@ export interface ExistingMatch {
   court_assignment: string | null
   // Couple information with player names
   couple1?: {
+    substitute_slot?: 1 | 2
     player1: { first_name: string; last_name: string }
     player2: { first_name: string; last_name: string }
   } | null
   couple2?: {
+    substitute_slot?: 1 | 2
     player1: { first_name: string; last_name: string }
     player2: { first_name: string; last_name: string }
   } | null
@@ -206,6 +211,15 @@ export async function getMatchSchedulingData(
       .single()
 
     if (fechaError || !fecha) throw new Error('Fecha de zonas no encontrada en este torneo')
+
+    const service = await createClientServiceRole()
+    const { data: fechaLineups, error: fechaLineupError } = await service.rpc('get_long_fecha_substitution_lineups', {
+      p_fecha_id: fechaId, p_actor_id: user.id,
+    })
+    if (fechaLineupError && fechaLineupError.code !== 'PGRST202') throw fechaLineupError
+    const substitutions = new Map<string, { slot: 1 | 2; player_name: string }>(
+      (fechaLineups ?? []).map((item: { couple_id: string; slot: 1 | 2; player_name: string }) => [item.couple_id, item]),
+    )
 
     // Get all registered couples, independently of their availability or zone assignment.
     const { data: couplesData, error: couplesError } = await supabase
@@ -360,6 +374,7 @@ export async function getMatchSchedulingData(
       const player2 = unwrapRelation<any>(couple.player2)
       const zone = unwrapRelation<any>(zonePosition?.zones)
       const fechaCounts = fechaSummaries.get(couple.id)?.counts
+      const substitute = substitutions.get(couple.id)
       const freeDatePreference = (availabilityData || []).find(item => {
         const slot = unwrapRelation<any>(item.tournament_time_slots)
         return item.couple_id === couple.id && slot?.slot_type === 'FREE_DATE' && item.is_available
@@ -367,6 +382,7 @@ export async function getMatchSchedulingData(
 
       return {
         id: couple.id,
+        ...(substitute && { fecha_substitute: { slot: substitute.slot, playerName: substitute.player_name } }),
         player1: {
           name: player1?.first_name || '',
           last_name: player1?.last_name || '',
@@ -416,11 +432,13 @@ export async function getMatchSchedulingData(
       }))
 
     // Transform existing matches with scheduling information
+    const lineups = await getLongMatchLineupChanges(supabase, (existingMatchesData || []).map(item => item.match_id))
     const existingMatches: ExistingMatch[] = (existingMatchesData || []).flatMap(item => {
       const match = unwrapRelation<any>(item.matches)
       if (!match) return []
       return [{
       id: match.id,
+      tournament_id: tournamentId,
       couple1_id: match.couple1_id,
       couple2_id: match.couple2_id,
       time_slot_id: item.scheduled_time_slot_id,
@@ -431,8 +449,8 @@ export async function getMatchSchedulingData(
       scheduled_end_time: item.scheduled_end_time,
       court_assignment: item.court_assignment,
       // Include couple names data
-      couple1: unwrapRelation<any>(match.couple1),
-      couple2: unwrapRelation<any>(match.couple2),
+      couple1: applyLongMatchLineup(unwrapRelation<any>(match.couple1), match.couple1_id, lineups.get(match.id)),
+      couple2: applyLongMatchLineup(unwrapRelation<any>(match.couple2), match.couple2_id, lineups.get(match.id)),
       // Include club data
       club_id: match.club_id,
       club: unwrapRelation<any>(match.club)
@@ -1371,10 +1389,12 @@ export interface DraftMatch {
   couple1?: {
     player1: { first_name: string; last_name: string }
     player2: { first_name: string; last_name: string }
+    substitute_slot?: 1 | 2
   } | null
   couple2?: {
     player1: { first_name: string; last_name: string }
     player2: { first_name: string; last_name: string }
+    substitute_slot?: 1 | 2
   } | null
 }
 
@@ -1479,6 +1499,7 @@ export async function getDraftMatches(
     }
 
     // Transform data
+    const lineups = await getLongMatchLineupChanges(supabase, (draftMatchesData || []).map(item => item.match_id))
     const draftMatches: DraftMatch[] = (draftMatchesData || []).flatMap(item => {
       const match = unwrapRelation<any>(item.matches)
       if (!match) return []
@@ -1492,8 +1513,8 @@ export async function getDraftMatches(
       scheduled_start_time: item.scheduled_start_time,
       scheduled_end_time: item.scheduled_end_time,
       court_assignment: item.court_assignment,
-      couple1: unwrapRelation<any>(match.couple1),
-      couple2: unwrapRelation<any>(match.couple2)
+      couple1: applyLongMatchLineup(unwrapRelation<any>(match.couple1), match.couple1_id, lineups.get(match.id)),
+      couple2: applyLongMatchLineup(unwrapRelation<any>(match.couple2), match.couple2_id, lineups.get(match.id))
       }]
     }).sort(compareDraftMatchesBySchedule)
 

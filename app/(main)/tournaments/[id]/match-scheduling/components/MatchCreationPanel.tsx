@@ -130,8 +130,8 @@ const MatchCreationPanel: React.FC<MatchCreationPanelProps> = ({
   }
 
   const getCoupleDisplayName = (couple: CoupleWithData): string => {
-    const player1Name = `${couple.player1.name} ${couple.player1.last_name || ''}`.trim()
-    const player2Name = `${couple.player2.name} ${couple.player2.last_name || ''}`.trim()
+    const player1Name = couple.fecha_substitute?.slot === 1 ? `${couple.fecha_substitute.playerName} (suplente)` : `${couple.player1.name} ${couple.player1.last_name || ''}`.trim()
+    const player2Name = couple.fecha_substitute?.slot === 2 ? `${couple.fecha_substitute.playerName} (suplente)` : `${couple.player2.name} ${couple.player2.last_name || ''}`.trim()
     return `${player1Name} / ${player2Name}`
   }
 

@@ -7,8 +7,13 @@ import { getTenantUpcomingTournamentSummaries } from '@/lib/services/tenant-home
 import { getTournamentCategoryDisplay } from '@/lib/services/tournament-category-config'
 import { buildTournamentCapacitySummary } from '@/lib/services/tournament-capacity.service'
 import { buildGoogleMapsSearchUrl } from '@/lib/maps/google-maps'
+import { applyLongMatchLineup, getLongMatchLineupChanges, getMyLongSubstituteMatches } from '@/lib/services/long-match-lineups'
+import { getMyLongFechaSubstitutions, getMyLongSubstitutePanelFechas } from '@/lib/services/long-fecha-substitutions'
+import { loadPlayerPanelAvailability } from '@/lib/services/player-panel-availability'
+import { getArgentinaToday } from '@/lib/services/schedule-sharing/validation'
 import {
   resolvePlayerPanelAgenda,
+  isOpenPlayerFecha,
   type PlayerPanelAgendaState,
   type PlayerPanelFechaCandidate,
 } from '@/lib/services/player-panel-agenda.shared'
@@ -34,6 +39,10 @@ export type PlayerNextMatch = {
     court?: string
   }
   status: 'PENDING' | 'IN_PROGRESS'
+  is_substitute?: boolean
+  fecha_name?: string
+  fecha_id?: string
+  availability_href?: string
 }
 
 export type PlayerTournamentAgenda = {
@@ -41,10 +50,13 @@ export type PlayerTournamentAgenda = {
   scheduled_matches: PlayerNextMatch[]
   availability: {
     fecha_id: string
+    couple_id: string
     fecha_name: string
     start_date: string | null
     end_date: string | null
     total_slots: number
+    responded_slots: number
+    free_date_selected: boolean
     href: string
   } | null
 }
@@ -146,31 +158,14 @@ export type UpcomingTournamentsResult = {
   error?: string
 }
 
-const PANEL_TIME_ZONE = 'America/Argentina/Buenos_Aires'
-
-const getTodayDateKey = () => {
-  const dateParts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: PANEL_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date())
-
-  const year = dateParts.find((part) => part.type === 'year')?.value
-  const month = dateParts.find((part) => part.type === 'month')?.value
-  const day = dateParts.find((part) => part.type === 'day')?.value
-
-  return `${year}-${month}-${day}`
-}
-
-const isTodayOrFutureMatch = (match: PlayerNextMatch) => {
+const isTodayOrFutureMatch = (match: PlayerNextMatch, today: string) => {
   const scheduledDate = match.scheduled_info.date
 
   if (!scheduledDate) {
     return true
   }
 
-  return scheduledDate >= getTodayDateKey()
+  return scheduledDate >= today
 }
 
 const compareMatchesBySchedule = (firstMatch: PlayerNextMatch, secondMatch: PlayerNextMatch) => {
@@ -187,8 +182,8 @@ const compareMatchesBySchedule = (firstMatch: PlayerNextMatch, secondMatch: Play
   return firstTime.localeCompare(secondTime)
 }
 
-const getVisibleNextMatches = (matches: PlayerNextMatch[] = []) =>
-  matches.filter(isTodayOrFutureMatch).sort(compareMatchesBySchedule)
+const getVisibleNextMatches = (matches: PlayerNextMatch[], today = getArgentinaToday()) =>
+  matches.filter(match => isTodayOrFutureMatch(match, today)).sort(compareMatchesBySchedule)
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
@@ -215,6 +210,14 @@ interface ClubRelation {
   latitude?: number | string | null
   longitude?: number | string | null
   maps_url?: string | null
+}
+
+interface MatchScheduleRelation {
+  fecha_id: string | null
+  scheduled_date: string | null
+  scheduled_start_time: string | null
+  court_assignment: string | null
+  tournament_fechas: { name: string | null } | { name: string | null }[] | null
 }
 
 const getRelation = <T>(relation: T | T[] | null | undefined): T | null => {
@@ -271,9 +274,14 @@ const loadPlayerMatches = async (
   playerId: string,
   couples: CoupleRelation[],
   tournamentIds?: string[],
+  substituteMatches = new Map<string, string>(),
 ): Promise<PlayerNextMatch[]> => {
   const coupleIds = couples.map(couple => couple.id)
-  if (coupleIds.length === 0 || tournamentIds?.length === 0) return []
+  if ((!coupleIds.length && !substituteMatches.size) || tournamentIds?.length === 0) return []
+  const participants = [
+    coupleIds.length && `couple1_id.in.(${coupleIds.join(',')}),couple2_id.in.(${coupleIds.join(',')})`,
+    substituteMatches.size && `id.in.(${Array.from(substituteMatches.keys()).join(',')})`,
+  ].filter(Boolean).join(',')
 
   let query = supabase
     .from('matches')
@@ -281,10 +289,10 @@ const loadPlayerMatches = async (
       id, tournament_id, status, round, couple1_id, couple2_id, created_at,
       match_club:clubes!club_id(name, address, formatted_address, google_place_id, latitude, longitude, maps_url),
       tournaments!inner(
-        id, name, status, is_draft,
+        id, name, type, status, is_draft,
         tournament_club:clubes!club_id(name, address, formatted_address, google_place_id, latitude, longitude, maps_url)
       ),
-      fecha_matches(scheduled_date, scheduled_start_time, court_assignment),
+      fecha_matches(fecha_id, scheduled_date, scheduled_start_time, court_assignment, tournament_fechas(name)),
       couple1:couples!couple1_id(
         id, player1_id, player2_id,
         player1:players!couples_player1_id_fkey(id, first_name, last_name, profile_image_url),
@@ -296,8 +304,9 @@ const loadPlayerMatches = async (
         player2:players!couples_player2_id_fkey(id, first_name, last_name, profile_image_url)
       )
     `)
-    .or(`couple1_id.in.(${coupleIds.join(',')}),couple2_id.in.(${coupleIds.join(',')})`)
+    .or(participants)
     .in('status', ['PENDING', 'IN_PROGRESS'])
+    .or('bracket_is_active.is.null,bracket_is_active.eq.true')
     .neq('tournaments.status', 'CANCELED')
     .eq('tournaments.is_draft', false)
 
@@ -308,9 +317,13 @@ const loadPlayerMatches = async (
   const { data, error } = await query.order('created_at', { ascending: true })
   if (error) throw error
 
+  const matches = data ?? []
+  const changes = await getLongMatchLineupChanges(supabase, matches
+    .filter(match => (getRelation(match.tournaments) as { type?: string } | null)?.type === 'LONG')
+    .map(match => match.id))
   const coupleIdsSet = new Set(coupleIds)
 
-  return (data || []).map((rawMatch): PlayerNextMatch | null => {
+  return matches.map((rawMatch): PlayerNextMatch | null => {
     const match = rawMatch as unknown as {
       id: string
       tournament_id: string
@@ -328,33 +341,25 @@ const loadPlayerMatches = async (
         name: string | null
         tournament_club: ClubRelation | ClubRelation[] | null
       }> | null
-      fecha_matches: Array<{
-        scheduled_date: string | null
-        scheduled_start_time: string | null
-        court_assignment: string | null
-      }> | {
-        scheduled_date: string | null
-        scheduled_start_time: string | null
-        court_assignment: string | null
-      } | null
+      fecha_matches: MatchScheduleRelation | MatchScheduleRelation[] | null
       couple1: CoupleRelation | CoupleRelation[] | null
       couple2: CoupleRelation | CoupleRelation[] | null
     }
 
-    const playerCoupleId = coupleIdsSet.has(match.couple1_id || '')
+    const substituteCoupleId = substituteMatches.get(match.id)
+    const playerCoupleId = substituteCoupleId ?? (coupleIdsSet.has(match.couple1_id || '')
       ? match.couple1_id
       : coupleIdsSet.has(match.couple2_id || '')
         ? match.couple2_id
-        : null
+        : null)
 
     if (!playerCoupleId) return null
 
-    const playerCouple = getRelation(
-      playerCoupleId === match.couple1_id ? match.couple1 : match.couple2,
-    )
-    const opponentCouple = getRelation(
-      playerCoupleId === match.couple1_id ? match.couple2 : match.couple1,
-    )
+    const couple1 = applyLongMatchLineup(getRelation(match.couple1), match.couple1_id, changes.get(match.id))
+    const couple2 = applyLongMatchLineup(getRelation(match.couple2), match.couple2_id, changes.get(match.id))
+    const playerCouple = playerCoupleId === match.couple1_id ? couple1 : couple2
+    if (playerCouple && playerCouple.player1_id !== playerId && playerCouple.player2_id !== playerId) return null
+    const opponentCouple = playerCoupleId === match.couple1_id ? couple2 : couple1
     const playerCouplePlayers = getCouplePlayers(playerCouple)
     const opponentPlayers = getCouplePlayers(opponentCouple)
     const partner = playerCouplePlayers.player1?.id === playerId
@@ -394,6 +399,8 @@ const loadPlayerMatches = async (
         court: schedule?.court_assignment || undefined,
       },
       status: match.status,
+      ...(substituteCoupleId && { is_substitute: true, fecha_id: schedule?.fecha_id || undefined,
+        fecha_name: getRelation(schedule?.tournament_fechas)?.name || undefined }),
     }
   }).filter((match): match is PlayerNextMatch => Boolean(match))
 }
@@ -406,11 +413,38 @@ export async function getPlayerNextMatch(playerId: string): Promise<PlayerNextMa
       return { nextMatches: [], error: 'No autorizado' }
     }
 
-    const couples = await loadPlayerCouples(supabase, playerId)
-    const matches = await loadPlayerMatches(supabase, playerId, couples)
+    const [couples, substituteMatches] = await Promise.all([
+      loadPlayerCouples(supabase, playerId),
+      getMyLongSubstituteMatches(supabase),
+    ])
+    const matches = await loadPlayerMatches(supabase, playerId, couples, undefined, substituteMatches)
+    const visibleMatches = getVisibleNextMatches(matches)
+    const candidates = visibleMatches.filter(match => match.is_substitute && match.fecha_id && !match.scheduled_info.time)
+    const now = new Date()
+    const tournamentIds = [...new Set(candidates.map(match => match.tournament_id))]
+    const fechaIds = [...new Set(candidates.flatMap(match => match.fecha_id ? [match.fecha_id] : []))]
+    const [getAvailability, fechasResult] = await Promise.all([
+      loadPlayerPanelAvailability(supabase, fechaIds, [...new Set(candidates.map(match => match.couple_id))], now),
+      fechaIds.length ? supabase.from('tournament_fechas').select('id, status, start_date, end_date').in('id', fechaIds)
+        : Promise.resolve({ data: [], error: null }),
+    ])
+    if (fechasResult.error) throw fechasResult.error
+    const today = getArgentinaToday(now)
+    const openFechas = new Set((fechasResult.data ?? []).filter(fecha => isOpenPlayerFecha(fecha, today)).map(fecha => fecha.id))
+    await Promise.all(tournamentIds.map(async tournamentId => {
+      const assignments = await getMyLongFechaSubstitutions(supabase, tournamentId)
+      for (const match of candidates) {
+        if (match.tournament_id !== tournamentId || !match.fecha_id || !openFechas.has(match.fecha_id)) continue
+        const availability = getAvailability(match.fecha_id, match.couple_id)
+        if (availability.playableSlotIds.length && !availability.respondedPlayableSlotIds.length && !availability.freeDateSelected
+          && assignments.some(item => item.fecha_id === match.fecha_id && item.couple_id === match.couple_id && item.is_substitute && item.can_vote)) {
+          match.availability_href = `/tournaments/${tournamentId}/schedules?${new URLSearchParams({ fecha_id: match.fecha_id, couple_id: match.couple_id })}`
+        }
+      }
+    }))
 
     return {
-      nextMatches: getVisibleNextMatches(matches),
+      nextMatches: visibleMatches,
     }
   } catch (error) {
     console.error('Error fetching player matches:', error)
@@ -419,6 +453,85 @@ export async function getPlayerNextMatch(playerId: string): Promise<PlayerNextMa
       error: 'Error inesperado al obtener proximos partidos',
     }
   }
+}
+
+type PanelFechaCandidate = PlayerPanelFechaCandidate & { coupleId: string; fechaId: string }
+
+const resolveTournamentAgenda = (
+  tournamentId: string, matches: PlayerNextMatch[], fechas: PanelFechaCandidate[], today: string, isEliminated = false,
+): PlayerTournamentAgenda => {
+  const resolution = resolvePlayerPanelAgenda({
+    isLongTournament: true, isEliminated, today, fechas,
+    matches: matches.map(match => ({ id: match.match_id, scheduledDate: match.scheduled_info.date || null,
+      scheduledStartTime: match.scheduled_info.time || null })),
+  })
+  const ids = new Set(resolution.scheduledMatchIds)
+  const fecha = fechas.find(item => item.id === resolution.availabilityFechaId)
+  return {
+    state: resolution.state,
+    scheduled_matches: matches.filter(match => ids.has(match.match_id)),
+    availability: fecha ? {
+      fecha_id: fecha.fechaId,
+      couple_id: fecha.coupleId,
+      fecha_name: fecha.name,
+      start_date: fecha.startDate,
+      end_date: fecha.endDate,
+      total_slots: fecha.playableSlotIds.length,
+      responded_slots: fecha.respondedPlayableSlotIds.length,
+      free_date_selected: fecha.freeDateSelected,
+      href: `/tournaments/${tournamentId}/schedules?${new URLSearchParams({ fecha_id: fecha.fechaId, couple_id: fecha.coupleId })}`,
+    } : null,
+  }
+}
+
+export type PlayerSubstituteTournament = {
+  id: string
+  name: string
+  lineup?: string
+  agenda: PlayerTournamentAgenda
+}
+
+const loadPlayerSubstituteTournaments = async (supabase: SupabaseServerClient, nextMatches: PlayerNextMatch[]): Promise<PlayerSubstituteTournament[]> => {
+  const assignments = await getMyLongSubstitutePanelFechas(supabase)
+  const matches = nextMatches.filter(match => match.is_substitute)
+  const tournamentNames = new Map(matches.map(match => [match.tournament_id, match.tournament_name]))
+  for (const assignment of assignments) tournamentNames.set(assignment.tournament_id, assignment.tournament_name)
+
+  const fechaIds = [...new Set(assignments.map(assignment => assignment.fecha_id))]
+  const now = new Date()
+  const today = getArgentinaToday(now)
+  const fechaResult = fechaIds.length ? await supabase.from('tournament_fechas')
+    .select('id, fecha_number, start_date, end_date, status').in('id', fechaIds) : { data: [], error: null }
+  if (fechaResult.error) throw fechaResult.error
+  const fechas = new Map((fechaResult.data ?? []).filter(fecha => isOpenPlayerFecha(fecha, today)).map(fecha => [fecha.id, fecha]))
+  const coupleIds = [...new Set(assignments.filter(item => fechas.has(item.fecha_id)).map(item => item.couple_id))]
+  const getAvailability = await loadPlayerPanelAvailability(supabase, [...fechas.keys()], coupleIds, now)
+
+  return Array.from(tournamentNames).flatMap(([id, name]) => {
+    const candidates = assignments.filter(assignment => assignment.tournament_id === id).flatMap(assignment => {
+      const fecha = fechas.get(assignment.fecha_id)
+      if (!fecha) return []
+      return [{
+        id: `${assignment.fecha_id}:${assignment.couple_id}`,
+        fechaId: assignment.fecha_id,
+        coupleId: assignment.couple_id,
+        name: assignment.fecha_name,
+        fechaNumber: fecha.fecha_number ?? 0,
+        startDate: fecha.start_date,
+        endDate: fecha.end_date,
+        status: fecha.status,
+        isApplicable: true,
+        lineup: `${assignment.player1_name} / ${assignment.player2_name}`,
+        ...getAvailability(assignment.fecha_id, assignment.couple_id),
+      }]
+    })
+    const tournamentMatches = matches.filter(match => match.tournament_id === id)
+    if (!candidates.length && !tournamentMatches.length) return []
+    const agenda = resolveTournamentAgenda(id, tournamentMatches, candidates, today)
+    const selected = candidates.find(item => item.fechaId === agenda.availability?.fecha_id
+      && item.coupleId === agenda.availability.couple_id)
+    return [{ id, name, agenda, lineup: selected?.lineup ?? candidates[0]?.lineup }]
+  })
 }
 
 export async function getPlayerInscribedTournaments(playerId: string): Promise<InscribedTournamentsResult> {
@@ -556,7 +669,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
 
     const longTournamentIds = [...new Set(longInscriptions.map(inscription => inscription.tournament.id))]
     const longCoupleIds = [...new Set(longInscriptions.map(inscription => inscription.couple_id))]
-    const [matches, fechasResult, seedsResult] = await Promise.all([
+    const [matches, fechasResult, seedsResult, fechaAssignments] = await Promise.all([
       loadPlayerMatches(supabase, playerId, couples, longTournamentIds),
       supabase
         .from('tournament_fechas')
@@ -569,6 +682,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
         .in('tournament_id', longTournamentIds)
         .in('couple_id', longCoupleIds)
         .in('bracket_key', ['GOLD', 'SILVER']),
+      Promise.all(longTournamentIds.map(id => getMyLongFechaSubstitutions(supabase, id))),
     ])
 
     if (fechasResult.error) throw fechasResult.error
@@ -585,47 +699,18 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
       round_type: string | null
       bracket_key: string | null
     }>
-    const fechaIds = fechas.map(fecha => fecha.id)
-
-    const slotsResult = fechaIds.length > 0
-      ? await supabase
-          .from('tournament_time_slots')
-          .select('id, fecha_id, slot_type')
-          .in('fecha_id', fechaIds)
-          .eq('is_available', true)
-      : { data: [], error: null }
-
-    if (slotsResult.error) throw slotsResult.error
-
-    const slots = (slotsResult.data || []) as Array<{
-      id: string
-      fecha_id: string
-      slot_type: 'TIME_RANGE' | 'FREE_DATE'
-    }>
-    const slotIds = slots.map(slot => slot.id)
-    const availabilityResult = slotIds.length > 0
-      ? await supabase
-          .from('couple_time_availability')
-          .select('couple_id, time_slot_id, is_available')
-          .in('couple_id', longCoupleIds)
-          .in('time_slot_id', slotIds)
-      : { data: [], error: null }
-
-    if (availabilityResult.error) throw availabilityResult.error
-
-    const availabilityRows = (availabilityResult.data || []) as Array<{
-      couple_id: string
-      time_slot_id: string
-      is_available: boolean
-    }>
+    const now = new Date()
+    const today = getArgentinaToday(now)
+    const fechaIds = fechas.filter(fecha => isOpenPlayerFecha(fecha, today)).map(fecha => fecha.id)
+    const getAvailability = await loadPlayerPanelAvailability(supabase, fechaIds, longCoupleIds, now)
     const seedByTournamentAndCouple = new Map(
       (seedsResult.data || []).map(seed => [
         `${seed.tournament_id}:${seed.couple_id}`,
         seed.bracket_key,
       ]),
     )
-    const slotById = new Map(slots.map(slot => [slot.id, slot]))
-    const today = getTodayDateKey()
+    const replacedFechas = new Set(fechaAssignments.flat().filter(item => !item.can_vote)
+      .map(item => `${item.fecha_id}:${item.couple_id}`))
 
     const enrichedTournaments = inscribedTournaments.map((inscription): InscribedTournament => {
       if (inscription.tournament.type !== 'LONG') return inscription
@@ -637,71 +722,27 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
         `${inscription.tournament.id}:${inscription.couple_id}`,
       )
       const tournamentFechas = fechas.filter(fecha => fecha.tournament_id === inscription.tournament.id)
-      const fechaCandidates: PlayerPanelFechaCandidate[] = tournamentFechas.map(fecha => {
-        const fechaSlots = slots.filter(slot => slot.fecha_id === fecha.id)
-        const playableSlotIds = fechaSlots
-          .filter(slot => slot.slot_type === 'TIME_RANGE')
-          .map(slot => slot.id)
-        const respondedPlayableSlotIds = availabilityRows
-          .filter(row => (
-            row.couple_id === inscription.couple_id &&
-            playableSlotIds.includes(row.time_slot_id)
-          ))
-          .map(row => row.time_slot_id)
-        const freeDateSelected = availabilityRows.some(row => (
-          row.couple_id === inscription.couple_id &&
-          row.is_available &&
-          slotById.get(row.time_slot_id)?.fecha_id === fecha.id &&
-          slotById.get(row.time_slot_id)?.slot_type === 'FREE_DATE'
-        ))
+      const fechaCandidates: PanelFechaCandidate[] = tournamentFechas.map(fecha => {
         const isGoldSilverFecha = fecha.round_type !== 'ZONE' && ['GOLD', 'SILVER'].includes(fecha.bracket_key || '')
 
         return {
           id: fecha.id,
+          fechaId: fecha.id,
+          coupleId: inscription.couple_id,
           name: fecha.name || `Fecha ${fecha.fecha_number || ''}`.trim(),
           fechaNumber: fecha.fecha_number || 0,
           startDate: fecha.start_date,
           endDate: fecha.end_date,
           status: fecha.status || 'NOT_STARTED',
-          isApplicable: !isGoldSilverFecha || assignedBracket === fecha.bracket_key,
-          playableSlotIds,
-          respondedPlayableSlotIds,
-          freeDateSelected,
+          isApplicable: (!isGoldSilverFecha || assignedBracket === fecha.bracket_key)
+            && !replacedFechas.has(`${fecha.id}:${inscription.couple_id}`),
+          ...getAvailability(fecha.id, inscription.couple_id),
         }
       })
-      const resolution = resolvePlayerPanelAgenda({
-        isLongTournament: true,
-        isEliminated: eliminatedByInscriptionId.get(inscription.inscription_id) || false,
-        today,
-        matches: inscriptionMatches.map(match => ({
-          id: match.match_id,
-          scheduledDate: match.scheduled_info.date || null,
-          scheduledStartTime: match.scheduled_info.time || null,
-        })),
-        fechas: fechaCandidates,
-      })
-      const scheduledMatchIds = new Set(resolution.scheduledMatchIds)
-      const availabilityFecha = resolution.availabilityFechaId
-        ? fechaCandidates.find(fecha => fecha.id === resolution.availabilityFechaId) || null
-        : null
-
-      return {
-        ...inscription,
-        agenda: {
-          state: resolution.state,
-          scheduled_matches: inscriptionMatches.filter(match => scheduledMatchIds.has(match.match_id)),
-          availability: availabilityFecha
-            ? {
-                fecha_id: availabilityFecha.id,
-                fecha_name: availabilityFecha.name,
-                start_date: availabilityFecha.startDate,
-                end_date: availabilityFecha.endDate,
-                total_slots: availabilityFecha.playableSlotIds.length,
-                href: `/tournaments/${inscription.tournament.id}/schedules?fecha_id=${availabilityFecha.id}`,
-              }
-            : null,
-        },
-      }
+      return { ...inscription, agenda: resolveTournamentAgenda(
+        inscription.tournament.id, inscriptionMatches, fechaCandidates, today,
+        eliminatedByInscriptionId.get(inscription.inscription_id) || false,
+      ) }
     })
 
     return { inscribedTournaments: enrichedTournaments }
@@ -825,7 +866,7 @@ export async function getPlayerUpcomingTournaments(
 
 export async function getPlayerDashboardData(
   userId: string,
-  options: { includeNextMatches?: boolean } = {},
+  options: { includeNextMatches?: boolean; includeSubstituteTournaments?: boolean } = {},
 ) {
   try {
     const supabase = await createClient()
@@ -867,7 +908,7 @@ export async function getPlayerDashboardData(
       return {
         playerData: null,
         playerRanking: null,
-        nextMatch: null,
+        nextMatches: [],
         error: 'Jugador no encontrado',
       }
     }
@@ -875,6 +916,12 @@ export async function getPlayerDashboardData(
     const nextMatchResult = options.includeNextMatches === false
       ? { nextMatches: [] as PlayerNextMatch[], error: undefined }
       : await getPlayerNextMatch(playerData.id)
+
+    const substituteTournaments = options.includeSubstituteTournaments
+      ? await loadPlayerSubstituteTournaments(supabase, nextMatchResult.nextMatches).catch(error => {
+        console.error('Error loading substitute tournaments:', error)
+        return []
+      }) : []
 
     let playerRanking = null
     if (playerData.score) {
@@ -899,6 +946,7 @@ export async function getPlayerDashboardData(
       playerData,
       playerRanking,
       nextMatches: nextMatchResult.nextMatches,
+      substituteTournaments,
       error: nextMatchResult.error,
     }
   } catch (error) {

@@ -87,6 +87,7 @@ export interface CoupleData {
   id: string
   player1_id: string
   player2_id: string
+  substitute_slot?: 1 | 2
   /** Nombre generado de la pareja (player1 / player2) */
   name?: string
   /** Detalles del jugador 1 */

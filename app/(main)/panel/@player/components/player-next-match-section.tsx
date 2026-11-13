@@ -36,7 +36,7 @@ export default function PlayerNextMatchSection({ nextMatches }: PlayerNextMatchS
 
       <div className="space-y-4 p-4 sm:p-6">
         {nextMatches.map((match, index) => {
-          const roundLabel = formatRoundLabel(match.round)
+          const roundLabel = match.fecha_name || formatRoundLabel(match.round)
           const isFirst = index === 0
           const mapsUrl = match.club_maps_url || buildGoogleMapsSearchUrl({
             name: match.club_name,
@@ -68,6 +68,7 @@ export default function PlayerNextMatchSection({ nextMatches }: PlayerNextMatchS
                       <Badge className="rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
                         {match.status === "IN_PROGRESS" ? "En progreso" : "Pendiente"}
                       </Badge>
+                      {match.is_substitute && <Badge variant="outline" className="border-white/15 text-white">Suplente</Badge>}
                     </div>
                     <h3 className="text-2xl font-black uppercase tracking-[-0.03em] text-[var(--tpe-paper)]">
                       {match.tournament_name}
@@ -109,6 +110,9 @@ export default function PlayerNextMatchSection({ nextMatches }: PlayerNextMatchS
                 </div>
 
                 <div className="flex w-full flex-col gap-3 lg:max-w-[220px]">
+                  {match.availability_href && <Button asChild variant="outline" className="border-white/20 bg-white/8 text-white">
+                    <Link href={match.availability_href}>Votar horarios</Link>
+                  </Button>}
                   <Button
                     asChild
                     className="w-full rounded-full bg-[var(--tpe-lime)] text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-night)] hover:bg-[#e6ff63]"

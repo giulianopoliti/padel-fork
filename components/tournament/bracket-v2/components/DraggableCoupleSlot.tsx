@@ -391,9 +391,11 @@ export function DraggableCoupleSlot({
             <div className={cn('min-w-0 font-medium text-gray-900', compact ? 'text-[11px] leading-snug' : 'text-sm')}>
               <div className="break-words">
                 {formatPlayerName(couple.player1_details?.first_name, couple.player1_details?.last_name)}
+                {couple.substitute_slot === 1 && <span className="ml-1 rounded bg-slate-100 px-1 text-[10px] text-slate-700">Suplente</span>}
               </div>
               <div className="break-words text-gray-600">
                 {formatPlayerName(couple.player2_details?.first_name, couple.player2_details?.last_name)}
+                {couple.substitute_slot === 2 && <span className="ml-1 rounded bg-slate-100 px-1 text-[10px] text-slate-700">Suplente</span>}
               </div>
             </div>
           </div>

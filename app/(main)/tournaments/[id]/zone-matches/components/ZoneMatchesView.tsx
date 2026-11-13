@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Trophy, Clock, MapPin, Users, ArrowLeft, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
+import { applyLongMatchLineup, getLongMatchLineupChanges } from '@/lib/services/long-match-lineups'
 import ThreeSetResultDisplay from '@/components/tournament/universal/ThreeSetResultDisplay'
 
 interface ZoneMatch {
@@ -148,7 +149,14 @@ export default function ZoneMatchesView({ tournamentId, selectedZoneId }: ZoneMa
 
       if (matchesError) throw matchesError
 
-      setMatches(matchesData || [])
+      const rows = (matchesData ?? []) as unknown as ZoneMatch[]
+      const changes = await getLongMatchLineupChanges(supabase, rows.map(match => match.id))
+      setMatches(rows.map(match => {
+        const lineup = changes.get(match.id)
+        if (!lineup) return match
+        return { ...match, couple1: applyLongMatchLineup(match.couple1 ?? null, match.couple1_id, lineup),
+          couple2: applyLongMatchLineup(match.couple2 ?? null, match.couple2_id, lineup) } as ZoneMatch
+      }))
 
     } catch (err) {
       console.error('Error fetching zone matches:', err)

@@ -1,3 +1,4 @@
+import { applyLongMatchLineup, getLongMatchLineupChanges } from '@/lib/services/long-match-lineups'
 import {
   fetchPlayersWithEmails,
   getNotificationSupabase,
@@ -297,10 +298,11 @@ export const loadLongMatchMessageData = async (
     .select("id, player1_id, player2_id")
     .in("id", [match.couple1_id, match.couple2_id].filter(Boolean))
 
-  const playerIds = (couples || []).flatMap((couple: any) => [couple.player1_id, couple.player2_id]).filter(Boolean)
+  const changes = supabase.rpc ? (await getLongMatchLineupChanges({ rpc: supabase.rpc.bind(supabase) }, [matchId])).get(matchId) : undefined
+  const couple1 = applyLongMatchLineup((couples || []).find((couple: any) => couple.id === match.couple1_id) ?? null, match.couple1_id, changes)
+  const couple2 = applyLongMatchLineup((couples || []).find((couple: any) => couple.id === match.couple2_id) ?? null, match.couple2_id, changes)
+  const playerIds = [couple1?.player1_id, couple1?.player2_id, couple2?.player1_id, couple2?.player2_id].filter(Boolean)
   const players = await fetchPlayersWithEmails(supabase, playerIds)
-  const couple1 = (couples || []).find((couple: any) => couple.id === match.couple1_id)
-  const couple2 = (couples || []).find((couple: any) => couple.id === match.couple2_id)
   const couple1Name = formatCoupleName(
     players.find((player) => player.id === couple1?.player1_id) || null,
     players.find((player) => player.id === couple1?.player2_id) || null,

@@ -187,6 +187,7 @@ const MatchActionsDropdown: React.FC<MatchActionsDropdownProps> = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
+
       <AlertDialog 
         open={showDeleteDialog} 
         onOpenChange={(open) => {

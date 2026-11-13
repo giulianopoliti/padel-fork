@@ -96,6 +96,15 @@ export default function PlayerTournamentDashboard({ tournamentId, tournament, ov
     return <AwaitingPartnerView tournamentId={tournamentId} tournament={tournament} />
   }
 
+  if (overview.registrationStatus === 'SUBSTITUTE') {
+    return <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
+      <header><p className="text-sm font-medium text-muted-foreground">Participás como suplente</p><h1 className="text-2xl font-bold">{tournament.name}</h1></header>
+      {overview.availability && <AvailabilityCard tournamentId={tournamentId} overview={overview} />}
+      <NextMatchSummary match={overview.nextMatch} />
+      <FinishedMatches matches={overview.finishedMatches} />
+    </div>
+  }
+
   const isEliminated = overview.registrationStatus === 'ELIMINATED'
 
   return (
@@ -150,7 +159,10 @@ const AvailabilityCard = ({ tournamentId, overview }: { tournamentId: string; ov
   const pending = summary ? Math.max(summary.totalSlots - summary.respondedSlots, 0) : 0
   const complete = Boolean(summary && summary.totalSlots > 0 && pending === 0)
   const progress = summary && summary.totalSlots > 0 ? (summary.respondedSlots / summary.totalSlots) * 100 : 0
-  const href = summary ? `/tournaments/${tournamentId}/schedules?fecha_id=${summary.fechaId}` : `/tournaments/${tournamentId}/schedules`
+  const href = summary ? `/tournaments/${tournamentId}/schedules?${new URLSearchParams({ fecha_id: summary.fechaId,
+    ...(summary.coupleId && { couple_id: summary.coupleId }),
+  })}` : null
+  const hasResponses = Boolean(summary?.respondedSlots)
 
   return (
     <Card className="overflow-hidden border-primary/20 shadow-lg shadow-primary/5">
@@ -163,16 +175,16 @@ const AvailabilityCard = ({ tournamentId, overview }: { tournamentId: string; ov
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Accion principal</p>
-              <h2 className="mt-1 text-xl font-bold">{!summary ? 'Disponibilidad horaria' : complete ? 'Disponibilidad completa' : 'Completa tu disponibilidad'}</h2>
+              <h2 className="mt-1 text-xl font-bold">{!summary ? 'Disponibilidad horaria' : complete ? 'Disponibilidad completa' : hasResponses ? 'Disponibilidad registrada' : 'Votá tus horarios'}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {!summary ? 'El organizador todavia no publico fechas con horarios.' : `${summary.fechaName}: ${summary.respondedSlots} de ${summary.totalSlots} horarios respondidos`}
+                {!summary ? 'Sin horarios vigentes' : `${summary.fechaName} · ${summary.respondedSlots} de ${summary.totalSlots} horarios respondidos por tu dupla`}
               </p>
               {summary && summary.totalSlots > 0 && <Progress value={progress} className="mt-3 h-2 max-w-sm" />}
             </div>
           </div>
-          <Button asChild size="lg" className="min-h-12 shrink-0 bg-accent font-bold text-accent-foreground hover:bg-accent/85">
-            <Link href={href}>{complete ? 'Revisar disponibilidad' : 'Cargar disponibilidad'}</Link>
-          </Button>
+          {href && <Button asChild size="lg" className="min-h-12 shrink-0 bg-accent font-bold text-accent-foreground hover:bg-accent/85">
+            <Link href={href}>{hasResponses ? 'Revisar horarios' : 'Votar horarios'}</Link>
+          </Button>}
         </div>
       </CardContent>
     </Card>

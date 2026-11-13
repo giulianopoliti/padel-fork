@@ -23,6 +23,7 @@ interface CoupleInfo {
   player_1_info: PlayerInfo | null;
   player_2_info: PlayerInfo | null;
   is_pending?: boolean;
+  occupies_slot?: boolean | null;
   inscription_id?: string;
   // Payment status for each player
   player_1_has_paid?: boolean;

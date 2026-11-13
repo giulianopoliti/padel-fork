@@ -1,8 +1,10 @@
 import { getTenantBranding } from "@/config/tenant"
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendTransactionalEmail } from "./resend-client"
 
 export type SupabaseLike = {
   from: (table: string) => any
+  rpc?: SupabaseClient['rpc']
 }
 
 export type Player = {

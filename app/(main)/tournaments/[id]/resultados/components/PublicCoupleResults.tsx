@@ -75,7 +75,8 @@ const MatchCard = ({
   const coupleIsFirst = match.couple1Id === coupleId
   const opponentId = coupleIsFirst ? match.couple2Id : match.couple1Id
   const hasOpponent = Boolean(opponentId)
-  const opponent = opponentId ? couples[opponentId] : null
+  const opponent = (coupleIsFirst ? match.lineup2 : match.lineup1) ?? (opponentId ? couples[opponentId] : null)
+  const ownLineup = coupleIsFirst ? match.lineup1 : match.lineup2
   const opponentName = opponent
     ? `${getPlayerName(opponent.player1, "Jugador 1")} / ${getPlayerName(opponent.player2, "Jugador 2")}`
     : null
@@ -95,6 +96,7 @@ const MatchCard = ({
           <p className="mt-1 text-sm font-semibold text-slate-900">
             {hasOpponent ? opponentName || "Partido confirmado" : "Rival por definir"}
           </p>
+          {ownLineup && <p className="mt-1 text-xs text-muted-foreground">Alineación · {getPlayerName(ownLineup.player1, 'Jugador 1')} / {getPlayerName(ownLineup.player2, 'Jugador 2')}</p>}
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
           isFinished(match)

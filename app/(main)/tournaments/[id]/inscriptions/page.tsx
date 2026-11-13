@@ -11,6 +11,8 @@ import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility
 import InscriptionsClient from './components/InscriptionsClient';
 import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
 import { sanitizeTournamentPlayer } from '@/utils/tournament-player-privacy';
+import { getMyLongSubstituteMatches } from '@/lib/services/long-match-lineups';
+import { getMyLongFechaSubstitutions } from '@/lib/services/long-fecha-substitutions';
 
 interface InscriptionsPageProps {
   params: Promise<{ id: string }>;
@@ -99,14 +101,26 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
   }
 
   const accessCheck = await checkTournamentAccess(user?.id || null, tournamentId);
+  const [myMatches, myFechas] = user && tournament.type === 'LONG' && accessCheck.metadata.userRole === 'PLAYER'
+    ? await Promise.all([getMyLongSubstituteMatches(supabase, tournamentId), getMyLongFechaSubstitutions(supabase, tournamentId)])
+    : [null, []] as const;
+  const participatesAsSubstitute = Boolean(myMatches?.size || myFechas.some(fecha => fecha.is_substitute));
+  const substituteNotice = participatesAsSubstitute ? (
+    <div className="rounded-surface border border-primary/20 bg-primary/5 px-4 py-3">
+      <p className="font-medium">Participás como suplente</p>
+      <Link className="text-sm text-primary underline" href={`/tournaments/${tournamentId}`}>Ver tus partidos</Link>
+    </div>
+  ) : null;
   if (!canViewTournamentInscriptionsPage({
     enablePublicInscriptions: tournament.show_public_inscriptions,
     accessLevel: accessCheck.accessLevel,
   })) {
     return <main className="mx-auto max-w-2xl space-y-4 px-4 py-12">
       <h1 className="text-2xl font-semibold">Las inscripciones de este torneo no son públicas</h1>
-      <p className="text-sm leading-6 text-muted-foreground">Podés consultar tu inscripción y completar sus requisitos desde la página del torneo. Esta vista de gestión está reservada al organizador.</p>
-      <Button asChild><Link href={`/tournaments/${tournamentId}`}>Ir al torneo y ver mi inscripción</Link></Button>
+      {substituteNotice ?? <>
+        <p className="text-sm leading-6 text-muted-foreground">Podés consultar tu inscripción y completar sus requisitos desde la página del torneo. Esta vista de gestión está reservada al organizador.</p>
+        <Button asChild><Link href={`/tournaments/${tournamentId}`}>Ir al torneo y ver mi inscripción</Link></Button>
+      </>}
     </main>;
   }
 
@@ -155,6 +169,7 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
         player_1_info: player1 ? JSON.parse(JSON.stringify(player1)) : null,
         player_2_info: player2 ? JSON.parse(JSON.stringify(player2)) : null,
         is_pending: Boolean(inscription.is_pending ?? false),
+        occupies_slot: inscription.occupies_slot,
         inscription_id: String(inscription.id),
         payment_proof_status: inscription.payment_proof_status ?? 'NOT_REQUIRED',
         payment_proof_uploaded_at: inscription.payment_proof_uploaded_at ?? null,
@@ -226,12 +241,14 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
 
   return (
     <>
+    {substituteNotice ? <div className="container mx-auto px-4 pt-4"><div className="mx-auto max-w-7xl">{substituteNotice}</div></div> : null}
     <InscriptionsClient 
       tournament={serializedTournament}
       coupleInscriptions={visibleCoupleInscriptions}
       individualInscriptions={visibleIndividualInscriptions}
       allPlayers={serializedAllPlayers}
       tournamentId={tournamentId}
+      canManageTournament={hasManagementPermission}
     />
     </>
   );

@@ -18,7 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import type { PlayerScheduleData, TimeSlot, UserAccess } from '../types'
+import type { PlayerScheduleData, TimeSlot } from '../types'
 import { getPlayerScheduleData, updateCoupleAvailability, updateFreeDatePreference } from '../actions'
 import { formatDateWithWeekday } from '../utils'
 import { partitionLongScheduleSlots } from '@/lib/services/long-schedule-slots'
@@ -28,20 +28,20 @@ import { PlayerAvailabilitySkeleton } from './LoadingStates'
 interface PlayerViewProps {
   tournamentId: string
   fechaId: string
-  userAccess: UserAccess
+  initialCoupleId?: string
 }
 
-export default function PlayerView({ tournamentId, fechaId, userAccess }: PlayerViewProps) {
+export default function PlayerView({ tournamentId, fechaId, initialCoupleId }: PlayerViewProps) {
   const [scheduleData, setScheduleData] = useState<PlayerScheduleData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingSlotId, setSavingSlotId] = useState<string | null>(null)
 
-  const loadPlayerData = async () => {
+  const loadPlayerData = async (coupleId?: string) => {
     setLoading(true)
     setError(null)
     try {
-      const result = await getPlayerScheduleData(tournamentId, fechaId)
+      const result = await getPlayerScheduleData(tournamentId, fechaId, coupleId)
       if (!result.success || !result.data) {
         setError(result.error || 'No se pudieron cargar los horarios')
         return
@@ -56,11 +56,12 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
   }
 
   useEffect(() => {
-    void loadPlayerData()
-  }, [tournamentId, fechaId])
+    void loadPlayerData(initialCoupleId)
+  }, [tournamentId, fechaId, initialCoupleId])
 
   const handleAvailabilityChange = async (timeSlotId: string, isAvailable: boolean, notes?: string) => {
-    if (!scheduleData || !userAccess.coupleId) return false
+    if (!scheduleData) return false
+    const coupleId = scheduleData.coupleInfo.id
     if (!scheduleData.can_edit_availability) {
       toast.error(scheduleData.availability_restriction_reason || 'No podes responder esta fecha.')
       return false
@@ -70,7 +71,7 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
     try {
       const result = await updateCoupleAvailability({
         time_slot_id: timeSlotId,
-        couple_id: userAccess.coupleId,
+        couple_id: coupleId,
         is_available: isAvailable,
         notes: notes || undefined,
       })
@@ -84,7 +85,7 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
         timeSlots: previous.timeSlots.map(slot => slot.id === timeSlotId ? {
           ...slot,
           my_availability: {
-            couple_id: userAccess.coupleId!,
+            couple_id: coupleId,
             is_available: isAvailable,
             notes: notes || null,
           },
@@ -102,7 +103,8 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
   }
 
   const handleFreeDateChange = async (timeSlotId: string, requested: boolean, notes?: string) => {
-    if (!scheduleData || !userAccess.coupleId) return false
+    if (!scheduleData || scheduleData.userAccess.isSubstitute) return false
+    const coupleId = scheduleData.coupleInfo.id
     if (!scheduleData.can_edit_availability) {
       toast.error(scheduleData.availability_restriction_reason || 'No podes responder esta fecha.')
       return false
@@ -112,7 +114,7 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
     try {
       const result = await updateFreeDatePreference({
         time_slot_id: timeSlotId,
-        couple_id: userAccess.coupleId,
+        couple_id: coupleId,
         requested,
         notes: notes || undefined,
       })
@@ -126,7 +128,7 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
         timeSlots: previous.timeSlots.map(slot => slot.id === timeSlotId ? {
           ...slot,
           my_availability: requested ? {
-            couple_id: userAccess.coupleId!,
+            couple_id: coupleId,
             is_available: true,
             notes: notes || null,
           } : undefined,
@@ -144,12 +146,12 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
   }
 
   if (loading) return <PlayerAvailabilitySkeleton />
-  if (error) return <InlineError message={error} onRetry={() => void loadPlayerData()} />
+  if (error) return <InlineError message={error} onRetry={() => void loadPlayerData(initialCoupleId)} />
   if (!scheduleData) return <InlineError message="No se pudieron cargar los horarios" />
-  if (!userAccess.coupleId) return <InlineError message="No encontramos una pareja asociada a tu inscripcion." />
 
   const { timeSlots, coupleInfo, can_edit_availability: canEdit = true, availability_restriction_reason: restrictionReason } = scheduleData
   const { freeDateSlot, playableTimeSlots } = partitionLongScheduleSlots(timeSlots)
+  const allSlotsExpired = playableTimeSlots.length > 0 && playableTimeSlots.every(slot => slot.expired)
 
   return (
     <div className="space-y-4">
@@ -157,18 +159,25 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
         <CardContent className="flex items-start gap-3 p-4 sm:p-5">
           <div className="rounded-elevated bg-primary p-3 text-primary-foreground"><Users className="h-5 w-5" /></div>
           <div className="min-w-0">
-            <h2 className="text-lg font-bold">Horarios de tu pareja</h2>
+            <h2 className="text-lg font-bold">{scheduleData.userAccess.isSubstitute ? 'Horarios como suplente' : 'Horarios de tu pareja'}</h2>
             <p className="truncate font-semibold text-primary">{coupleInfo?.player1_name} / {coupleInfo?.player2_name}</p>
             <p className="mt-1 text-sm text-muted-foreground">Responde por ambos jugadores en cada horario.</p>
+            {(scheduleData.eligible_couples?.length ?? 0) > 1 && <label className="mt-2 block text-sm">
+              Pareja
+              <select className="ml-2 max-w-full rounded-md border bg-background px-2 py-1" value={coupleInfo.id}
+                disabled={Boolean(savingSlotId)} onChange={event => void loadPlayerData(event.target.value)}>
+                {scheduleData.eligible_couples?.map(couple => <option key={couple.id} value={couple.id}>{couple.name}</option>)}
+              </select>
+            </label>}
           </div>
         </CardContent>
       </Card>
 
-      {!canEdit && (
+      {(!canEdit || allSlotsExpired) && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="flex gap-3 p-4 text-amber-900">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div><p className="font-semibold">Disponibilidad en modo lectura</p><p className="text-sm">{restrictionReason || 'Todavia no podes responder esta fecha.'}</p></div>
+            <div><p className="font-semibold">Disponibilidad en modo lectura</p><p className="text-sm">{restrictionReason || 'Sin horarios vigentes.'}</p></div>
           </CardContent>
         </Card>
       )}
@@ -189,17 +198,17 @@ export default function PlayerView({ tournamentId, fechaId, userAccess }: Player
         <div className="space-y-3">
           {playableTimeSlots.map(timeSlot => (
             <TimeSlotAvailabilityCard
-              key={timeSlot.id}
+              key={`${coupleInfo.id}:${timeSlot.id}`}
               timeSlot={timeSlot}
               onAvailabilityChange={handleAvailabilityChange}
               saving={savingSlotId === timeSlot.id}
-              disabled={!canEdit}
+              disabled={!canEdit || Boolean(timeSlot.expired)}
             />
           ))}
         </div>
       )}
 
-      {freeDateSlot && (
+      {freeDateSlot && !scheduleData.userAccess.isSubstitute && (
         <FreeDateRequestCard
           timeSlot={freeDateSlot}
           onPreferenceChange={handleFreeDateChange}
@@ -325,7 +334,7 @@ const FreeDateRequestCard = ({ timeSlot, onPreferenceChange, saving, disabled }:
 }
 
 interface TimeSlotAvailabilityCardProps {
-  timeSlot: TimeSlot & { my_availability?: { couple_id: string; is_available: boolean; notes?: string | null } }
+  timeSlot: PlayerScheduleData['timeSlots'][number]
   onAvailabilityChange: (timeSlotId: string, isAvailable: boolean, notes?: string) => Promise<boolean>
   saving: boolean
   disabled: boolean
@@ -363,7 +372,10 @@ const TimeSlotAvailabilityCard = ({ timeSlot, onAvailabilityChange, saving, disa
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><span className="rounded-surface bg-primary/10 p-2 text-primary"><CalendarDays className="h-4 w-4" /></span>{formatDateWithWeekday(timeSlot.date)}</CardTitle>
             <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Clock className="h-4 w-4" />{timeSlot.start_time.slice(0, 5)} - {timeSlot.end_time.slice(0, 5)}</p>
           </div>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusClass}`}>{availability === true ? 'Disponible' : availability === false ? 'No disponible' : 'Sin responder'}</span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass}`}>{availability === true ? 'Disponible' : availability === false ? 'No disponible' : 'Sin responder'}</span>
+            {timeSlot.expired && <span className="text-xs text-muted-foreground">Horario vencido</span>}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

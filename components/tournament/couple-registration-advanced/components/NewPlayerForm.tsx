@@ -13,11 +13,11 @@ import { UserPlus, Loader2, AlertCircle, Trophy } from "lucide-react"
 import { checkPlayerIdentity } from "@/app/api/players/actions"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
 
-import { NewPlayerData } from "../types"
+import type { NewPlayerData, PlayerInfo } from "../types"
 
 const newPlayerSchema = z.object({
-  first_name: z.string().min(1, "El nombre es requerido"),
-  last_name: z.string().min(1, "El apellido es requerido"),
+  first_name: z.string().trim().min(1, "El nombre es requerido"),
+  last_name: z.string().trim().min(1, "El apellido es requerido"),
   dni: z.string().optional(),
   phone: z.string().optional(),
   gender: z.string().min(1, "El genero es requerido"),
@@ -27,23 +27,26 @@ type NewPlayerFormValues = z.infer<typeof newPlayerSchema>
 
 type IdentityMatchType = "dni" | "name"
 
-interface ExistingPlayerIdentity {
-  id: string
-  first_name?: string | null
-  last_name?: string | null
-  dni?: string | null
-  score?: number | null
+type ExistingPlayerIdentity = PlayerInfo & {
   category_name?: string | null
 }
 
+export type ResolveNewPlayer = (data: NewPlayerData) => Promise<{
+  player: ExistingPlayerIdentity
+  matchedBy: IdentityMatchType | null
+}>
+
 interface NewPlayerFormProps {
   onSubmit: (data: NewPlayerData) => void
-  playerNumber: 1 | 2
+  onExistingPlayerSelect: (player: PlayerInfo) => void
+  resolveNewPlayer?: ResolveNewPlayer
+  playerNumber?: 1 | 2
   tournamentGender?: string
 }
 
-export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender }: NewPlayerFormProps) {
+export default function NewPlayerForm({ onSubmit, onExistingPlayerSelect, resolveNewPlayer, playerNumber, tournamentGender }: NewPlayerFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string>()
   const [showIdentityModal, setShowIdentityModal] = useState(false)
   const [existingPlayerFound, setExistingPlayerFound] = useState<ExistingPlayerIdentity | null>(null)
   const [identityMatchedBy, setIdentityMatchedBy] = useState<IdentityMatchType>("name")
@@ -62,40 +65,30 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
 
   const handleSubmit = async (values: NewPlayerFormValues) => {
     setIsSubmitting(true)
+    setSubmitError(undefined)
 
     try {
-      const normalizedDni = values.dni?.trim() || ""
-
-      const identityData = await checkPlayerIdentity({
-        firstName: values.first_name,
-        lastName: values.last_name,
-        dni: normalizedDni || null,
-        gender: values.gender,
-      })
-
-      if (!identityData.success) {
-        throw new Error(identityData.error || "No se pudo verificar la identidad del jugador")
+      const newPlayer = { ...values, dni: values.dni?.trim() || null }
+      const result = resolveNewPlayer
+        ? await resolveNewPlayer(newPlayer)
+        : await checkPlayerIdentity({ firstName: values.first_name, lastName: values.last_name, dni: newPlayer.dni, gender: values.gender })
+      if ('success' in result && !result.success) {
+        throw new Error(result.error || "No se pudo verificar la identidad del jugador")
       }
 
-      if (identityData.exists && identityData.player) {
-        setExistingPlayerFound(identityData.player)
-        setIdentityMatchedBy(identityData.matchedBy || "name")
+      if (result.player && result.matchedBy) {
+        setExistingPlayerFound(result.player)
+        setIdentityMatchedBy(result.matchedBy)
         setPendingValues(values)
         setShowIdentityModal(true)
         return
       }
 
-      onSubmit({
-        first_name: values.first_name,
-        last_name: values.last_name,
-        dni: normalizedDni || null,
-        phone: values.phone || undefined,
-        gender: values.gender,
-      })
-
+      if (resolveNewPlayer && result.player) onExistingPlayerSelect(result.player)
+      else onSubmit({ ...newPlayer, phone: values.phone || undefined })
       form.reset()
     } catch (error) {
-      console.error("Error creating player:", error)
+      setSubmitError(error instanceof Error ? error.message : 'No se pudo cargar el jugador.')
     } finally {
       setIsSubmitting(false)
     }
@@ -104,10 +97,7 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
   const handleUseExistingPlayer = () => {
     if (!existingPlayerFound) return
 
-    onSubmit({
-      ...(existingPlayerFound as any),
-      isExisting: true,
-    } as any)
+    onExistingPlayerSelect(existingPlayerFound)
 
     form.reset()
     setShowIdentityModal(false)
@@ -141,11 +131,6 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
     setIdentityMatchedBy("name")
   }
 
-  const modalTitle =
-    identityMatchedBy === "dni"
-      ? "El jugador es este?"
-      : "El jugador es este?"
-
   const modalDescription =
     identityMatchedBy === "dni"
       ? `Coincide por DNI (${existingPlayerFound?.dni || "informado"}).`
@@ -153,7 +138,7 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-muted-foreground">Complete los datos del nuevo jugador {playerNumber}</div>
+      {playerNumber && <div className="text-sm text-muted-foreground">Complete los datos del nuevo jugador {playerNumber}</div>}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -252,16 +237,17 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
             )}
           />
 
+          {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
           <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creando jugador...
+                Verificando jugador…
               </>
             ) : (
               <>
                 <UserPlus className="mr-2 h-4 w-4" />
-                Crear Jugador {playerNumber}
+                {playerNumber ? `Crear Jugador ${playerNumber}` : 'Crear jugador'}
               </>
             )}
           </Button>
@@ -270,11 +256,11 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
 
       {showIdentityModal && existingPlayerFound && (
         <Dialog open={showIdentityModal} onOpenChange={setShowIdentityModal}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-600" />
-                {modalTitle}
+                ¿Es el mismo jugador?
               </DialogTitle>
               <DialogDescription>{modalDescription}</DialogDescription>
             </DialogHeader>
@@ -311,10 +297,16 @@ export default function NewPlayerForm({ onSubmit, playerNumber, tournamentGender
             </div>
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={handleRejectExistingPlayer} className="w-full sm:w-auto">
-                No usar, crear nuevo
-              </Button>
-              <Button onClick={handleUseExistingPlayer} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+              {resolveNewPlayer ? (
+                <Button type="button" variant="outline" onClick={() => setShowIdentityModal(false)} className="w-full sm:w-auto">
+                  Volver al formulario
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" onClick={handleRejectExistingPlayer} className="w-full sm:w-auto">
+                  No usar, crear nuevo
+                </Button>
+              )}
+              <Button type="button" onClick={handleUseExistingPlayer} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
                 Usar este jugador
               </Button>
             </DialogFooter>

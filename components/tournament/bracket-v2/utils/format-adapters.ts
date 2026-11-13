@@ -86,6 +86,9 @@ export interface CurrentApiMatch {
   created_at: string
   couple1?: {
     id: string
+    player1_id?: string
+    player2_id?: string
+    substitute_slot?: 1 | 2
     player1?: {
       first_name: string
       last_name: string
@@ -97,6 +100,9 @@ export interface CurrentApiMatch {
   } | null
   couple2?: {
     id: string
+    player1_id?: string
+    player2_id?: string
+    substitute_slot?: 1 | 2
     player1?: {
       first_name: string
       last_name: string
@@ -307,13 +313,13 @@ export function transformCurrentApiCoupleToData(
   
   // Transformar player objects a PlayerData
   const player1: PlayerData = {
-    id: '', // No disponible en la respuesta actual
+    id: coupleData.player1_id ?? '',
     first_name: coupleData.player1?.first_name || '',
     last_name: coupleData.player1?.last_name || ''
   }
   
   const player2: PlayerData = {
-    id: '', // No disponible en la respuesta actual  
+    id: coupleData.player2_id ?? '',
     first_name: coupleData.player2?.first_name || '',
     last_name: coupleData.player2?.last_name || ''
   }
@@ -323,8 +329,9 @@ export function transformCurrentApiCoupleToData(
 
   return {
     id: coupleData.id || '',
-    player1_id: '', // No disponible en la respuesta actual
-    player2_id: '', // No disponible en la respuesta actual
+    player1_id: player1.id,
+    player2_id: player2.id,
+    ...(coupleData.substitute_slot ? { substitute_slot: coupleData.substitute_slot } : {}),
     player1_details: player1,
     player2_details: player2,
     seed: seed,

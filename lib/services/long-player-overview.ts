@@ -1,7 +1,12 @@
 import 'server-only'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { getInscriptionState } from '@/lib/tournaments/inscription-state'
+import { applyLongMatchLineup, getLongMatchLineupChanges, getMyLongSubstituteMatches } from './long-match-lineups'
+import { getMyLongFechaSubstitutions } from './long-fecha-substitutions'
+import { loadPlayerPanelAvailability } from './player-panel-availability'
+import { isOpenPlayerFecha } from './player-panel-agenda.shared'
+import { getArgentinaToday } from './schedule-sharing/validation'
 import {
   LongPlayerAvailabilitySummary,
   LongPlayerOverview,
@@ -26,13 +31,14 @@ const getCoupleName = (couple: any) => {
   return [getPlayerName(player1), getPlayerName(player2)].filter(Boolean).join(' / ') || 'Rival a definir'
 }
 
-const mapMatch = (match: any, coupleId: string): LongPlayerOverviewMatch => {
+const mapMatch = (match: any, coupleId: string, isSubstitute: boolean): LongPlayerOverviewMatch => {
   const playerIsCouple1 = match.couple1_id === coupleId
   const opponent = getRelation(playerIsCouple1 ? match.couple2 : match.couple1)
   const schedule = getRelation(match.fecha_matches)
 
   return {
     id: match.id,
+    isSubstitute,
     status: match.status || 'PENDING',
     round: match.round || 'ZONE',
     opponentName: getCoupleName(opponent),
@@ -58,7 +64,7 @@ export const getLongPlayerOverview = async (
   tournamentId: string,
   userId: string
 ): Promise<LongPlayerOverview> => {
-  const supabase = await createClient()
+  const [sessionClient, supabase] = await Promise.all([createClient(), createClientServiceRole()])
   const emptyOverview: LongPlayerOverview = {
     registrationStatus: 'NOT_REGISTERED',
     coupleId: null,
@@ -79,7 +85,7 @@ export const getLongPlayerOverview = async (
 
   if (!player) return emptyOverview
 
-  const { data: inscriptions } = await supabase
+  const [{ data: inscriptions }, substituteMatches, fechaAssignments] = await Promise.all([supabase
     .from('inscriptions')
     .select(`
       id, player_id, couple_id, is_pending, is_eliminated, eliminated_at, eliminated_in_round,
@@ -91,7 +97,9 @@ export const getLongPlayerOverview = async (
       )
     `)
     .eq('tournament_id', tournamentId)
-    .eq('es_prueba', false)
+    .eq('es_prueba', false), getMyLongSubstituteMatches(sessionClient, tournamentId), getMyLongFechaSubstitutions(sessionClient, tournamentId)])
+  const substituteFechas = fechaAssignments.filter(item => item.is_substitute && item.can_vote)
+  const hasSubstitutions = substituteMatches.size > 0 || substituteFechas.length > 0
 
   const inscription = (inscriptions || []).find((row: any) => {
     if (row.player_id === player.id && !row.couple_id) return true
@@ -99,10 +107,10 @@ export const getLongPlayerOverview = async (
     return couple?.player1_id === player.id || couple?.player2_id === player.id
   }) as any
 
-  if (!inscription) return emptyOverview
-  const paymentTournament = getRelation(inscription.tournaments) as { enable_transfer_proof?: boolean } | null
-  const state = getInscriptionState(inscription, paymentTournament?.enable_transfer_proof)
-  if (inscription.couple_id && !state.confirmed) {
+  if (!inscription && !hasSubstitutions) return emptyOverview
+  const paymentTournament = getRelation(inscription?.tournaments) as { enable_transfer_proof?: boolean } | null
+  const confirmed = inscription?.couple_id && getInscriptionState(inscription, paymentTournament?.enable_transfer_proof).confirmed
+  if (inscription?.couple_id && !confirmed && !hasSubstitutions) {
     const pendingCouple = getRelation(inscription.couples) as any
     return {
       ...emptyOverview,
@@ -111,59 +119,77 @@ export const getLongPlayerOverview = async (
       coupleName: inscription.couple_id ? getCoupleName(pendingCouple) : null,
     }
   }
-  if (!inscription.couple_id) {
+  if (inscription && !inscription.couple_id && !hasSubstitutions) {
     return { ...emptyOverview, registrationStatus: 'INDIVIDUAL' }
   }
 
-  const coupleId = inscription.couple_id as string
-  const couple = getRelation(inscription.couples) as any
-  const registrationStatus = inscription.is_eliminated ? 'ELIMINATED' : 'ACTIVE'
+  const coupleId = confirmed ? inscription.couple_id as string : null
+  const couple = getRelation(inscription?.couples) as any
+  const registrationStatus = coupleId ? (inscription.is_eliminated ? 'ELIMINATED' : 'ACTIVE') : 'SUBSTITUTE'
+  const matchFilters = [coupleId && `couple1_id.eq.${coupleId},couple2_id.eq.${coupleId}`,
+    substituteMatches.size > 0 && `id.in.(${Array.from(substituteMatches.keys()).join(',')})`].filter(Boolean).join(',')
 
   const [matchesResult, standingResult, fechasResult, bracketResult] = await Promise.all([
-    supabase
+    matchFilters ? supabase
       .from('matches')
       .select(`
         id, status, round, couple1_id, couple2_id, winner_id, result_couple1, result_couple2, created_at,
         couple1:couples!couple1_id(
+          player1_id, player2_id,
           player1:players!couples_player1_id_fkey(first_name, last_name),
           player2:players!couples_player2_id_fkey(first_name, last_name)
         ),
         couple2:couples!couple2_id(
+          player1_id, player2_id,
           player1:players!couples_player1_id_fkey(first_name, last_name),
           player2:players!couples_player2_id_fkey(first_name, last_name)
         ),
         fecha_matches(scheduled_date, scheduled_start_time, court_assignment)
       `)
       .eq('tournament_id', tournamentId)
-      .neq('status', 'DRAFT')
-      .or(`couple1_id.eq.${coupleId},couple2_id.eq.${coupleId}`),
-    supabase
+      .not('status', 'in', '(DRAFT,CANCELED)')
+      .eq('bracket_is_active', true)
+      .or(matchFilters) : Promise.resolve({ data: [] }),
+    coupleId ? supabase
       .from('zone_positions')
       .select('position, wins, losses, sets_difference, games_difference')
       .eq('tournament_id', tournamentId)
       .eq('couple_id', coupleId)
       .order('position', { ascending: true })
       .limit(1)
-      .maybeSingle(),
-    supabase
+      .maybeSingle() : Promise.resolve({ data: null }),
+    coupleId || substituteFechas.length ? supabase
       .from('tournament_fechas')
-      .select('id, name, fecha_number, round_type, bracket_key, status')
+      .select('id, name, fecha_number, round_type, bracket_key, status, start_date, end_date')
       .eq('tournament_id', tournamentId)
       .neq('status', 'CANCELED')
-      .order('fecha_number', { ascending: false }),
-    supabase
+      .order('fecha_number', { ascending: false }) : Promise.resolve({ data: [] }),
+    coupleId ? supabase
       .from('tournament_couple_seeds')
       .select('bracket_key')
       .eq('tournament_id', tournamentId)
       .eq('couple_id', coupleId)
       .in('bracket_key', ['GOLD', 'SILVER'])
       .limit(1)
-      .maybeSingle(),
+      .maybeSingle() : Promise.resolve({ data: null }),
   ])
 
-  const matches = (matchesResult.data || []).map(match => mapMatch(match, coupleId))
+  const rows = matchesResult.data ?? []
+  const changes = await getLongMatchLineupChanges(sessionClient, rows.map(match => match.id))
+  const matches = rows.flatMap(rawMatch => {
+    const playerCoupleId = substituteMatches.get(rawMatch.id) ?? coupleId
+    if (!playerCoupleId) return []
+    const match = {
+      ...rawMatch,
+      couple1: applyLongMatchLineup(getRelation(rawMatch.couple1), rawMatch.couple1_id, changes.get(rawMatch.id)),
+      couple2: applyLongMatchLineup(getRelation(rawMatch.couple2), rawMatch.couple2_id, changes.get(rawMatch.id)),
+    }
+    const side = match.couple1_id === playerCoupleId ? match.couple1 : match.couple2
+    if (side && side.player1_id !== player.id && side.player2_id !== player.id) return []
+    return [mapMatch(match, playerCoupleId, substituteMatches.has(rawMatch.id))]
+  })
   const nextMatch = matches
-    .filter(match => match.status === 'PENDING' || match.status === 'IN_PROGRESS' || match.status === 'SCHEDULED')
+    .filter(match => ['PENDING', 'IN_PROGRESS', 'SCHEDULED', 'WAITING_OPONENT', 'WAITING_OPPONENT'].includes(match.status))
     .sort((a, b) => getScheduleTimestamp(a) - getScheduleTimestamp(b))[0] || null
   const finishedMatches = matches
     .filter(match => match.status === 'FINISHED')
@@ -174,44 +200,36 @@ export const getLongPlayerOverview = async (
     })
 
   let availability: LongPlayerAvailabilitySummary | null = null
-  if (registrationStatus === 'ACTIVE') {
+  if (registrationStatus === 'ACTIVE' || substituteFechas.length) {
+    const now = new Date()
+    const today = getArgentinaToday(now)
     const bracketKey = bracketResult.data?.bracket_key || null
-    const eligibleFechas = (fechasResult.data || []).filter(fecha =>
-      fecha.round_type === 'ZONE' ||
-      !['GOLD', 'SILVER'].includes(fecha.bracket_key || '') ||
-      fecha.bracket_key === bracketKey
-    )
-    const fechaIds = eligibleFechas.map(fecha => fecha.id)
+    const eligibleFechas = (fechasResult.data || []).flatMap(fecha => {
+      if (!isOpenPlayerFecha(fecha, today)) return []
+      const own = fechaAssignments.find(item => item.fecha_id === fecha.id && item.couple_id === coupleId)
+      const assigned = substituteFechas.filter(item => item.fecha_id === fecha.id).map(item => item.couple_id)
+      const canVoteForOwn = registrationStatus === 'ACTIVE' && coupleId && own?.can_vote !== false
+        && (fecha.round_type === 'ZONE' || !['GOLD', 'SILVER'].includes(fecha.bracket_key || '') || fecha.bracket_key === bracketKey)
+      if (canVoteForOwn) assigned.unshift(coupleId)
+      return [...new Set(assigned)].map(id => ({ fecha, coupleId: id }))
+    })
+    const fechaIds = [...new Set(eligibleFechas.map(item => item.fecha.id))]
 
     if (fechaIds.length > 0) {
-      const { data: slots } = await supabase
-        .from('tournament_time_slots')
-        .select('id, fecha_id')
-        .in('fecha_id', fechaIds)
-        .eq('is_available', true)
-        .eq('slot_type', 'TIME_RANGE')
-
-      const slotIds = (slots || []).map(slot => slot.id)
-      const { data: responses } = slotIds.length > 0
-        ? await supabase
-            .from('couple_time_availability')
-            .select('time_slot_id')
-            .eq('couple_id', coupleId)
-            .in('time_slot_id', slotIds)
-        : { data: [] }
-      const respondedIds = new Set((responses || []).map(response => response.time_slot_id))
-
-      const summaries = eligibleFechas.map(fecha => {
-        const fechaSlots = (slots || []).filter(slot => slot.fecha_id === fecha.id)
-        return {
+      const getAvailability = await loadPlayerPanelAvailability(supabase, fechaIds, [...new Set(eligibleFechas.map(item => item.coupleId))], now)
+      const summaries = eligibleFechas.flatMap(({ fecha, coupleId }) => {
+        const { playableSlotIds, respondedPlayableSlotIds } = getAvailability(fecha.id, coupleId)
+        if (!playableSlotIds.length) return []
+        return [{
           fechaId: fecha.id,
           fechaName: fecha.name || `Fecha ${fecha.fecha_number}`,
           fechaNumber: fecha.fecha_number || 0,
-          totalSlots: fechaSlots.length,
-          respondedSlots: fechaSlots.filter(slot => respondedIds.has(slot.id)).length,
+          coupleId,
+          totalSlots: playableSlotIds.length,
+          respondedSlots: respondedPlayableSlotIds.length,
           canEdit: true,
           restrictionReason: null,
-        }
+        }]
       })
       availability = selectPriorityAvailability(summaries)
     }
@@ -231,8 +249,8 @@ export const getLongPlayerOverview = async (
     registrationStatus,
     coupleId,
     coupleName: getCoupleName(couple),
-    eliminatedAt: inscription.eliminated_at || null,
-    eliminatedInRound: inscription.eliminated_in_round || null,
+    eliminatedAt: inscription?.eliminated_at || null,
+    eliminatedInRound: inscription?.eliminated_in_round || null,
     nextMatch,
     finishedMatches,
     standing,

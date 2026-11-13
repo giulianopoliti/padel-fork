@@ -3,6 +3,7 @@
 import { scheduleRegistrationNotifications } from '@/lib/services/messages/registration-delivery'
 import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-values'
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
+import { applyLongMatchLineup, getLongMatchLineupChanges } from '@/lib/services/long-match-lineups';
 import { getTenantBranding } from '@/config/tenant';
 import { uploadWinnerPhoto } from './winner-photo-actions';
 import { revalidatePath } from 'next/cache';
@@ -1023,7 +1024,14 @@ export async function getMatchesByTournamentId(
     }
   );*/
 
-    return sourceMatches.map((match, index) => {
+    const lineups = await getLongMatchLineupChanges(supabase, sourceMatches.map(match => match.id));
+    return sourceMatches.map(rawMatch => {
+      const changes = lineups.get(rawMatch.id);
+      const match = changes ? {
+        ...rawMatch,
+        couple1: applyLongMatchLineup(rawMatch.couple1, rawMatch.couple1_id, changes),
+        couple2: applyLongMatchLineup(rawMatch.couple2, rawMatch.couple2_id, changes),
+      } : rawMatch;
       // Helper para obtener nombres
       const getPlayerName = (player: any) => {
         if (!player?.first_name || !player?.last_name) return '';

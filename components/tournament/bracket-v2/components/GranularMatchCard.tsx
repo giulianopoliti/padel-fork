@@ -59,6 +59,7 @@ export interface GranularMatchCardProps {
   isEditMode: boolean
   seeds?: SeedInfo[]
   onMatchUpdate?: (matchId: string, updatedData: unknown) => void
+  onSubstitutionSaved?: () => void
   onRequestStartMatch?: (match: BracketMatchV2) => void
   onRequestLoadResult?: (match: BracketMatchV2) => void
   onRequestModifyResult?: (match: BracketMatchV2) => void
@@ -85,6 +86,7 @@ export function GranularMatchCard({
   isEditMode,
   seeds = [],
   onMatchUpdate,
+  onSubstitutionSaved,
   onRequestStartMatch,
   onRequestLoadResult,
   onRequestModifyResult,
@@ -576,6 +578,9 @@ export function GranularMatchCard({
                 tournamentId={tournamentId}
                 isOwner={isOwner}
                 onActionComplete={handleByeActionComplete}
+                canAssignSubstitute={Boolean(isLongTournament && !inactive && (couple1 || couple2)
+                  && ['DRAFT', 'PENDING', 'WAITING_OPPONENT'].includes(match.status))}
+                onSubstitutionSaved={onSubstitutionSaved}
               />
             )}
           </div>

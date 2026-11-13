@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server"
+import { applyLongMatchLineup, getLongMatchLineupChanges } from '@/lib/services/long-match-lineups'
 import {
   applyOrganizerMatchesFilters,
   getDefaultOrganizerMatchesFilters,
@@ -300,6 +301,8 @@ export async function getOrganizationScheduledMatchesPage(
     }
   }
 
+  const lineups = await getLongMatchLineupChanges(supabase, (matchesData ?? [])
+    .filter(match => tournamentMap.get(match.tournament_id)?.type === 'LONG').map(match => match.id))
   const rows: OrganizerMatchRow[] = []
 
   for (const match of matchesData || []) {
@@ -320,8 +323,9 @@ export async function getOrganizationScheduledMatchesPage(
       (match.club_id ? matchClubMap.get(match.club_id) : null) ??
       tournament.clubName ??
       "Sin club asignado"
-    const couple1 = unwrapRelation<PlayerPairRelation>(match.couple1)
-    const couple2 = unwrapRelation<PlayerPairRelation>(match.couple2)
+    const changes = lineups.get(match.id)
+    const couple1 = applyLongMatchLineup(unwrapRelation<PlayerPairRelation>(match.couple1), match.couple1_id, changes)
+    const couple2 = applyLongMatchLineup(unwrapRelation<PlayerPairRelation>(match.couple2), match.couple2_id, changes)
 
     rows.push({
       matchId: match.id,

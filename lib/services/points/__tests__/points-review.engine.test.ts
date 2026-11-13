@@ -1,5 +1,6 @@
 import { applyManualCategoryDecisions, buildPointsReview } from '../services/points-review.engine'
 import { makeContext } from '../testing/fixtures'
+import { getTournamentFormatPreset } from '@/config/tournament-format-presets'
 
 
 describe('Reviewed tournament points', () => {
@@ -37,6 +38,21 @@ describe('Reviewed tournament points', () => {
     const review = buildPointsReview(source).review
     expect(review.scoreBasis).toBe('SNAPSHOT')
     expect(review.playerScores[0]).toMatchObject({ pointsBefore: 890, matchPoints: 6, pointsAfter: 926 })
+  })
+  it('awards match points and the final bonus to the players on the frozen LONG lineup', () => {
+    const source = makeContext(true)
+    source.context.tournament.type = 'LONG'
+    source.context.tournament.format_config = getTournamentFormatPreset('LONG_SINGLE_ZONE_GOLD_SILVER')
+    source.context.players.push({ ...source.context.players[0], id: 'substitute', first_name: 'Suplente' })
+    source.context.lineups = [{ match_id: 'm1', couple_id: 'c1', player1_id: 'p1', player2_id: 'substitute', substitute_slot: 2 }]
+    source.context.snapshots = [{ player_id: 'substitute', score: 900, category: '7ma', basis: 'SUBSTITUTION' }]
+    const review = buildPointsReview(source).review
+    const substitute = review.playerScores.find(player => player.playerId === 'substitute')
+    const partner = review.playerScores.find(player => player.playerId === 'p1')
+    expect(substitute).toMatchObject({ matchPoints: partner?.matchPoints, bonus: partner?.bonus })
+    expect(substitute?.bonus).toBeGreaterThan(0)
+    expect(review.playerScores.find(player => player.playerId === 'p2')).toMatchObject({ matchPoints: 0, bonus: 0 })
+    expect(review.hasSubstitutionBaselines).toBe(true)
   })
   it('labels partial captures and rejects duplicate snapshots', () => {
     const source = makeContext()

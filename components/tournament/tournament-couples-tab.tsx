@@ -1,10 +1,13 @@
 "use client"
 import { InscriptionPaymentPanel, InscriptionStatus } from '@/components/tournament/inscription-payment-panel'
+import { SubstitutionDialog, isPermanentSubstitution, substitutionScopeLabel, useSubstitutionSummaries, type SubstitutionSummary } from '@/components/tournament/long/substitution-dialog'
+import { PlayerAlertDialog, usePlayerAlerts } from '@/components/tournament/player-alert-dialog'
 
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Search, Trash2, Loader2, CheckCircle2, X, DollarSign, CircleHelp } from "lucide-react"
+import { PlusCircle, Search, Trash2, Loader2, CheckCircle2, X, DollarSign, CircleHelp, MoreHorizontal, Bell, UserRoundPlus } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
@@ -39,6 +42,7 @@ interface CoupleInfo {
   player_1_info: PlayerInfo | null
   player_2_info: PlayerInfo | null
   is_pending?: boolean
+  occupies_slot?: boolean | null
   inscription_id?: string
   payment_proof_status?: 'NOT_REQUIRED' | 'PENDING_REVIEW' | 'APPROVED'
   payment_proof_uploaded_at?: string | null
@@ -108,6 +112,8 @@ export default function TournamentCouplesTab({
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [coupleToReject, setCoupleToReject] = useState<CoupleInfo | null>(null)
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
+  const [substitutionTarget, setSubstitutionTarget] = useState<{ coupleId: string; slot: 1 | 2 } | null>(null)
+  const [alertTarget, setAlertTarget] = useState<{ coupleId: string; playerId: string; name: string } | null>(null)
 
   const { toast } = useToast()
   const { user, userDetails } = useUser()
@@ -129,6 +135,19 @@ export default function TournamentCouplesTab({
 
   // Use centralized permissions instead of basic role checks
   const canManageTournament = hasManagementPermissions || isOwner
+  const canManagePlayerActions = canManageTournament && tournamentType === 'LONG'
+  const canManageSubstitutions = canManagePlayerActions
+    && !['CANCELED', 'FINISHED', 'FINISHED_POINTS_PENDING', 'FINISHED_POINTS_CALCULATED'].includes(tournamentStatus ?? '')
+  const { data: substitutionSummaries } = useSubstitutionSummaries(canManagePlayerActions ? tournamentId : undefined)
+  const { data: playerAlerts, error: playerAlertsError, mutate: refreshPlayerAlerts } = usePlayerAlerts(canManagePlayerActions ? tournamentId : undefined)
+  const alertsByPlayer = new Map(playerAlerts?.map(alert => [alert.player_id, alert.message]))
+  const substitutionsBySlot = new Map<string, SubstitutionSummary[]>()
+  for (const rule of substitutionSummaries ?? []) {
+    const key = `${rule.couple_id}:${rule.slot}`
+    const rules = substitutionsBySlot.get(key)
+    if (rules) rules.push(rule)
+    else substitutionsBySlot.set(key, [rule])
+  }
   const canRecordTpeLateWithdrawal = getTenantBranding().key === "padel-elite" && tournamentType === "AMERICAN"
   const millisecondsUntilStart = tournamentStartDate
     ? new Date(tournamentStartDate).getTime() - Date.now()
@@ -403,8 +422,56 @@ export default function TournamentCouplesTab({
     }
   }
 
+  const renderPlayer = (couple: CoupleInfo, slot: 1 | 2) => {
+    const player = slot === 1 ? couple.player_1_info : couple.player_2_info
+    const name = getPlayerDisplayName(player)
+    const alert = player?.id ? alertsByPlayer.get(player.id) : undefined
+    const rules = substitutionsBySlot.get(`${couple.id}:${slot}`) ?? []
+    const canAssign = canManageSubstitutions && couple.occupies_slot !== false
+
+    return <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        {canViewPlayerDetails && player?.id ? (
+          <button type="button" onClick={() => handlePlayerClick(player.id)} className="text-left transition-colors hover:text-blue-600 hover:underline">{name}</button>
+        ) : name}
+        {isOwner && (player?.late_withdrawal_count || 0) > 0 && (
+          <span title={`Historial de bajas tardías: ${player?.late_withdrawal_count}`} className="inline-flex text-amber-600"><CircleHelp className="h-4 w-4" /></span>
+        )}
+        {canManagePlayerActions && player?.id && <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={`Acciones de ${name}`}>
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {canAssign && <DropdownMenuItem onSelect={() => setSubstitutionTarget({ coupleId: couple.id, slot })}>
+              <UserRoundPlus className="mr-2 size-4" />Asignar suplente
+            </DropdownMenuItem>}
+            <DropdownMenuItem disabled={!playerAlerts} onSelect={() => setAlertTarget({ coupleId: couple.id, playerId: player.id, name })}>
+              <Bell className="mr-2 size-4" />{alert ? 'Editar alerta' : 'Agregar alerta'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>}
+      </div>
+      {rules.map(rule => <div key={rule.id} className="text-xs text-muted-foreground">
+        <span className="font-medium text-slate-700">{isPermanentSubstitution(rule.scope) ? 'Suplente fijo' : 'Suplente'} · {rule.player_name}</span>
+        <p>{substitutionScopeLabel(rule.scope, rule.label)}</p>
+      </div>)}
+      {alert && player?.id && <button type="button" className="inline-flex items-center gap-1 text-left text-xs text-amber-800 hover:underline"
+        aria-label={`Ver alerta de ${name}`} onClick={() => setAlertTarget({ coupleId: couple.id, playerId: player.id, name })}>
+        <Bell className="size-3" />Alerta
+      </button>}
+    </div>
+  }
+
   return (
     <>
+      {substitutionTarget && <SubstitutionDialog tournamentId={tournamentId} coupleId={substitutionTarget.coupleId}
+        playerSlot={substitutionTarget.slot} onClose={() => setSubstitutionTarget(null)} />}
+      {alertTarget && <PlayerAlertDialog tournamentId={tournamentId} coupleId={alertTarget.coupleId} playerId={alertTarget.playerId}
+        playerName={alertTarget.name} currentMessage={alertsByPlayer.get(alertTarget.playerId)}
+        onClose={() => setAlertTarget(null)} onSaved={() => void refreshPlayerAlerts()} />}
+      {playerAlertsError && <p role="status" className="px-6 py-2 text-sm text-muted-foreground">No se pudieron cargar las alertas.</p>}
       <div className="p-6 border-b border-gray-200 bg-slate-50">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -487,19 +554,7 @@ export default function TournamentCouplesTab({
                 {coupleInscriptions.map((couple, index) => (
                   <TableRow key={couple.id || `couple-${index}`} className="hover:bg-slate-50 border-b border-gray-100">
                     <TableCell className="font-medium text-slate-900">
-                      {canViewPlayerDetails && couple.player_1_info?.id ? (
-                        <button
-                          onClick={() => handlePlayerClick(couple.player_1_info!.id)}
-                          className="hover:text-blue-600 hover:underline cursor-pointer transition-colors"
-                        >
-                          {getPlayerDisplayName(couple.player_1_info)}
-                        </button>
-                      ) : (
-                        getPlayerDisplayName(couple.player_1_info)
-                      )}
-                      {isOwner && (couple.player_1_info?.late_withdrawal_count || 0) > 0 && (
-                        <span title={`Historial de bajas tardías: ${couple.player_1_info?.late_withdrawal_count}`} className="ml-2 inline-flex align-middle text-amber-600"><CircleHelp className="h-4 w-4" /></span>
-                      )}
+                      {renderPlayer(couple, 1)}
                     </TableCell>
                     {canViewPlayerDetails && (
                       <TableCell className="text-center text-slate-600 text-sm">
@@ -545,19 +600,7 @@ export default function TournamentCouplesTab({
                       </TableCell>
                     )}
                     <TableCell className="font-medium text-slate-900">
-                      {canViewPlayerDetails && couple.player_2_info?.id ? (
-                        <button
-                          onClick={() => handlePlayerClick(couple.player_2_info!.id)}
-                          className="hover:text-blue-600 hover:underline cursor-pointer transition-colors"
-                        >
-                          {getPlayerDisplayName(couple.player_2_info)}
-                        </button>
-                      ) : (
-                        getPlayerDisplayName(couple.player_2_info)
-                      )}
-                      {isOwner && (couple.player_2_info?.late_withdrawal_count || 0) > 0 && (
-                        <span title={`Historial de bajas tardías: ${couple.player_2_info?.late_withdrawal_count}`} className="ml-2 inline-flex align-middle text-amber-600"><CircleHelp className="h-4 w-4" /></span>
-                      )}
+                      {renderPlayer(couple, 2)}
                     </TableCell>
                     {canViewPlayerDetails && (
                       <TableCell className="text-center text-slate-600 text-sm">

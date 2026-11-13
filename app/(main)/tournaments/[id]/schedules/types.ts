@@ -18,6 +18,7 @@ export interface UserAccess {
   role: UserRole
   isOrganizer: boolean
   isInscribed: boolean
+  isSubstitute?: boolean
   coupleId?: string
   playerId?: string
   clubId?: string
@@ -136,7 +137,9 @@ export interface PlayerScheduleData {
   } | null
   can_edit_availability?: boolean
   availability_restriction_reason?: string | null
+  eligible_couples?: { id: string; name: string }[]
   timeSlots: (TimeSlot & {
+    expired?: boolean
     my_availability?: {
       couple_id: string
       is_available: boolean

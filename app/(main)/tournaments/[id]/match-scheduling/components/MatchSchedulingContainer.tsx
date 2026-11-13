@@ -397,6 +397,8 @@ const MatchSchedulingContainer: React.FC<MatchSchedulingContainerProps> = ({
           ) : permissions.hasPermission ? (
             <SchedulingMatrixV0
               fechaId={selectedFechaId}
+              tournamentId={tournamentId}
+              allowFechaSubstitutions={!['CANCELED', 'COMPLETED'].includes(fechas.find(fecha => fecha.id === selectedFechaId)?.status ?? '')}
               schedulingData={schedulingData}
               onMatchCreated={handleMatchCreated}
               clubes={clubes}

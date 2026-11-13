@@ -4,9 +4,11 @@ export type LongPlayerRegistrationStatus =
   | 'PENDING'
   | 'ACTIVE'
   | 'ELIMINATED'
+  | 'SUBSTITUTE'
 
 export interface LongPlayerOverviewMatch {
   id: string
+  isSubstitute?: boolean
   status: string
   round: string
   opponentName: string
@@ -32,6 +34,7 @@ export interface LongPlayerStanding {
 
 export interface LongPlayerAvailabilitySummary {
   fechaId: string
+  coupleId?: string
   fechaName: string
   fechaNumber: number
   totalSlots: number

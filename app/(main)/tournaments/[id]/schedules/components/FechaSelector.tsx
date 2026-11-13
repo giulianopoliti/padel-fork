@@ -49,6 +49,7 @@ export default function FechaSelector({
     startTransition(() => {
       const params = new URLSearchParams(searchParams.toString())
       params.set('fecha_id', fechaId)
+      params.delete('couple_id')
       router.push(`/tournaments/${tournamentId}/schedules?${params.toString()}`)
     })
   }
