@@ -1389,10 +1389,12 @@ export interface DraftMatch {
   couple1?: {
     player1: { first_name: string; last_name: string }
     player2: { first_name: string; last_name: string }
+    substitute_slot?: 1 | 2
   } | null
   couple2?: {
     player1: { first_name: string; last_name: string }
     player2: { first_name: string; last_name: string }
+    substitute_slot?: 1 | 2
   } | null
 }
 

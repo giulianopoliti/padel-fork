@@ -20,6 +20,7 @@ const CouplesDisplay: React.FC<CouplesDisplayProps> = ({ match, onSubstitutionSa
       {couple.substitute_slot === 2 && <Badge variant="secondary" className="ml-1">Suplente</Badge>}
       {match.status === 'PENDING' && match.tournament_id && coupleId && onSubstitutionSaved && <SubstitutionMenu
         tournamentId={match.tournament_id} matchId={match.id} coupleId={coupleId} onSaved={onSubstitutionSaved}
+        hasSubstitute={Boolean(couple.substitute_slot)}
         coupleName={`${couple.player1.first_name} ${couple.player1.last_name} / ${couple.player2.first_name} ${couple.player2.last_name}`} />}
     </>
   }

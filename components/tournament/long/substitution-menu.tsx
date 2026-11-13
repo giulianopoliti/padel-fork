@@ -12,10 +12,11 @@ interface SubstitutionMenuProps {
   coupleName: string
   fechaId?: string
   matchId?: string
+  hasSubstitute?: boolean
   onSaved: () => void
 }
 
-export const SubstitutionMenu = ({ tournamentId, coupleId, coupleName, fechaId, matchId, onSaved }: SubstitutionMenuProps) => {
+export const SubstitutionMenu = ({ tournamentId, coupleId, coupleName, fechaId, matchId, hasSubstitute, onSaved }: SubstitutionMenuProps) => {
   const [open, setOpen] = useState(false)
   return <span className="inline-flex align-middle" onClick={event => event.stopPropagation()}>
     <DropdownMenu modal={false}>
@@ -25,7 +26,9 @@ export const SubstitutionMenu = ({ tournamentId, coupleId, coupleName, fechaId, 
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuItem onSelect={() => setOpen(true)}><UserRoundPlus className="mr-2 size-4" />Asignar suplente{fechaId ? ' para la fecha' : ''}</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setOpen(true)}><UserRoundPlus className="mr-2 size-4" />
+          {hasSubstitute ? 'Gestionar suplencia' : fechaId ? 'Asignar suplente para la fecha' : 'Asignar suplente'}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
     {open && <SubstitutionDialog tournamentId={tournamentId} coupleId={coupleId} fechaId={fechaId} matchId={matchId}

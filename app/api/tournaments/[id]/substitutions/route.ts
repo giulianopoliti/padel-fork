@@ -82,21 +82,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (auth instanceof NextResponse) return auth
   const matchId = request.nextUrl.searchParams.get('matchId')
   const coupleId = request.nextUrl.searchParams.get('coupleId')
+  const fechaId = request.nextUrl.searchParams.get('fechaId')
   const args = { p_tournament_id: tournamentId, p_actor_id: auth.actorId }
   if (matchId === null && coupleId === null) {
     const { data, error } = await auth.service.rpc('list_long_substitution_rules', args)
     return error ? databaseError(error) : NextResponse.json({ data })
   }
-  if (!id.nullable().safeParse(matchId).success || !id.nullable().safeParse(coupleId).success) {
-    return NextResponse.json({ error: 'Partido o pareja inválidos.' }, { status: 400 })
+  if (![matchId, coupleId, fechaId].every(value => id.nullable().safeParse(value).success)) {
+    return NextResponse.json({ error: 'Partido, fecha o pareja inválidos.' }, { status: 400 })
   }
-  const [editor, tournament] = await Promise.all([
+  const [editor, tournament, context] = await Promise.all([
     auth.service.rpc('get_long_substitution_editor', { ...args, p_match_id: matchId, p_couple_id: coupleId }),
     auth.service.from('tournaments').select('gender').eq('id', tournamentId).single(),
+    matchId || fechaId ? auth.service.rpc('get_long_substitution_editor_context', { ...args, p_match_id: matchId, p_fecha_id: fechaId }) : null,
   ])
   if (editor.error) return databaseError(editor.error)
   if (tournament.error) return databaseError(tournament.error)
-  return NextResponse.json({ data: { ...editor.data, tournamentGender: tournament.data?.gender } }, {
+  if (context?.error && context.error.code !== 'PGRST202') return databaseError(context.error)
+  return NextResponse.json({ data: { ...editor.data, context: context?.data, tournamentGender: tournament.data?.gender } }, {
     headers: { 'Cache-Control': 'private, no-store' },
   })
 }

@@ -9,9 +9,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
 import { formatFvDateLabel as formatDateLabel, formatMatchDateTime, formatRoundLabel, formatTimeLabel } from "./panel-formatters"
+import { PlayerSubstituteFechas } from './player-substitute-fechas'
+import type { LongSubstitutePanelFecha } from '@/lib/services/long-fecha-substitutions'
 
 interface PlayerFvInscribedTournamentsSectionProps {
   tournaments: InscribedTournament[]
+  substituteFechas?: LongSubstitutePanelFecha[]
 }
 
 const ITEMS_PER_PAGE = 4
@@ -27,6 +30,7 @@ const statusLabels: Record<string, string> = {
 
 export default function PlayerFvInscribedTournamentsSection({
   tournaments,
+  substituteFechas = [],
 }: PlayerFvInscribedTournamentsSectionProps) {
   const [page, setPage] = useState(1)
   const totalPages = Math.max(1, Math.ceil(tournaments.length / ITEMS_PER_PAGE))
@@ -41,7 +45,7 @@ export default function PlayerFvInscribedTournamentsSection({
     }
   }, [page, totalPages])
 
-  if (tournaments.length === 0) {
+  if (tournaments.length === 0 && substituteFechas.length === 0) {
     return (
       <section className="flex items-center gap-3 rounded-display border border-white/10 bg-white/[0.035] px-4 py-3 sm:px-5">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-court-500/10 text-court-300">
@@ -61,7 +65,9 @@ export default function PlayerFvInscribedTournamentsSection({
         <h2 className="text-xl font-bold text-white sm:text-2xl">Mis torneos inscriptos</h2>
       </div>
 
-      <div className="space-y-3 p-4 sm:p-5">
+      <PlayerSubstituteFechas fechas={substituteFechas} />
+
+      {paginatedTournaments.length > 0 && <div className="space-y-3 p-4 sm:p-5">
         {paginatedTournaments.map((inscription) => {
           const tournament = inscription.tournament
           const partnerName = `${inscription.partner.first_name} ${inscription.partner.last_name}`.trim()
@@ -217,7 +223,7 @@ export default function PlayerFvInscribedTournamentsSection({
             </article>
           )
         })}
-      </div>
+      </div>}
 
       {totalPages > 1 ? (
         <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">

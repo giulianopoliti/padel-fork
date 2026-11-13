@@ -78,6 +78,9 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000002',true);
 select pg_temp.assert_true((select count(*) from public.get_my_long_fecha_substitutions('ab400000-0000-4000-8000-000000000001')
   where is_substitute and can_vote and fecha_id='ab500000-0000-4000-8000-000000000001') = 1,'the date substitute can vote');
+select pg_temp.assert_true(exists (select 1 from public.get_my_long_substitute_panel_fechas()
+  where fecha_id='ab500000-0000-4000-8000-000000000001' and player2_name='Carla Suplente' and has_slots),
+  'the substitute panel lists the date with the real lineup and a vote link');
 insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
   ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000001',false)
   on conflict (couple_id,time_slot_id) do update set is_available=excluded.is_available;
@@ -107,6 +110,12 @@ select pg_temp.assert_true((select count(*) from public.couple_time_availability
   'a single-match change retains the date vote');
 select pg_temp.assert_true((select player->>'first_name' from public.get_long_match_lineups(array['ab600000-0000-4000-8000-000000000001'::uuid])) = 'Diana',
   'the single match takes priority over the date rule');
+select pg_temp.assert_true((select mr.scope = 'ONLY_MATCH' and fr.scope = 'ONLY_FECHA'
+  from public.get_long_substitution_editor_context('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',
+    'ab600000-0000-4000-8000-000000000001',null) e
+  join long_substitution_private.long_substitutions mr on mr.id = e.match_rule_id
+  join long_substitution_private.long_substitutions fr on fr.id = e.fecha_rule_id),
+  'the match editor exposes both the actual player rule and the date voting rule');
 select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',id,
   'ab300000-0000-4000-8000-000000000001',null,null,null,null,true)
   from long_substitution_private.long_substitutions where scope in ('ONLY_MATCH','ONLY_FECHA') and tournament_id='ab400000-0000-4000-8000-000000000001';
@@ -126,6 +135,9 @@ select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000002'
 select pg_temp.assert_true(exists(select 1 from public.get_my_long_fecha_substitutions('ab400000-0000-4000-8000-000000000001')
   where is_substitute and can_vote and fecha_id='ab500000-0000-4000-8000-000000000007'),
   'a fixed date substitute can vote before the first fixture exists');
+select pg_temp.assert_true(exists (select 1 from public.get_my_long_substitute_panel_fechas()
+  where fecha_id='ab500000-0000-4000-8000-000000000007' and not has_slots),
+  'the panel shows the date before the fixture and its slots are published');
 reset role;
 set local role service_role;
 select public.manage_long_substitution('ab400000-0000-4000-8000-000000000001','ab000000-0000-4000-8000-000000000001',id,
@@ -205,6 +217,8 @@ select pg_temp.assert_true((select array_agg(match_id) from public.get_my_upcomi
 select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000001',true);
 select pg_temp.assert_true(not exists(select 1 from public.get_my_upcoming_long_substitute_matches()),
   'another account cannot read the substitute agenda');
+select pg_temp.assert_true(not exists(select 1 from public.get_my_long_substitute_panel_fechas()),
+  'another account cannot read the substitute dates in the panel');
 reset role;
 
 insert into public.set_matches(match_id, set_number, couple1_games, couple2_games, status) values

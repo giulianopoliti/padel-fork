@@ -181,7 +181,9 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
   const formatCoupleName = (match: DraftMatch, coupleKey: 'couple1' | 'couple2'): string => {
     const couple = match[coupleKey]
     if (!couple) return 'Pareja no definida'
-    return `${couple.player1.first_name} ${couple.player1.last_name} / ${couple.player2.first_name} ${couple.player2.last_name}`
+    const first = `${couple.player1.first_name} ${couple.player1.last_name}${couple.substitute_slot === 1 ? ' (suplente)' : ''}`
+    const second = `${couple.player2.first_name} ${couple.player2.last_name}${couple.substitute_slot === 2 ? ' (suplente)' : ''}`
+    return `${first} / ${second}`
   }
 
   const formatDateTime = (date: string | null, time: string | null): string => {
@@ -382,11 +384,13 @@ export default function DraftMatchesManager({ fechaId, tournamentId, isDraftMode
                       <div className="font-medium text-gray-900">
                         {formatCoupleName(match, 'couple1')}
                         {match.couple1_id && <SubstitutionMenu tournamentId={tournamentId} matchId={match.id} coupleId={match.couple1_id}
-                          coupleName={formatCoupleName(match, 'couple1')} onSaved={onMatchesPublished ?? (() => void loadDraftMatches())} />}
+                          coupleName={formatCoupleName(match, 'couple1')} hasSubstitute={Boolean(match.couple1?.substitute_slot)}
+                          onSaved={onMatchesPublished ?? (() => void loadDraftMatches())} />}
                         <span className="mx-2 text-gray-400">vs</span>
                         {formatCoupleName(match, 'couple2')}
                         {match.couple2_id && <SubstitutionMenu tournamentId={tournamentId} matchId={match.id} coupleId={match.couple2_id}
-                          coupleName={formatCoupleName(match, 'couple2')} onSaved={onMatchesPublished ?? (() => void loadDraftMatches())} />}
+                          coupleName={formatCoupleName(match, 'couple2')} hasSubstitute={Boolean(match.couple2?.substitute_slot)}
+                          onSaved={onMatchesPublished ?? (() => void loadDraftMatches())} />}
                       </div>
                       <div className="flex flex-wrap gap-3 text-sm text-gray-600">
                         {match.scheduled_date && (

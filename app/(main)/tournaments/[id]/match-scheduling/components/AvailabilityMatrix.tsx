@@ -122,8 +122,8 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
 
   // Get couple display name
   const getCoupleDisplayName = (couple: CoupleWithData): string => {
-    const player1Name = `${couple.player1.name} ${couple.player1.last_name || ''}`.trim()
-    const player2Name = `${couple.player2.name} ${couple.player2.last_name || ''}`.trim()
+    const player1Name = couple.fecha_substitute?.slot === 1 ? couple.fecha_substitute.playerName : `${couple.player1.name} ${couple.player1.last_name || ''}`.trim()
+    const player2Name = couple.fecha_substitute?.slot === 2 ? couple.fecha_substitute.playerName : `${couple.player2.name} ${couple.player2.last_name || ''}`.trim()
     return `${player1Name} / ${player2Name}`
   }
 
@@ -286,12 +286,16 @@ const AvailabilityMatrix: React.FC<AvailabilityMatrixProps> = ({
                           {isSelected ? 'Quitar selección' : 'Seleccionar pareja'}
                         </button>
                         <div className="text-sm font-semibold text-slate-900">
-                          <PlayerContactButton player={couple.player1} />
+                          {couple.fecha_substitute?.slot === 1 ? couple.fecha_substitute.playerName : <PlayerContactButton player={couple.player1} />}
+                          {couple.fecha_substitute?.slot === 1 && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">Suplente</span>}
                           {' / '}
-                          <PlayerContactButton player={couple.player2} />
-                          {substitution && <SubstitutionMenu {...substitution} coupleId={couple.id} coupleName={getCoupleDisplayName(couple)} />}
+                          {couple.fecha_substitute?.slot === 2 ? couple.fecha_substitute.playerName : <PlayerContactButton player={couple.player2} />}
+                          {couple.fecha_substitute?.slot === 2 && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">Suplente</span>}
+                          {substitution && <SubstitutionMenu {...substitution} coupleId={couple.id} coupleName={getCoupleDisplayName(couple)} hasSubstitute={Boolean(couple.fecha_substitute)} />}
                         </div>
-                        {couple.fecha_substitute && <p className="text-xs text-muted-foreground">Suplente para la fecha · {couple.fecha_substitute.playerName}</p>}
+                        {couple.fecha_substitute && <p className="text-xs text-muted-foreground">Reemplaza a {couple.fecha_substitute.slot === 1
+                          ? `${couple.player1.name} ${couple.player1.last_name}`.trim()
+                          : `${couple.player2.name} ${couple.player2.last_name}`.trim()} en esta fecha</p>}
                         <CoupleMatchCounts counts={couple.zone_match_counts} />
                         {/* Zone info if available */}
                         {couple.zone_position && (

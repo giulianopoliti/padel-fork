@@ -23,6 +23,7 @@ import { isTournamentGenderFilter } from "@/lib/tournaments/gender-filtering"
 import SponsorMarquee from "@/components/sponsor-marquee"
 import { PlayerFvPanelHero } from "./components/player-fv-panel-hero"
 import { PlayerSoloTournaments } from "@/components/solo-players/tournament-solo-status"
+import { getMyLongSubstitutePanelFechas, type LongSubstitutePanelFecha } from '@/lib/services/long-fecha-substitutions'
 
 export const dynamic = "force-dynamic"
 
@@ -31,6 +32,7 @@ interface PlayerPanelProps {
   categoryName?: string | null
   nextMatches: PlayerNextMatch[]
   inscribedTournaments: InscribedTournament[]
+  substituteFechas: LongSubstitutePanelFecha[]
   upcomingTournaments: UpcomingTournament[]
 }
 
@@ -66,7 +68,9 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
     return null
   }
 
-  const { playerData, nextMatches } = await getPlayerDashboardData(user.id)
+  const [{ playerData, nextMatches }, substituteFechas] = await Promise.all([
+    getPlayerDashboardData(user.id), getMyLongSubstitutePanelFechas(supabase),
+  ])
 
   const { inscribedTournaments } = playerData?.id
     ? await getPlayerInscribedTournaments(playerData.id)
@@ -84,6 +88,7 @@ export default async function PlayerDashboard({ searchParams }: PlayerDashboardP
     categoryName: playerData?.category_name,
     nextMatches: nextMatches || [],
     inscribedTournaments,
+    substituteFechas,
     upcomingTournaments,
   }
 
@@ -103,6 +108,7 @@ function PadelElitePlayerPanel({
   categoryName,
   nextMatches,
   inscribedTournaments,
+  substituteFechas,
   upcomingTournaments,
 }: PlayerPanelProps) {
   return (
@@ -145,7 +151,7 @@ function PadelElitePlayerPanel({
           <div className="space-y-8">
             <PlayerSoloTournaments />
             <PlayerUpcomingTournamentsSection tournaments={upcomingTournaments} />
-            <PlayerInscribedTournamentsSection tournaments={inscribedTournaments} />
+            <PlayerInscribedTournamentsSection tournaments={inscribedTournaments} substituteFechas={substituteFechas} />
             <PlayerNextMatchSection nextMatches={nextMatches} />
           </div>
         </div>
@@ -159,6 +165,7 @@ function PadelFvPlayerPanel({
   categoryName,
   nextMatches,
   inscribedTournaments,
+  substituteFechas,
   upcomingTournaments,
 }: PlayerPanelProps) {
   return (
@@ -171,7 +178,7 @@ function PadelFvPlayerPanel({
           <div className="space-y-6">
             <PlayerSoloTournaments tone="dark" />
             <PlayerFvNextMatchSection nextMatches={nextMatches} />
-            <PlayerFvInscribedTournamentsSection tournaments={inscribedTournaments} />
+            <PlayerFvInscribedTournamentsSection tournaments={inscribedTournaments} substituteFechas={substituteFechas} />
             <PlayerFvUpcomingTournamentsSection tournaments={upcomingTournaments} tournamentType="AMERICAN" />
             <PlayerFvUpcomingTournamentsSection tournaments={upcomingTournaments} tournamentType="LONG" />
           </div>

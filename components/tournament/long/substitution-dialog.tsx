@@ -20,7 +20,8 @@ type Rule = { id: string; coupleId: string; slot: 1 | 2; player: Player; scope: 
 type MatchOption = { id: string; coupleIds: (string | null)[]; label: string; fechaNumber?: number | null;
   couple1Name: string; couple2Name: string; scheduledDate?: string | null; scheduledTime?: string | null }
 type FechaOption = { id: string; label: string; coupleIds: string[] }
-type Editor = { couples: Couple[]; substitutions: Rule[]; matches: MatchOption[]; fechas?: FechaOption[]; tournamentGender?: string }
+type EditorContext = { couple_id: string; match_rule_id: string | null; fecha_rule_id: string | null; fecha_label: string | null }
+type Editor = { couples: Couple[]; substitutions: Rule[]; matches: MatchOption[]; fechas?: FechaOption[]; context?: EditorContext[]; tournamentGender?: string }
 
 export type SubstitutionSummary = { id: string; couple_id: string; slot: 1 | 2; player_name: string; replaced_name: string; scope: Scope; label: string }
 
@@ -55,6 +56,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
   const url = `/api/tournaments/${tournamentId}/substitutions`
   const editorParams = new URLSearchParams()
   if (matchId) editorParams.set('matchId', matchId)
+  if (fechaId) editorParams.set('fechaId', fechaId)
   if (coupleId) editorParams.set('coupleId', coupleId)
   const editorUrl = `${url}?${editorParams}`
   const { data, error, isLoading } = useSWR(editorUrl, getData<Editor>)
@@ -78,10 +80,15 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
   const fechas = data?.fechas?.filter(item => item.coupleIds.includes(activeCoupleId)) ?? []
   const mode: Mode = isFechaScope(scope) ? 'fecha' : 'match'
   const fixedAnchor = matchId ?? fechaId
-  const rules = data?.substitutions.filter(rule => rule.coupleId === activeCoupleId
-    && (!matchId || rule.matchId === matchId) && (!fechaId || rule.fechaId === fechaId)
-    && isFechaScope(rule.scope) === (mode === 'fecha') && (!playerSlot || rule.slot === playerSlot)) ?? []
-  const currentMatch = matches.find(item => item.id === (matchId ?? anchor))
+  const context = data?.context?.find(item => item.couple_id === activeCoupleId)
+  const coupleRules = data?.substitutions.filter(rule => rule.coupleId === activeCoupleId && (!playerSlot || rule.slot === playerSlot)) ?? []
+  const rules = coupleRules.filter(rule => fixedAnchor
+    ? rule.id === context?.match_rule_id || rule.id === context?.fecha_rule_id
+      || Boolean(matchId && rule.matchId === matchId) || Boolean(fechaId && rule.fechaId === fechaId)
+    : isFechaScope(rule.scope) === (mode === 'fecha'))
+  const directRule = rules.find(rule => (matchId && rule.scope === 'ONLY_MATCH' && rule.matchId === matchId)
+    || (fechaId && rule.scope === 'ONLY_FECHA' && rule.fechaId === fechaId))
+  const currentMatch = matches.find(item => item.id === anchor)
   const orderConfirmation = scope === 'FROM_MATCH' && currentMatch?.fechaNumber != null
     && matches.some(item => item.id !== currentMatch.id && item.fechaNumber === currentMatch.fechaNumber)
       ? `${activeCoupleId}:${currentMatch.id}` : ''
@@ -104,7 +111,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
     setConfirmedOrder('')
     setSelectedSlot(undefined)
     setPlayer(null)
-    setScope(mode === initialMode ? initialScope : 'ONLY_MATCH')
+    setScope(fixedAnchor || mode === initialMode ? initialScope : 'ONLY_MATCH')
     setAnchor(fixedAnchor ?? '')
     setMessage(undefined)
   }
@@ -138,15 +145,17 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
 
   const handleSubmit = () => {
     if (busy || !couple || !slot || !player || !canSave) return
+    const originalRule = fixedAnchor ? editing : null
     void save({ action: 'save', ruleId: editing?.id ?? null, coupleId: couple.id, slot, playerId: player.id,
-      scope, matchId: mode === 'match' && anchor !== 'first' ? anchor : null,
-      fechaId: mode === 'fecha' ? anchor : null }, true)
+      scope, matchId: originalRule ? originalRule.matchId : mode === 'match' && anchor !== 'first' ? anchor : null,
+      fechaId: originalRule ? originalRule.fechaId : mode === 'fecha' ? anchor : null }, true)
   }
 
-  const canEditMatch = !matchId || Boolean(currentMatch)
+  const entryMatch = matches.find(item => item.id === matchId)
+  const canEditMatch = !matchId || Boolean(entryMatch)
   const fixedFecha = fechas.find(item => item.id === fechaId)
   const canEditFecha = !fechaId || Boolean(fixedFecha)
-  const showForm = Boolean(couple) && ((canEditMatch && canEditFecha) || Boolean(editing))
+  const showForm = Boolean(couple) && ((canEditMatch && canEditFecha && !directRule) || Boolean(editing))
   const anchorIndex = matches.findIndex(item => item.id === anchor)
   const affectedMatches = anchor === 'first' ? matches : anchorIndex >= 0 ? matches.slice(anchorIndex) : []
   const matchName = (item: MatchOption) => {
@@ -183,18 +192,24 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
           <Button type="button" variant={mode === 'fecha' ? 'default' : 'outline'} aria-pressed={mode === 'fecha'} disabled={busy} onClick={() => handleModeChange('fecha')}>Fecha y horarios</Button>
           <Button type="button" variant={mode === 'match' ? 'default' : 'outline'} aria-pressed={mode === 'match'} disabled={busy} onClick={() => handleModeChange('match')}>Partidos</Button>
         </div>}
-        {couple && <p className="text-sm text-muted-foreground">{mode === 'fecha'
+        {couple && <p className="text-sm text-muted-foreground">{(fixedAnchor ? initialMode : mode) === 'fecha'
           ? 'El suplente puede votar horarios y juega los cruces de la fecha que le corresponda. Si cambia la dupla, esa fecha queda pendiente de respuesta.'
           : 'Elegí un cruce ya armado. La suplencia conserva el horario de ese partido.'}</p>}
 
         {couple && rules.length > 0 && <ul aria-label="Suplencias asignadas" className="divide-y rounded-md border px-3">
           {rules.map(rule => {
             const anchorMatch = matches.find(item => item.id === rule.matchId)
+            const appliesToMatch = rule.id === context?.match_rule_id
+            const appliesToFecha = rule.id === context?.fecha_rule_id
+            const contextLabel = appliesToMatch && appliesToFecha ? 'Juega este partido y vota para la fecha'
+              : appliesToMatch ? 'Juega este partido' : appliesToFecha ? 'Vota para la fecha' : null
+            const editLabel = isFechaScope(rule.scope) ? 'Editar suplencia de fecha' : isPermanentSubstitution(rule.scope) ? 'Editar suplencia fija' : 'Editar suplencia del partido'
             return <li key={rule.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
               <div><p className="font-medium">{rule.player.name}{!playerSlot && ` · reemplaza a ${rule.slot === 1 ? couple.player1.name : couple.player2.name}`}</p>
+                {fixedAnchor && contextLabel && <p className="text-xs font-medium text-primary">{contextLabel}{appliesToFecha && context?.fecha_label ? ` · ${context.fecha_label}` : ''}</p>}
                 <p className="text-xs text-muted-foreground">{substitutionScopeLabel(rule.scope, anchorMatch ? matchName(anchorMatch) : rule.label)}</p></div>
-              {rule.editable && <div className="flex gap-1">
-                <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => handleEdit(rule)}>Editar</Button>
+              {rule.editable && <div className="flex flex-wrap gap-1">
+                <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => handleEdit(rule)}>{fixedAnchor ? editLabel : 'Editar'}</Button>
                 <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void save({ action: 'remove', ruleId: rule.id, coupleId: rule.coupleId }, false)}>Quitar</Button>
               </div>}
             </li>
@@ -204,6 +219,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
         {!canEditMatch && couple && <p className="text-sm text-muted-foreground">Este partido ya no admite cambios de alineación.</p>}
         {!canEditFecha && couple && <p className="text-sm text-muted-foreground">Esta fecha no está disponible para la pareja.</p>}
         {showForm && couple && <div className="space-y-4">
+          {fixedAnchor && editing && <p className="rounded-md bg-muted px-3 py-2 text-sm">Estás editando la regla «{substitutionScopeLabel(editing.scope, editing.label)}».</p>}
           <div className={playerSlot ? 'space-y-3' : 'grid gap-3 sm:grid-cols-2'}>
             {!playerSlot && <div className="space-y-1.5">
               <Label htmlFor="substitution-slot">Jugador a reemplazar</Label>
@@ -214,7 +230,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
             </div>}
             <div className="space-y-1.5">
               <Label htmlFor="substitution-scope">Alcance</Label>
-              <Select value={scope} onValueChange={value => { setScope(value as Scope); if (value === 'ONLY_MATCH' && anchor === 'first') setAnchor('') }} disabled={busy}>
+              <Select value={scope} onValueChange={value => { setScope(value as Scope); if (value === 'ONLY_MATCH' && anchor === 'first') setAnchor('') }} disabled={busy || Boolean(fixedAnchor && editing)}>
                 <SelectTrigger id="substitution-scope"><SelectValue /></SelectTrigger>
                 <SelectContent>{mode === 'fecha' ? <>
                   <SelectItem value="ONLY_FECHA">Solo esta fecha</SelectItem><SelectItem value="FROM_FECHA">Desde esta fecha en adelante</SelectItem>
@@ -228,7 +244,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
             ? 'Incluye todos los partidos de la pareja y permite votar en las fechas abiertas.'
             : 'Incluye los partidos posteriores y habilita votar horarios desde la siguiente fecha.'}</p>}
           {scope === 'FROM_FECHA' && <p className="text-xs text-muted-foreground">Incluye esta fecha y las siguientes, también si los partidos se crean más adelante.</p>}
-          {fixedAnchor && <p className="text-sm font-medium">{mode === 'fecha' ? fixedFecha?.label ?? editing?.label : currentMatch ? matchName(currentMatch) : editing?.label}</p>}
+          {fixedAnchor && <p className="text-sm font-medium">{editing ? editing.label : mode === 'fecha' ? fixedFecha?.label : entryMatch && matchName(entryMatch)}</p>}
           {!fixedAnchor && mode === 'fecha' && <div className="space-y-1.5">
             <Label htmlFor="substitution-fecha">{scope === 'FROM_FECHA' ? 'Fecha de inicio' : 'Fecha'}</Label>
             <Select value={anchor} onValueChange={setAnchor} disabled={busy}>
@@ -282,7 +298,7 @@ export const SubstitutionDialog = ({ tournamentId, coupleId, playerSlot, matchId
           </fieldset>
           <div className="flex justify-end gap-2">
             {editing && <Button type="button" variant="ghost" onClick={handleReset} disabled={busy}>Cancelar edición</Button>}
-            <Button type="button" onClick={handleSubmit} disabled={busy || !canSave}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Asignar suplente'}</Button>
+            <Button type="button" onClick={handleSubmit} disabled={busy || !canSave}>{busy ? 'Guardando…' : editing ? 'Guardar cambios' : matchId && scope === 'ONLY_MATCH' && context?.match_rule_id ? 'Asignar para este cruce' : 'Asignar suplente'}</Button>
           </div>
         </div>}
         {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
