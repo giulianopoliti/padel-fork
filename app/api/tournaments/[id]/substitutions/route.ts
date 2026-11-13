@@ -134,6 +134,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   })
   if (error) return databaseError(error)
   revalidatePath(`/tournaments/${tournamentId}`, 'layout')
+  revalidatePath('/panel')
   revalidatePath('/panel/matches')
   return NextResponse.json({ success: true })
 }

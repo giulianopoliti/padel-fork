@@ -48,7 +48,7 @@ export default function PlayerFvNextMatchSection({ nextMatches }: PlayerFvNextMa
 
       <div className="space-y-4 p-4 sm:p-6">
         {nextMatches.map((match, index) => {
-          const roundLabel = formatRoundLabel(match.round)
+          const roundLabel = match.fecha_name || formatRoundLabel(match.round)
           const isPrimary = index === 0
           const venueLabel = [match.club_name, match.club_address, match.scheduled_info.court].filter(Boolean).join(" - ")
           const mapsUrl = match.club_maps_url || buildGoogleMapsSearchUrl({
@@ -80,6 +80,7 @@ export default function PlayerFvNextMatchSection({ nextMatches }: PlayerFvNextMa
                     <Badge variant="outline" className="border-white/15 text-slate-200">
                       {match.status === "IN_PROGRESS" ? "En progreso" : "Pendiente"}
                     </Badge>
+                    {match.is_substitute && <Badge variant="outline" className="border-white/15 text-slate-200">Suplente</Badge>}
                   </div>
 
                   <div className="space-y-1">

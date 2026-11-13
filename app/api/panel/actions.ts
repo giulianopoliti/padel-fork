@@ -7,6 +7,7 @@ import { getTenantUpcomingTournamentSummaries } from '@/lib/services/tenant-home
 import { getTournamentCategoryDisplay } from '@/lib/services/tournament-category-config'
 import { buildTournamentCapacitySummary } from '@/lib/services/tournament-capacity.service'
 import { buildGoogleMapsSearchUrl } from '@/lib/maps/google-maps'
+import { applyLongMatchLineup, getLongMatchLineupChanges, getMyLongSubstituteMatches } from '@/lib/services/long-match-lineups'
 import {
   resolvePlayerPanelAgenda,
   type PlayerPanelAgendaState,
@@ -34,6 +35,8 @@ export type PlayerNextMatch = {
     court?: string
   }
   status: 'PENDING' | 'IN_PROGRESS'
+  is_substitute?: boolean
+  fecha_name?: string
 }
 
 export type PlayerTournamentAgenda = {
@@ -217,6 +220,13 @@ interface ClubRelation {
   maps_url?: string | null
 }
 
+interface MatchScheduleRelation {
+  scheduled_date: string | null
+  scheduled_start_time: string | null
+  court_assignment: string | null
+  tournament_fechas: { name: string | null } | { name: string | null }[] | null
+}
+
 const getRelation = <T>(relation: T | T[] | null | undefined): T | null => {
   if (Array.isArray(relation)) return relation[0] || null
   return relation || null
@@ -271,9 +281,14 @@ const loadPlayerMatches = async (
   playerId: string,
   couples: CoupleRelation[],
   tournamentIds?: string[],
+  substituteMatches = new Map<string, string>(),
 ): Promise<PlayerNextMatch[]> => {
   const coupleIds = couples.map(couple => couple.id)
-  if (coupleIds.length === 0 || tournamentIds?.length === 0) return []
+  if ((!coupleIds.length && !substituteMatches.size) || tournamentIds?.length === 0) return []
+  const participants = [
+    coupleIds.length && `couple1_id.in.(${coupleIds.join(',')}),couple2_id.in.(${coupleIds.join(',')})`,
+    substituteMatches.size && `id.in.(${Array.from(substituteMatches.keys()).join(',')})`,
+  ].filter(Boolean).join(',')
 
   let query = supabase
     .from('matches')
@@ -281,10 +296,10 @@ const loadPlayerMatches = async (
       id, tournament_id, status, round, couple1_id, couple2_id, created_at,
       match_club:clubes!club_id(name, address, formatted_address, google_place_id, latitude, longitude, maps_url),
       tournaments!inner(
-        id, name, status, is_draft,
+        id, name, type, status, is_draft,
         tournament_club:clubes!club_id(name, address, formatted_address, google_place_id, latitude, longitude, maps_url)
       ),
-      fecha_matches(scheduled_date, scheduled_start_time, court_assignment),
+      fecha_matches(scheduled_date, scheduled_start_time, court_assignment, tournament_fechas(name)),
       couple1:couples!couple1_id(
         id, player1_id, player2_id,
         player1:players!couples_player1_id_fkey(id, first_name, last_name, profile_image_url),
@@ -296,8 +311,9 @@ const loadPlayerMatches = async (
         player2:players!couples_player2_id_fkey(id, first_name, last_name, profile_image_url)
       )
     `)
-    .or(`couple1_id.in.(${coupleIds.join(',')}),couple2_id.in.(${coupleIds.join(',')})`)
+    .or(participants)
     .in('status', ['PENDING', 'IN_PROGRESS'])
+    .or('bracket_is_active.is.null,bracket_is_active.eq.true')
     .neq('tournaments.status', 'CANCELED')
     .eq('tournaments.is_draft', false)
 
@@ -308,9 +324,13 @@ const loadPlayerMatches = async (
   const { data, error } = await query.order('created_at', { ascending: true })
   if (error) throw error
 
+  const matches = data ?? []
+  const changes = await getLongMatchLineupChanges(supabase, matches
+    .filter(match => (getRelation(match.tournaments) as { type?: string } | null)?.type === 'LONG')
+    .map(match => match.id))
   const coupleIdsSet = new Set(coupleIds)
 
-  return (data || []).map((rawMatch): PlayerNextMatch | null => {
+  return matches.map((rawMatch): PlayerNextMatch | null => {
     const match = rawMatch as unknown as {
       id: string
       tournament_id: string
@@ -328,33 +348,25 @@ const loadPlayerMatches = async (
         name: string | null
         tournament_club: ClubRelation | ClubRelation[] | null
       }> | null
-      fecha_matches: Array<{
-        scheduled_date: string | null
-        scheduled_start_time: string | null
-        court_assignment: string | null
-      }> | {
-        scheduled_date: string | null
-        scheduled_start_time: string | null
-        court_assignment: string | null
-      } | null
+      fecha_matches: MatchScheduleRelation | MatchScheduleRelation[] | null
       couple1: CoupleRelation | CoupleRelation[] | null
       couple2: CoupleRelation | CoupleRelation[] | null
     }
 
-    const playerCoupleId = coupleIdsSet.has(match.couple1_id || '')
+    const substituteCoupleId = substituteMatches.get(match.id)
+    const playerCoupleId = substituteCoupleId ?? (coupleIdsSet.has(match.couple1_id || '')
       ? match.couple1_id
       : coupleIdsSet.has(match.couple2_id || '')
         ? match.couple2_id
-        : null
+        : null)
 
     if (!playerCoupleId) return null
 
-    const playerCouple = getRelation(
-      playerCoupleId === match.couple1_id ? match.couple1 : match.couple2,
-    )
-    const opponentCouple = getRelation(
-      playerCoupleId === match.couple1_id ? match.couple2 : match.couple1,
-    )
+    const couple1 = applyLongMatchLineup(getRelation(match.couple1), match.couple1_id, changes.get(match.id))
+    const couple2 = applyLongMatchLineup(getRelation(match.couple2), match.couple2_id, changes.get(match.id))
+    const playerCouple = playerCoupleId === match.couple1_id ? couple1 : couple2
+    if (playerCouple && playerCouple.player1_id !== playerId && playerCouple.player2_id !== playerId) return null
+    const opponentCouple = playerCoupleId === match.couple1_id ? couple2 : couple1
     const playerCouplePlayers = getCouplePlayers(playerCouple)
     const opponentPlayers = getCouplePlayers(opponentCouple)
     const partner = playerCouplePlayers.player1?.id === playerId
@@ -394,6 +406,7 @@ const loadPlayerMatches = async (
         court: schedule?.court_assignment || undefined,
       },
       status: match.status,
+      ...(substituteCoupleId && { is_substitute: true, fecha_name: getRelation(schedule?.tournament_fechas)?.name || undefined }),
     }
   }).filter((match): match is PlayerNextMatch => Boolean(match))
 }
@@ -406,8 +419,11 @@ export async function getPlayerNextMatch(playerId: string): Promise<PlayerNextMa
       return { nextMatches: [], error: 'No autorizado' }
     }
 
-    const couples = await loadPlayerCouples(supabase, playerId)
-    const matches = await loadPlayerMatches(supabase, playerId, couples)
+    const [couples, substituteMatches] = await Promise.all([
+      loadPlayerCouples(supabase, playerId),
+      getMyLongSubstituteMatches(supabase),
+    ])
+    const matches = await loadPlayerMatches(supabase, playerId, couples, undefined, substituteMatches)
 
     return {
       nextMatches: getVisibleNextMatches(matches),

@@ -11,6 +11,7 @@ import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility
 import InscriptionsClient from './components/InscriptionsClient';
 import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
 import { sanitizeTournamentPlayer } from '@/utils/tournament-player-privacy';
+import { getMyLongSubstituteMatches } from '@/lib/services/long-match-lineups';
 
 interface InscriptionsPageProps {
   params: Promise<{ id: string }>;
@@ -99,14 +100,24 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
   }
 
   const accessCheck = await checkTournamentAccess(user?.id || null, tournamentId);
+  const participatesAsSubstitute = Boolean(user && tournament.type === 'LONG' && accessCheck.metadata.userRole === 'PLAYER'
+    && (await getMyLongSubstituteMatches(supabase, tournamentId)).size);
+  const substituteNotice = participatesAsSubstitute ? (
+    <div className="rounded-surface border border-primary/20 bg-primary/5 px-4 py-3">
+      <p className="font-medium">Participás como suplente</p>
+      <Link className="text-sm text-primary underline" href={`/tournaments/${tournamentId}`}>Ver tus partidos</Link>
+    </div>
+  ) : null;
   if (!canViewTournamentInscriptionsPage({
     enablePublicInscriptions: tournament.show_public_inscriptions,
     accessLevel: accessCheck.accessLevel,
   })) {
     return <main className="mx-auto max-w-2xl space-y-4 px-4 py-12">
       <h1 className="text-2xl font-semibold">Las inscripciones de este torneo no son públicas</h1>
-      <p className="text-sm leading-6 text-muted-foreground">Podés consultar tu inscripción y completar sus requisitos desde la página del torneo. Esta vista de gestión está reservada al organizador.</p>
-      <Button asChild><Link href={`/tournaments/${tournamentId}`}>Ir al torneo y ver mi inscripción</Link></Button>
+      {substituteNotice ?? <>
+        <p className="text-sm leading-6 text-muted-foreground">Podés consultar tu inscripción y completar sus requisitos desde la página del torneo. Esta vista de gestión está reservada al organizador.</p>
+        <Button asChild><Link href={`/tournaments/${tournamentId}`}>Ir al torneo y ver mi inscripción</Link></Button>
+      </>}
     </main>;
   }
 
@@ -226,6 +237,7 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
 
   return (
     <>
+    {substituteNotice && <div className="container mx-auto px-4 pt-4"><div className="mx-auto max-w-7xl">{substituteNotice}</div></div>}
     <InscriptionsClient 
       tournament={serializedTournament}
       coupleInscriptions={visibleCoupleInscriptions}

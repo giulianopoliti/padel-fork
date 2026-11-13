@@ -93,6 +93,11 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000002',true);
 select pg_temp.assert_true((select array_agg(match_id) from public.get_my_long_substitute_matches('ab400000-0000-4000-8000-000000000001'))
   = array['ab600000-0000-4000-8000-000000000002'::uuid], 'the substitute sees their assigned published match');
+select pg_temp.assert_true((select array_agg(match_id) from public.get_my_upcoming_long_substitute_matches())
+  = array['ab600000-0000-4000-8000-000000000002'::uuid], 'the player panel sees only effective upcoming substitute matches');
+select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000001',true);
+select pg_temp.assert_true(not exists(select 1 from public.get_my_upcoming_long_substitute_matches()),
+  'another account cannot read the substitute agenda');
 reset role;
 
 insert into public.set_matches(match_id, set_number, couple1_games, couple2_games, status) values
@@ -121,6 +126,11 @@ select pg_temp.assert_true((select player->>'first_name' from public.get_long_ma
   'editing a permanent rule preserves the already started match');
 select pg_temp.assert_true((select player->>'first_name' from public.get_long_match_lineups(array['ab600000-0000-4000-8000-000000000004'::uuid])) = 'Diana',
   'editing a permanent rule updates the upcoming final');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','ab000000-0000-4000-8000-000000000002',true);
+select pg_temp.assert_true((select array_agg(match_id) from public.get_my_upcoming_long_substitute_matches())
+  = array['ab600000-0000-4000-8000-000000000002'::uuid], 'a frozen substitute still sees their in-progress match after a rule changes');
+reset role;
 
 update public.matches set status='FINISHED', winner_id='ab300000-0000-4000-8000-000000000001'
   where tournament_id='ab400000-0000-4000-8000-000000000001';

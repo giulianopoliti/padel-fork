@@ -2,7 +2,7 @@ import 'server-only'
 
 import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { getInscriptionState } from '@/lib/tournaments/inscription-state'
-import { applyLongMatchLineup, getLongMatchLineupChanges } from './long-match-lineups'
+import { applyLongMatchLineup, getLongMatchLineupChanges, getMyLongSubstituteMatches } from './long-match-lineups'
 import {
   LongPlayerAvailabilitySummary,
   LongPlayerOverview,
@@ -81,7 +81,7 @@ export const getLongPlayerOverview = async (
 
   if (!player) return emptyOverview
 
-  const [{ data: inscriptions }, substituteResult] = await Promise.all([supabase
+  const [{ data: inscriptions }, substituteMatches] = await Promise.all([supabase
     .from('inscriptions')
     .select(`
       id, player_id, couple_id, is_pending, is_eliminated, eliminated_at, eliminated_in_round,
@@ -93,10 +93,7 @@ export const getLongPlayerOverview = async (
       )
     `)
     .eq('tournament_id', tournamentId)
-    .eq('es_prueba', false), sessionClient.rpc('get_my_long_substitute_matches', { p_tournament_id: tournamentId })])
-
-  const substituteMatches = new Map<string, string>((substituteResult.data ?? [])
-    .map((row: { match_id: string; couple_id: string }) => [row.match_id, row.couple_id]))
+    .eq('es_prueba', false), getMyLongSubstituteMatches(sessionClient, tournamentId)])
 
   const inscription = (inscriptions || []).find((row: any) => {
     if (row.player_id === player.id && !row.couple_id) return true

@@ -14,6 +14,20 @@ interface LineupChange {
   player: LineupPlayer
 }
 
+interface SubstituteMatch {
+  match_id: string
+  couple_id: string
+}
+
+export const getMyLongSubstituteMatches = async (supabase: Pick<SupabaseClient, 'rpc'>, tournamentId?: string) => {
+  const { data, error } = tournamentId
+    ? await supabase.rpc('get_my_long_substitute_matches', { p_tournament_id: tournamentId })
+    : await supabase.rpc('get_my_upcoming_long_substitute_matches')
+  if (error?.code === 'PGRST202') return new Map<string, string>()
+  if (error) throw error
+  return new Map<string, string>(((data ?? []) as SubstituteMatch[]).map(row => [row.match_id, row.couple_id]))
+}
+
 export const getLongMatchLineupChanges = async (supabase: Pick<SupabaseClient, 'rpc'>, matchIds: string[]) => {
   const changes = new Map<string, LineupChange[]>()
   for (let offset = 0; offset < matchIds.length; offset += 400) {
