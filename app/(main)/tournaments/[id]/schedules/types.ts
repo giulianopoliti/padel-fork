@@ -139,6 +139,7 @@ export interface PlayerScheduleData {
   availability_restriction_reason?: string | null
   eligible_couples?: { id: string; name: string }[]
   timeSlots: (TimeSlot & {
+    expired?: boolean
     my_availability?: {
       couple_id: string
       is_available: boolean

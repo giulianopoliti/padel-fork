@@ -4,6 +4,9 @@ import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { getInscriptionState } from '@/lib/tournaments/inscription-state'
 import { applyLongMatchLineup, getLongMatchLineupChanges, getMyLongSubstituteMatches } from './long-match-lineups'
 import { getMyLongFechaSubstitutions } from './long-fecha-substitutions'
+import { loadPlayerPanelAvailability } from './player-panel-availability'
+import { isOpenPlayerFecha } from './player-panel-agenda.shared'
+import { getArgentinaToday } from './schedule-sharing/validation'
 import {
   LongPlayerAvailabilitySummary,
   LongPlayerOverview,
@@ -157,7 +160,7 @@ export const getLongPlayerOverview = async (
       .maybeSingle() : Promise.resolve({ data: null }),
     coupleId || substituteFechas.length ? supabase
       .from('tournament_fechas')
-      .select('id, name, fecha_number, round_type, bracket_key, status')
+      .select('id, name, fecha_number, round_type, bracket_key, status, start_date, end_date')
       .eq('tournament_id', tournamentId)
       .neq('status', 'CANCELED')
       .order('fecha_number', { ascending: false }) : Promise.resolve({ data: [] }),
@@ -198,8 +201,11 @@ export const getLongPlayerOverview = async (
 
   let availability: LongPlayerAvailabilitySummary | null = null
   if (registrationStatus === 'ACTIVE' || substituteFechas.length) {
+    const now = new Date()
+    const today = getArgentinaToday(now)
     const bracketKey = bracketResult.data?.bracket_key || null
     const eligibleFechas = (fechasResult.data || []).flatMap(fecha => {
+      if (!isOpenPlayerFecha(fecha, today)) return []
       const own = fechaAssignments.find(item => item.fecha_id === fecha.id && item.couple_id === coupleId)
       const assigned = substituteFechas.filter(item => item.fecha_id === fecha.id).map(item => item.couple_id)
       const canVoteForOwn = registrationStatus === 'ACTIVE' && coupleId && own?.can_vote !== false
@@ -210,35 +216,20 @@ export const getLongPlayerOverview = async (
     const fechaIds = [...new Set(eligibleFechas.map(item => item.fecha.id))]
 
     if (fechaIds.length > 0) {
-      const { data: slots } = await supabase
-        .from('tournament_time_slots')
-        .select('id, fecha_id')
-        .in('fecha_id', fechaIds)
-        .eq('is_available', true)
-        .eq('slot_type', 'TIME_RANGE')
-
-      const slotIds = (slots || []).map(slot => slot.id)
-      const { data: responses } = slotIds.length > 0
-        ? await supabase
-            .from('couple_time_availability')
-            .select('time_slot_id, couple_id')
-            .in('couple_id', [...new Set(eligibleFechas.map(item => item.coupleId))])
-            .in('time_slot_id', slotIds)
-        : { data: [] }
-      const respondedIds = new Set((responses || []).map(response => `${response.couple_id}:${response.time_slot_id}`))
-
-      const summaries = eligibleFechas.map(({ fecha, coupleId }) => {
-        const fechaSlots = (slots || []).filter(slot => slot.fecha_id === fecha.id)
-        return {
+      const getAvailability = await loadPlayerPanelAvailability(supabase, fechaIds, [...new Set(eligibleFechas.map(item => item.coupleId))], now)
+      const summaries = eligibleFechas.flatMap(({ fecha, coupleId }) => {
+        const { playableSlotIds, respondedPlayableSlotIds } = getAvailability(fecha.id, coupleId)
+        if (!playableSlotIds.length) return []
+        return [{
           fechaId: fecha.id,
           fechaName: fecha.name || `Fecha ${fecha.fecha_number}`,
           fechaNumber: fecha.fecha_number || 0,
           coupleId,
-          totalSlots: fechaSlots.length,
-          respondedSlots: fechaSlots.filter(slot => respondedIds.has(`${coupleId}:${slot.id}`)).length,
+          totalSlots: playableSlotIds.length,
+          respondedSlots: respondedPlayableSlotIds.length,
           canEdit: true,
           restrictionReason: null,
-        }
+        }]
       })
       availability = selectPriorityAvailability(summaries)
     }

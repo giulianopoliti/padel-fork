@@ -151,6 +151,7 @@ export default function PlayerView({ tournamentId, fechaId, initialCoupleId }: P
 
   const { timeSlots, coupleInfo, can_edit_availability: canEdit = true, availability_restriction_reason: restrictionReason } = scheduleData
   const { freeDateSlot, playableTimeSlots } = partitionLongScheduleSlots(timeSlots)
+  const allSlotsExpired = playableTimeSlots.length > 0 && playableTimeSlots.every(slot => slot.expired)
 
   return (
     <div className="space-y-4">
@@ -172,11 +173,11 @@ export default function PlayerView({ tournamentId, fechaId, initialCoupleId }: P
         </CardContent>
       </Card>
 
-      {!canEdit && (
+      {(!canEdit || allSlotsExpired) && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="flex gap-3 p-4 text-amber-900">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div><p className="font-semibold">Disponibilidad en modo lectura</p><p className="text-sm">{restrictionReason || 'Todavia no podes responder esta fecha.'}</p></div>
+            <div><p className="font-semibold">Disponibilidad en modo lectura</p><p className="text-sm">{restrictionReason || 'Sin horarios vigentes.'}</p></div>
           </CardContent>
         </Card>
       )}
@@ -201,7 +202,7 @@ export default function PlayerView({ tournamentId, fechaId, initialCoupleId }: P
               timeSlot={timeSlot}
               onAvailabilityChange={handleAvailabilityChange}
               saving={savingSlotId === timeSlot.id}
-              disabled={!canEdit}
+              disabled={!canEdit || Boolean(timeSlot.expired)}
             />
           ))}
         </div>
@@ -333,7 +334,7 @@ const FreeDateRequestCard = ({ timeSlot, onPreferenceChange, saving, disabled }:
 }
 
 interface TimeSlotAvailabilityCardProps {
-  timeSlot: TimeSlot & { my_availability?: { couple_id: string; is_available: boolean; notes?: string | null } }
+  timeSlot: PlayerScheduleData['timeSlots'][number]
   onAvailabilityChange: (timeSlotId: string, isAvailable: boolean, notes?: string) => Promise<boolean>
   saving: boolean
   disabled: boolean
@@ -371,7 +372,10 @@ const TimeSlotAvailabilityCard = ({ timeSlot, onAvailabilityChange, saving, disa
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><span className="rounded-surface bg-primary/10 p-2 text-primary"><CalendarDays className="h-4 w-4" /></span>{formatDateWithWeekday(timeSlot.date)}</CardTitle>
             <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Clock className="h-4 w-4" />{timeSlot.start_time.slice(0, 5)} - {timeSlot.end_time.slice(0, 5)}</p>
           </div>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusClass}`}>{availability === true ? 'Disponible' : availability === false ? 'No disponible' : 'Sin responder'}</span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass}`}>{availability === true ? 'Disponible' : availability === false ? 'No disponible' : 'Sin responder'}</span>
+            {timeSlot.expired && <span className="text-xs text-muted-foreground">Horario vencido</span>}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

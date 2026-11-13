@@ -18,10 +18,11 @@ import {
 import { validateTimeSlot, getBracketLabel, getErrorMessage } from './utils'
 import { checkTournamentPermissions, checkUserTournamentInscription } from '@/utils/tournament-permissions'
 import { interpretAvailabilityNote } from '@/lib/services/match-recommendation/note-interpreter'
-import { normalizeScheduleSlot, isPlayableScheduleSlot } from '@/lib/services/schedule-sharing/validation'
+import { getArgentinaToday, normalizeScheduleSlot, isPlayableScheduleSlot } from '@/lib/services/schedule-sharing/validation'
 import { getScheduleMutationBlocker } from '@/lib/services/schedule-sharing/dependencies'
 import { getScheduleSlotDependencies } from '@/lib/services/schedule-sharing/dependency-reader'
 import { getMyLongFechaSubstitutions } from '@/lib/services/long-fecha-substitutions'
+import { isCurrentPlayerTimeSlot, isOpenPlayerFecha } from '@/lib/services/player-panel-agenda.shared'
 
 export type { CreateTimeSlotData } from './types'
 
@@ -365,7 +366,10 @@ export async function getPlayerScheduleData(
     const isGoldSilverBracketFecha = isBracketFecha && (fecha.bracket_key === 'GOLD' || fecha.bracket_key === 'SILVER')
 
     let bracketAssignment: PlayerScheduleData['bracket_assignment'] = null
-    const closedFecha = fecha.status === 'COMPLETED' || fecha.status === 'CANCELED'
+    const now = new Date()
+    const closedFecha = tournament.type === 'LONG'
+      ? !isOpenPlayerFecha(fecha, getArgentinaToday(now))
+      : fecha.status === 'COMPLETED' || fecha.status === 'CANCELED'
     let canEditAvailability = !closedFecha && (assignment?.can_vote ?? true)
     let availabilityRestrictionReason: string | null = closedFecha ? 'La fecha está cerrada.'
       : canEditAvailability ? null : 'El suplente y su compañero responden por esta fecha.'
@@ -455,6 +459,7 @@ export async function getPlayerScheduleData(
         created_at: new Date().toISOString(),
         slot_type: slot.slot_type === 'FREE_DATE' ? 'FREE_DATE' as const : 'TIME_RANGE' as const,
         is_system: Boolean(slot.is_system),
+        expired: tournament.type === 'LONG' && slot.slot_type === 'TIME_RANGE' && !isCurrentPlayerTimeSlot(slot, now),
         my_availability: availability ? {
           couple_id: coupleId,
           is_available: availability.is_available,
@@ -811,8 +816,8 @@ export async function updateCoupleAvailability(
     const { data: timeSlot } = await supabase
       .from('tournament_time_slots')
       .select(`
-        fecha_id, slot_type, is_system, is_available, start_time, end_time,
-        tournament_fechas!inner(tournament_id, round_type, bracket_key, status)
+        fecha_id, slot_type, is_system, is_available, date, start_time, end_time,
+        tournament_fechas!inner(tournament_id, round_type, bracket_key, status, start_date, end_date, tournaments!inner(type))
       `)
       .eq('id', data.time_slot_id)
       .single()
@@ -835,7 +840,12 @@ export async function updateCoupleAvailability(
     }
 
     const fechaInfo = (timeSlot.tournament_fechas as any)
-    if (fechaInfo.status === 'COMPLETED' || fechaInfo.status === 'CANCELED') return { success: false, error: 'La fecha está cerrada.' }
+    const now = new Date()
+    const isLong = fechaInfo.tournaments?.type === 'LONG'
+    const closedFecha = isLong ? !isOpenPlayerFecha(fechaInfo, getArgentinaToday(now))
+      : fechaInfo.status === 'COMPLETED' || fechaInfo.status === 'CANCELED'
+    if (closedFecha) return { success: false, error: 'La fecha está cerrada.' }
+    if (isLong && !isCurrentPlayerTimeSlot(timeSlot, now)) return { success: false, error: 'Este horario ya pasó.' }
     const assignments = await getMyLongFechaSubstitutions(supabase, fechaInfo.tournament_id)
     const assignment = assignments.find(item => item.fecha_id === timeSlot.fecha_id && item.couple_id === data.couple_id)
     if (assignment && !assignment.can_vote) return { success: false, error: 'El suplente y su compañero responden por esta fecha.' }
@@ -911,6 +921,7 @@ export async function updateCoupleAvailability(
     revalidatePath(`/tournaments/${fechaInfo.tournament_id}/schedules`)
     revalidatePath(`/tournaments/${fechaInfo.tournament_id}/match-scheduling`)
     revalidatePath(`/tournaments/${fechaInfo.tournament_id}/bracket`)
+    revalidatePath('/panel')
     
     return {
       success: true,
@@ -1011,6 +1022,7 @@ export async function updateFreeDatePreference(
     revalidatePath(`/tournaments/${fechaInfo.tournament_id}`)
     revalidatePath(`/tournaments/${fechaInfo.tournament_id}/schedules`)
     revalidatePath(`/tournaments/${fechaInfo.tournament_id}/match-scheduling`)
+    revalidatePath('/panel')
 
     return {
       success: true,

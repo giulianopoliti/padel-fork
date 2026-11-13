@@ -59,8 +59,9 @@ exception when insufficient_privilege then raise notice 'PASS: player cannot ass
 reset role;
 
 insert into public.tournament_time_slots(id, fecha_id, date, start_time, end_time, slot_type, is_system) values
-  ('ab700000-0000-4000-8000-000000000001','ab500000-0000-4000-8000-000000000001','2026-03-05','17:00','20:00','TIME_RANGE',false),
-  ('ab700000-0000-4000-8000-000000000002','ab500000-0000-4000-8000-000000000002','2026-03-04','17:00','20:00','TIME_RANGE',false);
+  ('ab700000-0000-4000-8000-000000000001','ab500000-0000-4000-8000-000000000001',current_date + 2,'17:00','20:00','TIME_RANGE',false),
+  ('ab700000-0000-4000-8000-000000000002','ab500000-0000-4000-8000-000000000002',current_date + 1,'17:00','20:00','TIME_RANGE',false),
+  ('ab700000-0000-4000-8000-000000000003','ab500000-0000-4000-8000-000000000001',current_date - 2,'17:00','20:00','TIME_RANGE',false);
 insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
   ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000001',true),
   ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000002',true);
@@ -81,6 +82,11 @@ select pg_temp.assert_true((select count(*) from public.get_my_long_fecha_substi
 select pg_temp.assert_true(exists (select 1 from public.get_my_long_substitute_panel_fechas()
   where fecha_id='ab500000-0000-4000-8000-000000000001' and player2_name='Carla Suplente' and has_slots),
   'the substitute panel lists the date with the real lineup and a vote link');
+do $$begin
+  insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
+    ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000003',true);
+  raise exception 'FAIL: substitute voted for an expired slot';
+exception when insufficient_privilege then raise notice 'PASS: an expired slot cannot be voted'; end $$;
 insert into public.couple_time_availability(couple_id,time_slot_id,is_available) values
   ('ab300000-0000-4000-8000-000000000001','ab700000-0000-4000-8000-000000000001',false)
   on conflict (couple_id,time_slot_id) do update set is_available=excluded.is_available;

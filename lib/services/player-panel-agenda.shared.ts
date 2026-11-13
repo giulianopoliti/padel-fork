@@ -1,6 +1,11 @@
+import { getArgentinaToday, normalizeLocalTime } from './schedule-sharing/validation'
+
 export type PlayerPanelAgendaState =
   | 'MATCH_SCHEDULED'
   | 'AVAILABILITY_REQUIRED'
+  | 'AVAILABILITY_RECORDED'
+  | 'AVAILABILITY_NOT_PUBLISHED'
+  | 'NO_CURRENT_SLOTS'
   | 'DEFAULT'
 
 export interface PlayerPanelScheduledMatchCandidate {
@@ -20,6 +25,21 @@ export interface PlayerPanelFechaCandidate {
   playableSlotIds: string[]
   respondedPlayableSlotIds: string[]
   freeDateSelected: boolean
+  hasPublishedSlots?: boolean
+}
+
+const argentinaTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+})
+
+export const isCurrentPlayerTimeSlot = (slot: { date: string; end_time: string }, now = new Date()) => {
+  const today = getArgentinaToday(now)
+  return slot.date > today || (slot.date === today && (normalizeLocalTime(slot.end_time, true) ?? '') > argentinaTimeFormatter.format(now))
+}
+
+export const isOpenPlayerFecha = (fecha: { status?: string | null; end_date?: string | null; start_date?: string | null }, today: string) => {
+  const lastDay = fecha.end_date || fecha.start_date
+  return fecha.status !== 'CANCELED' && fecha.status !== 'COMPLETED' && (!lastDay || lastDay >= today)
 }
 
 export interface PlayerPanelAgendaResolution {
@@ -85,22 +105,17 @@ export const resolvePlayerPanelAgenda = ({
     }
   }
 
-  const nextActionableFecha = fechas
-    .filter(fecha => {
-      if (!fecha.isApplicable || fecha.status === 'CANCELED') return false
-
-      const dateBoundary = fecha.endDate || fecha.startDate
-      if (!dateBoundary || dateBoundary < today) return false
-
-      return fecha.playableSlotIds.length > 0
-    })
-    .sort(compareFechas)[0]
+  const openFechas = fechas
+    .filter(fecha => fecha.isApplicable && isOpenPlayerFecha({ status: fecha.status, start_date: fecha.startDate, end_date: fecha.endDate }, today))
+    .sort(compareFechas)
+  const nextActionableFecha = openFechas.find(fecha => fecha.playableSlotIds.length > 0)
 
   if (!nextActionableFecha) {
+    const nextFecha = openFechas[0]
     return {
-      state: 'DEFAULT',
+      state: !nextFecha ? 'DEFAULT' : nextFecha.hasPublishedSlots ? 'NO_CURRENT_SLOTS' : 'AVAILABILITY_NOT_PUBLISHED',
       scheduledMatchIds: [],
-      availabilityFechaId: null,
+      availabilityFechaId: nextFecha?.id ?? null,
     }
   }
 
@@ -109,16 +124,8 @@ export const resolvePlayerPanelAgenda = ({
     respondedPlayableSlots.has(slotId)
   ))
 
-  if (hasAnsweredAvailability || nextActionableFecha.freeDateSelected) {
-    return {
-      state: 'DEFAULT',
-      scheduledMatchIds: [],
-      availabilityFechaId: null,
-    }
-  }
-
   return {
-    state: 'AVAILABILITY_REQUIRED',
+    state: hasAnsweredAvailability || nextActionableFecha.freeDateSelected ? 'AVAILABILITY_RECORDED' : 'AVAILABILITY_REQUIRED',
     scheduledMatchIds: [],
     availabilityFechaId: nextActionableFecha.id,
   }

@@ -1,17 +1,17 @@
 import Link from "next/link"
 import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import { CalendarDays, ChevronRight, MapPin, Users } from "lucide-react"
-import type { InscribedTournament } from "@/app/api/panel/actions"
+import type { InscribedTournament, PlayerSubstituteTournament } from "@/app/api/panel/actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getTournamentGenderLabel } from "@/lib/tournaments/gender-label"
 import { formatDateLabel } from "./panel-formatters"
-import { PlayerSubstituteFechas } from './player-substitute-fechas'
-import type { LongSubstitutePanelFecha } from '@/lib/services/long-fecha-substitutions'
+import { PlayerSubstituteTournaments } from './player-substitute-fechas'
+import { PlayerTournamentAgenda } from './player-tournament-agenda'
 
 interface PlayerInscribedTournamentsSectionProps {
   tournaments: InscribedTournament[]
-  substituteFechas?: LongSubstitutePanelFecha[]
+  substituteTournaments?: PlayerSubstituteTournament[]
 }
 
 const statusLabels: Record<string, string> = {
@@ -25,9 +25,9 @@ const statusLabels: Record<string, string> = {
 
 export default function PlayerInscribedTournamentsSection({
   tournaments,
-  substituteFechas = [],
+  substituteTournaments = [],
 }: PlayerInscribedTournamentsSectionProps) {
-  if (tournaments.length === 0 && substituteFechas.length === 0) {
+  if (tournaments.length === 0 && substituteTournaments.length === 0) {
     return (
       <div className="tpe-shell rounded-[2rem] p-8 text-center text-white">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/8">
@@ -54,12 +54,13 @@ export default function PlayerInscribedTournamentsSection({
         <h2 className="text-2xl font-black uppercase tracking-[-0.03em] sm:text-3xl">Mis torneos inscriptos</h2>
       </div>
 
-      <PlayerSubstituteFechas fechas={substituteFechas} />
+      <PlayerSubstituteTournaments tournaments={substituteTournaments.filter(item => !tournaments.some(entry => entry.tournament.id === item.id))} />
       {tournaments.length > 0 && <div className="p-4 sm:p-6">
         {tournaments.map((inscription) => {
           const tournament = inscription.tournament
           const partnerName = `${inscription.partner.first_name} ${inscription.partner.last_name}`.trim()
           const hideVenue = Boolean(tournament.hide_venue)
+          const substitute = substituteTournaments.find(item => item.id === tournament.id)
           const venueName = tournament.club?.name || tournament.club?.address || null
 
           return (
@@ -111,6 +112,12 @@ export default function PlayerInscribedTournamentsSection({
               </div>
 
               <div className="flex flex-col gap-3">
+                <PlayerTournamentAgenda agenda={inscription.agenda} />
+                {substitute && <div className="space-y-2">
+                  <Badge variant="outline" className="border-white/25 text-white">Suplente</Badge>
+                  {substitute.lineup && substitute.agenda.state !== 'MATCH_SCHEDULED' && <p className="text-sm text-white/80">{substitute.lineup}</p>}
+                  <PlayerTournamentAgenda agenda={substitute.agenda} />
+                </div>}
                 <p className="text-center text-sm font-semibold text-white">{inscription.payment?.registrationLabel || 'Inscripción guardada'}</p>
                 <Button
                   asChild
