@@ -244,6 +244,11 @@ const ModifyScheduleDialog: React.FC<ModifyScheduleDialogProps> = ({
                   </select>
                 </div>
               )}
+              {fechaOptions?.currentFechaId && selectedFechaId && selectedFechaId !== fechaOptions.currentFechaId && (
+                <p className="text-sm text-muted-foreground">
+                  Al cambiar de jornada, una suplencia para una sola fecha queda en la jornada anterior. La suplencia del partido sigue con el cruce.
+                </p>
+              )}
             </>
           )}
 

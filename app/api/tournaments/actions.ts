@@ -992,6 +992,7 @@ export async function getMatchesByTournamentId(
         )
       ),
       fecha_matches!left (
+        fecha_id,
         scheduled_date,
         scheduled_start_time,
         scheduled_end_time,
@@ -1053,6 +1054,7 @@ export async function getMatchesByTournamentId(
       }*/
 
       const schedulingData = fechaMatch ? {
+        fecha_id: fechaMatch.fecha_id,
         scheduled_date: fechaMatch.scheduled_date,
         scheduled_start_time: fechaMatch.scheduled_start_time,
         scheduled_end_time: fechaMatch.scheduled_end_time,

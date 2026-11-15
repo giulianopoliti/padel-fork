@@ -669,24 +669,17 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
 
     const longTournamentIds = [...new Set(longInscriptions.map(inscription => inscription.tournament.id))]
     const longCoupleIds = [...new Set(longInscriptions.map(inscription => inscription.couple_id))]
-    const [matches, fechasResult, seedsResult, fechaAssignments] = await Promise.all([
+    const [matches, fechasResult, fechaAssignments] = await Promise.all([
       loadPlayerMatches(supabase, playerId, couples, longTournamentIds),
       supabase
         .from('tournament_fechas')
-        .select('id, tournament_id, name, fecha_number, start_date, end_date, status, round_type, bracket_key')
+        .select('id, tournament_id, name, fecha_number, start_date, end_date, status, round_type')
         .in('tournament_id', longTournamentIds)
         .neq('status', 'CANCELED'),
-      supabase
-        .from('tournament_couple_seeds')
-        .select('tournament_id, couple_id, bracket_key')
-        .in('tournament_id', longTournamentIds)
-        .in('couple_id', longCoupleIds)
-        .in('bracket_key', ['GOLD', 'SILVER']),
       Promise.all(longTournamentIds.map(id => getMyLongFechaSubstitutions(supabase, id))),
     ])
 
     if (fechasResult.error) throw fechasResult.error
-    if (seedsResult.error) throw seedsResult.error
 
     const fechas = (fechasResult.data || []) as Array<{
       id: string
@@ -697,20 +690,13 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
       end_date: string | null
       status: string | null
       round_type: string | null
-      bracket_key: string | null
     }>
     const now = new Date()
     const today = getArgentinaToday(now)
     const fechaIds = fechas.filter(fecha => isOpenPlayerFecha(fecha, today)).map(fecha => fecha.id)
     const getAvailability = await loadPlayerPanelAvailability(supabase, fechaIds, longCoupleIds, now)
-    const seedByTournamentAndCouple = new Map(
-      (seedsResult.data || []).map(seed => [
-        `${seed.tournament_id}:${seed.couple_id}`,
-        seed.bracket_key,
-      ]),
-    )
-    const replacedFechas = new Set(fechaAssignments.flat().filter(item => !item.can_vote)
-      .map(item => `${item.fecha_id}:${item.couple_id}`))
+    const canVoteByFechaAndCouple = new Map(fechaAssignments.flat()
+      .map(item => [`${item.fecha_id}:${item.couple_id}`, item.can_vote]))
 
     const enrichedTournaments = inscribedTournaments.map((inscription): InscribedTournament => {
       if (inscription.tournament.type !== 'LONG') return inscription
@@ -718,12 +704,9 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
       const inscriptionMatches = getVisibleNextMatches(matches.filter(match => (
         match.tournament_id === inscription.tournament.id && match.couple_id === inscription.couple_id
       )))
-      const assignedBracket = seedByTournamentAndCouple.get(
-        `${inscription.tournament.id}:${inscription.couple_id}`,
-      )
       const tournamentFechas = fechas.filter(fecha => fecha.tournament_id === inscription.tournament.id)
       const fechaCandidates: PanelFechaCandidate[] = tournamentFechas.map(fecha => {
-        const isGoldSilverFecha = fecha.round_type !== 'ZONE' && ['GOLD', 'SILVER'].includes(fecha.bracket_key || '')
+        const canVote = canVoteByFechaAndCouple.get(`${fecha.id}:${inscription.couple_id}`)
 
         return {
           id: fecha.id,
@@ -734,8 +717,7 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
           startDate: fecha.start_date,
           endDate: fecha.end_date,
           status: fecha.status || 'NOT_STARTED',
-          isApplicable: (!isGoldSilverFecha || assignedBracket === fecha.bracket_key)
-            && !replacedFechas.has(`${fecha.id}:${inscription.couple_id}`),
+          isApplicable: canVote ?? fecha.round_type === 'ZONE',
           ...getAvailability(fecha.id, inscription.couple_id),
         }
       })

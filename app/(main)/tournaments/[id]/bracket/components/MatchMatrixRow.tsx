@@ -11,6 +11,7 @@ import { useBracketDragOperations } from '@/components/tournament/bracket-v2/hoo
 import { getMatchPreviewInfo } from '@/components/tournament/bracket-v2/utils/preview-operations'
 import type { BracketMatchV2 } from '@/components/tournament/bracket-v2/types/bracket-types'
 import { toast } from 'sonner'
+import { BracketScheduleCouple, type BracketScheduleSubstitutions } from './BracketScheduleCouple'
 
 interface TimeSlot extends AvailabilitySlot {
   id: string
@@ -45,6 +46,7 @@ interface MatchMatrixRowProps {
   availabilitySaving?: boolean
   onSaveAvailability: SaveAvailability
   pendingOperations?: BracketSwapOperation[]
+  substitutions?: BracketScheduleSubstitutions
 }
 
 export default function MatchMatrixRow({
@@ -61,7 +63,8 @@ export default function MatchMatrixRow({
   manualAvailabilityEnabled = false,
   availabilitySaving = false,
   onSaveAvailability,
-  pendingOperations = []
+  pendingOperations = [],
+  substitutions,
 }: MatchMatrixRowProps) {
 
   // Hook para operaciones de drag & drop
@@ -359,7 +362,9 @@ export default function MatchMatrixRow({
                 slot1DragState.isDropTarget ? "text-green-700" : "",
                 slot1DragState.isInvalidDropTarget ? "text-red-700" : ""
               )}>
-                {couple1?.name || 'Pareja TBD'}
+                <BracketScheduleCouple couple={couple1} match={match} tournamentId={tournamentId} substitutions={substitutions} />
+                {substitutions?.hasMultipleFechas && !match.scheduling?.fecha_id
+                  && <span className="block text-xs font-normal text-muted-foreground">Jornada a definir</span>}
               </div>
 
               {/* Indicadores de estado */}
@@ -550,7 +555,7 @@ export default function MatchMatrixRow({
               slot2DragState.isDropTarget ? "text-green-700 font-medium" : "",
               slot2DragState.isInvalidDropTarget ? "text-red-700 font-medium" : ""
             )}>
-              {couple2?.name || 'Pareja TBD'}
+              <BracketScheduleCouple couple={couple2} match={match} tournamentId={tournamentId} substitutions={substitutions} />
             </div>
 
             {/* Indicadores de estado */}

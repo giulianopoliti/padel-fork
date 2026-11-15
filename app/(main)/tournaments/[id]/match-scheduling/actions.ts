@@ -1227,6 +1227,7 @@ interface BracketFecha {
   fecha_number: number
   start_date: string | null
   end_date: string | null
+  status: string
 }
 
 export interface BracketMatchFechaOptions {
@@ -1253,7 +1254,7 @@ const getAuthorizedSchedulingMatch = async (supabase: ScheduleClient, matchId: s
 const getBracketFechaCandidates = async (supabase: ScheduleClient, match: SchedulingMatch): Promise<BracketFecha[]> => {
   if (match.type !== 'ELIMINATION' || !match.round) return []
   const { data, error } = await supabase.from('tournament_fechas')
-    .select('id, name, fecha_number, start_date, end_date')
+    .select('id, name, fecha_number, start_date, end_date, status')
     .eq('tournament_id', match.tournament_id)
     .eq('round_type', match.round)
     .eq('bracket_key', match.bracket_key || 'MAIN')

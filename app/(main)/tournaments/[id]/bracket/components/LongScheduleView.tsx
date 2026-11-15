@@ -14,7 +14,7 @@ import LoadMatchResultDialog from '../../match-scheduling/components/LoadMatchRe
 import type { ExistingMatch } from '../../match-scheduling/actions'
 import { BracketDragDropProvider, useBracketDragDrop } from '@/components/tournament/bracket-v2/context/bracket-drag-context'
 import { useBracketDragOperations } from '@/components/tournament/bracket-v2/hooks/useBracketDragOperations'
-import { useLongBracketData } from '../hooks/useLongBracketData'
+import { useLongBracketData, type UseLongBracketDataResult } from '../hooks/useLongBracketData'
 import type { BracketMatchV2 } from '@/components/tournament/bracket-v2/types/bracket-types'
 import { toast } from 'sonner'
 import useSWR from 'swr'
@@ -71,6 +71,7 @@ function LongScheduleViewContent({
   roundFechas,
   roundTimeSlots,
   roundAvailability,
+  roundSubstitutes,
   roundSchedulingLoading,
   roundSchedulingError,
   isLoading,
@@ -93,9 +94,10 @@ function LongScheduleViewContent({
   bracketData: any
   bracketLoading: boolean
   bracketError: any
-  roundFechas: any[]
+  roundFechas: UseLongBracketDataResult['roundFechas']
   roundTimeSlots: any[]
   roundAvailability: any[]
+  roundSubstitutes: UseLongBracketDataResult['roundSubstitutes']
   roundSchedulingLoading: boolean
   roundSchedulingError: any
   isLoading: boolean
@@ -108,6 +110,7 @@ function LongScheduleViewContent({
 }) {
 
   const [manualAvailabilityEnabled, setManualAvailabilityEnabled] = useState(false)
+  const [selectedFechaId, setSelectedFechaId] = useState('')
   const { data: permissions } = useSWR<{ hasPermission: boolean }>(
     `/api/tournaments/${tournamentId}/permissions`,
     async (url: string) => {
@@ -117,6 +120,17 @@ function LongScheduleViewContent({
     }
   )
   const canManageAvailability = permissions?.hasPermission === true
+  const fechas = selectedRound === 'all' ? [] : roundFechas.filter(fecha => fecha.status !== 'CANCELED'
+    && fecha.round_type === ROUND_TO_ENUM_MAP[selectedRound] && fecha.bracket_key === activeBracketKey)
+  const selectedFecha = fechas.find(fecha => fecha.id === selectedFechaId)
+    ?? fechas.find(fecha => fecha.status !== 'COMPLETED') ?? fechas[0]
+  const visibleSlots = roundTimeSlots.filter(slot => selectedFecha?.id === slot.fecha_id && slot.slot_type === 'TIME_RANGE')
+  const dateSubstitutes = new Map(roundSubstitutes.filter(item => item.fecha_id === selectedFecha?.id)
+    .map(item => [item.couple_id, item]))
+  const handleSubstitutionSaved = (fechaId?: string) => {
+    if (fechaId && fechas.some(fecha => fecha.id === fechaId)) setSelectedFechaId(fechaId)
+    refetchAll()
+  }
 
   useEffect(() => {
     setManualAvailabilityEnabled(false)
@@ -222,6 +236,10 @@ function LongScheduleViewContent({
       })
     }
   }, [bracketData?.matches, selectedRound])
+  const matrixMatches = !selectedFecha || isEditMode ? filteredMatches : filteredMatches.filter((match: BracketMatchV2) => {
+    const linkedFechaId = match.scheduling?.fecha_id
+    return linkedFechaId === selectedFecha.id || !fechas.some(fecha => fecha.id === linkedFechaId)
+  })
 
   // Estadísticas generales
   const generalStats = useMemo(() => {
@@ -420,6 +438,16 @@ function LongScheduleViewContent({
               compact
               className="min-w-0 flex-wrap"
             />
+            {selectedFecha && <div className="flex items-center gap-2 text-sm">
+              {fechas.length > 1 ? <>
+                <label htmlFor="bracket-schedule-fecha" className="font-medium">Jornada</label>
+                <select id="bracket-schedule-fecha" value={selectedFecha.id} disabled={isEditMode}
+                  onChange={event => setSelectedFechaId(event.target.value)}
+                  className="h-9 min-w-0 rounded-control border border-input bg-background px-2">
+                  {fechas.map(fecha => <option key={fecha.id} value={fecha.id}>Fecha {fecha.fecha_number} · {fecha.name}</option>)}
+                </select>
+              </> : <span className="font-medium">{selectedFecha.name}</span>}
+            </div>}
             {selectedRound !== 'all' && (
               <div className="flex flex-wrap items-center gap-2">
                 {!isEditMode ? (
@@ -476,7 +504,7 @@ function LongScheduleViewContent({
                     )}
                   </div>
                 )}
-                {canManageAvailability && roundTimeSlots.length > 0 && (
+                {canManageAvailability && visibleSlots.length > 0 && (
                   <Button type="button" size="sm" variant={manualAvailabilityEnabled ? 'default' : 'outline'}
                     disabled={isEditMode || roundSchedulingLoading} aria-pressed={manualAvailabilityEnabled}
                     onClick={() => setManualAvailabilityEnabled(value => !value)}>
@@ -599,19 +627,19 @@ function LongScheduleViewContent({
             La matriz se mostrará sin información de disponibilidad.
           </AlertDescription>
         </Alert>
-      ) : selectedRound !== 'all' && roundTimeSlots.length === 0 && !roundSchedulingLoading ? (
+      ) : selectedRound !== 'all' && visibleSlots.length === 0 && !roundSchedulingLoading ? (
         <Alert className="border-blue-200 bg-blue-50">
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
-            <strong>Información:</strong> No hay fechas creadas para la ronda {ROUND_CONFIG[selectedRound as Round]?.displayName}.
-            Ve a <strong>Gestión de Fechas</strong> para crear fechas y horarios para esta ronda.
+            {selectedFecha ? 'Esta jornada todavía no tiene horarios publicados.'
+              : 'Creá una jornada para esta ronda y copa en Fechas y Horarios.'}
           </AlertDescription>
         </Alert>
       ) : null}
 
       <ScheduleMatrix
-        matches={filteredMatches}
-        timeSlots={roundTimeSlots}
+        matches={matrixMatches}
+        timeSlots={visibleSlots}
         availability={roundAvailability}
         onScheduleMatch={handleScheduleMatch}
         onLoadResult={handleLoadResult}
@@ -623,6 +651,10 @@ function LongScheduleViewContent({
         manualAvailabilityEnabled={manualAvailabilityEnabled}
         onAvailabilitySaved={refetchRoundScheduling}
         pendingOperations={dragState.pendingOperations}
+        substitutions={canManageAvailability && !isEditMode
+          ? { forFecha: dateSubstitutes, onSaved: handleSubstitutionSaved, hasMultipleFechas: fechas.length > 1 } : undefined}
+        canEditMatchAvailability={match => Boolean(selectedFecha && selectedFecha.status !== 'COMPLETED'
+          && (match.scheduling?.fecha_id ? selectedFecha.id === match.scheduling.fecha_id : fechas.length === 1))}
       />
 
       {/* Modal para programar matches - usando ModifyScheduleDialog */}
@@ -709,6 +741,7 @@ export default function LongScheduleView({ tournamentId, onMatchUpdate }: LongSc
     roundFechas,
     roundTimeSlots,
     roundAvailability,
+    roundSubstitutes,
     roundSchedulingLoading,
     roundSchedulingError,
     isLoading,
@@ -739,6 +772,7 @@ export default function LongScheduleView({ tournamentId, onMatchUpdate }: LongSc
         roundFechas={roundFechas}
         roundTimeSlots={roundTimeSlots}
         roundAvailability={roundAvailability}
+        roundSubstitutes={roundSubstitutes}
         roundSchedulingLoading={roundSchedulingLoading}
         roundSchedulingError={roundSchedulingError}
         isLoading={isLoading}

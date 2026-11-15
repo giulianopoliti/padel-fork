@@ -129,7 +129,7 @@ export const getLongPlayerOverview = async (
   const matchFilters = [coupleId && `couple1_id.eq.${coupleId},couple2_id.eq.${coupleId}`,
     substituteMatches.size > 0 && `id.in.(${Array.from(substituteMatches.keys()).join(',')})`].filter(Boolean).join(',')
 
-  const [matchesResult, standingResult, fechasResult, bracketResult] = await Promise.all([
+  const [matchesResult, standingResult, fechasResult] = await Promise.all([
     matchFilters ? supabase
       .from('matches')
       .select(`
@@ -160,18 +160,10 @@ export const getLongPlayerOverview = async (
       .maybeSingle() : Promise.resolve({ data: null }),
     coupleId || substituteFechas.length ? supabase
       .from('tournament_fechas')
-      .select('id, name, fecha_number, round_type, bracket_key, status, start_date, end_date')
+      .select('id, name, fecha_number, round_type, status, start_date, end_date')
       .eq('tournament_id', tournamentId)
       .neq('status', 'CANCELED')
       .order('fecha_number', { ascending: false }) : Promise.resolve({ data: [] }),
-    coupleId ? supabase
-      .from('tournament_couple_seeds')
-      .select('bracket_key')
-      .eq('tournament_id', tournamentId)
-      .eq('couple_id', coupleId)
-      .in('bracket_key', ['GOLD', 'SILVER'])
-      .limit(1)
-      .maybeSingle() : Promise.resolve({ data: null }),
   ])
 
   const rows = matchesResult.data ?? []
@@ -203,13 +195,11 @@ export const getLongPlayerOverview = async (
   if (registrationStatus === 'ACTIVE' || substituteFechas.length) {
     const now = new Date()
     const today = getArgentinaToday(now)
-    const bracketKey = bracketResult.data?.bracket_key || null
     const eligibleFechas = (fechasResult.data || []).flatMap(fecha => {
       if (!isOpenPlayerFecha(fecha, today)) return []
       const own = fechaAssignments.find(item => item.fecha_id === fecha.id && item.couple_id === coupleId)
       const assigned = substituteFechas.filter(item => item.fecha_id === fecha.id).map(item => item.couple_id)
-      const canVoteForOwn = registrationStatus === 'ACTIVE' && coupleId && own?.can_vote !== false
-        && (fecha.round_type === 'ZONE' || !['GOLD', 'SILVER'].includes(fecha.bracket_key || '') || fecha.bracket_key === bracketKey)
+      const canVoteForOwn = registrationStatus === 'ACTIVE' && coupleId && (own?.can_vote ?? fecha.round_type === 'ZONE')
       if (canVoteForOwn) assigned.unshift(coupleId)
       return [...new Set(assigned)].map(id => ({ fecha, coupleId: id }))
     })

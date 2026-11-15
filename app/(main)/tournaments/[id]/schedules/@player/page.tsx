@@ -2,7 +2,6 @@ import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 import { checkUserTournamentInscription } from "@/utils/tournament-permissions"
 import ScheduleContainer from "../components/ScheduleContainer"
-import { TournamentFormatResolver } from "@/lib/services/tournament-format-resolver"
 import { getMyLongFechaSubstitutions } from '@/lib/services/long-fecha-substitutions'
 
 interface PlayerSchedulePageProps {
@@ -53,29 +52,10 @@ export default async function PlayerSchedulePage({
   if (tournamentError || !tournament) {
     redirect('/tournaments')
   }
-  const substitutes = tournament.type === 'LONG' ? await getMyLongFechaSubstitutions(supabase, resolvedParams.id) : []
-  const substituteFechas = new Set(substitutes.filter(item => item.is_substitute && item.can_vote).map(item => item.fecha_id))
+  const assignments = tournament.type === 'LONG' ? await getMyLongFechaSubstitutions(supabase, resolvedParams.id) : []
+  const substituteFechas = new Set(assignments.filter(item => item.is_substitute && item.can_vote).map(item => item.fecha_id))
   if (!isActiveStarter && substituteFechas.size === 0) redirect(`/tournaments/${resolvedParams.id}`)
-
-  const resolvedFormat = TournamentFormatResolver.getResolvedFormat(tournament as any)
-  const isLongGoldSilver =
-    tournament.type === 'LONG' && resolvedFormat.effectiveBracketMode === 'GOLD_SILVER'
-
-  let assignedBracketKey: 'GOLD' | 'SILVER' | null = null
-  if (isLongGoldSilver && inscriptionResult.coupleId) {
-    const { data: assignmentRows } = await supabase
-      .from('tournament_couple_seeds')
-      .select('bracket_key')
-      .eq('tournament_id', resolvedParams.id)
-      .eq('couple_id', inscriptionResult.coupleId)
-      .in('bracket_key', ['GOLD', 'SILVER'])
-      .limit(1)
-
-    const assignmentKey = assignmentRows?.[0]?.bracket_key
-    if (assignmentKey === 'GOLD' || assignmentKey === 'SILVER') {
-      assignedBracketKey = assignmentKey
-    }
-  }
+  const ownFechas = new Set(assignments.filter(item => item.couple_id === inscriptionResult.coupleId).map(item => item.fecha_id))
 
   const clubName =
     tournament.hide_venue
@@ -94,10 +74,7 @@ export default async function PlayerSchedulePage({
   const fechas = (rawFechas || []).filter((fecha) => {
     if (substituteFechas.has(fecha.id)) return true
     if (!isActiveStarter) return false
-    if (!isLongGoldSilver) return true
-    if (fecha.round_type === 'ZONE') return true
-    if (!assignedBracketKey) return false
-    return fecha.bracket_key === assignedBracketKey
+    return tournament.type !== 'LONG' || fecha.round_type === 'ZONE' || ownFechas.has(fecha.id)
   })
 
   const findLatestFechaId = (): string | undefined => {
@@ -125,7 +102,7 @@ export default async function PlayerSchedulePage({
   }
   const requestedCoupleId = resolvedSearchParams.couple_id
   const initialCoupleId = requestedCoupleId && (requestedCoupleId === inscriptionResult.coupleId && isActiveStarter
-    || substitutes.some(item => item.fecha_id === effectiveFechaId && item.couple_id === requestedCoupleId && item.is_substitute && item.can_vote))
+    || assignments.some(item => item.fecha_id === effectiveFechaId && item.couple_id === requestedCoupleId && item.is_substitute && item.can_vote))
     ? requestedCoupleId : undefined
 
   return (

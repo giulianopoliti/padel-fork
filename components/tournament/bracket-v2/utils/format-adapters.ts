@@ -140,6 +140,7 @@ export interface CurrentApiMatch {
   is_placeholder_match?: boolean
   // NUEVO: Datos de scheduling desde fecha_matches
   scheduling?: {
+    fecha_id?: string | null
     scheduled_date?: string | null
     scheduled_start_time?: string | null
     scheduled_end_time?: string | null
@@ -617,6 +618,7 @@ export function transformCurrentApiMatchToBracketV2(
   }
   const normalizedSchedulingData = schedulingData
     ? {
+        ...(currentMatch.scheduling?.fecha_id && { fecha_id: currentMatch.scheduling.fecha_id }),
         court: schedulingData.court || undefined,
         scheduled_time: schedulingData.scheduled_time || undefined
       }

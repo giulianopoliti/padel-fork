@@ -374,7 +374,12 @@ export async function getPlayerScheduleData(
     let availabilityRestrictionReason: string | null = closedFecha ? 'La fecha está cerrada.'
       : canEditAvailability ? null : 'El suplente y su compañero responden por esta fecha.'
 
-    if (isGoldSilverBracketFecha && !assignment) {
+    if (tournament.type === 'LONG' && isBracketFecha && !assignment && !closedFecha) {
+      canEditAvailability = false
+      availabilityRestrictionReason = 'Tu pareja todavía no tiene un cruce en esta jornada.'
+    }
+
+    if (tournament.type !== 'LONG' && isGoldSilverBracketFecha && !assignment) {
       const { data: seedAssignment, error: seedAssignmentError } = await supabase
         .from('tournament_couple_seeds')
         .select('bracket_key')
@@ -849,6 +854,9 @@ export async function updateCoupleAvailability(
     const assignments = await getMyLongFechaSubstitutions(supabase, fechaInfo.tournament_id)
     const assignment = assignments.find(item => item.fecha_id === timeSlot.fecha_id && item.couple_id === data.couple_id)
     if (assignment && !assignment.can_vote) return { success: false, error: 'El suplente y su compañero responden por esta fecha.' }
+    if (isLong && fechaInfo.round_type !== 'ZONE' && !assignment) {
+      return { success: false, error: 'Tu pareja todavía no tiene un cruce en esta jornada.' }
+    }
     if (!assignment && (!accessResult.data.isInscribed || !accessResult.data.playerId || accessResult.data.coupleId !== data.couple_id)) {
       return {
         success: false,
@@ -861,7 +869,7 @@ export async function updateCoupleAvailability(
     const isGoldSilverBracketFecha =
       fechaRoundType !== 'ZONE' && (fechaBracketKey === 'GOLD' || fechaBracketKey === 'SILVER')
 
-    if (isGoldSilverBracketFecha && !assignment) {
+    if (!isLong && isGoldSilverBracketFecha && !assignment) {
       const { data: seedAssignment, error: seedAssignmentError } = await supabase
         .from('tournament_couple_seeds')
         .select('bracket_key')
@@ -951,8 +959,8 @@ export async function updateFreeDatePreference(
     const { data: timeSlot, error: timeSlotError } = await supabase
       .from('tournament_time_slots')
       .select(`
-        id, slot_type, is_system,
-        tournament_fechas!inner(tournament_id, round_type, bracket_key)
+        id, fecha_id, slot_type, is_system,
+        tournament_fechas!inner(tournament_id, round_type, bracket_key, tournaments!inner(type))
       `)
       .eq('id', data.time_slot_id)
       .single()
@@ -981,7 +989,12 @@ export async function updateFreeDatePreference(
     const isGoldSilverBracketFecha =
       fechaInfo.round_type !== 'ZONE' && ['GOLD', 'SILVER'].includes(fechaInfo.bracket_key)
 
-    if (isGoldSilverBracketFecha) {
+    if (fechaInfo.tournaments?.type === 'LONG' && fechaInfo.round_type !== 'ZONE') {
+      const assignments = await getMyLongFechaSubstitutions(supabase, fechaInfo.tournament_id)
+      if (!assignments.some(item => item.fecha_id === timeSlot.fecha_id && item.couple_id === data.couple_id && item.can_vote)) {
+        return { success: false, error: 'Tu pareja no puede responder por esta jornada.' }
+      }
+    } else if (isGoldSilverBracketFecha) {
       const { data: seedAssignment, error: seedAssignmentError } = await supabase
         .from('tournament_couple_seeds')
         .select('bracket_key')

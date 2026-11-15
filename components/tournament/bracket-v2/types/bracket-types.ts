@@ -250,6 +250,7 @@ export interface MatchResultV2 {
  * Información de programación de un match
  */
 export interface MatchScheduling {
+  fecha_id?: string
   /** Cancha asignada */
   court?: string
   /** Hora programada */

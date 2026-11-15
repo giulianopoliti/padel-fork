@@ -9,6 +9,9 @@ export interface LongFechaSubstitution {
   can_vote: boolean
 }
 
+export type FechaSubstitute = { couple_id: string; slot: 1 | 2; player_name: string }
+export type RoundFechaSubstitute = FechaSubstitute & { fecha_id: string }
+
 export type LongSubstitutePanelFecha = Pick<LongFechaSubstitution, 'fecha_id' | 'couple_id' | 'player1_name' | 'player2_name'> & {
   tournament_id: string
   tournament_name: string

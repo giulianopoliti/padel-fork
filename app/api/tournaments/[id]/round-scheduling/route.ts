@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
 import { checkTournamentAccess, hasAnyPermission } from '@/utils/tournament-permissions'
+import type { FechaSubstitute } from '@/lib/services/long-fecha-substitutions'
 
 type RoundType = 'ZONE' | '32VOS' | '16VOS' | '8VOS' | '4TOS' | 'SEMIFINAL' | 'FINAL'
 type BracketKey = 'MAIN' | 'GOLD' | 'SILVER'
@@ -81,14 +82,27 @@ export async function GET(
         data: {
           fechas: [],
           timeSlots: [],
-          availability: []
+          availability: [],
+          substitutes: [],
         }
       })
     }
 
     const fechaIds = fechas.map(fecha => fecha.id)
+    const loadSubstitutes = async () => {
+      if (roundType === 'ZONE' || !hasAnyPermission(access, ['manage_schedules'])) return []
+      const service = await createClientServiceRole()
+      const lists = await Promise.all(fechas.filter(fecha => !['COMPLETED', 'CANCELED'].includes(fecha.status)).map(async fecha => {
+        const { data, error } = await service.rpc('get_long_fecha_substitution_lineups', {
+          p_fecha_id: fecha.id, p_actor_id: user.id,
+        })
+        if (error) throw error
+        return ((data ?? []) as FechaSubstitute[]).map(substitute => ({ ...substitute, fecha_id: fecha.id }))
+      }))
+      return lists.flat()
+    }
 
-    const { data: timeSlots, error: timeSlotsError } = await supabase
+    const [{ data: timeSlots, error: timeSlotsError }, substitutes] = await Promise.all([supabase
       .from('tournament_time_slots')
       .select(`
         *,
@@ -102,7 +116,7 @@ export async function GET(
       `)
       .in('fecha_id', fechaIds)
       .order('date', { ascending: true })
-      .order('start_time', { ascending: true })
+      .order('start_time', { ascending: true }), loadSubstitutes()])
 
     if (timeSlotsError) {
       throw timeSlotsError
@@ -142,7 +156,8 @@ export async function GET(
       data: {
         fechas: fechas || [],
         timeSlots: normalizedTimeSlots,
-        availability
+        availability,
+        substitutes,
       }
     })
   } catch (error) {

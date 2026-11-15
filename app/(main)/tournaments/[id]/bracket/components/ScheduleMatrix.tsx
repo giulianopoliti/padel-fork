@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import MatchMatrixRow from './MatchMatrixRow'
+import { BracketScheduleCouple, type BracketScheduleSubstitutions } from './BracketScheduleCouple'
 import type { BracketMatchV2 } from '@/components/tournament/bracket-v2/types/bracket-types'
 
 // Reutilizar tipos del sistema de match scheduling existente
@@ -45,6 +46,8 @@ interface ScheduleMatrixProps {
   manualAvailabilityEnabled?: boolean
   onAvailabilitySaved?: () => Promise<void>
   pendingOperations?: BracketSwapOperation[]
+  substitutions?: BracketScheduleSubstitutions
+  canEditMatchAvailability?: (match: BracketMatchV2) => boolean
 }
 
 // Helper para formatear días con horario completo
@@ -74,7 +77,9 @@ export default function ScheduleMatrix({
   isEditMode = false,
   manualAvailabilityEnabled = false,
   onAvailabilitySaved,
-  pendingOperations = []
+  pendingOperations = [],
+  substitutions,
+  canEditMatchAvailability,
 }: ScheduleMatrixProps) {
 
   const [availabilitySaving, setAvailabilitySaving] = useState(false)
@@ -147,7 +152,8 @@ export default function ScheduleMatrix({
                         </div>
                         <div>
                           <div className="text-sm font-medium">Match {match.position || index + 1}</div>
-                          <div className="text-xs text-slate-500">{match.round}</div>
+                          <div className="text-xs text-slate-500">{substitutions?.hasMultipleFechas && !match.scheduling?.fecha_id
+                            ? 'Jornada a definir' : match.round}</div>
                         </div>
                       </div>
                     </div>
@@ -155,14 +161,16 @@ export default function ScheduleMatrix({
                     {/* Couples */}
                     <div className="space-y-2">
                       <div className="text-sm font-medium">
-                        {match.participants?.slot1?.couple?.name || 'Pareja TBD'}
+                        <BracketScheduleCouple couple={match.participants.slot1.couple} match={match}
+                          tournamentId={tournamentId} substitutions={substitutions} />
                       </div>
                       <div className="text-sm">
-                        {match.participants?.slot2?.couple?.name || 'Pareja TBD'}
+                        <BracketScheduleCouple couple={match.participants.slot2.couple} match={match}
+                          tournamentId={tournamentId} substitutions={substitutions} />
                       </div>
                     </div>
 
-                    {manualAvailabilityEnabled && isOwner && !isEditMode && (
+                    {manualAvailabilityEnabled && isOwner && !isEditMode && canEditMatchAvailability?.(match) !== false && (
                       <div className="space-y-3">
                         {[match.participants?.slot1?.couple, match.participants?.slot2?.couple].filter(couple => !!couple).map(couple => (
                           <div key={couple!.id} className="space-y-2">
@@ -268,7 +276,8 @@ export default function ScheduleMatrix({
                     isOwner={isOwner}
                     dragEnabled={dragEnabled}
                     isEditMode={isEditMode}
-                    manualAvailabilityEnabled={manualAvailabilityEnabled && isOwner && !isEditMode}
+                    manualAvailabilityEnabled={manualAvailabilityEnabled && isOwner && !isEditMode && canEditMatchAvailability?.(match) !== false}
+                    substitutions={substitutions}
                     availabilitySaving={availabilitySaving}
                     onSaveAvailability={handleSaveAvailability}
                     pendingOperations={pendingOperations}

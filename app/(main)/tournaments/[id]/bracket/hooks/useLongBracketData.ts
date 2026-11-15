@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useBracketData } from '@/components/tournament/bracket-v2/hooks/useBracketData'
 import { getMatchSchedulingData, type SchedulingData } from '../../match-scheduling/actions'
 import type { BracketKey } from '@/types/tournament-format-v2'
+import type { RoundFechaSubstitute } from '@/lib/services/long-fecha-substitutions'
 
 type RoundType = 'ZONE' | '32VOS' | '16VOS' | '8VOS' | '4TOS' | 'SEMIFINAL' | 'FINAL'
 
@@ -31,7 +32,7 @@ interface UseLongBracketDataConfig {
   bracketKey?: BracketKey
 }
 
-interface UseLongBracketDataResult {
+export interface UseLongBracketDataResult {
   bracketData: any
   bracketLoading: boolean
   bracketError: Error | null
@@ -41,6 +42,7 @@ interface UseLongBracketDataResult {
   roundFechas: TournamentFecha[]
   roundTimeSlots: any[]
   roundAvailability: any[]
+  roundSubstitutes: RoundFechaSubstitute[]
   roundSchedulingLoading: boolean
   roundSchedulingError: string | null
   isLoading: boolean
@@ -88,15 +90,18 @@ export function useLongBracketData(
     fechas: TournamentFecha[]
     timeSlots: any[]
     availability: any[]
+    substitutes: RoundFechaSubstitute[]
     loading: boolean
     error: string | null
   }>({
     fechas: [],
     timeSlots: [],
     availability: [],
+    substitutes: [],
     loading: false,
     error: null
   })
+  const roundRequest = useRef<AbortController | null>(null)
 
   const fetchSchedulingData = useCallback(async (fechaId: string) => {
     if (!includeSchedulingData || !fechaId || fechaId === 'current') {
@@ -135,6 +140,9 @@ export function useLongBracketData(
   ) => {
     if (!roundType) return
 
+    roundRequest.current?.abort()
+    const request = new AbortController()
+    roundRequest.current = request
     setRoundSchedulingState(prev => ({ ...prev, loading: true, error: null }))
 
     try {
@@ -150,16 +158,19 @@ export function useLongBracketData(
         {
           method: 'GET',
           credentials: 'include',
-          cache: 'no-store'
+          cache: 'no-store',
+          signal: request.signal,
         }
       )
 
       const result = await response.json()
+      if (request.signal.aborted) return
       if (!response.ok || !result?.success) {
         setRoundSchedulingState({
           fechas: [],
           timeSlots: [],
           availability: [],
+          substitutes: [],
           loading: false,
           error: result?.error || 'Error al cargar datos de la ronda'
         })
@@ -170,14 +181,17 @@ export function useLongBracketData(
         fechas: Array.isArray(result?.data?.fechas) ? result.data.fechas : [],
         timeSlots: Array.isArray(result?.data?.timeSlots) ? result.data.timeSlots : [],
         availability: Array.isArray(result?.data?.availability) ? result.data.availability : [],
+        substitutes: Array.isArray(result?.data?.substitutes) ? result.data.substitutes : [],
         loading: false,
         error: null
       })
     } catch {
+      if (request.signal.aborted) return
       setRoundSchedulingState({
         fechas: [],
         timeSlots: [],
         availability: [],
+        substitutes: [],
         loading: false,
         error: 'Error inesperado al cargar datos de la ronda'
       })
@@ -192,8 +206,10 @@ export function useLongBracketData(
 
   useEffect(() => {
     if (selectedRoundType) {
-      fetchRoundSchedulingData(selectedRoundType, bracketKey)
+      void fetchRoundSchedulingData(selectedRoundType, bracketKey)
+      return () => roundRequest.current?.abort()
     }
+    setRoundSchedulingState({ fechas: [], timeSlots: [], availability: [], substitutes: [], loading: false, error: null })
   }, [selectedRoundType, bracketKey, fetchRoundSchedulingData])
 
   const refetchScheduling = useCallback(async () => {
@@ -229,6 +245,7 @@ export function useLongBracketData(
     roundFechas: roundSchedulingState.fechas,
     roundTimeSlots: roundSchedulingState.timeSlots,
     roundAvailability: roundSchedulingState.availability,
+    roundSubstitutes: roundSchedulingState.substitutes,
     roundSchedulingLoading: roundSchedulingState.loading,
     roundSchedulingError: roundSchedulingState.error,
     isLoading,

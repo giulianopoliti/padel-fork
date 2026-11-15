@@ -10,7 +10,7 @@ const id = z.string().uuid()
 const mutationSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('save'), ruleId: id.nullable(), coupleId: id, slot: z.union([z.literal(1), z.literal(2)]),
     playerId: id, scope: z.enum(['ONLY_MATCH', 'FROM_MATCH', 'ONLY_FECHA', 'FROM_FECHA']),
-    matchId: id.nullable(), fechaId: id.nullable().optional() }),
+    matchId: id.nullable(), fechaId: id.nullable().optional(), bracketMatchId: id.optional() }),
   z.object({ action: z.literal('remove'), ruleId: id, coupleId: id }),
   z.object({ action: z.literal('create-player'), coupleId: id, playerData: z.object({
     first_name: z.string().trim().min(1).max(120), last_name: z.string().trim().min(1).max(120),
@@ -113,6 +113,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const body = parsed.data
   if (body.action === 'create-player') return createSubstitute(auth, tournamentId, body)
   const save = body.action === 'save' ? body : null
+  if (save?.bracketMatchId && (save.matchId || !save.fechaId || !['ONLY_FECHA', 'FROM_FECHA'].includes(save.scope))) {
+    return NextResponse.json({ error: 'Elegí una jornada de llave para esta suplencia.' }, { status: 400 })
+  }
   if (save) {
     const [tournament, couple] = await Promise.all([
       auth.service.from('tournaments').select('gender, category_name, category_config').eq('id', tournamentId).single(),
@@ -133,11 +136,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: composition.error || category.error }, { status: 400 })
     }
   }
-  const { error } = await auth.service.rpc('manage_long_substitution_with_fecha', {
+  const ruleArgs = {
     p_tournament_id: tournamentId, p_actor_id: auth.actorId, p_rule_id: body.ruleId, p_couple_id: body.coupleId,
     p_slot: save?.slot ?? null, p_substitute_id: save?.playerId ?? null, p_scope: save?.scope ?? null,
-    p_match_id: save?.matchId ?? null, p_fecha_id: save?.fechaId ?? null, p_remove: body.action === 'remove',
-  })
+    p_fecha_id: save?.fechaId ?? null,
+  }
+  const { error } = save?.bracketMatchId
+    ? await auth.service.rpc('manage_long_bracket_fecha_substitution', { ...ruleArgs, p_match_id: save.bracketMatchId })
+    : await auth.service.rpc('manage_long_substitution_with_fecha', {
+      ...ruleArgs, p_match_id: save?.matchId ?? null, p_remove: body.action === 'remove',
+    })
   if (error) return databaseError(error)
   revalidatePath(`/tournaments/${tournamentId}`, 'layout')
   revalidatePath('/panel')
