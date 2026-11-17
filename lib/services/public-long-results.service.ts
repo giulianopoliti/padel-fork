@@ -103,6 +103,7 @@ const toCouple = (couple: any): PublicLongCouple | null => {
  */
 export const getPublicLongResults = async (
   tournamentId: string,
+  { activeMatchesOnly = false }: { activeMatchesOnly?: boolean } = {},
 ): Promise<PublicLongResultsData | null> => {
   if (getTenantBranding().key !== "padel-fv") return null
 
@@ -125,6 +126,28 @@ export const getPublicLongResults = async (
     }
     return null
   }
+
+  let matchesQuery = supabase
+    .from("matches")
+    .select(`
+      id,
+      type,
+      round,
+      bracket_key,
+      zone_id,
+      couple1_id,
+      couple2_id,
+      winner_id,
+      result_couple1,
+      result_couple2,
+      status,
+      court,
+      order_in_round
+    `)
+    .eq("tournament_id", tournamentId)
+    .eq("es_prueba", false)
+    .neq("status", "DRAFT")
+  if (activeMatchesOnly) matchesQuery = matchesQuery.eq("bracket_is_active", true)
 
   const [zonesResult, standingsResult, couplesResult, matchesResult] = await Promise.all([
     supabase
@@ -160,27 +183,7 @@ export const getPublicLongResults = async (
       .eq("tournament_id", tournamentId)
       .eq("is_pending", false)
       .not("couple_id", "is", null),
-    supabase
-      .from("matches")
-      .select(`
-        id,
-        type,
-        round,
-        bracket_key,
-        zone_id,
-        couple1_id,
-        couple2_id,
-        winner_id,
-        result_couple1,
-        result_couple2,
-        status,
-        court,
-        order_in_round
-      `)
-      .eq("tournament_id", tournamentId)
-      .eq("es_prueba", false)
-      .neq("status", "DRAFT")
-      .order("order_in_round", { ascending: true }),
+    matchesQuery.order("order_in_round", { ascending: true }).order("id"),
   ])
 
   const queryError = [zonesResult.error, standingsResult.error, couplesResult.error, matchesResult.error]

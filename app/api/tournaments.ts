@@ -457,7 +457,8 @@ export async function getTournamentsOptimized({
         type?: "LONG" | "AMERICAN",
         dateFrom?: string,
         dateTo?: string,
-        search?: string
+        search?: string,
+        visibleVenueOnly?: boolean
     }
 }) {
     try {
@@ -546,6 +547,10 @@ export async function getTournamentsOptimized({
             query = query.eq("club_id", filters.clubId);
         }
 
+        if (filters.visibleVenueOnly) {
+            query = query.or("hide_venue.eq.false,hide_venue.is.null");
+        }
+
         if (explicitGenderFilter) {
             query = query.eq("gender", explicitGenderFilter);
         }
@@ -564,7 +569,7 @@ export async function getTournamentsOptimized({
 
         // Apply search filter (case-insensitive)
         if (filters.search) {
-            query = query.or(`name.ilike.%${filters.search}%`);
+            query = query.ilike("name", `%${filters.search}%`);
         }
 
         // Order and paginate
