@@ -81,9 +81,9 @@ const tenantBranding: Record<TenantBranding["key"], TenantBranding> = {
     },
     home: {
       variant: "padel-fv",
-      title: "Padel FV",
-      subtitle: "Todos los proximos torneos del circuito en una vista simple, clara y lista para inscribirte.",
-      ctaPrimary: "Ver proximos torneos",
+      title: "Torneos y ligas de pádel en Buenos Aires",
+      subtitle: "Jugá las ligas de Padel FV en Lasaigues Canning, Caballito, Almagro y Devoto. Consultá categorías, próximas fechas e inscripciones.",
+      ctaPrimary: "Ver calendario de ligas",
       ctaSecondary: "Ver clubes",
     },
     features: {
@@ -133,9 +133,9 @@ const tenantBranding: Record<TenantBranding["key"], TenantBranding> = {
     },
     home: {
       variant: "padel-elite",
-      title: "Proximos torneos de PadelElite",
-      subtitle: "Toda la agenda semanal en un formato claro: categoria, horario, sede e inscripcion desde el primer vistazo.",
-      ctaPrimary: "Ver torneos",
+      title: "Torneos americanos de pádel en Buenos Aires",
+      subtitle: "Jugá los torneos semanales de TPE Padel en Unipadel Olivos, Nova Padel Center (San Martín) y El Tanque Pádel. Consultá fechas, categorías e inscripciones.",
+      ctaPrimary: "Ver próximos torneos",
       ctaSecondary: "Ver clubes",
     },
     features: {

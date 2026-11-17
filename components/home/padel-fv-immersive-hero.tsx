@@ -1,15 +1,21 @@
 "use client"
 
 import { ArrowDown, ArrowUpRight, Pause, Play } from "lucide-react"
+import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
+import type { TenantBranding } from "@/config/tenant"
 
 const heroMedia = {
   mobile: "/tenants/padel-fv/hero/fv-circuito-vertical-compatible",
   desktop: "/tenants/padel-fv/hero/fv-circuito-desktop-compatible",
 } as const
 
-export const PadelFvImmersiveHero = () => {
+export const PadelFvImmersiveHero = ({
+  title,
+  subtitle,
+  ctaPrimary,
+}: Pick<TenantBranding["home"], "title" | "subtitle" | "ctaPrimary">) => {
   const sectionRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const userPausedRef = useRef(false)
@@ -198,19 +204,18 @@ export const PadelFvImmersiveHero = () => {
       <div className="absolute inset-x-0 top-0 h-48 bg-[linear-gradient(180deg,rgba(7,17,37,0.56)_0%,transparent_100%)]" aria-hidden="true" />
 
       <div className="container relative mx-auto flex min-h-[calc(100svh-4rem)] items-end px-4 pb-28 pt-28 sm:px-6 sm:pb-24 sm:pt-28 lg:min-h-[calc(100svh-72px)] lg:items-center lg:py-24">
-        <div className="max-w-xl">
-          <p className="mb-5 text-xs font-black uppercase tracking-[0.24em] text-court-300 sm:text-sm">Organizadores de torneos de pádel</p>
-          <h1 id="padel-fv-hero-title" className="text-5xl font-black leading-[0.94] tracking-[-0.055em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.32)] sm:text-6xl lg:text-7xl xl:text-8xl">
-            Torneos que se viven de verdad.
+        <div className="max-w-2xl">
+          <h1 id="padel-fv-hero-title" className="text-4xl font-black leading-[0.98] tracking-[-0.055em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.32)] sm:text-5xl lg:text-6xl xl:text-7xl">
+            {title}
           </h1>
           <p className="mt-6 max-w-lg text-base font-semibold leading-7 text-white/90 drop-shadow-sm sm:text-lg sm:leading-8">
-            Organizamos cada competencia de principio a fin: inscripción, partidos, resultados y campeones.
+            {subtitle}
           </p>
           <div className="mt-8">
             <Button asChild className="h-12 rounded-full bg-court-400 px-6 text-base font-black text-[#10213f] shadow-[0_12px_32px_rgba(0,0,0,0.28)] hover:bg-court-300 focus-visible:ring-court-200">
-              <a href="#proximos-americanos">
-                Ver próximos torneos <ArrowUpRight className="ml-2 h-4 w-4" aria-hidden="true" />
-              </a>
+              <Link href="/torneos?type=LONG">
+                {ctaPrimary} <ArrowUpRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Link>
             </Button>
           </div>
         </div>
@@ -229,10 +234,10 @@ export const PadelFvImmersiveHero = () => {
       )}
 
       <a
-        href="#proximos-americanos"
+        href="#nuestras-ligas"
         className="absolute bottom-5 left-1/2 inline-flex -translate-x-1/2 flex-col items-center gap-1 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.16em] text-white/80 transition hover:text-court-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-court-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#101a35] sm:bottom-8 sm:text-xs sm:tracking-[0.18em]"
       >
-        <span>Deslizá para explorar</span>
+        <span>Explorá las ligas</span>
         <ArrowDown className="h-4 w-4 motion-safe:animate-bounce" aria-hidden="true" />
       </a>
 

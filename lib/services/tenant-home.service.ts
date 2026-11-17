@@ -54,7 +54,6 @@ export interface TenantHomeData {
   } | null
   upcomingTournaments: PublicTournamentSummary[]
   inProgressTournaments: PublicTournamentSummary[]
-  upcomingAmericanTournaments: PublicTournamentSummary[]
   activeLeagueTournaments: PublicTournamentSummary[]
   ranking: TenantRankingPlayer[]
   recentWinners: TenantRecentWinner[]
@@ -354,7 +353,6 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
       organization: null,
       upcomingTournaments: [],
       inProgressTournaments: [],
-      upcomingAmericanTournaments: [],
       activeLeagueTournaments: [],
       ranking: [],
       recentWinners: [],
@@ -378,15 +376,13 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
       },
       upcomingTournaments,
       inProgressTournaments,
-      upcomingAmericanTournaments: [],
       activeLeagueTournaments: [],
       ranking,
       recentWinners: [],
     }
   }
 
-  const [upcomingAmericanTournaments, activeLeagueTournaments, ranking, recentWinners] = await Promise.all([
-    getTenantTournamentSummaries(12, { statuses: ["NOT_STARTED"], tournamentType: "AMERICAN" }),
+  const [activeLeagueTournaments, ranking, recentWinners] = await Promise.all([
     // Matches the public /torneos "active" collection: upcoming and in-progress
     // leagues are intentionally presented together on the FV home.
     getTenantTournamentSummaries(12, {
@@ -407,7 +403,6 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
     },
     upcomingTournaments: [],
     inProgressTournaments: [],
-    upcomingAmericanTournaments,
     activeLeagueTournaments,
     ranking,
     recentWinners,

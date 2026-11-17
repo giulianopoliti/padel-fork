@@ -51,7 +51,7 @@ describe('player panel tournament details links', () => {
       agenda: { state: 'DEFAULT', scheduled_matches: [], availability: null },
     }
     const views = [
-      PlayerFvUpcomingTournamentsSection({ tournaments: [tournament], tournamentType: 'LONG' }),
+      PlayerFvUpcomingTournamentsSection({ tournaments: [tournament] }),
       PlayerUpcomingTournamentsSection({ tournaments: [tournament] }),
       PlayerFvInscribedTournamentsSection({ tournaments: [inscription] }),
       PlayerInscribedTournamentsSection({ tournaments: [inscription] }),

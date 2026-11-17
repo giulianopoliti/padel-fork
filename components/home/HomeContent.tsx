@@ -8,7 +8,6 @@ import PublicTournamentList from "@/components/public/public-tournament-list"
 import { PublicTournamentCards } from "@/components/tournaments/public-tournament-cards"
 import { RecentWinnersSection } from "@/components/home/RecentWinnersSection"
 import { PadelFvImmersiveHero } from "@/components/home/padel-fv-immersive-hero"
-import FvTournamentSection from "@/components/home/FvTournamentSection"
 import type { PublicTournamentSummary } from "@/types/public-tournament"
 
 export async function HomeContent() {
@@ -17,7 +16,6 @@ export async function HomeContent() {
     organization,
     upcomingTournaments,
     inProgressTournaments,
-    upcomingAmericanTournaments,
     activeLeagueTournaments,
     ranking,
     recentWinners,
@@ -29,17 +27,7 @@ export async function HomeContent() {
 
   return (
     <div className="min-h-screen bg-[#f7f5ee] text-[#20335d]">
-      <PadelFvImmersiveHero />
-      <FvTournamentSection
-        id="proximos-americanos"
-        kicker="Próximas fechas"
-        title="Próximos torneos americanos"
-        description="Competencias dinámicas, categorías definidas e inscripción directa."
-        action="Ver todos los americanos"
-        tournaments={upcomingAmericanTournaments}
-        emptyTitle="Todavía no hay americanos publicados"
-        emptyDescription="Cuando haya una nueva fecha disponible, la vas a encontrar acá."
-      />
+      <PadelFvImmersiveHero title={branding.home.title} subtitle={branding.home.subtitle} ctaPrimary={branding.home.ctaPrimary} />
       <FvLeaguesSection
         id="nuestras-ligas"
         kicker="Competencias de 1 a 2 meses"
@@ -124,12 +112,12 @@ function PadelEliteHomeContent({
                 <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-700 sm:text-lg">{branding.home.subtitle}</p>
               </div>
               <Button asChild size="lg" className="rounded-full bg-[var(--tpe-night)] px-8 py-6 text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-paper)] hover:bg-[var(--tpe-night-soft)]">
-                <Link href="/torneos">Ver torneos</Link>
+                <Link href="/torneos">{branding.home.ctaPrimary}</Link>
               </Button>
             </div>
           </div>
 
-          <SectionHeader title="Proximos torneos" />
+          <SectionHeader title="Próximos torneos" />
           <PublicTournamentList tournaments={upcomingTournaments} emptyTitle="Todavia no hay torneos publicados" emptyDescription="Cuando TPE Padel cargue la proxima fecha, vas a verla aca con categoria, horario, sede e inscripcion directa." showRegistration />
         </div>
       </section>

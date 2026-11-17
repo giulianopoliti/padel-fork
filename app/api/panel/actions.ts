@@ -754,10 +754,7 @@ export async function getPlayerUpcomingTournaments(
       statusMode: branding.key === "padel-fv" ? "active" as const : "upcoming" as const,
     }
     const tournaments = branding.key === "padel-fv"
-      ? (await Promise.all([
-          getTenantUpcomingTournamentSummaries(null, { ...summaryOptions, tournamentType: "LONG" }),
-          getTenantUpcomingTournamentSummaries(24, { ...summaryOptions, tournamentType: "AMERICAN" }),
-        ])).flat()
+      ? await getTenantUpcomingTournamentSummaries(null, { ...summaryOptions, tournamentType: "LONG" })
       : await getTenantUpcomingTournamentSummaries(8, summaryOptions)
 
     if (tournaments.length === 0) {

@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { getPublicTournamentHref } from "@/lib/tournaments/public-tournament-url"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Ticket, Users } from "lucide-react"
+import { CalendarDays, ChevronRight, MapPin, Ticket, Users } from "lucide-react"
 import type { UpcomingTournament } from "@/app/api/panel/actions"
 import PublicRegistrationLauncher from "@/components/tournament/public-registration-launcher"
 import { TournamentSoloStatus } from "@/components/solo-players/tournament-solo-status"
@@ -16,11 +16,10 @@ import { isTournamentGenderFilter } from "@/lib/tournaments/gender-filtering"
 import { canShowPublicRegistration, getPublicRegistrationClosedLabel } from "@/lib/tournaments/registration-availability"
 import { shouldShowFewSlotsAlert } from "@/lib/tournaments/few-slots-visibility"
 import { buildGoogleMapsSearchUrl } from "@/lib/maps/google-maps"
-import { formatFvDateLabel as formatDateLabel, formatPrice, formatTimeLabel } from "./panel-formatters"
+import { formatFvDateLabel as formatDateLabel, formatPrice } from "./panel-formatters"
 
 interface PlayerFvUpcomingTournamentsSectionProps {
   tournaments: UpcomingTournament[]
-  tournamentType: "LONG" | "AMERICAN"
 }
 
 const ITEMS_PER_PAGE = 6
@@ -35,23 +34,9 @@ const statusLabels: Record<string, string> = {
   FINISHED_POINTS_CALCULATED: "Finalizado",
 }
 
-const typeLabels: Record<string, string> = {
-  LONG: "Liga",
-  AMERICAN: "Americano",
-}
-
 export default function PlayerFvUpcomingTournamentsSection({
-  tournaments: allTournaments,
-  tournamentType,
+  tournaments,
 }: PlayerFvUpcomingTournamentsSectionProps) {
-  const tournaments = useMemo(
-    () => allTournaments.filter((tournament) => tournament.type === tournamentType),
-    [allTournaments, tournamentType],
-  )
-  const isAmerican = tournamentType === "AMERICAN"
-  const sectionTitle = isAmerican ? "Americanos activos" : "Ligas activas"
-  const emptyTitle = isAmerican ? "No hay americanos activos publicados" : "No hay ligas activas publicadas"
-  const viewAllLabel = isAmerican ? "Ver todos los americanos" : "Ver todas las ligas"
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -62,25 +47,13 @@ export default function PlayerFvUpcomingTournamentsSection({
     ? upcomingGenderParam
     : "all"
   const totalPages = Math.max(1, Math.ceil(tournaments.length / ITEMS_PER_PAGE))
-  const displayedTournaments = useMemo(() => {
-    if (!isAmerican) {
-      return tournaments.slice(0, page * ITEMS_PER_PAGE)
-    }
+  const displayedTournaments = tournaments.slice(0, page * ITEMS_PER_PAGE)
+  const hasMoreLeagues = displayedTournaments.length < tournaments.length
+  const tournamentFilters = new URLSearchParams({ type: "LONG" })
 
-    const startIndex = (page - 1) * ITEMS_PER_PAGE
-    return tournaments.slice(startIndex, startIndex + ITEMS_PER_PAGE)
-  }, [isAmerican, page, tournaments])
-  const hasMoreLeagues = !isAmerican && displayedTournaments.length < tournaments.length
-  const tournamentsHref = (() => {
-    const params = new URLSearchParams({ type: tournamentType })
-
-    if (selectedGenderFilter !== "all") {
-      params.set("gender", selectedGenderFilter)
-    }
-
-    const queryString = params.toString()
-    return queryString ? `/torneos?${queryString}` : "/torneos"
-  })()
+  if (selectedGenderFilter !== "all") {
+    tournamentFilters.set("gender", selectedGenderFilter)
+  }
 
   useEffect(() => {
     if (page > totalPages) {
@@ -91,7 +64,7 @@ export default function PlayerFvUpcomingTournamentsSection({
   useEffect(() => {
     const loadMoreNode = loadMoreRef.current
 
-    if (isAmerican || !hasMoreLeagues || !loadMoreNode) return
+    if (!hasMoreLeagues || !loadMoreNode) return
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -104,7 +77,7 @@ export default function PlayerFvUpcomingTournamentsSection({
 
     observer.observe(loadMoreNode)
     return () => observer.disconnect()
-  }, [hasMoreLeagues, isAmerican, totalPages])
+  }, [hasMoreLeagues, totalPages])
 
   const handleGenderFilterChange = (value: string) => {
     setPage(1)
@@ -127,7 +100,7 @@ export default function PlayerFvUpcomingTournamentsSection({
           <CalendarDays className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-white sm:text-base">{emptyTitle}</h2>
+          <h2 className="text-sm font-semibold text-white sm:text-base">No hay ligas activas publicadas</h2>
           <p className="mt-0.5 text-sm text-brand-200">Las próximas fechas van a aparecer acá.</p>
         </div>
       </section>
@@ -140,7 +113,7 @@ export default function PlayerFvUpcomingTournamentsSection({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="mb-1 text-xs font-semibold text-court-300">Circuito FV</p>
-            <h2 className="text-xl font-bold text-white sm:text-2xl">{sectionTitle}</h2>
+            <h2 className="text-xl font-bold text-white sm:text-2xl">Ligas activas</h2>
           </div>
           <div className="flex items-center gap-3 sm:w-auto">
             <div className="min-w-0 flex-1 sm:w-48 sm:flex-none">
@@ -157,8 +130,8 @@ export default function PlayerFvUpcomingTournamentsSection({
               </Select>
             </div>
             <Button asChild variant="ghost" className="h-9 shrink-0 rounded-full px-2 text-xs font-semibold text-brand-100 hover:bg-white/5 hover:text-white sm:text-sm">
-              <Link href={tournamentsHref}>
-                {viewAllLabel}
+              <Link href={`/torneos?${tournamentFilters.toString()}`}>
+                Ver todas las ligas
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
@@ -170,7 +143,6 @@ export default function PlayerFvUpcomingTournamentsSection({
         {displayedTournaments.map((tournament) => {
           const priceLabel = formatPrice(tournament.price)
           const statusLabel = statusLabels[tournament.status] || tournament.status
-          const tournamentType = tournament.type || "LONG"
           const registrationAvailable = canShowPublicRegistration({
             status: tournament.status,
             enablePublicInscriptions: tournament.enable_public_inscriptions,
@@ -195,7 +167,7 @@ export default function PlayerFvUpcomingTournamentsSection({
                 <div className="min-w-0 flex-1 space-y-3">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge className="h-6 border-court-400/30 bg-court-500/10 px-2 text-[11px] font-semibold text-court-200 hover:bg-court-500/10">
-                      {typeLabels[tournamentType] || tournamentType}
+                      Liga
                     </Badge>
                     <Badge variant="outline" className="h-6 border-white/15 px-2 text-[11px] text-brand-200">
                       {statusLabel}
@@ -222,10 +194,8 @@ export default function PlayerFvUpcomingTournamentsSection({
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     <InfoBlock
                       icon={<CalendarDays className="h-4 w-4 text-court-300" />}
-                      label={isAmerican ? "Fecha y hora" : "Inicio"}
-                      value={isAmerican
-                        ? `${formatDateLabel(tournament.start_date)} · ${formatTimeLabel(tournament.start_date)}`
-                        : formatDateLabel(tournament.start_date)}
+                      label="Inicio"
+                      value={formatDateLabel(tournament.start_date)}
                     />
                     {!hideVenue && venueLabel ? (
                       <InfoBlock
@@ -293,51 +263,16 @@ export default function PlayerFvUpcomingTournamentsSection({
         })}
       </div>
 
-      {!isAmerican ? (
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
-          <p className="text-xs text-brand-200 sm:text-sm">
-            Mostrando {displayedTournaments.length} de {tournaments.length} ligas
-          </p>
-          {hasMoreLeagues ? (
-            <div ref={loadMoreRef} className="h-4 w-10" aria-hidden="true" />
-          ) : (
-            <span className="text-xs font-medium text-court-200">Todas cargadas</span>
-          )}
-        </div>
-      ) : totalPages > 1 ? (
-        <div className="flex flex-col gap-2 border-t border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-brand-200 sm:text-sm">
-            Mostrando {displayedTournaments.length} de {tournaments.length} torneos
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              disabled={page === 1}
-              className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-            >
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Anterior
-            </Button>
-            <span className="text-sm font-medium text-brand-200">
-              Pagina {page} de {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-              disabled={page === totalPages}
-              className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-            >
-              Siguiente
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      <div className="flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
+        <p className="text-xs text-brand-200 sm:text-sm">
+          Mostrando {displayedTournaments.length} de {tournaments.length} ligas
+        </p>
+        {hasMoreLeagues ? (
+          <div ref={loadMoreRef} className="h-4 w-10" aria-hidden="true" />
+        ) : (
+          <span className="text-xs font-medium text-court-200">Todas cargadas</span>
+        )}
+      </div>
     </section>
   )
 }

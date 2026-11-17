@@ -38,15 +38,20 @@ describe('player panel tournament URL data', () => {
     } as unknown as Awaited<ReturnType<typeof createClient>>)
   })
 
-  it('preserves the public slug when mapping upcoming tournament summaries', async () => {
+  it('loads only active FV leagues and preserves their public slugs', async () => {
     jest.mocked(getTenantUpcomingTournamentSummaries).mockImplementation(async (_, options) => (
-      options?.tournamentType === 'AMERICAN'
-        ? [{ id: tournament.id, seoSlug: tournament.seo_slug, name: tournament.name, status: tournament.status, club: null }]
+      options?.tournamentType === 'LONG'
+        ? [{ id: tournament.id, seoSlug: tournament.seo_slug, name: tournament.name, status: tournament.status, type: 'LONG', club: null }]
         : []
     ))
     const result = await getPlayerUpcomingTournaments('player')
     expect(result.error).toBeUndefined()
-    expect(result.upcomingTournaments).toEqual([expect.objectContaining({ id: 'tournament', seoSlug: 'largo' })])
+    expect(getTenantUpcomingTournamentSummaries).toHaveBeenCalledTimes(1)
+    expect(getTenantUpcomingTournamentSummaries).toHaveBeenCalledWith(null, expect.objectContaining({
+      statusMode: 'active',
+      tournamentType: 'LONG',
+    }))
+    expect(result.upcomingTournaments).toEqual([expect.objectContaining({ id: 'tournament', seoSlug: 'largo', type: 'LONG' })])
   })
 
   it('selects and preserves the public slug for an inscribed tournament', async () => {
