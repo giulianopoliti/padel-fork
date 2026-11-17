@@ -11,6 +11,7 @@ jest.mock('@/app/api/tournaments', () => ({
 jest.mock('@/lib/services/public-long-results.service', () => ({ getPublicLongResults: jest.fn() }))
 
 const tournamentId = '89677039-1f90-45ef-b8e1-6d7a946e6c4b'
+const fechaId = 'c8854981-8dfa-4d59-bf38-3615c6e22d8b'
 
 const callMcp = async (method: string, params?: object) => {
   const response = await POST(new Request('http://localhost/api/mcp', {
@@ -23,12 +24,13 @@ const callMcp = async (method: string, params?: object) => {
 describe('Padel FV public MCP', () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it('advertises the demo and the two public tools as read-only', async () => {
+  it('advertises the public tools as read-only and accepts a real date number', async () => {
     const { result } = await callMcp('tools/list')
     expect(result.tools.map((tool: { name: string }) => tool.name)).toEqual([
       'consultar_fecha', 'buscar_torneos', 'consultar_resultados',
     ])
     expect(result.tools.every((tool: { annotations: { readOnlyHint: boolean } }) => tool.annotations.readOnlyHint)).toBe(true)
+    expect(result.tools[0].inputSchema.properties.fechaNumero.type).toBe('integer')
   })
 
   it('resolves the public club and category and only returns public summary fields', async () => {
@@ -74,6 +76,13 @@ describe('Padel FV public MCP', () => {
         player1: { id: 'replacement', firstName: 'Nombre', lastName: 'Suplente', profileImageUrl: null },
         player2: null,
       },
+      schedule: {
+        fecha: { id: fechaId, number: 3 },
+        date: '2026-11-21',
+        startTime: '18:00:00',
+        endTime: '19:30:00',
+        court: 'Cancha 2',
+      },
     }
     jest.mocked(getPublicLongResults).mockResolvedValue({
       tournament: { id: tournamentId, name: 'Clausura C4', status: 'ZONE_PHASE' },
@@ -85,13 +94,59 @@ describe('Padel FV public MCP', () => {
     const { result } = await callMcp('tools/call', {
       name: 'consultar_resultados', arguments: { tournamentId },
     })
-    expect(getPublicLongResults).toHaveBeenCalledWith(tournamentId, { activeMatchesOnly: true })
+    expect(getPublicLongResults).toHaveBeenCalledWith(tournamentId, {
+      activeMatchesOnly: true, includeCompletedSchedule: true,
+    })
     expect(result.structuredContent.partidos).toEqual([expect.objectContaining({
       id: 'finished',
       pareja1: { id: 'first', jugadores: ['Nombre Suplente'] },
       marcador: ['2', '0'],
       sets: [[6, 3]],
+      fechaId, fechaNumero: 3, dia: '2026-11-21', horaInicio: '18:00',
+      horaFin: '19:30', cancha: 'Cancha 2',
     })])
+  })
+
+  it('consults a real date by number and preserves an existing date with no results', async () => {
+    jest.mocked(getPublicLongResults).mockResolvedValue({
+      tournament: { id: tournamentId, name: 'Clausura C4', status: 'ZONE_PHASE' },
+      fecha: { id: fechaId, number: 3 },
+      matches: [], couples: {}, zones: [],
+    })
+
+    const { result } = await callMcp('tools/call', {
+      name: 'consultar_fecha', arguments: { tournamentId, fechaNumero: 3 },
+    })
+    expect(getPublicLongResults).toHaveBeenCalledWith(tournamentId, {
+      activeMatchesOnly: true, includeCompletedSchedule: true, fecha: { number: 3 },
+    })
+    expect(result.structuredContent).toMatchObject({
+      fecha: { id: fechaId, numero: 3 }, partidos: [],
+    })
+  })
+
+  it('accepts a real date ID as a results filter and reports when it is not in the league', async () => {
+    jest.mocked(getPublicLongResults).mockResolvedValue({
+      tournament: { id: tournamentId, name: 'Clausura C4', status: 'ZONE_PHASE' },
+      fecha: null,
+      matches: [], couples: {}, zones: [],
+    })
+
+    const { result } = await callMcp('tools/call', {
+      name: 'consultar_resultados', arguments: { tournamentId, fechaId },
+    })
+    expect(getPublicLongResults).toHaveBeenCalledWith(tournamentId, {
+      activeMatchesOnly: true, includeCompletedSchedule: true, fecha: { id: fechaId },
+    })
+    expect(result.isError).toBe(true)
+  })
+
+  it('still returns the original fictitious date for the demo IDs', async () => {
+    const { result } = await callMcp('tools/call', {
+      name: 'consultar_fecha', arguments: { tournamentId: 'torneo-demo', fechaId: 'fecha-3' },
+    })
+    expect(result.structuredContent.tournament.id).toBe('torneo-demo')
+    expect(getPublicLongResults).not.toHaveBeenCalled()
   })
 
   it('rejects a demo ID for real results without touching the database service', async () => {

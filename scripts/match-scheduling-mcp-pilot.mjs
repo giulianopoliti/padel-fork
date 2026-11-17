@@ -77,20 +77,19 @@ const toolResult = (id, data) => result(id, {
   structuredContent: data,
 })
 
-const callDemoTool = (id, params) => {
-  const args = params.arguments
+export const readDemoFecha = async (args) => {
   if (!isObject(args) || Object.keys(args).length !== 2 ||
       args.tournamentId !== sampleFecha.tournament.id || args.fechaId !== sampleFecha.fecha.id) {
-    return toolError(id, 'La única fecha disponible es fecha-3 del torneo-demo.')
+    return { error: 'La única fecha ficticia disponible es fecha-3 del torneo-demo.' }
   }
 
-  return toolResult(id, sampleFecha)
+  return sampleFecha
 }
 
 /**
- * @param {{ definition: { name: string, description: string, inputSchema: object, annotations: object }, run: (args: unknown) => Promise<object> }[]} extraTools
+ * @param {{ definition: { name: string, description: string, inputSchema: object, annotations: object }, run: (args: unknown) => Promise<object> }[]} tools
  */
-export const createPilotMcp = (extraTools = []) => ({
+export const createPilotMcp = (tools = [{ definition: tool, run: readDemoFecha }]) => ({
   async fetch(request) {
     const { pathname } = new URL(request.url)
     if (pathname === '/' && request.method === 'GET') {
@@ -128,11 +127,10 @@ export const createPilotMcp = (extraTools = []) => ({
       case 'ping':
         return result(id, {})
       case 'tools/list':
-        return result(id, { tools: [tool, ...extraTools.map(({ definition }) => definition)] })
+        return result(id, { tools: tools.map(({ definition }) => definition) })
       case 'tools/call': {
         if (!isObject(params)) return rpcError(id, -32602, 'Herramienta desconocida', 200)
-        if (params.name === tool.name) return callDemoTool(id, params)
-        const selected = extraTools.find(({ definition }) => definition.name === params.name)
+        const selected = tools.find(({ definition }) => definition.name === params.name)
         if (!selected) return rpcError(id, -32602, 'Herramienta desconocida', 200)
         try {
           const data = await selected.run(params.arguments ?? {})

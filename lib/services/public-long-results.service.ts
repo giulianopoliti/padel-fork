@@ -25,6 +25,21 @@ export interface PublicLongSet {
   couple2Games: number
 }
 
+interface PublicLongFecha {
+  id: string
+  number: number
+}
+
+export type PublicLongFechaSelector = { id: string } | { number: number }
+
+interface PublicLongMatchSchedule {
+  fecha: PublicLongFecha | null
+  date: string | null
+  startTime: string | null
+  endTime: string | null
+  court: string | null
+}
+
 export interface PublicLongMatch {
   id: string
   type: string | null
@@ -42,6 +57,7 @@ export interface PublicLongMatch {
   court: string | null
   orderInRound: number | null
   sets: PublicLongSet[]
+  schedule?: PublicLongMatchSchedule | null
 }
 
 export interface PublicLongStanding {
@@ -68,6 +84,7 @@ export interface PublicLongResultsData {
   zones: PublicLongZone[]
   couples: Record<string, PublicLongCouple>
   matches: PublicLongMatch[]
+  fecha?: PublicLongFecha | null
 }
 
 const toNumber = (value: unknown): number => {
@@ -96,14 +113,61 @@ const toCouple = (couple: any): PublicLongCouple | null => {
   }
 }
 
+interface FechaRow {
+  id: string
+  fecha_number: number
+  tournament_id: string
+}
+
+interface MatchScheduleRow {
+  fecha_id: string | null
+  scheduled_date: string | null
+  scheduled_start_time: string | null
+  scheduled_end_time: string | null
+  court_assignment: string | null
+  tournament_fechas: FechaRow | FechaRow[] | null
+}
+
+const firstRelation = <T>(relation: T | T[] | null | undefined): T | null =>
+  Array.isArray(relation) ? relation[0] ?? null : relation ?? null
+
+const toPublishedSchedule = (
+  relation: MatchScheduleRow | MatchScheduleRow[] | null,
+  tournamentId: string,
+  publicCourt: string | null,
+  hideVenue: boolean,
+): PublicLongMatchSchedule | null => {
+  const schedule = firstRelation(relation)
+  const court = hideVenue ? null : schedule?.court_assignment ?? publicCourt
+  if (!schedule && !court) return null
+  const fecha = firstRelation(schedule?.tournament_fechas)
+  if (schedule?.fecha_id && (fecha?.id !== schedule.fecha_id || fecha.tournament_id !== tournamentId)) return null
+
+  return {
+    fecha: fecha ? { id: fecha.id, number: fecha.fecha_number } : null,
+    date: schedule?.scheduled_date ?? null,
+    startTime: schedule?.scheduled_start_time ?? null,
+    endTime: schedule?.scheduled_end_time ?? null,
+    court,
+  }
+}
+
 /**
- * Returns only the data intentionally shown in the public LONG-results pages.
+ * Returns public LONG results, optionally with the schedule of completed matches.
  * The service-role client remains on the server and the tournament is scoped to
  * the active FV organization before any participant data is selected.
  */
 export const getPublicLongResults = async (
   tournamentId: string,
-  { activeMatchesOnly = false }: { activeMatchesOnly?: boolean } = {},
+  {
+    activeMatchesOnly = false,
+    includeCompletedSchedule = false,
+    fecha,
+  }: {
+    activeMatchesOnly?: boolean
+    includeCompletedSchedule?: boolean
+    fecha?: PublicLongFechaSelector
+  } = {},
 ): Promise<PublicLongResultsData | null> => {
   if (getTenantBranding().key !== "padel-fv") return null
 
@@ -113,7 +177,7 @@ export const getPublicLongResults = async (
   const supabase = await createClientServiceRole()
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
-    .select("id, name, type, status, organization_id, is_draft")
+    .select("id, name, type, status, organization_id, is_draft, hide_venue")
     .eq("id", tournamentId)
     .eq("organization_id", organization.id)
     .eq("type", "LONG")
@@ -127,6 +191,34 @@ export const getPublicLongResults = async (
     return null
   }
 
+  const publicTournament = {
+    id: tournament.id,
+    name: tournament.name || "Torneo",
+    status: tournament.status ?? null,
+  }
+  const withSchedule = includeCompletedSchedule || Boolean(fecha)
+  let selectedFecha: PublicLongFecha | undefined
+  if (fecha) {
+    const fechaQuery = supabase
+      .from("tournament_fechas")
+      .select("id, fecha_number")
+      .eq("tournament_id", tournamentId)
+    const { data, error } = await ('id' in fecha ? fechaQuery.eq("id", fecha.id) : fechaQuery.eq("fecha_number", fecha.number)).maybeSingle()
+    if (error) {
+      console.error("[public-long-results] Fecha lookup failed:", error)
+      return null
+    }
+    if (!data) return { tournament: publicTournament, fecha: null, zones: [], couples: {}, matches: [] }
+    selectedFecha = { id: data.id, number: data.fecha_number }
+  }
+
+  // Scheduling fields are projected only for completed public results.
+  const scheduleSelect = withSchedule
+    ? `, fecha_matches${selectedFecha ? "!inner" : ""} (
+        fecha_id, scheduled_date, scheduled_start_time, scheduled_end_time, court_assignment,
+        tournament_fechas (id, fecha_number, tournament_id)
+      )`
+    : ""
   let matchesQuery = supabase
     .from("matches")
     .select(`
@@ -142,12 +234,14 @@ export const getPublicLongResults = async (
       result_couple2,
       status,
       court,
-      order_in_round
+      order_in_round${scheduleSelect}
     `)
     .eq("tournament_id", tournamentId)
     .eq("es_prueba", false)
     .neq("status", "DRAFT")
   if (activeMatchesOnly) matchesQuery = matchesQuery.eq("bracket_is_active", true)
+  if (withSchedule) matchesQuery = matchesQuery.in("status", ["FINISHED", "COMPLETED"])
+  if (selectedFecha) matchesQuery = matchesQuery.eq("fecha_matches.fecha_id", selectedFecha.id)
 
   const [zonesResult, standingsResult, couplesResult, matchesResult] = await Promise.all([
     supabase
@@ -263,11 +357,8 @@ export const getPublicLongResults = async (
   }
 
   return {
-    tournament: {
-      id: tournament.id,
-      name: tournament.name || "Torneo",
-      status: tournament.status ?? null,
-    },
+    tournament: publicTournament,
+    ...(selectedFecha ? { fecha: selectedFecha } : {}),
     zones,
     couples,
     matches: matchRows.map((match: any) => ({
@@ -287,6 +378,9 @@ export const getPublicLongResults = async (
       court: match.court ?? null,
       orderInRound: match.order_in_round ?? null,
       sets: (setsByMatchId.get(match.id) || []).sort((left, right) => left.setNumber - right.setNumber),
+      ...(withSchedule ? {
+        schedule: toPublishedSchedule(match.fecha_matches, tournamentId, match.court ?? null, Boolean(tournament.hide_venue)),
+      } : {}),
     })),
   }
 }

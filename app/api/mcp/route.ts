@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import { getCategories, getClubsForFilter, getTournamentsOptimized } from '@/app/api/tournaments'
 import { getTenantBranding } from '@/config/tenant'
-import { getPublicLongResults, type PublicLongCouple } from '@/lib/services/public-long-results.service'
+import { getPublicLongResults, type PublicLongCouple, type PublicLongFechaSelector } from '@/lib/services/public-long-results.service'
 import { getPublicTournamentHref } from '@/lib/tournaments/public-tournament-url'
-import { createPilotMcp } from '@/scripts/match-scheduling-mcp-pilot.mjs'
+import { createPilotMcp, readDemoFecha } from '@/scripts/match-scheduling-mcp-pilot.mjs'
 
 const publicOrigin = 'https://www.padelfv.com'
 const pageSize = 10
@@ -17,14 +17,26 @@ const searchSchema = z.object({
   estado: z.enum(statusValues).default('all'),
   pagina: z.number().int().min(1).max(100).default(1),
 }).strict()
-const resultsSchema = z.object({
+const resultsInput = z.object({
   tournamentId: z.string().uuid(),
   pagina: z.number().int().min(1).max(100).default(1),
+  fechaId: z.string().uuid().optional(),
+  fechaNumero: z.number().int().min(1).max(2_147_483_647).optional(),
+}).strict()
+const resultsSchema = resultsInput.refine(input => !(input.fechaId && input.fechaNumero))
+const dateSchema = resultsInput.refine(input => Boolean(input.fechaId) !== Boolean(input.fechaNumero))
+const demoDateSchema = z.object({
+  tournamentId: z.literal('torneo-demo'),
+  fechaId: z.literal('fecha-3'),
 }).strict()
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false }
 const pageField = { type: 'integer', minimum: 1, maximum: 100, default: 1 }
 const textField = { type: 'string', minLength: 1, maxLength: 100 }
+const fechaFields = {
+  fechaId: { type: 'string', description: 'ID de la fecha. Usalo si no indicás fechaNumero.' },
+  fechaNumero: { type: 'integer', minimum: 1, maximum: 2_147_483_647, description: 'Número de jornada dentro de la liga, por ejemplo 3.' },
+}
 
 const normalize = (value: string) =>
   value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-AR').trim()
@@ -89,12 +101,17 @@ const coupleSummary = (couple: PublicLongCouple | undefined) => couple
     }
   : null
 
-const readResults = async (input: unknown) => {
-  const parsed = resultsSchema.safeParse(input)
-  if (!parsed.success) return { error: 'Usá el tournamentId obtenido con buscar_torneos y una página válida.' }
-  const { tournamentId, pagina } = parsed.data
-  const results = await getPublicLongResults(tournamentId, { activeMatchesOnly: true })
+const readResultsPage = async ({ tournamentId, pagina, fechaId, fechaNumero }: z.infer<typeof resultsInput>) => {
+  const fecha: PublicLongFechaSelector | undefined = fechaId
+    ? { id: fechaId }
+    : fechaNumero ? { number: fechaNumero } : undefined
+  const results = await getPublicLongResults(tournamentId, {
+    activeMatchesOnly: true,
+    includeCompletedSchedule: true,
+    ...(fecha ? { fecha } : {}),
+  })
   if (!results) return { error: 'No se pudo consultar la matriz pública de esa liga.' }
+  if (fecha && !results.fecha) return { error: 'No se encontró esa fecha en la liga indicada.' }
 
   const matches = results.matches.filter(match =>
     (match.status === 'FINISHED' || match.status === 'COMPLETED') && match.couple1Id && match.couple2Id
@@ -103,12 +120,20 @@ const readResults = async (input: unknown) => {
   return {
     torneo: results.tournament,
     url: `${publicOrigin}/tournaments/${tournamentId}/resultados`,
+    zonaHoraria: 'America/Argentina/Buenos_Aires',
+    ...(results.fecha ? { fecha: { id: results.fecha.id, numero: results.fecha.number } } : {}),
     pagina,
     total: matches.length,
     hayMas: matches.length > offset + resultPageSize,
     partidos: matches.slice(offset, offset + resultPageSize).map(match => ({
       id: match.id,
       ronda: match.round,
+      fechaId: match.schedule?.fecha?.id ?? null,
+      fechaNumero: match.schedule?.fecha?.number ?? null,
+      dia: match.schedule?.date ?? null,
+      horaInicio: match.schedule?.startTime?.slice(0, 5) ?? null,
+      horaFin: match.schedule?.endTime?.slice(0, 5) ?? null,
+      cancha: match.schedule?.court ?? null,
       pareja1: coupleSummary(match.lineup1 ?? results.couples[match.couple1Id!]),
       pareja2: coupleSummary(match.lineup2 ?? results.couples[match.couple2Id!]),
       ganadoraId: match.winnerId,
@@ -118,7 +143,38 @@ const readResults = async (input: unknown) => {
   }
 }
 
+const readResults = async (input: unknown) => {
+  const parsed = resultsSchema.safeParse(input)
+  return parsed.success
+    ? readResultsPage(parsed.data)
+    : { error: 'Usá el tournamentId obtenido con buscar_torneos y, si querés filtrar, fechaNumero o fechaId.' }
+}
+
+const readDate = async (input: unknown) => {
+  const demo = demoDateSchema.safeParse(input)
+  if (demo.success) return readDemoFecha(demo.data)
+
+  const parsed = dateSchema.safeParse(input)
+  return parsed.success
+    ? readResultsPage(parsed.data)
+    : { error: 'Indicá el tournamentId real y la fecha con fechaNumero o fechaId, uno de los dos.' }
+}
+
 const mcp = createPilotMcp([
+  {
+    definition: {
+      name: 'consultar_fecha',
+      description: 'Consulta los resultados públicos de una jornada de una liga LONG de Padel FV. Usá el tournamentId de buscar_torneos y fechaNumero (por ejemplo 3) o fechaId. Devuelve la fecha, día, horario y cancha registrados de cada partido finalizado cuando constan.',
+      inputSchema: {
+        type: 'object',
+        properties: { tournamentId: { type: 'string' }, ...fechaFields, pagina: pageField },
+        required: ['tournamentId'],
+        additionalProperties: false,
+      },
+      annotations: readOnly,
+    },
+    run: readDate,
+  },
   {
     definition: {
       name: 'buscar_torneos',
@@ -141,10 +197,10 @@ const mcp = createPilotMcp([
   {
     definition: {
       name: 'consultar_resultados',
-      description: 'Lee los resultados publicados de una liga LONG de Padel FV. Usa el tournamentId devuelto por buscar_torneos.',
+      description: 'Lee los resultados publicados de una liga LONG de Padel FV, con día, horario, cancha y número de fecha cuando constan. Usá el tournamentId de buscar_torneos y opcionalmente fechaNumero o fechaId.',
       inputSchema: {
         type: 'object',
-        properties: { tournamentId: { type: 'string', format: 'uuid' }, pagina: pageField },
+        properties: { tournamentId: { type: 'string', format: 'uuid' }, ...fechaFields, pagina: pageField },
         required: ['tournamentId'],
         additionalProperties: false,
       },
