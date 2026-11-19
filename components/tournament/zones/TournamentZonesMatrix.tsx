@@ -152,7 +152,7 @@ function TournamentZonesMatrixInternal({
   } = useZoneMutations(
     tournamentId,
     () => {
-      // Success callback
+      // Only a completed batch may refresh assignments and clear pending edits.
       refreshData()
       clearPendingOperations()
       toast.success('Cambios guardados exitosamente')
@@ -366,14 +366,35 @@ function TournamentZonesMatrixInternal({
   
   // Zone management handlers
   const handleAddZone = useCallback(async (name: string, capacity: number) => {
-    await addZone(name, capacity)
-    // Data will be refreshed by the success callback
-  }, [addZone])
+    const result = await addZone(name, capacity)
+    if (!result?.success) return
+
+    const zone = result.zone
+    // Add only the new zone; a refetch would overwrite unsaved couple moves.
+    await optimisticUpdate(current => ({
+      ...current,
+      zones: [...current.zones, { ...zone, maxCouples: zone.maxCouples ?? zone.capacity }]
+    }))
+  }, [addZone, optimisticUpdate])
 
   const handleDeleteZone = useCallback(async (zoneId: string, zoneName: string) => {
-    await deleteZone(zoneId, zoneName)
-    // Data will be refreshed by the success callback
-  }, [deleteZone])
+    const hasPendingZoneChanges = pendingOperations.some(operation =>
+      operation.targetZoneId === zoneId ||
+      (operation.sourceItem.type === 'zone-couple' && operation.sourceItem.sourceZoneId === zoneId)
+    )
+    if (hasPendingZoneChanges) {
+      toast.warning('Guarda o cancela los cambios de esta zona antes de eliminarla')
+      return
+    }
+
+    const result = await deleteZone(zoneId, zoneName)
+    if (!result?.success) return
+
+    await optimisticUpdate(current => ({
+      ...current,
+      zones: current.zones.filter(zone => zone.id !== zoneId)
+    }))
+  }, [deleteZone, pendingOperations, optimisticUpdate])
 
   // Match management handlers
   const handleCellClick = useCallback((

@@ -101,7 +101,8 @@ export interface TournamentZonesData {
 
 export interface TournamentZonesDataWithUtils extends TournamentZonesData {
   refresh: () => Promise<void>
-  optimisticUpdate: (updateFn: any) => Promise<void>
+  optimisticUpdate: (updateFn: (current: Pick<TournamentZonesData, 'zones' | 'availableCouples'>) =>
+    Pick<TournamentZonesData, 'zones' | 'availableCouples'>) => Promise<void>
 }
 
 // Match data types for results display

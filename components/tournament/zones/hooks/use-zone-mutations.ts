@@ -28,8 +28,13 @@ interface BatchResult {
   errors: string[]
 }
 
+interface AddZoneResult extends MutationResult {
+  zone: Omit<CleanZone, 'maxCouples'> & { maxCouples?: number }
+}
+
 /**
- * Hook for zone mutations
+ * Hook for zone mutations. Callbacks run once per batch; callers merge
+ * structural zone changes without replacing pending couple assignments.
  */
 export function useZoneMutations(
   tournamentId: string,
@@ -58,10 +63,6 @@ export function useZoneMutations(
         toast.success(successMessage)
       }
       
-      if (onSuccess) {
-        onSuccess()
-      }
-      
       return result
     } catch (error: any) {
       const errorMsg = error.message || errorMessage || 'Error en la operación'
@@ -70,13 +71,9 @@ export function useZoneMutations(
       
       toast.error(errorMsg)
       
-      if (onError) {
-        onError(errorMsg)
-      }
-      
       return null
     }
-  }, [onSuccess, onError])
+  }, [])
   
   // Move couple to zone
   const moveCoupleToZone = useCallback(async (
@@ -199,7 +196,7 @@ export function useZoneMutations(
   const addZone = useCallback(async (
     name: string,
     capacity: number = 4
-  ): Promise<MutationResult | null> => {
+  ): Promise<AddZoneResult | null> => {
     return executeMutation(
       async () => {
         const response = await fetch(`/api/tournaments/${tournamentId}/zones/add-zone`, {
@@ -312,13 +309,16 @@ export function useZoneMutations(
     const errors: string[] = []
     
     // Show progress toast
-    const progressToast = toast.loading(`Procesando ${operations.length} operaciones...`)
+    toast.loading(`Procesando ${operations.length} operaciones...`)
     
     try {
       // Execute operations sequentially to avoid conflicts
       for (const operation of operations) {
         try {
-          await executeDragOperation(operation)
+          const result = await executeDragOperation(operation)
+          if (!result?.success) {
+            throw new Error(result?.message || result?.error || 'No se pudo guardar el cambio')
+          }
           successCount++
         } catch (error: any) {
           failureCount++
@@ -327,7 +327,7 @@ export function useZoneMutations(
       }
       
       // Dismiss progress toast
-      toast.dismiss(progressToast)
+      toast.dismiss()
       
       // Show result
       if (failureCount === 0) {
@@ -349,7 +349,7 @@ export function useZoneMutations(
         errors
       }
     } catch (error: any) {
-      toast.dismiss(progressToast)
+      toast.dismiss()
       toast.error('Error crítico en operaciones batch')
       
       setMutationState({ isLoading: false, error: error.message })

@@ -170,11 +170,9 @@ export function useTournamentZonesData(tournamentId: string): TournamentZonesDat
       availableCouples: AvailableCouple[]
     }
   ) => {
-    if (!data) return
-    
     try {
       // Apply optimistic update
-      await mutate(updateFn(data), {
+      await mutate(current => current ? updateFn(current) : current, {
         revalidate: false // Don't revalidate immediately
       })
     } catch (error) {
@@ -182,7 +180,7 @@ export function useTournamentZonesData(tournamentId: string): TournamentZonesDat
       // Revert on error
       await mutate()
     }
-  }, [data, mutate])
+  }, [mutate])
   
   // Return hook data
   const result: TournamentZonesDataWithUtils = {
