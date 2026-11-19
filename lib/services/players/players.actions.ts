@@ -5,6 +5,7 @@ import { updatePlayer, softDeletePlayer, getCategories, type PlayerUpdateData } 
 import { createClient } from '@/utils/supabase/server'
 import { getPlayerDetails } from './get-player-details'
 import { checkPlayerOwnership } from './check-player-ownership'
+import { getEliteTitleHistory } from '@/lib/services/points/services/elite-title-history'
 
 /**
  * Server Action para actualizar un jugador
@@ -156,10 +157,16 @@ export async function getPlayerDetailsAction(playerId: string, tournamentId: str
 
     // Verificar permisos de edición en contexto del torneo
     const ownershipResult = await checkPlayerOwnership(playerId, user.id, tournamentId)
+    let titles
+    if (ownershipResult.canEdit) {
+      const { data: tournament } = await supabase.from('tournaments')
+        .select('type, category_name, category_config').eq('id', tournamentId).maybeSingle()
+      if (tournament) titles = (await getEliteTitleHistory([playerId], tournament)).get(playerId)
+    }
 
     return {
       success: true,
-      player: playerResult.player,
+      player: { ...playerResult.player, elite_titles: titles },
       canEdit: ownershipResult.canEdit,
       canView: ownershipResult.canView,
       isOwner: ownershipResult.isOwner,

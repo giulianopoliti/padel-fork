@@ -4,6 +4,7 @@ import { checkTournamentPermissions } from '@/utils/tournament-permissions'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { PointsReviewError } from '@/lib/services/points/services/points-review.engine'
+import { getRankingSettings } from '@/lib/services/points/services/ranking-settings'
 import { throwPointsDatabaseError } from '@/lib/services/points/services/points-review.service'
 
 interface TournamentPlayer {
@@ -16,9 +17,10 @@ interface TournamentPlayer {
 }
 
 interface RecategorizePlayersResponse {
+  resetScoreOnCategoryChange?: boolean
   success: boolean
   players?: TournamentPlayer[]
-  categories?: { name: string; lower_range: number; upper_range: number | null }[]
+  categories?: { name: string; level: number | null; initial_score: number }[]
   error?: string
 }
 
@@ -121,8 +123,10 @@ export async function GET(
     // Obtener todas las categorías disponibles
     const { data: categories, error: categoriesError } = await supabase
       .from('categories')
-      .select('name, lower_range, upper_range')
-      .order('lower_range', { ascending: true })
+      .select('name, level, initial_score')
+      .order('level', { ascending: true })
+
+    const ranking = await getRankingSettings(supabase)
 
     if (categoriesError) {
       console.error('Error fetching categories:', categoriesError)
@@ -157,7 +161,8 @@ export async function GET(
     return NextResponse.json({
       success: true,
       players: uniquePlayers,
-      categories: categories || []
+      categories: categories || [],
+      resetScoreOnCategoryChange: Boolean(ranking)
     })
 
   } catch (error) {

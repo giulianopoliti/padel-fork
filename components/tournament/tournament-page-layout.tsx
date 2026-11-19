@@ -156,6 +156,7 @@ export default function TournamentPageLayout({
       case "zones":
         return (
           <div className="p-4 lg:p-8">
+            {isOwner && <TournamentPointsControl tournamentId={tournamentId} onUpdated={onDataRefresh} zoneOnly />}
             <TournamentZonesWrapper 
               tournamentId={tournamentId} 
               isOwner={isOwner} 

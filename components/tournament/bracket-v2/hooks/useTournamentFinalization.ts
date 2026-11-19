@@ -15,6 +15,7 @@ interface TournamentFinalizationState {
   bracketKeys: BracketKey[]
   bonuses: TournamentBonuses
   winner_id: string | null
+  fixedRanking: boolean
 }
 
 const fetchFinalization = async (url: string): Promise<TournamentFinalizationState> => {
@@ -31,6 +32,7 @@ const fetchFinalization = async (url: string): Promise<TournamentFinalizationSta
     bracketKeys: data.bracketKeys,
     bonuses: data.bonuses,
     winner_id: data.winner_id,
+    fixedRanking: Boolean(data.fixedRanking),
   }
 }
 
@@ -50,6 +52,7 @@ export const useTournamentFinalization = (tournamentId: string) => {
     bracketKeys: data?.bracketKeys ?? [],
     bonuses: data?.bonuses ?? {},
     winner_id: data?.winner_id ?? null,
+    fixedRanking: data?.fixedRanking ?? false,
     loading: isLoading,
     refetch,
   }

@@ -32,8 +32,8 @@ export interface ZoneOverflowStrategy {
 }
 export type Category = {
   name: string // "2da", "3ra", "4ta", etc.
-  lower_range: number
-  upper_range: number
+  level: number | null
+  initial_score: number
 }
 
 

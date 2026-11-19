@@ -11,6 +11,7 @@ import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility
 import InscriptionsClient from './components/InscriptionsClient';
 import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
 import { sanitizeTournamentPlayer } from '@/utils/tournament-player-privacy';
+import { getEliteTitleHistory } from '@/lib/services/points/services/elite-title-history';
 import { getMyLongSubstituteMatches } from '@/lib/services/long-match-lineups';
 import { getMyLongFechaSubstitutions } from '@/lib/services/long-fecha-substitutions';
 
@@ -216,15 +217,20 @@ export default async function InscriptionsPage({ params }: InscriptionsPageProps
   });
 
   const hasManagementPermission = accessCheck.accessLevel === 'FULL_MANAGEMENT';
+  const titleHistory = hasManagementPermission ? await getEliteTitleHistory(playerIdsForHistory, tournament) : new Map()
+  const withTitles = <T extends { id: string }>(player: T) => {
+    const titles = titleHistory.get(player.id)
+    return titles?.length ? { ...player, elite_titles: titles } : player
+  }
   const visibleCoupleInscriptions = coupleInscriptions.map((inscription: any) => ({
     ...inscription,
     player_1_info: inscription.player_1_info
-      ? sanitizeTournamentPlayer(inscription.player_1_info, hasManagementPermission) : null,
+      ? sanitizeTournamentPlayer(withTitles(inscription.player_1_info), hasManagementPermission) : null,
     player_2_info: inscription.player_2_info
-      ? sanitizeTournamentPlayer(inscription.player_2_info, hasManagementPermission) : null,
+      ? sanitizeTournamentPlayer(withTitles(inscription.player_2_info), hasManagementPermission) : null,
   }));
   const visibleIndividualInscriptions = individualInscriptions.map((player: any) =>
-    sanitizeTournamentPlayer(player, hasManagementPermission));
+    sanitizeTournamentPlayer(withTitles(player), hasManagementPermission));
 
   // ========================================
   // PASO 4: RENDERIZAR CLIENT COMPONENT

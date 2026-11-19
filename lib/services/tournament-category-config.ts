@@ -1,7 +1,7 @@
 export interface CategoryRange {
   name: string
-  lower_range: number
-  upper_range: number | null
+  level: number | null
+  initial_score: number
 }
 
 export type TournamentCategoryConfig =
@@ -166,23 +166,6 @@ export const areCategoriesConsecutive = (
   return Math.abs(firstIndex - secondIndex) === 1
 }
 
-export const getCategoryForScore = (
-  categories: CategoryRange[],
-  score: number,
-): CategoryRange | null => {
-  return (
-    categories.find((category) => {
-      if (score < category.lower_range) {
-        return false
-      }
-
-      return category.upper_range === null || score <= category.upper_range
-    }) ?? null
-  )
-}
-
-const roundScore = (value: number) => Math.round(value)
-
 export const getAvailableMixedSumTargets = (categories: CategoryRange[]): number[] => {
   const categoryNumbers = categories
     .map((category) => parseCategoryNumber(category.name))
@@ -200,64 +183,33 @@ export const getAvailableMixedSumTargets = (categories: CategoryRange[]): number
   return Array.from(uniqueTargets).sort((a, b) => a - b)
 }
 
+/** Resolves the sporting category directly from the format, independently of points. */
+export const resolveCategoryFromConfig = (
+  config: TournamentCategoryConfig,
+  categories: CategoryRange[],
+): CategoryRange => {
+  if (config.mode === 'SINGLE') {
+    const category = getCategoryByName(categories, config.category)
+    if (!category) throw new Error('La categoría elegida no existe.')
+    return category
+  }
+  if (config.mode === 'RANGE') {
+    const first = getCategoryByName(categories, config.categoryA)
+    const second = getCategoryByName(categories, config.categoryB)
+    if (!first || !second) throw new Error('Revisá las categorías combinadas.')
+    return (first.level ?? 0) >= (second.level ?? 0) ? first : second
+  }
+  const ordered = categories.filter(category => category.level !== null)
+    .sort((a, b) => Math.abs(a.level! - config.targetSum / 2) - Math.abs(b.level! - config.targetSum / 2) || b.level! - a.level!)
+  const category = ordered.find(candidate => ordered.some(partner => candidate.level! + partner.level! === config.targetSum))
+  if (!category) throw new Error('No hay categorías que cumplan la suma del torneo.')
+  return category
+}
+
 export const resolveInitialScoreFromCategories = (
   config: TournamentCategoryConfig,
   categories: CategoryRange[],
-): number => {
-  if (config.mode === "SINGLE") {
-    const category = getCategoryByName(categories, config.category)
-
-    if (!category) {
-      throw new Error(`No se encontró la categoría "${config.category}" en la base de datos`)
-    }
-
-    return category.lower_range
-  }
-
-  if (config.mode === "RANGE") {
-    const categoryA = getCategoryByName(categories, config.categoryA)
-    const categoryB = getCategoryByName(categories, config.categoryB)
-
-    if (!categoryA || !categoryB) {
-      throw new Error("No se pudo resolver una de las categorías combinadas desde la base de datos")
-    }
-
-    return roundScore((categoryA.lower_range + categoryB.lower_range) / 2)
-  }
-
-  const parsedCategories = categories
-    .map((category) => ({
-      category,
-      numericValue: parseCategoryNumber(category.name),
-    }))
-    .filter(
-      (entry): entry is { category: CategoryRange; numericValue: number } => entry.numericValue !== null,
-    )
-
-  const matchingCombinations: Array<[CategoryRange, CategoryRange]> = []
-
-  for (let index = 0; index < parsedCategories.length; index += 1) {
-    for (let secondIndex = index; secondIndex < parsedCategories.length; secondIndex += 1) {
-      const firstCategory = parsedCategories[index]
-      const secondCategory = parsedCategories[secondIndex]
-
-      if (firstCategory.numericValue + secondCategory.numericValue === config.targetSum) {
-        matchingCombinations.push([firstCategory.category, secondCategory.category])
-      }
-    }
-  }
-
-  if (matchingCombinations.length === 0) {
-    throw new Error(`No hay combinaciones válidas en categories para Suma ${config.targetSum}`)
-  }
-
-  const averageAcrossCombinations =
-    matchingCombinations.reduce((accumulator, [firstCategory, secondCategory]) => {
-      return accumulator + (firstCategory.lower_range + secondCategory.lower_range) / 2
-    }, 0) / matchingCombinations.length
-
-  return roundScore(averageAcrossCombinations)
-}
+): number => resolveCategoryFromConfig(config, categories).initial_score
 
 export const validateMixedPairGender = (
   tournamentGender: string | null | undefined,
@@ -341,8 +293,8 @@ export const validateCategoryCombination = (
 export const fetchOrderedCategories = async (supabase: any): Promise<CategoryRange[]> => {
   const { data, error } = await supabase
     .from("categories")
-    .select("name, lower_range, upper_range")
-    .order("lower_range", { ascending: true })
+    .select("name, level, initial_score")
+    .order("level", { ascending: false })
 
   if (error) {
     throw new Error(`No se pudieron obtener las categorías: ${error.message}`)
@@ -368,7 +320,7 @@ export const resolveInitialPlayerProfile = async ({
 
   const categories = await fetchOrderedCategories(supabase)
   const initialScore = resolveInitialScoreFromCategories(config, categories)
-  const resolvedCategory = getCategoryForScore(categories, initialScore)
+  const resolvedCategory = resolveCategoryFromConfig(config, categories)
 
   if (!resolvedCategory) {
     throw new Error(`No existe una categoría válida para ${initialScore} puntos iniciales`)
@@ -386,14 +338,7 @@ export const resolvePersistedTournamentCategoryName = (
   config: TournamentCategoryConfig,
   categories: CategoryRange[],
 ): string => {
-  const initialScore = resolveInitialScoreFromCategories(config, categories)
-  const resolvedCategory = getCategoryForScore(categories, initialScore)
-
-  if (!resolvedCategory) {
-    throw new Error(`No existe una categoría válida para ${initialScore} puntos iniciales`)
-  }
-
-  return resolvedCategory.name
+  return resolveCategoryFromConfig(config, categories).name
 }
 
 export const getTournamentCategoryDisplay = (tournament: TournamentCategorySource): string | null => {

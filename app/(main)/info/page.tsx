@@ -17,7 +17,7 @@ const infoSections = [
   {
     id: 'categorias',
     title: 'Categorías',
-    description: 'Aprende cómo funcionan las categorías, rangos de puntaje y niveles de juego',
+    description: 'Consultá cómo se suman los puntos y cómo se gestionan los ascensos de categoría',
     icon: Target,
     path: '/info/categorias',
     color: 'bg-blue-50 hover:bg-blue-100'
@@ -143,4 +143,4 @@ export default function InfoPage() {
       </div>
     </div>
   );
-} 
+}

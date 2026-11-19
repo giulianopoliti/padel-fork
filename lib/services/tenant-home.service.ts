@@ -227,6 +227,9 @@ async function getTenantHomeRanking(limit: number = 5): Promise<TenantRankingPla
     .or("es_prueba.eq.false,es_prueba.is.null")
     .not("score", "is", null)
     .order("score", { ascending: false })
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true })
+    .order("id", { ascending: true })
     .limit(limit)
 
   if (error) {

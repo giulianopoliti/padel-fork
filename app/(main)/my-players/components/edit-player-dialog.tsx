@@ -27,8 +27,8 @@ interface PlayerData {
 
 interface Category {
   name: string
-  lower_range: number
-  upper_range: number | null
+  level: number | null
+  initial_score: number
 }
 
 interface EditPlayerDialogProps {
@@ -175,8 +175,7 @@ export default function EditPlayerDialog({
               <SelectContent>
                 {categories.map((cat) => (
                   <SelectItem key={cat.name} value={cat.name}>
-                    {cat.name} ({cat.lower_range}
-                    {cat.upper_range ? ` - ${cat.upper_range}` : '+'} pts)
+                    {cat.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -187,10 +186,7 @@ export default function EditPlayerDialog({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="flex items-center gap-2">
-                <span>Puntos cambiarán:</span>
-                <span className="font-semibold">{player.score || 0}</span>
-                <ArrowRight className="h-4 w-4" />
-                <span className="font-semibold">{newCategory.lower_range}</span>
+                <span>La nueva categoría empieza con 0 puntos.</span>
               </AlertDescription>
             </Alert>
           )}

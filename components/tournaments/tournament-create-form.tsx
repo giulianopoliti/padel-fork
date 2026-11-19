@@ -61,7 +61,7 @@ import { buildTournamentFormatConfig } from '@/lib/services/tournament-format-co
 import {
   areCategoriesConsecutive,
   buildTournamentCategoryLabel,
-  getCategoryForScore,
+  resolveCategoryFromConfig,
   getAvailableMixedSumTargets,
   resolveInitialScoreFromCategories,
   resolvePersistedTournamentCategoryName,
@@ -75,8 +75,8 @@ import { useRouter } from 'next/navigation';
 
 interface Category {
   name: string;
-  lower_range: number;
-  upper_range: number | null;
+  level: number | null;
+  initial_score: number;
 }
 
 interface Club {
@@ -458,7 +458,7 @@ export default function TournamentCreateForm() {
 
     try {
       const initialScore = resolveInitialScoreFromCategories(categoryConfig, categories);
-      const persistedCategory = getCategoryForScore(categories, initialScore);
+      const persistedCategory = resolveCategoryFromConfig(categoryConfig, categories);
 
       return {
         label: buildTournamentCategoryLabel(categoryConfig),
@@ -554,8 +554,8 @@ export default function TournamentCreateForm() {
 
         const { data: categoriesData, error: categoriesError } = await supabase
           .from('categories')
-          .select('name, lower_range, upper_range')
-          .order('lower_range', { ascending: true });
+          .select('name, level, initial_score')
+          .order('level', { ascending: false });
 
         if (categoriesError) {
           throw new Error(`Error al cargar categorias: ${categoriesError.message}`);
@@ -1179,8 +1179,7 @@ export default function TournamentCreateForm() {
                                 <SelectContent>
                                   {categories.map((category) => (
                                     <SelectItem key={category.name} value={category.name}>
-                                      {category.name} · {category.lower_range}
-                                      {category.upper_range !== null ? `-${category.upper_range}` : '+'}
+                                      {category.name}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -1289,7 +1288,7 @@ export default function TournamentCreateForm() {
                           {categoryPreview ? `${categoryPreview.initialScore} pts` : 'Pendiente'}
                         </p>
                         <p className="mt-1 text-sm text-slate-500">
-                          Se calcula leyendo `categories.lower_range` desde la base.
+                          Los jugadores nuevos comienzan con 0 puntos en la categoría asignada.
                         </p>
                       </div>
                       <div>

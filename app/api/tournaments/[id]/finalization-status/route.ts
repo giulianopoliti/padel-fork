@@ -57,11 +57,11 @@ const handleSave = async (request: NextRequest, { params }: Context, finalize: b
     const { data, error } = await supabase.from('tournaments').update(withTournamentSortValues({
       ...(finalize ? {
         status: 'FINISHED_POINTS_PENDING',
-        winner_id: primaryChampion?.winnerId ?? state.tournament.winner_id,
+        winner_id: primaryChampion?.winnerId ?? state.roundRobinChampion ?? state.tournament.winner_id,
         end_date: new Date().toISOString(),
       } : {}),
       format_config: { ...existingConfig, bonuses },
-    })).eq('id', id).eq('status', finalize ? 'BRACKET_PHASE' : 'FINISHED_POINTS_PENDING').select('id').maybeSingle()
+    })).eq('id', id).eq('status', state.tournament.status).select('id').maybeSingle()
     if (error || !data) return NextResponse.json({ error: 'No se pudo finalizar el torneo. Actualizá la página e intentá nuevamente.' }, { status: 409 })
     revalidatePath(`/tournaments/${id}`)
     revalidatePath(`/tournaments/${id}/bracket`)

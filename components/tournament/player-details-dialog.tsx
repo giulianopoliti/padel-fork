@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { getPlayerDetailsAction, updatePlayerAction } from '@/lib/services/players/players.actions'
 import { PlayerDetails } from '@/lib/services/players/get-player-details'
 import PlayerDniDisplay from '@/components/players/player-dni-display'
+import { EliteTitlesNotice } from './elite-titles-notice'
 
 interface PlayerDetailsDialogProps {
   open: boolean
@@ -230,6 +231,7 @@ export default function PlayerDetailsDialog({
             </div>
 
             {/* Campos del formulario */}
+            {canEdit && <EliteTitlesNotice titles={player.elite_titles} />}
             <div className="space-y-4">
               {/* Nombre */}
               <div className="space-y-2">

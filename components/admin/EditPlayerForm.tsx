@@ -36,7 +36,7 @@ interface Player {
 interface EditPlayerFormProps {
   player: Player
   onDataChange: (data: Partial<Player>) => void
-  categories?: Array<{ name: string; lower_range: number; upper_range: number }>
+  categories?: Array<{ name: string; level: number | null; initial_score: number }>
 }
 
 export const EditPlayerForm = ({ player, onDataChange, categories = [] }: EditPlayerFormProps) => {
@@ -193,7 +193,7 @@ export const EditPlayerForm = ({ player, onDataChange, categories = [] }: EditPl
             {categories.length > 0 ? (
               <Select
                 value={formData.category_name}
-                onValueChange={(value) => handleChange("category_name", value)}
+                onValueChange={(value) => { handleChange("category_name", value); handleChange("score", 0) }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar categoría" />
@@ -201,7 +201,7 @@ export const EditPlayerForm = ({ player, onDataChange, categories = [] }: EditPl
                 <SelectContent>
                   {categories.map((cat) => (
                     <SelectItem key={cat.name} value={cat.name}>
-                      {cat.name} ({cat.lower_range} - {cat.upper_range})
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

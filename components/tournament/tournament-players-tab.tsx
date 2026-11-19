@@ -19,6 +19,8 @@ import PlayerDetailsDialog from "@/components/tournament/player-details-dialog"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
 import { Checkbox } from "@/components/ui/checkbox"
 import { getTenantBranding } from "@/config/tenant"
+import { EliteTitlesNotice } from './elite-titles-notice'
+import type { EliteTitle } from '@/lib/services/points/services/elite-title-history'
 
 interface PlayerInfo {
   id: string
@@ -28,6 +30,7 @@ interface PlayerInfo {
   dni?: string | null
   phone?: string | null
   late_withdrawal_count?: number
+  elite_titles?: EliteTitle[]
 }
 
 interface TournamentPlayersTabProps {
@@ -580,7 +583,8 @@ export default function TournamentPlayersTab({
                       onClick={canViewPlayerDetails ? () => handlePlayerClick(player.id) : undefined}
                     >
                       <TableCell className={`font-medium text-slate-900 ${canViewPlayerDetails ? 'hover:text-blue-600' : ''}`}>
-                        {player.first_name || "—"}
+                        {player.first_name || "-"}
+                        {hasManagementPermissions && <EliteTitlesNotice titles={player.elite_titles} />}
                         {hasManagementPermissions && tournamentType === "AMERICAN" && (player.late_withdrawal_count || 0) > 0 && (
                           <span title={`Historial de bajas tardías: ${player.late_withdrawal_count}`} className="ml-2 inline-flex align-middle text-amber-600"><CircleHelp className="h-4 w-4" /></span>
                         )}

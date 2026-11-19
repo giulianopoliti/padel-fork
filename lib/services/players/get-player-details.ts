@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import type { EliteTitle } from '@/lib/services/points/services/elite-title-history'
 
 export interface PlayerDetails {
   id: string
@@ -11,6 +12,7 @@ export interface PlayerDetails {
   profile_image_url: string | null
   category_name: string | null
   user_email: string | null
+  elite_titles?: EliteTitle[]
 }
 
 interface PlayerDetailsResult {

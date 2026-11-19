@@ -7,8 +7,8 @@ import { Info } from 'lucide-react'
 
 interface Category {
   name: string
-  lower_range: number
-  upper_range: number | null
+  level: number | null
+  initial_score: number
 }
 
 interface CategoryInfoCardProps {
@@ -25,18 +25,18 @@ export const CategoryInfoCard: React.FC<CategoryInfoCardProps> = ({ categories }
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="mb-4 text-sm text-muted-foreground">Los rangos son de referencia. Superarlos no cambia la categoría automáticamente y recategorizar no modifica el puntaje.</p>
+        <p className="mb-4 text-sm text-muted-foreground">La categoría oficial se asigna por decisión deportiva. Los jugadores nuevos comienzan con 0 puntos.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {categories.map(category => (
             <div key={category.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-surface">
               <div>
                 <h4 className="font-medium text-gray-900">{category.name}</h4>
                 <p className="text-sm text-gray-600">
-                  {category.lower_range} - {category.upper_range ? category.upper_range : '∞'} puntos
+                  Puntaje inicial de jugadores nuevos · {category.initial_score}
                 </p>
               </div>
               <Badge variant="outline" className="ml-2">
-                {category.lower_range}{category.upper_range ? `-${category.upper_range}` : '+'}
+                Nivel {category.level ?? 'especial'}
               </Badge>
             </div>
           ))}

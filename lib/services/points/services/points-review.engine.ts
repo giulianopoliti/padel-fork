@@ -1,8 +1,10 @@
 import { getFinalizationEligibility, getTournamentBonuses } from '@/lib/tournaments/finalization'
+import { resolveTournamentCategoryConfig } from '@/lib/services/tournament-category-config'
 import { EloPointsCalculator } from '../calculators/elo-points.calculator'
+import { FIXED_RANKING, getFixedRankingPolicy } from '../config/fixed-ranking'
 import { POINTS_CONFIGS } from '../types/points-config.types'
 import type {
-  ManualCategoryDecision, PointsContextResponse, PointsReviewPlayer, PointsSettlementInput,
+  BonusAward, ManualCategoryDecision, PointsContextResponse, PointsReviewPlayer, PointsSettlementInput,
 } from '../types/points-review.types'
 import type { BracketKey } from '@/types/tournament-format-v2'
 
@@ -14,13 +16,16 @@ export class PointsReviewError extends Error {
 export const buildPointsReview = ({ context, fingerprint, settlement }: PointsContextResponse): PointsSettlementInput => {
   if (settlement) return { review: settlement, matchPoints: [] }
   const { tournament, categories, history } = context
-  if (tournament.type !== 'AMERICAN' && tournament.type !== 'LONG') {
+  const policy = getFixedRankingPolicy(context.rankingPolicy, tournament.type)
+  const fixed = policy ? FIXED_RANKING[policy] : null
+  const tournamentType = tournament.type === 'LONG' ? 'LONG' : 'AMERICAN'
+  if (tournament.type !== 'AMERICAN' && tournament.type !== 'LONG' && policy !== 'ELITE_AMERICAN') {
     throw new PointsReviewError('Este tipo de torneo no admite este cálculo de puntos.', 400)
   }
   if (tournament.status === 'FINISHED_POINTS_CALCULATED') {
     if (!history.length) throw new PointsReviewError('El torneo figura acreditado pero no tiene historial. Revisá el cierre antes de continuar.')
     return { matchPoints: [], review: {
-      tournamentId: tournament.id, tournamentType: tournament.type, state: 'LEGACY', rulesVersion: 'legacy',
+      tournamentId: tournament.id, tournamentType, state: 'LEGACY', rulesVersion: 'legacy',
       fingerprint, categories, bonuses: {}, totalMatches: 0, scoreBasis: 'LEGACY',
       playerScores: history.map(row => {
         const player = context.players.find(candidate => candidate.id === row.player_id)
@@ -37,12 +42,14 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
     throw new PointsReviewError(eligibility.reason || 'Primero finalizá el torneo para revisar sus puntos.')
   }
   if (history.length) throw new PointsReviewError('Este torneo tiene movimientos previos. Revisá el historial para evitar acreditar puntos dos veces.')
-  const config = POINTS_CONFIGS[tournament.type]
-  const bonuses = getTournamentBonuses(tournament, eligibility.bracketKeys)
+  const config = POINTS_CONFIGS[tournamentType]
+  const bonuses = fixed ? {} : getTournamentBonuses(tournament, eligibility.bracketKeys)
+  const categoryConfig = resolveTournamentCategoryConfig(tournament)
+  const titleCategory = categoryConfig?.mode === 'SINGLE' ? categoryConfig.category : null
   const players = new Map(context.players.map(player => [player.id, player]))
   const couples = new Map(context.couples.map(couple => [couple.id, couple]))
   const snapshots = new Map(context.snapshots.map(snapshot => [snapshot.player_id, snapshot]))
-  if (snapshots.size !== context.snapshots.length) throw new PointsReviewError('Hay snapshots duplicados. Revisá la base de puntajes del torneo.')
+  if (!fixed && snapshots.size !== context.snapshots.length) throw new PointsReviewError('Hay snapshots duplicados. Revisá la base de puntajes del torneo.')
   const registeredCouples = new Set(context.inscriptions.filter(row => row.couple_id && row.is_pending !== true).map(row => row.couple_id))
   const eligiblePlayers = new Set<string>()
   for (const row of context.inscriptions.filter(row => row.is_pending !== true)) {
@@ -65,6 +72,7 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
       playerId: id, playerName: `${player.first_name ?? ''} ${player.last_name ?? ''}`.trim(),
       categoryBefore: player.category_name, categoryAfter: player.category_name,
       pointsBefore: player.score!, matchPoints: 0, bonus: 0, bonusAwards: [], pointsEarned: 0, pointsAfter: player.score!,
+      ...(fixed ? { rankingCategory: titleCategory ?? snapshots.get(id)?.category ?? player.category_name } : {}),
     })
     return updates.get(id)!
   }
@@ -93,14 +101,62 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
     const winners = getCouplePlayers(match.id, match.winner_id)
     const losers = getCouplePlayers(match.id, loserId)
     if (new Set([...winners, ...losers]).size !== 4) throw new PointsReviewError('Un jugador aparece en ambos lados de un partido.')
-    if (disqualifiedMatches.has(match.id)) continue
+    if (disqualifiedMatches.has(match.id) || (fixed && match.administrative_result)) continue
     const average = (ids: string[]): number => ids.reduce((total, id) => total + (snapshots.get(id)?.score ?? players.get(id)!.score!), 0) / 2
-    const { winnerPoints, loserPoints } = EloPointsCalculator.calculate(average(winners) - average(losers), config)
+    const { winnerPoints, loserPoints } = fixed
+      ? { winnerPoints: fixed.win, loserPoints: 0 }
+      : EloPointsCalculator.calculate(average(winners) - average(losers), config)
     for (const id of winners) getPlayerUpdate(id).matchPoints! += winnerPoints
     for (const id of losers) getPlayerUpdate(id).matchPoints! += loserPoints
     matchPoints.push({ match_id: match.id, winner_couple_id: match.winner_id, loser_couple_id: loserId, points_winner: winnerPoints, points_loser: loserPoints })
   }
-  for (const final of matches.filter(match => match.type === 'ELIMINATION' && match.round === 'FINAL')) {
+  const finals = matches.filter(match => match.type === 'ELIMINATION' && match.round === 'FINAL')
+  if (fixed) {
+    const award = (player: PointsReviewPlayer, entry: BonusAward): void => {
+      if (entry.points <= player.bonus!) return
+      player.bonus = entry.points
+      player.bonusAwards = [entry]
+    }
+    const eliminationBonuses: Record<string, number> = fixed.eliminated
+    for (const match of matches) {
+      if (match.type !== 'ELIMINATION' || match.bracket_key === 'SILVER' || !match.couple1_id || !match.couple2_id || !match.round) continue
+      const points = eliminationBonuses[match.round]
+      if (!points) continue
+      const loserId = match.winner_id === match.couple1_id ? match.couple2_id : match.couple1_id
+      for (const id of getCouplePlayers(match.id, loserId)) {
+        award(getPlayerUpdate(id), { cup: (match.bracket_key || 'MAIN') as BracketKey,
+          position: (match.round === 'FINAL' ? 'finalist' : match.round) as BonusAward['position'], points })
+      }
+    }
+
+    const final = finals.find(match => match.bracket_key !== 'SILVER')
+    const champion = final?.winner_id ?? (eligibility.bracketKeys.length === 0 ? context.roundRobinChampion : null)
+    if (policy === 'ELITE_AMERICAN' && eligibility.bracketKeys.length === 0 && !champion) {
+      throw new PointsReviewError('Confirmá la pareja campeona en la tabla definitiva de la zona antes de acreditar.')
+    }
+    if (champion) {
+      const cup = (final?.bracket_key || 'MAIN') as BracketKey
+      const titleHasSubstitute = final ? (context.lineups ?? []).some(lineup => lineup.match_id === final.id) : false
+      const administrativeFinal = final ? disqualifiedMatches.has(final.id) || final.administrative_result : false
+      const canPromote = policy === 'FV_LEAGUE' && final && titleCategory && !titleHasSubstitute && !administrativeFinal && !tournament.es_prueba
+      const level = categories.find(category => category.name === titleCategory)?.level
+      const destination = level && level >= 4 && level <= 8 ? categories.find(category => category.level === level - 1)?.name : undefined
+      for (const id of getCouplePlayers(final?.id ?? '', champion)) {
+        const player = getPlayerUpdate(id)
+        player.champion = true
+        player.titleMatchId = final?.id ?? null
+        if (canPromote && destination && player.categoryBefore === titleCategory &&
+          (!snapshots.get(id)?.category || snapshots.get(id)?.category === titleCategory)) {
+          player.automaticPromotion = true
+          player.categoryAfter = destination
+        } else {
+          award(player, { cup, position: 'champion', points: fixed.champion })
+          if (policy === 'FV_LEAGUE' && (!canPromote || (level !== 3 && !destination))) player.promotionNeedsReview = true
+        }
+      }
+    }
+  }
+  for (const final of fixed ? [] : finals) {
     const cup = (final.bracket_key || 'MAIN') as BracketKey
     const bonus = bonuses[cup]
     if (!bonus?.enabled || !final.winner_id || !final.couple1_id || !final.couple2_id) continue
@@ -121,14 +177,16 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
   for (const update of playerScores) {
     if (snapshots.has(update.playerId)) withSnapshot++
     update.pointsEarned = update.matchPoints! + update.bonus!
-    update.pointsAfter = update.pointsBefore + update.pointsEarned
+    const inCurrentCategory = !fixed || update.rankingCategory === update.categoryBefore
+    update.pointsAfter = update.automaticPromotion ? 0 : update.pointsBefore + (inCurrentCategory ? update.pointsEarned : 0)
+    if (fixed && inCurrentCategory) update.categoryPointsAfter = update.pointsBefore + update.pointsEarned
     if (!Number.isSafeInteger(update.pointsAfter) || update.pointsAfter < -2147483648 || update.pointsAfter > 2147483647) throw new PointsReviewError('El puntaje resultante está fuera del rango permitido.')
   }
   return { matchPoints, review: {
-    tournamentId: tournament.id, tournamentType: tournament.type, state: 'PREVIEW', rulesVersion: 'manual-categories-v1',
+    tournamentId: tournament.id, tournamentType, state: 'PREVIEW', rulesVersion: fixed ? 'fixed-ranking-v1' : 'manual-categories-v1',
     fingerprint, playerScores, categories, bonuses, totalMatches: matchPoints.length,
-    scoreBasis: withSnapshot === 0 ? 'CURRENT' : withSnapshot === playerScores.length ? 'SNAPSHOT' : 'MIXED',
-    ...(context.snapshots.some(snapshot => snapshot.basis === 'SUBSTITUTION') ? { hasSubstitutionBaselines: true } : {}),
+    scoreBasis: fixed ? 'FIXED' : withSnapshot === 0 ? 'CURRENT' : withSnapshot === playerScores.length ? 'SNAPSHOT' : 'MIXED',
+    ...(!fixed && context.snapshots.some(snapshot => snapshot.basis === 'SUBSTITUTION') ? { hasSubstitutionBaselines: true } : {}),
   } }
 }
 
@@ -140,8 +198,10 @@ export const applyManualCategoryDecisions = (input: PointsSettlementInput, decis
     if (!player || seen.has(decision.playerId)) throw new PointsReviewError('Las decisiones contienen jugadores ajenos o repetidos.', 400)
     if (!player.categoryBefore) throw new PointsReviewError('Primero asigná la categoría inicial del jugador desde su ficha.', 400)
     if (!review.categories.some(category => category.name === decision.newCategory)) throw new PointsReviewError('La categoría elegida no existe.', 400)
+    if (player.automaticPromotion) throw new PointsReviewError('Los ascensos automáticos se gestionan desde Ascensos.', 400)
     seen.add(decision.playerId)
     player.categoryAfter = decision.newCategory
+    if (review.rulesVersion === 'fixed-ranking-v1' && player.categoryBefore !== decision.newCategory) player.pointsAfter = 0
   }
   return { ...input, review }
 }

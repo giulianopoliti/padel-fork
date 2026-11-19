@@ -203,29 +203,32 @@ export async function getTournamentCoupleInscriptions(
 
   // Mapear a Couple
   const couples: Couple[] = eligibleRows.map((row) => {
-    const c = row.couples;
+    const c = Array.isArray(row.couples) ? row.couples[0] : row.couples;
+    const player1 = Array.isArray(c.player1) ? c.player1[0] : c.player1;
+    const player2 = Array.isArray(c.player2) ? c.player2[0] : c.player2;
     return {
       couple_id: c.id,
       player1: {
-        id: c.player1[0]?.id,
-        first_name: c.player1[0]?.first_name,
-        last_name: c.player1[0]?.last_name,
-        score: c.player1[0]?.score ?? 0,
+        id: player1?.id,
+        first_name: player1?.first_name,
+        last_name: player1?.last_name,
+        score: player1?.score ?? 0,
       },
       player2: {
-        id: c.player2[0]?.id,
-        first_name: c.player2[0]?.first_name,
-        last_name: c.player2[0]?.last_name,
-        score: c.player2[0]?.score ?? 0,
+        id: player2?.id,
+        first_name: player2?.first_name,
+        last_name: player2?.last_name,
+        score: player2?.score ?? 0,
       },
     };
   });
 
-  // Ordenar de mayor a menor suma de score
+  const tieBreaks = new Map(couples.map(couple => [couple.couple_id, Math.random()]));
+  // Equal-ranking couples are shuffled once when the fixture is generated.
   couples.sort((a, b) => {
     const totalA = (a.player1.score ?? 0) + (a.player2.score ?? 0);
     const totalB = (b.player1.score ?? 0) + (b.player2.score ?? 0);
-    return totalB - totalA;
+    return totalB - totalA || tieBreaks.get(a.couple_id)! - tieBreaks.get(b.couple_id)!;
   });
 
   return couples;

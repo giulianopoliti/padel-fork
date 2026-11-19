@@ -37,8 +37,8 @@ import { MAX_TOURNAMENT_PRICE } from "@/lib/constants/tournaments"
 
 type Category = {
   name: string
-  lower_range: number
-  upper_range: number | null
+  level: number | null
+  initial_score: number
 }
 
 type Club = {

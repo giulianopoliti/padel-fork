@@ -46,8 +46,8 @@ interface Tournament {
 
 interface Category {
   name: string
-  lower_range: number
-  upper_range: number
+  level: number | null
+  initial_score: number
 }
 
 interface TournamentCardProps {

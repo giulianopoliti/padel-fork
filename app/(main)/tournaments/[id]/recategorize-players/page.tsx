@@ -39,8 +39,8 @@ interface TournamentPlayer {
 
 interface Category {
   name: string
-  lower_range: number
-  upper_range: number | null
+  level: number | null
+  initial_score: number
 }
 
 interface PlayerUpdate {
@@ -67,6 +67,7 @@ const RecategorizePlayersPage: React.FC = () => {
   // States
   const [players, setPlayers] = useState<TournamentPlayer[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [resetScores, setResetScores] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -113,6 +114,7 @@ const RecategorizePlayersPage: React.FC = () => {
 
       setPlayers(data.players || [])
       setCategories(data.categories || [])
+      setResetScores(Boolean(data.resetScoreOnCategoryChange))
       
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -158,8 +160,10 @@ const RecategorizePlayersPage: React.FC = () => {
     return pendingUpdates.get(playerId) || originalCategory
   }
 
-  // Category decisions never replace the player's sporting score.
-  const getScorePreview = (_playerId: string, originalScore: number): { newScore: number; hasChange: boolean } => ({ newScore: originalScore, hasChange: false })
+  const getScorePreview = (playerId: string, originalScore: number): { newScore: number; hasChange: boolean } => {
+    const resets = resetScores && pendingUpdates.has(playerId)
+    return { newScore: resets ? 0 : originalScore, hasChange: resets && originalScore !== 0 }
+  }
 
   // Show confirmation dialog
   const handleSaveClick = () => {
@@ -221,7 +225,7 @@ const RecategorizePlayersPage: React.FC = () => {
         setPlayers(prev => prev.map(player => {
           const newCategory = pendingUpdates.get(player.id)
           if (newCategory) {
-            const newScore = player.score
+            const newScore = resetScores ? 0 : player.score
             return {
               ...player,
               category_name: newCategory,
@@ -246,7 +250,7 @@ const RecategorizePlayersPage: React.FC = () => {
       if (data.updateDetails && data.updateDetails.length > 0) {
         toast({
           title: "Cambios guardados exitosamente",
-          description: `Se actualizaron ${data.updated} jugadores conservando sus puntajes.`,
+          description: `Se actualizaron ${data.updated} jugadores.`,
           variant: "default"
         })
       } else {
@@ -322,7 +326,7 @@ const RecategorizePlayersPage: React.FC = () => {
                   Recategorizar Jugadores
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  Elegí las categorías manualmente. Cada jugador conservará su puntaje actual.
+                  Elegí las categorías manualmente. {resetScores ? 'La nueva categoría empieza con 0 puntos.' : 'Cada jugador conserva su puntaje actual.'}
                 </p>
               </div>
               
@@ -549,7 +553,6 @@ const RecategorizePlayersPage: React.FC = () => {
                                   <SelectItem key={category.name} value={category.name}>
                                     {category.name}
                                     <span className="text-xs text-gray-500 ml-2">
-                                      ({category.lower_range}{category.upper_range ? `-${category.upper_range}` : '+'})
                                     </span>
                                   </SelectItem>
                                 ))}
@@ -594,6 +597,7 @@ const RecategorizePlayersPage: React.FC = () => {
 
         {/* Confirmation Dialog */}
         <ConfirmationDialog
+        resetScores={resetScores}
           isOpen={showConfirmDialog}
           onClose={() => setShowConfirmDialog(false)}
           onConfirm={handleConfirmedSave}

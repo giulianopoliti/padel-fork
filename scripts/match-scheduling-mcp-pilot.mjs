@@ -64,13 +64,20 @@ const tool = {
 
 const isObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const result = (id, value) => Response.json({ jsonrpc: '2.0', id, result: value })
+const result = (id, value) => Response.json(
+  { jsonrpc: '2.0', id, result: value },
+  { headers: { 'Cache-Control': 'no-store' } },
+)
 
 const rpcError = (id, code, message, status = 400) =>
   Response.json({ jsonrpc: '2.0', id, error: { code, message } }, { status })
 
-const toolError = (id, message) =>
-  result(id, { isError: true, content: [{ type: 'text', text: message }] })
+const toolError = (id, message, authChallenge) =>
+  result(id, {
+    isError: true,
+    content: [{ type: 'text', text: message }],
+    ...(authChallenge ? { _meta: { 'mcp/www_authenticate': [authChallenge] } } : {}),
+  })
 
 const toolResult = (id, data) => result(id, {
   content: [{ type: 'text', text: JSON.stringify(data) }],
@@ -87,9 +94,10 @@ export const readDemoFecha = async (args) => {
 }
 
 /**
- * @param {{ definition: { name: string, description: string, inputSchema: object, annotations: object }, run: (args: unknown) => Promise<object> }[]} tools
+ * @param {{ definition: { name: string, description: string, inputSchema: object, annotations: object }, run: (args: unknown, request: Request) => Promise<object> }[]} tools
+ * @param {string} instructions
  */
-export const createPilotMcp = (tools = [{ definition: tool, run: readDemoFecha }]) => ({
+export const createPilotMcp = (tools = [{ definition: tool, run: readDemoFecha }], instructions = 'Piloto de Padel FV de solo lectura. Las canchas disponibles se consultan en el Excel del organizador.') => ({
   async fetch(request) {
     const { pathname } = new URL(request.url)
     if (pathname === '/' && request.method === 'GET') {
@@ -117,12 +125,13 @@ export const createPilotMcp = (tools = [{ definition: tool, run: readDemoFecha }
 
     switch (method) {
       case 'server/discover':
-        return result(id, { supportedVersions: [protocolVersions[0]], serverInfo, capabilities })
+        return result(id, { supportedVersions: [protocolVersions[0]], serverInfo, capabilities, instructions })
       case 'initialize':
         return result(id, {
           protocolVersion: protocolVersions.includes(params?.protocolVersion) ? params.protocolVersion : protocolVersions[0],
           serverInfo,
           capabilities,
+          instructions,
         })
       case 'ping':
         return result(id, {})
@@ -133,11 +142,11 @@ export const createPilotMcp = (tools = [{ definition: tool, run: readDemoFecha }
         const selected = tools.find(({ definition }) => definition.name === params.name)
         if (!selected) return rpcError(id, -32602, 'Herramienta desconocida', 200)
         try {
-          const data = await selected.run(params.arguments ?? {})
-          return 'error' in data ? toolError(id, String(data.error)) : toolResult(id, data)
+          const data = await selected.run(params.arguments ?? {}, request)
+          return 'error' in data ? toolError(id, String(data.error), data.authChallenge) : toolResult(id, data)
         } catch (error) {
-          console.error('[mcp] Public tool failed', selected.definition.name, error)
-          return toolError(id, 'No se pudo consultar la información pública de Padel FV.')
+          console.error('[mcp] Tool failed', selected.definition.name, error)
+          return toolError(id, 'No se pudo consultar la información de Padel FV.')
         }
       }
       default:

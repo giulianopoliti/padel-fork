@@ -77,7 +77,7 @@ export async function getOrganizationPlayers(
 
 /**
  * Actualiza los datos de un jugador
- * Si cambia la categoría, ajusta automáticamente el score al lower_range
+ * Guarda los datos del jugador y reinicia el saldo si cambia de categoría.
  */
 export async function updatePlayer(
   playerId: string,
@@ -138,7 +138,7 @@ export async function updatePlayer(
   if (updates.category_name && updates.category_name !== player.category_name) {
     const { data: category, error: categoryError } = await supabase
       .from('categories')
-      .select('lower_range')
+      .select('name')
       .eq('name', updates.category_name)
       .single()
 
@@ -146,7 +146,7 @@ export async function updatePlayer(
       return { success: false, error: 'Categoría no encontrada' }
     }
 
-    finalUpdates.score = category.lower_range
+    finalUpdates.score = 0
   }
 
   // 3. Realizar el update
@@ -165,7 +165,7 @@ export async function updatePlayer(
   return {
     success: true,
     player: updatedPlayer,
-    scoreChanged: !!finalUpdates.score
+    scoreChanged: finalUpdates.score !== undefined
   }
 }
 
@@ -447,8 +447,8 @@ export async function getCategories() {
 
   const { data, error } = await supabase
     .from('categories')
-    .select('name, lower_range, upper_range')
-    .order('lower_range', { ascending: false })
+    .select('name, level, initial_score')
+    .order('level', { ascending: false })
 
   if (error) {
     console.error('Error fetching categories:', error)
