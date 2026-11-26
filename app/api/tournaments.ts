@@ -175,8 +175,8 @@ export async function getCategories() {
         // Ensure we return plain objects
         return (data || []).map((category: any) => ({
             name: category.name,
-            lower_range: category.lower_range,
-            upper_range: category.upper_range
+            level: category.level,
+            initial_score: category.initial_score
         })) as Category[]
     } catch (error) {
         console.error("Error in getCategories:", error);

@@ -11,7 +11,7 @@ export const makeContext = (goldSilver = false): PointsContextResponse => ({
     matches: Array.from({ length: goldSilver ? 2 : 1 }, (_, index) => ({ id: `m${index + 1}`, type: 'ELIMINATION', round: 'FINAL', bracket_key: goldSilver ? ['GOLD', 'SILVER'][index] : 'MAIN',
       status: 'FINISHED', winner_id: `c${index * 2 + 1}`, couple1_id: `c${index * 2 + 1}`, couple2_id: `c${index * 2 + 2}`, bracket_is_active: true })),
     inscriptions: Array.from({ length: goldSilver ? 4 : 2 }, (_, index) => ({ player_id: null, couple_id: `c${index + 1}`, is_pending: false })),
-    categories: [{ name: '7ma', lower_range: 600, upper_range: 899 }, { name: '6ta', lower_range: 900, upper_range: 1199 }],
+    categories: [{ name: '7ma', level: 7, initial_score: 0 }, { name: '6ta', level: 6, initial_score: 0 }],
     snapshots: [], disqualifications: [], history: [],
   },
 })

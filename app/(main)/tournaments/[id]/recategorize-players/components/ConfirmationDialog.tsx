@@ -19,8 +19,8 @@ interface TournamentPlayer {
 
 interface Category {
   name: string
-  lower_range: number
-  upper_range: number | null
+  level: number | null
+  initial_score: number
 }
 
 interface PendingChange {
@@ -31,6 +31,7 @@ interface PendingChange {
 }
 
 interface ConfirmationDialogProps {
+  resetScores?: boolean
   isOpen: boolean
   onClose: () => void
   onConfirm: () => void
@@ -47,6 +48,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   players,
   categories,
   pendingUpdates,
+  resetScores = false,
   loading = false
 }) => {
 
@@ -54,7 +56,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   const pendingChanges: PendingChange[] = Array.from(pendingUpdates.entries()).map(([playerId, newCategory]) => {
     const player = players.find(p => p.id === playerId)!
     const category = categories.find(c => c.name === newCategory)!
-    const newScore = player.score
+    const newScore = resetScores ? 0 : player.score
     const scoreChange = newScore - player.score
 
     return {
@@ -90,7 +92,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Estás a punto de recategorizar <strong>{totalChanges} jugadores</strong>.
-              Las categorías se cambiarán por decisión manual. Cada jugador conservará su puntaje actual.
+              Las categorías se cambiarán por decisión manual. {resetScores ? 'La nueva categoría empieza con 0 puntos.' : 'Cada jugador conserva su puntaje actual.'}
             </AlertDescription>
           </Alert>
 

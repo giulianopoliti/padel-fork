@@ -4,6 +4,7 @@ import { checkTournamentAccess } from '@/utils/tournament-permissions';
 import { canViewTournamentInscriptionsPage } from '@/utils/tournament-visibility';
 import { getTpeLateWithdrawalCounts } from '@/lib/services/tpe-registration-restrictions';
 import { sanitizeTournamentPlayer } from '@/utils/tournament-player-privacy';
+import { getEliteTitleHistory } from '@/lib/services/points/services/elite-title-history';
 import { reconcileCompleteInscriptions } from '@/lib/services/registration/reconcile-complete-inscriptions';
 
 /**
@@ -89,6 +90,8 @@ export async function GET(
         id,
         name,
         type,
+        category_name,
+        category_config,
         status,
         registration_locked,
         bracket_status,
@@ -274,15 +277,20 @@ export async function GET(
     });
 
     const hasManagementPermission = accessCheck.accessLevel === 'FULL_MANAGEMENT';
+    const titleHistory = hasManagementPermission ? await getEliteTitleHistory(playerIds, tournament) : new Map()
+    const withTitles = <T extends { id: string }>(player: T) => {
+      const titles = titleHistory.get(player.id)
+      return titles?.length ? { ...player, elite_titles: titles } : player
+    }
     const visibleCoupleInscriptions = coupleInscriptions.map((inscription) => ({
       ...inscription,
       player_1_info: inscription.player_1_info
-        ? sanitizeTournamentPlayer(inscription.player_1_info, hasManagementPermission) : null,
+      ? sanitizeTournamentPlayer(withTitles(inscription.player_1_info), hasManagementPermission) : null,
       player_2_info: inscription.player_2_info
-        ? sanitizeTournamentPlayer(inscription.player_2_info, hasManagementPermission) : null,
+      ? sanitizeTournamentPlayer(withTitles(inscription.player_2_info), hasManagementPermission) : null,
     }));
     const visibleIndividualInscriptions = individualInscriptions.map((player) =>
-      sanitizeTournamentPlayer(player, hasManagementPermission));
+    sanitizeTournamentPlayer(withTitles(player), hasManagementPermission));
 
     return Response.json({
       coupleInscriptions: visibleCoupleInscriptions,

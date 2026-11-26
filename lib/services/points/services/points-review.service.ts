@@ -36,7 +36,7 @@ export const confirmPointsReview = async (
   if (input.review.state === 'APPLIED') return { review: input.review, alreadyApplied: true }
   if (input.review.state === 'LEGACY') throw new PointsReviewError('Este torneo ya tiene sus puntos acreditados.')
   if (input.review.fingerprint !== body.fingerprint) throw new PointsReviewError('Los datos cambiaron desde la revisión. Actualizá los puntos y revisá nuevamente las decisiones.')
-  if (input.review.scoreBasis !== 'SNAPSHOT' && !body.acceptCurrentScoreBasis) {
+  if (['CURRENT', 'MIXED'].includes(input.review.scoreBasis) && !body.acceptCurrentScoreBasis) {
     throw new PointsReviewError('Confirmá el uso de los puntajes actuales para los jugadores sin captura inicial.', 400)
   }
   const calculation = applyManualCategoryDecisions(input, body.categoryChanges)

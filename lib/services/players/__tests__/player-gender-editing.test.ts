@@ -41,6 +41,7 @@ const mockSupabase = (role: string, isMember = false) => {
       if (table === 'users') return userQuery
       if (table === 'organization_members') return membershipQuery
       if (table === 'players') return playerQuery
+      if (table === 'categories') return { select: () => ({ eq: () => ({ single: async () => ({ data: { name: '5ta' }, error: null }) }) }) }
       throw new Error(`Unexpected table: ${table}`)
     },
   })
@@ -57,6 +58,13 @@ const makeProfileForm = (gender?: string) => {
 }
 
 describe('changing a player’s sex', () => {
+  it('starts a manually assigned category at zero instead of its former point threshold', async () => {
+    const { playerQuery } = mockSupabase('ORGANIZADOR', true)
+    const result = await updatePlayerAction(playerId, { category_name: '5ta' })
+    expect(result).toMatchObject({ success: true, scoreChanged: true })
+    expect(playerQuery.update).toHaveBeenCalledWith(expect.objectContaining({ category_name: '5ta', score: 0 }))
+  })
+
   it('makes the full player directory accessible to organizers only', () => {
     expect(checkRoutePermission('/my-players', 'ORGANIZADOR')).toBe(true)
     expect(checkRoutePermission('/my-players', 'PLAYER')).toBe(false)

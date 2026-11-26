@@ -1,6 +1,9 @@
 import { z } from 'zod'
 import { getCategories, getClubsForFilter, getTournamentsOptimized } from '@/app/api/tournaments'
 import { getTenantBranding } from '@/config/tenant'
+import { getOrganizerOAuth } from '@/lib/mcp/organizer-auth'
+import { organizerTools } from '@/lib/mcp/organizer-tools'
+import { organizerInstructions } from '@/lib/mcp/organizer-instructions'
 import { getPublicLongResults, type PublicLongCouple, type PublicLongFechaSelector } from '@/lib/services/public-long-results.service'
 import { getPublicTournamentHref } from '@/lib/tournaments/public-tournament-url'
 import { createPilotMcp, readDemoFecha } from '@/scripts/match-scheduling-mcp-pilot.mjs'
@@ -160,7 +163,7 @@ const readDate = async (input: unknown) => {
     : { error: 'Indicá el tournamentId real y la fecha con fechaNumero o fechaId, uno de los dos.' }
 }
 
-const mcp = createPilotMcp([
+const publicTools = [
   {
     definition: {
       name: 'consultar_fecha',
@@ -208,10 +211,20 @@ const mcp = createPilotMcp([
     },
     run: readResults,
   },
-])
+]
+const publicDefinitions = publicTools.map(tool => ({
+  ...tool,
+  definition: {
+    ...tool.definition,
+    securitySchemes: [{ type: 'noauth' }],
+    _meta: { securitySchemes: [{ type: 'noauth' }] },
+  },
+}))
+const publicMcp = createPilotMcp(publicDefinitions)
+const organizerMcp = createPilotMcp([...publicDefinitions, ...organizerTools], organizerInstructions)
 
 const handleMcp = (request: Request) => getTenantBranding().key === 'padel-fv'
-  ? mcp.fetch(request)
+  ? (getOrganizerOAuth() ? organizerMcp : publicMcp).fetch(request)
   : new Response(null, { status: 404 })
 
 export { handleMcp as GET, handleMcp as POST }

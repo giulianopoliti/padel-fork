@@ -283,7 +283,7 @@ export default function NewPlayerForm({ onSubmit, onExistingPlayerSelect, resolv
                     <span className="font-medium text-slate-600">Puntaje:</span>
                     <div className="flex items-center gap-1">
                       <Trophy className="h-4 w-4 text-yellow-500" />
-                      <span className="font-semibold text-slate-800">{existingPlayerFound.score || "No disponible"}</span>
+                      <span className="font-semibold text-slate-800">{existingPlayerFound.score ?? "No disponible"}</span>
                     </div>
                   </div>
                   {existingPlayerFound.category_name && (

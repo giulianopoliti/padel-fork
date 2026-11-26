@@ -22,8 +22,8 @@ const SEARCH_INPUT_CONFIG = {
 
 interface Category {
   name: string
-  lower_range: number
-  upper_range: number | null
+  level: number | null
+  initial_score: number
 }
 
 interface PlayersSectionClientProps {

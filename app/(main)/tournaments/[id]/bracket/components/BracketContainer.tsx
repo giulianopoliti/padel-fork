@@ -8,8 +8,7 @@ import LongBracketView from './LongBracketView'
 import LongScheduleView from './LongScheduleView'
 import { LongBracketGenerator } from '@/components/tournament/long/LongBracketGenerator'
 import PublicBracketTreeView from '@/components/tournament/bracket-v2/components/PublicBracketTreeView'
-import { PointsCalculationBanner } from '@/components/tournament/bracket-v2/components/PointsCalculationBanner'
-import { FinalizeTournamentControl } from '@/components/tournament/bracket-v2/components/FinalizeTournamentControl'
+import { TournamentPointsControl } from '@/components/tournament/tournament-points-control'
 import { useTournament } from '@/hooks/use-tournament'
 import { useTournamentFinalization } from '@/components/tournament/bracket-v2/hooks/useTournamentFinalization'
 import BackFromBracketButton from '../../settings/components/BackFromBracketButton'
@@ -97,8 +96,9 @@ export default function BracketContainer({
   const { tournament, isLoading } = useTournament(tournamentId)
   const finalization = useTournamentFinalization(tournamentId)
 
-  const isInOrFinishedBracketPhase = ACTIVE_BRACKET_STATUSES.includes(tournament?.status ?? '')
-  const shouldShowReadOnlyView = !isOwner || finalization.status === 'FINISHED_POINTS_CALCULATED' || tournament?.status === 'FINISHED_POINTS_CALCULATED'
+  const tournamentStatus = finalization.status === 'UNKNOWN' ? tournament?.status ?? '' : finalization.status
+  const isInOrFinishedBracketPhase = ACTIVE_BRACKET_STATUSES.includes(tournamentStatus)
+  const shouldShowReadOnlyView = !isOwner || tournamentStatus === 'FINISHED_POINTS_CALCULATED'
 
   // Loading state
   if (isLoading) {
@@ -124,6 +124,9 @@ export default function BracketContainer({
   if (shouldShowReadOnlyView) {
     return (
       <div className="py-6">
+        {isOwner && <div className="px-4 lg:px-6"><div className="mx-auto max-w-7xl">
+          <TournamentPointsControl tournamentId={tournamentId} onUpdated={finalization.refetch} />
+        </div></div>}
         <BracketInstructionsSection showBackToZones={false} />
         <div className="px-4 lg:px-6">
           <div className="max-w-7xl mx-auto">
@@ -161,17 +164,9 @@ export default function BracketContainer({
   // Bracket activo o finalizado: mostrar interfaz de gestión
   return (
     <div className="min-w-0 overflow-x-hidden">
-      {isOwner && <div className="px-4 pt-3 lg:px-6"><FinalizeTournamentControl tournamentId={tournamentId} finalization={finalization} /></div>}
-      {/* Banner de puntos (solo cuando el torneo está finalizado y hay puntos pendientes) */}
-      {isOwner && finalization.canShowPointsCalculation && (
-        <div className="px-4 lg:px-6 pt-3">
-          <PointsCalculationBanner
-            tournamentId={tournamentId}
-            winnerId={finalization.winner_id}
-            onPointsCalculated={() => finalization.refetch()}
-          />
-        </div>
-      )}
+      {isOwner && <div className="px-4 pt-3 lg:px-6"><div className="mx-auto max-w-7xl">
+        <TournamentPointsControl tournamentId={tournamentId} onUpdated={finalization.refetch} />
+      </div></div>}
 
       {/* Header con toggle */}
       <div className="bg-white border-b border-slate-200 shadow-sm">
@@ -199,7 +194,7 @@ export default function BracketContainer({
                   <span className="hidden sm:inline">Vista Horarios</span>
                   <span className="sm:hidden">Horarios</span>
                 </Button>
-                {isOwner && tournament.status === 'BRACKET_PHASE' && (
+                {isOwner && tournamentStatus === 'BRACKET_PHASE' && (
                   <BackFromBracketButton
                     tournamentId={tournamentId}
                     mode="inline"
@@ -221,7 +216,7 @@ export default function BracketContainer({
         </div>
       </div>
 
-      <BracketInstructionsSection showBackToZones={isOwner && tournament.status === 'BRACKET_PHASE'} />
+      <BracketInstructionsSection showBackToZones={isOwner && tournamentStatus === 'BRACKET_PHASE'} />
 
       {/* Content */}
       <div className="px-4 py-3 lg:px-6 lg:py-4">

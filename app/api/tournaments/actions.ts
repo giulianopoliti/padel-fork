@@ -5,6 +5,7 @@ import { withTournamentSortValues } from '@/lib/tournaments/tournament-sort-valu
 import { createClient, createClientServiceRole } from '@/utils/supabase/server';
 import { applyLongMatchLineup, getLongMatchLineupChanges } from '@/lib/services/long-match-lineups';
 import { getTenantBranding } from '@/config/tenant';
+import { getRankingSettings } from '@/lib/services/points/services/ranking-settings';
 import { uploadWinnerPhoto } from './winner-photo-actions';
 import { revalidatePath } from 'next/cache';
 import { linkTournamentClubs } from '@/lib/services/tournaments/club-links';
@@ -687,7 +688,7 @@ type DuplicateTournamentData = CreateTournamentData & {
 export async function getTournamentDuplicateDraft(tournamentId: string): Promise<{
   success: boolean;
   tournament?: DuplicateTournamentDraft;
-  categories?: Array<{ name: string; lower_range: number; upper_range: number | null }>;
+  categories?: Array<{ name: string; level: number | null; initial_score: number }>;
   clubs?: DuplicateTournamentClub[];
   defaultClubId?: string | null;
   error?: string;
@@ -4065,6 +4066,14 @@ export async function getPlayerWeeklyPoints(playerId: string): Promise<{
   try {
     // Calcular el inicio de la semana actual
     const currentWeekStart = getWeekStartDate(new Date());
+    const ranking = await getRankingSettings(supabase);
+    if (ranking) {
+      const { data, error } = await supabase.rpc('get_ranking_weekly_points', {
+        p_players: [playerId], p_since: `${currentWeekStart}T00:00:00Z`,
+      });
+      if (error) throw error;
+      return { success: true, pointsThisWeek: data?.[0]?.points ?? 0 };
+    }
     const weekEndDate = new Date(currentWeekStart);
     weekEndDate.setDate(weekEndDate.getDate() + 7);
     
@@ -4112,6 +4121,14 @@ export async function getMultiplePlayersWeeklyPoints(playerIds: string[]): Promi
     
     // Calcular el inicio de la semana actual
     const currentWeekStart = getWeekStartDate(new Date());
+    const ranking = await getRankingSettings(supabase);
+    if (ranking) {
+      const { data, error } = await supabase.rpc('get_ranking_weekly_points', {
+        p_players: playerIds, p_since: `${currentWeekStart}T00:00:00Z`,
+      });
+      if (error) throw error;
+      return { success: true, weeklyPoints: Object.fromEntries((data ?? []).map((row: { player_id: string; points: number }) => [row.player_id, row.points])) };
+    }
     const weekEndDate = new Date(currentWeekStart);
     weekEndDate.setDate(weekEndDate.getDate() + 7);
     

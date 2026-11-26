@@ -22,6 +22,8 @@ import PlayerDetailsDialog from "@/components/tournament/player-details-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import PlayerDniDisplay from "@/components/players/player-dni-display"
 import { getTenantBranding } from "@/config/tenant"
+import { EliteTitlesNotice } from './elite-titles-notice'
+import type { EliteTitle } from '@/lib/services/points/services/elite-title-history'
 
 interface PlayerInfo {
   id: string
@@ -31,6 +33,7 @@ interface PlayerInfo {
   dni?: string | null
   phone?: string | null
   late_withdrawal_count?: number
+  elite_titles?: EliteTitle[]
 }
 
 interface CoupleInfo {
@@ -453,6 +456,7 @@ export default function TournamentCouplesTab({
           </DropdownMenuContent>
         </DropdownMenu>}
       </div>
+      {isOwner && <EliteTitlesNotice titles={player?.elite_titles} />}
       {rules.map(rule => <div key={rule.id} className="text-xs text-muted-foreground">
         <span className="font-medium text-slate-700">{isPermanentSubstitution(rule.scope) ? 'Suplente fijo' : 'Suplente'} · {rule.player_name}</span>
         <p>{substitutionScopeLabel(rule.scope, rule.label)}</p>

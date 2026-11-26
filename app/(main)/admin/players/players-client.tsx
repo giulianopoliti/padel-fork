@@ -60,8 +60,8 @@ interface PlayersClientProps {
 
 interface Category {
   name: string
-  lower_range: number
-  upper_range: number
+  level: number | null
+  initial_score: number
 }
 
 export const PlayersClient = ({

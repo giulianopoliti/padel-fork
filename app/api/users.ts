@@ -153,6 +153,9 @@ export async function getRankedPlayers({
             countQuery,
             baseQuery
                 .order("score", { ascending: false })
+                .order("last_name", { ascending: true })
+                .order("first_name", { ascending: true })
+                .order("id", { ascending: true })
                 .range(offset, offset + validatedPageSize - 1)
         ]);
 
@@ -1417,7 +1420,7 @@ export const getUser = async (): Promise<User | null> => {
       // Get the player's current score
       const { data: player, error: playerError } = await supabase
         .from('players')
-        .select('score, category_name')
+        .select('score, category_name, gender')
         .eq('id', playerId)
         .single();
 
@@ -1430,6 +1433,8 @@ export const getUser = async (): Promise<User | null> => {
         .from('players')
         .select('id, score')
         .eq('category_name', player.category_name)
+        .eq('gender', player.gender)
+        .eq('es_prueba', false)
         .order('score', { ascending: false });
 
       if (categoryError || !categoryPlayers) {
@@ -1437,8 +1442,7 @@ export const getUser = async (): Promise<User | null> => {
       }
 
       // Find player's ranking position
-      const playerIndex = categoryPlayers.findIndex((p: any) => p.id === playerId);
-      const ranking = playerIndex + 1; // Convert to 1-based ranking
+      const ranking = 1 + categoryPlayers.filter((candidate: { score: number }) => candidate.score > player.score).length;
 
       // For variation, we'd need to track historical rankings
       // For now, we'll return a placeholder

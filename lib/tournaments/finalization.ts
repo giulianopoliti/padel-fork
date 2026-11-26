@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { TournamentFormatResolver } from '@/lib/services/tournament-format-resolver'
 import { POINTS_CONFIGS } from '@/lib/services/points/types/points-config.types'
 import type { BracketKey } from '@/types/tournament-format-v2'
+import { getFixedRankingPolicy } from '@/lib/services/points/config/fixed-ranking'
+import { getRankingSettings } from '@/lib/services/points/services/ranking-settings'
 
 export interface CupBonus {
   enabled: boolean
@@ -78,11 +80,25 @@ export const loadTournamentFinalization = async (supabase: SupabaseClient, tourn
     .select('id, type, round, bracket_key, status, winner_id, bracket_is_active').eq('tournament_id', tournamentId)
   if (matchesError) throw new Error('No se pudo verificar los partidos del torneo.')
   const eligibility = getFinalizationEligibility(tournament, matches ?? [])
+  const ranking = await getRankingSettings(supabase)
+  const fixedRanking = getFixedRankingPolicy(ranking?.policy, tournament.type ?? '')
+  let roundRobinChampion: string | null = null
+  if (fixedRanking === 'ELITE_AMERICAN' && eligibility.bracketKeys.length === 0 && eligibility.allMatchesFinished) {
+    const { data: positions, error: positionsError } = await supabase.from('zone_positions')
+      .select('couple_id').eq('tournament_id', tournamentId).eq('is_definitive', true).eq('position', 1).limit(2)
+    if (positionsError) throw new Error('No se pudo verificar el campeón de zona.')
+    roundRobinChampion = positions?.length === 1 ? positions[0].couple_id : null
+    if (!roundRobinChampion) return { tournament, ...eligibility, fixedRanking, roundRobinChampion,
+      canFinalize: false, allMatchesFinished: false, reason: 'La tabla definitiva debe indicar una pareja campeona.',
+      expectedRevision: null, bonuses: {} }
+  }
   let expectedRevision: number | null = null
   if (tournament.format_config?.presetId === 'AMERICAN_MULTI_ZONE_FREE' || tournament.format_config?.presetId === 'AMERICAN_SINGLE_ZONE_FREE') {
     const { data: freeState, error: freeError } = await supabase.from('american_free_brackets').select('revision').eq('tournament_id', tournamentId).maybeSingle()
     if (freeError) throw new Error('No se pudo verificar la revisión de la llave.')
     expectedRevision = freeState?.revision ?? null
   }
-  return { tournament, ...eligibility, expectedRevision, bonuses: getTournamentBonuses(tournament, eligibility.bracketKeys) }
+  return { tournament, ...eligibility, expectedRevision, fixedRanking, roundRobinChampion,
+    canFinalize: eligibility.canFinalize || (Boolean(roundRobinChampion) && tournament.status === 'ZONE_PHASE'),
+    bonuses: getTournamentBonuses(tournament, eligibility.bracketKeys) }
 }

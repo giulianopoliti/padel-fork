@@ -1,8 +1,11 @@
 import { getCategories, getClubsForFilter, getTournamentsOptimized } from '@/app/api/tournaments'
 import { getPublicLongResults, type PublicLongMatch } from '@/lib/services/public-long-results.service'
 import { POST } from '../route'
+import { getTenantBranding } from '@/config/tenant'
 
-jest.mock('@/config/tenant', () => ({ getTenantBranding: () => ({ key: 'padel-fv' }) }))
+jest.mock('@/config/tenant', () => ({ getTenantBranding: jest.fn(() => ({ key: 'padel-fv' })) }))
+jest.mock('@/lib/mcp/organizer-auth', () => ({ getOrganizerOAuth: () => null }))
+jest.mock('@/lib/mcp/organizer-tools', () => ({ organizerTools: [] }))
 jest.mock('@/app/api/tournaments', () => ({
   getClubsForFilter: jest.fn(),
   getCategories: jest.fn(),
@@ -22,7 +25,21 @@ const callMcp = async (method: string, params?: object) => {
 }
 
 describe('Padel FV public MCP', () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.mocked(getTenantBranding).mockReturnValue({ key: 'padel-fv' } as ReturnType<typeof getTenantBranding>)
+  })
+
+  it('rejects the Elite deployment before calling any data service', async () => {
+    jest.mocked(getTenantBranding).mockReturnValue({ key: 'padel-elite' } as ReturnType<typeof getTenantBranding>)
+    const response = await POST(new Request('https://www.tpepadel.com/api/mcp', {
+      method: 'POST',
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'buscar_torneos', arguments: {} } }),
+    }))
+    expect(response.status).toBe(404)
+    expect(getTournamentsOptimized).not.toHaveBeenCalled()
+    expect(getPublicLongResults).not.toHaveBeenCalled()
+  })
 
   it('advertises the public tools as read-only and accepts a real date number', async () => {
     const { result } = await callMcp('tools/list')
@@ -35,7 +52,7 @@ describe('Padel FV public MCP', () => {
 
   it('resolves the public club and category and only returns public summary fields', async () => {
     jest.mocked(getClubsForFilter).mockResolvedValue([{ id: 'club-1', name: 'Lasaigues Canning' }])
-    jest.mocked(getCategories).mockResolvedValue([{ name: '4ta', lower_range: 0, upper_range: 0 }])
+    jest.mocked(getCategories).mockResolvedValue([{ name: '4ta', level: 4, initial_score: 0 }])
     jest.mocked(getTournamentsOptimized).mockResolvedValue({
       tournaments: [{
         id: tournamentId,

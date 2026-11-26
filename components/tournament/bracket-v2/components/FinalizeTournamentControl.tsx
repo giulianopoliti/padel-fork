@@ -33,7 +33,8 @@ export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinali
   const { toast } = useToast()
   const router = useRouter()
   const editingBonuses = finalization.status === 'FINISHED_POINTS_PENDING'
-  if (finalization.status !== 'BRACKET_PHASE' && !editingBonuses) return null
+  if (editingBonuses && finalization.fixedRanking) return null
+  if (finalization.status !== 'BRACKET_PHASE' && !editingBonuses && !finalization.canFinalize) return null
   const actionLabel = editingBonuses ? 'Configurar bonos' : 'Finalizar torneo'
 
   const handleBonusChange = (key: BracketKey, update: Partial<CupBonus>) => {
@@ -89,12 +90,12 @@ export const FinalizeTournamentControl = ({ tournamentId, finalization, onFinali
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{actionLabel}</DialogTitle>
-            <DialogDescription>Elegí los bonos por jugador. Después vas a revisar los puntos y decidir los ascensos manualmente antes de acreditar.</DialogDescription>
+            <DialogDescription>{finalization.fixedRanking ? 'Después vas a revisar el puntaje calculado según el reglamento del torneo.' : 'Elegí los bonos por jugador y revisá los movimientos antes de acreditar.'}</DialogDescription>
           </DialogHeader>
           {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</p>}
           {conflict && <div role="alert" className="space-y-2 text-sm"><p>La llave cambió. Recargá el estado antes de volver a finalizar.</p><Button variant="outline" onClick={async () => { await finalization.refetch(); setOpen(false); setConflict(false) }}>Recargar estado</Button></div>}
           <div className="space-y-5">
-            {finalization.bracketKeys.map(key => {
+            {!finalization.fixedRanking && finalization.bracketKeys.map(key => {
               const bonus = bonuses[key]
               if (!bonus) return null
               return (

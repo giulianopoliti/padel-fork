@@ -55,6 +55,13 @@ export async function updatePlayer(
     // Validar DNI único si se está cambiando
     const normalizedData = { ...data }
 
+    if (data.category_name !== undefined) {
+      const { data: currentPlayer, error: playerError } = await supabaseAdmin.from('players')
+        .select('category_name').eq('id', id).single()
+      if (playerError || !currentPlayer) return { success: false, error: 'Jugador no encontrado' }
+      if (currentPlayer.category_name !== data.category_name) normalizedData.score = 0
+    }
+
     if (data.dni !== undefined) {
       const normalizedDni = normalizePlayerDni(data.dni)
       normalizedData.dni = normalizedDni.dni
@@ -225,8 +232,8 @@ export async function getCategories() {
 
     const { data: categories, error } = await supabaseAdmin
       .from("categories")
-      .select("name, lower_range, upper_range")
-      .order("lower_range", { ascending: true })
+      .select("name, level, initial_score")
+      .order("level", { ascending: true })
 
     if (error) throw error
 

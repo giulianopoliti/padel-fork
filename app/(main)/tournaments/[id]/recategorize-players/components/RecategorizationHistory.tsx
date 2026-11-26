@@ -39,7 +39,7 @@ interface RecategorizationRecord {
 interface RecategorizationHistoryProps {
   tournamentId: string
   isVisible: boolean
-  categories: Array<{ name: string; lower_range: number; upper_range: number | null }>
+  categories: Array<{ name: string; level: number | null; initial_score: number }>
 }
 
 export const RecategorizationHistory: React.FC<RecategorizationHistoryProps> = ({

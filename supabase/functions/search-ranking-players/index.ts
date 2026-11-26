@@ -132,6 +132,9 @@ serve(async (req) => {
     // Ordenar y paginar
     const { data, error, count } = await query
       .order('score', { ascending: false })
+      .order('last_name', { ascending: true })
+      .order('first_name', { ascending: true })
+      .order('id', { ascending: true })
       .range(offset, offset + validatedPageSize - 1)
 
     if (error) {

@@ -276,16 +276,16 @@ Opciones:
     return;
   }
 
-  let categoryLowerRange: number | null = null;
+  let categoryInitialScore: number | null = null;
   if (tournament.category_name) {
     const { data: categoryData, error: categoryError } = await supabase
       .from("categories")
-      .select("lower_range")
+      .select("initial_score")
       .eq("name", tournament.category_name)
       .maybeSingle();
 
-    if (!categoryError && categoryData?.lower_range !== null && categoryData?.lower_range !== undefined) {
-      categoryLowerRange = Number(categoryData.lower_range);
+    if (!categoryError && categoryData?.initial_score !== null && categoryData?.initial_score !== undefined) {
+      categoryInitialScore = Number(categoryData.initial_score);
     }
   }
 
@@ -296,11 +296,11 @@ Opciones:
     try {
       const playersToCheck = [pair.player1, pair.player2];
       for (const player of playersToCheck) {
-        if (tournament.category_name && !player.is_categorized && categoryLowerRange !== null) {
+        if (tournament.category_name && !player.is_categorized && categoryInitialScore !== null) {
           const { error: updatePlayerError } = await supabase
             .from("players")
             .update({
-              score: categoryLowerRange,
+              score: categoryInitialScore,
               category_name: tournament.category_name,
               is_categorized: true,
             })

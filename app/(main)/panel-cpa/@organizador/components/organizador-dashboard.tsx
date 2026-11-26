@@ -13,11 +13,12 @@ import { getOrganizerPanelHref, getTournamentListHref } from '@/lib/tournaments/
 import TournamentSortDialog from '@/components/tournament/tournament-sort-dialog'
 import { describeTournamentSort, type TournamentSortSettings } from '@/lib/tournaments/tournament-sort'
 import type { PlayerData } from '@/lib/services/players/players.service'
+import { getTenantBranding } from '@/config/tenant'
 
 interface Category {
   name: string
-  lower_range: number
-  upper_range: number | null
+  level: number | null
+  initial_score: number
 }
 
 interface OrganizadorDashboardProps {
@@ -60,6 +61,7 @@ export default function OrganizadorDashboard({
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {getTenantBranding().key === 'padel-fv' && <div className="flex justify-end"><Button asChild variant="outline"><Link href="/panel/ascensos">Ascensos</Link></Button></div>}
       <section aria-labelledby="matches-heading">
         <div className="rounded-display border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-sky-50 p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

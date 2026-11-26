@@ -9,12 +9,12 @@ import {
 } from "@/lib/services/tournament-category-config"
 
 const categories: CategoryRange[] = [
-  { name: "9na", lower_range: 0, upper_range: 299 },
-  { name: "8va", lower_range: 300, upper_range: 599 },
-  { name: "7ma", lower_range: 600, upper_range: 899 },
-  { name: "6ta", lower_range: 900, upper_range: 1199 },
-  { name: "5ta", lower_range: 1200, upper_range: 1499 },
-  { name: "4ta", lower_range: 1500, upper_range: 1799 },
+  { name: "9na", level: 9, initial_score: 0 },
+  { name: "8va", level: 8, initial_score: 0 },
+  { name: "7ma", level: 7, initial_score: 0 },
+  { name: "6ta", level: 6, initial_score: 0 },
+  { name: "5ta", level: 5, initial_score: 0 },
+  { name: "4ta", level: 4, initial_score: 0 },
 ]
 
 const createMockSupabase = (playerOverrides?: Partial<any>) => {
@@ -105,10 +105,10 @@ describe("tournament-category-config", () => {
       categories,
     )
 
-    expect(score).toBe(900)
+    expect(score).toBe(0)
   })
 
-  test("resuelve puntaje inicial RANGE como promedio entre lower_range", () => {
+  test("resuelve puntaje inicial RANGE con cero puntos iniciales", () => {
     const score = resolveInitialScoreFromCategories(
       {
         mode: "RANGE",
@@ -118,7 +118,7 @@ describe("tournament-category-config", () => {
       categories,
     )
 
-    expect(score).toBe(750)
+    expect(score).toBe(0)
   })
 
   test("solo considera válidas categorías consecutivas para RANGE", () => {
@@ -136,7 +136,7 @@ describe("tournament-category-config", () => {
       categories,
     )
 
-    expect(score).toBe(1050)
+    expect(score).toBe(0)
   })
 
   test("falla cuando falta una categoría requerida", () => {
@@ -149,7 +149,7 @@ describe("tournament-category-config", () => {
         },
         categories,
       ),
-    ).toThrow("No se pudo resolver una de las categorías combinadas")
+    ).toThrow("Revisá las categorías combinadas.")
   })
 
   test("resuelve perfil inicial legacy usando category_name simple", async () => {
@@ -162,7 +162,7 @@ describe("tournament-category-config", () => {
       },
     })
 
-    expect(result.score).toBe(600)
+    expect(result.score).toBe(0)
     expect(result.categoryName).toBe("7ma")
   })
 
@@ -198,10 +198,10 @@ describe("tournament-category-config", () => {
 
     expect(result.success).toBe(true)
     expect(result.wasCategorized).toBe(true)
-    expect(result.newScore).toBe(750)
+    expect(result.newScore).toBe(0)
     expect(result.categoryName).toBe("7ma")
     expect(mock.state.lastUpdate?.payload).toMatchObject({
-      score: 750,
+      score: 0,
       category_name: "7ma",
       is_categorized: true,
     })
@@ -244,10 +244,10 @@ describe("tournament-category-config", () => {
 
     expect(result.success).toBe(true)
     expect(result.wasCategorized).toBe(true)
-    expect(result.newScore).toBe(900)
+    expect(result.newScore).toBe(0)
     expect(result.categoryName).toBe("6ta")
     expect(mock.state.lastUpdate?.payload).toMatchObject({
-      score: 900,
+      score: 0,
       category_name: "6ta",
       is_categorized: true,
     })
