@@ -102,8 +102,9 @@ export interface TournamentAccessResult {
 export async function checkTournamentPermissions(
   userId: string, 
   tournamentId: string, 
+  client?: Awaited<SupabaseClient>,
 ): Promise<PermissionResult> {
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
   try {
     // 1. Get user role
     const { data: userData, error: userError } = await supabase
@@ -171,7 +172,7 @@ export async function checkTournamentPermissions(
     
     // 5. For ORGANIZADOR users, check organization membership and club access
     if (userRole === 'ORGANIZADOR') {
-      const hasOrgPermission = await checkOrganizationPermissions(userId, tournamentData.organization_id);
+      const hasOrgPermission = await checkOrganizationPermissions(userId, tournamentData.organization_id, client);
       
       if (!hasOrgPermission) {
         return {
@@ -206,12 +207,16 @@ export async function checkTournamentPermissions(
 
 
 
-export async function checkOrganizationPermissions(userId: string, tournamentOrganizationId?: string): Promise<boolean> {
+export async function checkOrganizationPermissions(
+  userId: string,
+  tournamentOrganizationId?: string,
+  client?: Awaited<SupabaseClient>,
+): Promise<boolean> {
   if (!tournamentOrganizationId) {
     return false
   }
 
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
   const {data: organizador, error: organizadorError} = await supabase
     .from('organization_members')
     .select('organizacion_id')
