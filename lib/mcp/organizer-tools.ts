@@ -3,7 +3,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { getOrganizerActor, getOrganizerOAuth, organizerAuthChallenge, organizerScope } from './organizer-auth'
-import { organizerCanReadLeague, readOrganizerFixtureDate, readOrganizerHistory } from './organizer-fixture'
+import { organizerCanReadLeague, readOrganizerDates, readOrganizerFixtureDate, readOrganizerHistory } from './organizer-fixture'
 
 const uuidField = { type: 'string', format: 'uuid' }
 const dateProperties = {
@@ -23,6 +23,8 @@ const historyInput = z.object({
   parejaId: z.string().uuid().optional(),
   pagina: z.number().int().min(1).max(100).default(1),
 }).strict().refine(input => !(input.jugadorId && input.parejaId))
+
+const tournamentInput = z.object({ tournamentId: z.string().uuid() }).strict()
 
 const organizerTool = <T extends { tournamentId: string }>(
   name: string, description: string, properties: object, schema: z.ZodType<T, z.ZodTypeDef, unknown>,
@@ -56,6 +58,13 @@ const organizerTool = <T extends { tournamentId: string }>(
 }
 
 export const organizerTools = [
+  organizerTool(
+    'consultar_fechas',
+    'Lista todas las fechas creadas por el organizador de una liga LONG: ID, número, nombre, período, estado, ronda, duración y máximo de partidos por pareja. Usá el tournamentId real de buscar_torneos. Con el fechaId o fechaNumero obtenido consultá consultar_horarios_fecha para las franjas creadas y consultar_disponibilidad_fecha para las marcas de couple_time_availability, preferencias y notas. No confundas una fecha sin resultados con una fecha inexistente.',
+    { tournamentId: dateProperties.tournamentId },
+    tournamentInput,
+    readOrganizerDates,
+  ),
   organizerTool(
     'consultar_horarios_fecha',
     'Consulta las franjas, duración, límite de partidos por pareja y partidos ya cargados de una fecha LONG, incluidos borradores. Usá fechaNumero o fechaId, nunca ambos. Conservá los partidos cargados y respetá los intervalos completos en horario de Buenos Aires. Las franjas no prueban que haya canchas libres: contrastalas con el Excel del organizador. FREE_DATE no es una franja jugable.',

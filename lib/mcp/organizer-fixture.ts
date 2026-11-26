@@ -98,6 +98,14 @@ export const organizerCanReadLeague = async (supabase: SupabaseClient, userId: s
   return Boolean(data)
 }
 
+export const readOrganizerDates = async (supabase: SupabaseClient, { tournamentId }: { tournamentId: string }) => ({
+  tournamentId,
+  zonaHoraria: 'America/Argentina/Buenos_Aires',
+  fechas: await readAll<Record<string, unknown>>((from, to) => supabase.from('tournament_fechas')
+    .select('id, fecha_number, name, start_date, end_date, status, round_type, max_matches_per_couple, estimated_match_duration_minutes')
+    .eq('tournament_id', tournamentId).order('fecha_number').order('id').range(from, to)),
+})
+
 export const readOrganizerFixtureDate = async (
   supabase: SupabaseClient, input: FixtureDateInput, includeAvailability: boolean, actorId: string,
 ) => {

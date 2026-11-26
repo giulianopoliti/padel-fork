@@ -49,8 +49,25 @@ describe('Fixed ranking and league promotions', () => {
     expect(buildPointsReview(source).review.playerScores[0]).toMatchObject({ rankingCategory: '8va',
       champion: true, bonus: 300, pointsEarned: 312, pointsAfter: 36, categoryAfter: '7ma' })
   })
-  it('prevents overriding an automatic promotion from the accreditation request', () => {
-    expect(() => applyManualCategoryDecisions(buildPointsReview(league()), [{ playerId: 'p1', newCategory: '8va' }])).toThrow('Ascensos')
+  it('allows declining one promotion before settlement and credits the champion bonus exactly once', () => {
+    const input = buildPointsReview(league())
+    const result = applyManualCategoryDecisions(input, [{ playerId: 'p1', newCategory: '8va' }])
+    expect(result.review.playerScores.find(p => p.playerId === 'p1')).toMatchObject({
+      automaticPromotion: false, promotionDeclined: true, champion: true,
+      categoryAfter: '8va', matchPoints: 12, bonus: 300, pointsEarned: 312, pointsAfter: 552, categoryPointsAfter: 552,
+    })
+    expect(result.review.playerScores.find(p => p.playerId === 'p2')).toMatchObject({ automaticPromotion: true, pointsAfter: 0 })
+    expect(input.review.playerScores.find(p => p.playerId === 'p1')).toMatchObject({ automaticPromotion: true, bonus: 0 })
+    expect(applyManualCategoryDecisions(input, [{ playerId: 'p1', newCategory: '8va' }])).toEqual(result)
+    expect(applyManualCategoryDecisions(input, [{ playerId: 'p1', newCategory: '7ma' }])).toEqual(input)
+    expect(() => applyManualCategoryDecisions(input, [
+      { playerId: 'p1', newCategory: '8va' }, { playerId: 'p1', newCategory: '8va' },
+    ])).toThrow('repetidos')
+  })
+  it('does not allow replacing an automatic promotion with an arbitrary category', () => {
+    const source = league()
+    source.context.categories.push({ name: '6ta', level: 6, initial_score: 0 })
+    expect(() => applyManualCategoryDecisions(buildPointsReview(source), [{ playerId: 'p1', newCategory: '6ta' }])).toThrow('ascenso propuesto')
   })
   it('credits half the points in Elite and records champions without promotion', () => {
     const source = makeContext()

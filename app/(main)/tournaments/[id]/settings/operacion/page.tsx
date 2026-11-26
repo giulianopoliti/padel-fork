@@ -9,6 +9,7 @@ import TournamentStatusVisibilityToggle from '../components/TournamentStatusVisi
 import { getTournamentSettingsData } from '../components/settings-data'
 import { SettingsSectionHeader, SettingsShellCard } from '../components/settings-shell'
 import CancelTournamentButton from '@/components/tournament/club/cancel-tournament'
+import { ReopenTournamentButton } from '@/components/tournament/reopen-tournament-button'
 import { normalizeTournamentOperationalSettings } from '@/lib/services/tournament-operational-settings'
 import { getTenantBranding } from '@/config/tenant'
 
@@ -38,6 +39,7 @@ export default async function SettingsOperacionPage({
   } = settingsData
   const showRecoveryActions =
     tournament.status === 'BRACKET_PHASE' || tournament.status === 'ZONE_PHASE'
+  const canReopen = tournament.status === 'FINISHED_POINTS_PENDING' || tournament.status === 'FINISHED_POINTS_CALCULATED'
   const operationalSettings = normalizeTournamentOperationalSettings(
     rankingConfig?.operational_settings
   )
@@ -109,7 +111,12 @@ export default async function SettingsOperacionPage({
         description="Botones administrativos para volver a fases anteriores cuando hace falta."
         badge={isAmericanTournament ? 'Americano' : 'Long'}
       >
-        {showRecoveryActions ? (
+        {canReopen ? (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">Volvé a la fase previa al cierre. Antes de confirmar vas a ver los puntos, títulos y cambios de categoría que se desharán.</p>
+            <ReopenTournamentButton tournamentId={tournament.id} />
+          </div>
+        ) : showRecoveryActions ? (
           <div className="grid gap-4 xl:grid-cols-2">
             {tournament.status === 'BRACKET_PHASE' ? (
               <BackFromBracketButton tournamentId={tournament.id} />

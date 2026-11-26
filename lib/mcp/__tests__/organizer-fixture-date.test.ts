@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { readOrganizerFixtureDate } from '../organizer-fixture'
+import { readOrganizerDates, readOrganizerFixtureDate } from '../organizer-fixture'
 
 jest.mock('server-only', () => ({}))
 jest.mock('@/utils/tournament-permissions', () => ({ checkTournamentPermissions: jest.fn() }))
@@ -20,6 +20,7 @@ interface DateQuery {
 
 const database = (fechaExists = true) => {
   const rows: Record<string, unknown[]> = {
+    tournament_fechas: [{ id: 'fecha-3', fecha_number: 3, status: 'PENDING' }],
     inscriptions: [
       { couples: couple('con-marcas'), is_eliminated: false },
       { couples: couple('sin-marcas'), is_eliminated: false },
@@ -51,6 +52,15 @@ const database = (fechaExists = true) => {
   const rpc = jest.fn(async () => ({ data: [{ couple_id: 'con-marcas', slot: 1, player_name: 'Suplente' }], error: null }))
   return { client: { from, rpc } as unknown as SupabaseClient, from, rpc }
 }
+
+it('lists dates scoped to the selected tournament, including dates without results', async () => {
+  const { client, from, rpc } = database()
+  const result = await readOrganizerDates(client, { tournamentId: 'liga' })
+  expect(result.fechas).toEqual([{ id: 'fecha-3', fecha_number: 3, status: 'PENDING' }])
+  expect(from.mock.results[0].value.eq).toHaveBeenCalledWith('tournament_id', 'liga')
+  expect(from).not.toHaveBeenCalledWith('matches')
+  expect(rpc).not.toHaveBeenCalled()
+})
 
 it('preserves notes as raw data, distinguishes missing marks from negative marks and exposes free-date requests', async () => {
   const { client, rpc } = database()

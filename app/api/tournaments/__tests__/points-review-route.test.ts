@@ -72,6 +72,25 @@ describe('Points preview and atomic confirmation API', () => {
     expect((await response.json()).alreadyApplied).toBe(true)
     expect(rpc.mock.calls.some(call => call[0] === 'commit_tournament_points_with_lineups')).toBe(false)
   })
+  it('recalculates a declined promotion and its champion bonus on the server', async () => {
+    const playerId = '00000000-0000-4000-8000-000000000001'
+    source.context.rankingPolicy = 'FV_LEAGUE'
+    source.context.tournament.type = 'LONG'
+    source.context.tournament.category_name = '7ma'
+    source.context.players[0].id = playerId
+    source.context.couples[0].player1_id = playerId
+    const response = await POST(request({ fingerprint: source.fingerprint,
+      categoryChanges: [{ playerId, newCategory: '7ma' }], acceptCurrentScoreBasis: false }), context)
+    expect(response.status).toBe(200)
+    const call = rpc.mock.calls.find(row => row[0] === 'commit_tournament_points_with_lineups')![1]
+    expect(call.p_calculation.review.playerScores.find((p: { playerId: string }) => p.playerId === playerId)).toMatchObject({
+      categoryAfter: '7ma', automaticPromotion: false, promotionDeclined: true,
+      bonus: 300, matchPoints: 12, pointsEarned: 312, pointsAfter: 1202,
+    })
+    expect(call.p_calculation.review.playerScores.find((p: { playerId: string }) => p.playerId === 'p2')).toMatchObject({
+      categoryAfter: '6ta', automaticPromotion: true, pointsAfter: 0,
+    })
+  })
   it('surfaces a conflict from the locked transaction', async () => {
     rpc.mockImplementation(async (name: string) => name === 'get_tournament_points_context_with_lineups' ? { data: source } : { error: { code: '40001', message: 'changed' } })
     expect((await POST(request(), context)).status).toBe(409)

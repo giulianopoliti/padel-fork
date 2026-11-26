@@ -60,6 +60,18 @@ export interface PointsReviewPlayer {
   champion?: boolean
   automaticPromotion?: boolean
   promotionNeedsReview?: boolean
+  promotionDeclined?: boolean
+  wins?: number
+  matchesPlayed?: number
+  tournamentResult?: PointsTournamentResult
+}
+
+export interface PointsTournamentResult {
+  coupleId: string
+  coupleName: string
+  cup: BracketKey | null
+  stage: 'champion' | 'finalist' | 'SEMIFINAL' | '4TOS' | '8VOS' | '16VOS' | '32VOS' | 'UNRESOLVED' | 'ZONE' | 'NO_MATCHES'
+  lastRound?: string | null
 }
 
 export interface PointsReview {

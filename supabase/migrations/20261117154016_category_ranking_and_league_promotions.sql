@@ -1,5 +1,7 @@
 -- The shared migration installs the feature. The database owner activates the
 -- appropriate policy in each project after the application is ready.
+-- Local restores owned by supabase_admin must first run
+-- scripts/repair-local-ranking-ownership.mjs --apply, not grant client access.
 alter table public.categories
   add column level smallint check (level > 0),
   add column initial_score integer not null default 0 check (initial_score = 0);
@@ -16,6 +18,12 @@ alter table public.player_tournament_history
   add column ranking_bonus integer,
   add column ranking_champion boolean,
   add column ranking_title_match_id uuid;
+
+-- Keep legacy settlements readable while allowing the new atomic calculation.
+alter table public.tournament_points_settlements
+  drop constraint tournament_points_settlements_rules_version_check,
+  add constraint tournament_points_settlements_rules_version_check
+    check (rules_version in ('manual-categories-v1', 'fixed-ranking-v1'));
 
 create index player_tournament_history_ranking_titles
   on public.player_tournament_history (ranking_category, player_id, tournament_id)

@@ -4,13 +4,14 @@ import { EloPointsCalculator } from '../calculators/elo-points.calculator'
 import { FIXED_RANKING, getFixedRankingPolicy } from '../config/fixed-ranking'
 import { POINTS_CONFIGS } from '../types/points-config.types'
 import type {
-  BonusAward, ManualCategoryDecision, PointsContextResponse, PointsReviewPlayer, PointsSettlementInput,
+  BonusAward, PointsContextResponse, PointsReviewPlayer, PointsSettlementInput, PointsTournamentResult,
 } from '../types/points-review.types'
 import type { BracketKey } from '@/types/tournament-format-v2'
 
-export class PointsReviewError extends Error {
-  constructor(message: string, public readonly status = 409) { super(message) }
-}
+import { PointsReviewError } from './points-review-error'
+import { compareTournamentResults } from './points-review-results'
+export { PointsReviewError } from './points-review-error'
+export { applyManualCategoryDecisions } from './points-review-decisions'
 
 /** Pure calculation. Preview never creates snapshots or changes players. */
 export const buildPointsReview = ({ context, fingerprint, settlement }: PointsContextResponse): PointsSettlementInput => {
@@ -72,6 +73,7 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
       playerId: id, playerName: `${player.first_name ?? ''} ${player.last_name ?? ''}`.trim(),
       categoryBefore: player.category_name, categoryAfter: player.category_name,
       pointsBefore: player.score!, matchPoints: 0, bonus: 0, bonusAwards: [], pointsEarned: 0, pointsAfter: player.score!,
+      wins: 0, matchesPlayed: 0,
       ...(fixed ? { rankingCategory: titleCategory ?? snapshots.get(id)?.category ?? player.category_name } : {}),
     })
     return updates.get(id)!
@@ -106,8 +108,17 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
     const { winnerPoints, loserPoints } = fixed
       ? { winnerPoints: fixed.win, loserPoints: 0 }
       : EloPointsCalculator.calculate(average(winners) - average(losers), config)
-    for (const id of winners) getPlayerUpdate(id).matchPoints! += winnerPoints
-    for (const id of losers) getPlayerUpdate(id).matchPoints! += loserPoints
+    for (const id of winners) {
+      const player = getPlayerUpdate(id)
+      player.matchPoints! += winnerPoints
+      player.wins!++
+      player.matchesPlayed!++
+    }
+    for (const id of losers) {
+      const player = getPlayerUpdate(id)
+      player.matchPoints! += loserPoints
+      player.matchesPlayed!++
+    }
     matchPoints.push({ match_id: match.id, winner_couple_id: match.winner_id, loser_couple_id: loserId, points_winner: winnerPoints, points_loser: loserPoints })
   }
   const finals = matches.filter(match => match.type === 'ELIMINATION' && match.round === 'FINAL')
@@ -172,6 +183,40 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
       }
     }
   }
+  // Record sporting results independently of points and promotion decisions.
+  // Do not invent numbered places for tied rounds or incomplete local fixtures.
+  const assignResult = (coupleId: string, ids: string[], result: Omit<PointsTournamentResult, 'coupleId' | 'coupleName'>): void => {
+    const entry: PointsTournamentResult = { ...result, coupleId,
+      coupleName: ids.map(id => getPlayerUpdate(id).playerName).join(' / ') }
+    for (const id of ids) {
+      const player = getPlayerUpdate(id)
+      if (!player.tournamentResult || compareTournamentResults(entry, player.tournamentResult) < 0) player.tournamentResult = entry
+    }
+  }
+  for (const coupleId of registeredCouples) {
+    const couple = couples.get(coupleId!)
+    const ids = [couple?.player1_id, couple?.player2_id].filter((id): id is string => !!id && eligiblePlayers.has(id))
+    assignResult(coupleId!, ids, { cup: null, stage: 'NO_MATCHES' })
+  }
+  for (const player of updates.values()) {
+    if (!player.tournamentResult) player.tournamentResult = {
+      coupleId: 'individual:' + player.playerId, coupleName: player.playerName, cup: null, stage: 'NO_MATCHES',
+    }
+  }
+  const eliminationStages = new Set(['SEMIFINAL', '4TOS', '8VOS', '16VOS', '32VOS'])
+  for (const match of matches) {
+    for (const coupleId of [match.couple1_id, match.couple2_id]) {
+      if (!coupleId) continue
+      const ids = getCouplePlayers(match.id, coupleId)
+      const winner = match.winner_id === coupleId
+      const stage: PointsTournamentResult['stage'] = match.type !== 'ELIMINATION'
+        ? context.roundRobinChampion === coupleId ? 'champion' : 'ZONE'
+        : match.round === 'FINAL' ? winner ? 'champion' : 'finalist'
+          : !winner && eliminationStages.has(match.round ?? '') ? match.round as PointsTournamentResult['stage'] : 'UNRESOLVED'
+      assignResult(coupleId, ids, { cup: match.type === 'ELIMINATION' ? (match.bracket_key || 'MAIN') as BracketKey : null,
+        stage, lastRound: match.round })
+    }
+  }
   let withSnapshot = 0
   const playerScores = [...updates.values()].sort((a, b) => a.playerName.localeCompare(b.playerName, 'es') || a.playerId.localeCompare(b.playerId))
   for (const update of playerScores) {
@@ -188,20 +233,4 @@ export const buildPointsReview = ({ context, fingerprint, settlement }: PointsCo
     scoreBasis: fixed ? 'FIXED' : withSnapshot === 0 ? 'CURRENT' : withSnapshot === playerScores.length ? 'SNAPSHOT' : 'MIXED',
     ...(!fixed && context.snapshots.some(snapshot => snapshot.basis === 'SUBSTITUTION') ? { hasSubstitutionBaselines: true } : {}),
   } }
-}
-
-export const applyManualCategoryDecisions = (input: PointsSettlementInput, decisions: ManualCategoryDecision[]): PointsSettlementInput => {
-  const review = structuredClone(input.review)
-  const seen = new Set<string>()
-  for (const decision of decisions) {
-    const player = review.playerScores.find(row => row.playerId === decision.playerId)
-    if (!player || seen.has(decision.playerId)) throw new PointsReviewError('Las decisiones contienen jugadores ajenos o repetidos.', 400)
-    if (!player.categoryBefore) throw new PointsReviewError('Primero asigná la categoría inicial del jugador desde su ficha.', 400)
-    if (!review.categories.some(category => category.name === decision.newCategory)) throw new PointsReviewError('La categoría elegida no existe.', 400)
-    if (player.automaticPromotion) throw new PointsReviewError('Los ascensos automáticos se gestionan desde Ascensos.', 400)
-    seen.add(decision.playerId)
-    player.categoryAfter = decision.newCategory
-    if (review.rulesVersion === 'fixed-ranking-v1' && player.categoryBefore !== decision.newCategory) player.pointsAfter = 0
-  }
-  return { ...input, review }
 }

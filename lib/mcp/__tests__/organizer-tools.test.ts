@@ -1,6 +1,6 @@
 import { createPilotMcp } from '@/scripts/match-scheduling-mcp-pilot.mjs'
 import { getOrganizerActor } from '../organizer-auth'
-import { organizerCanReadLeague, readOrganizerFixtureDate, readOrganizerHistory } from '../organizer-fixture'
+import { organizerCanReadLeague, readOrganizerDates, readOrganizerFixtureDate, readOrganizerHistory } from '../organizer-fixture'
 import { organizerTools } from '../organizer-tools'
 
 jest.mock('server-only', () => ({}))
@@ -12,6 +12,7 @@ jest.mock('../organizer-auth', () => ({
 }))
 jest.mock('../organizer-fixture', () => ({
   organizerCanReadLeague: jest.fn(),
+  readOrganizerDates: jest.fn(),
   readOrganizerFixtureDate: jest.fn(),
   readOrganizerHistory: jest.fn(),
 }))
@@ -30,6 +31,23 @@ const call = async (name: string, args: object) => {
 }
 
 beforeEach(() => jest.resetAllMocks())
+
+it('lists the organizer-created dates after checking access to the real league', async () => {
+  jest.mocked(getOrganizerActor).mockResolvedValue({ userId: 'manager', supabase: database })
+  jest.mocked(organizerCanReadLeague).mockResolvedValue(true)
+  jest.mocked(readOrganizerDates).mockResolvedValue({
+    tournamentId, zonaHoraria: 'America/Argentina/Buenos_Aires', fechas: [{ id: 'fecha-real', fecha_number: 4 }],
+  })
+  const result = await call('consultar_fechas', { tournamentId })
+  expect(result.structuredContent.fechas).toEqual([{ id: 'fecha-real', fecha_number: 4 }])
+  expect(readOrganizerDates).toHaveBeenCalledWith(database, { tournamentId }, 'manager')
+})
+
+it('does not expose dates to an anonymous caller', async () => {
+  jest.mocked(getOrganizerActor).mockResolvedValue(null)
+  expect((await call('consultar_fechas', { tournamentId })).isError).toBe(true)
+  expect(readOrganizerDates).not.toHaveBeenCalled()
+})
 
 it('challenges anonymous access without querying the notes', async () => {
   jest.mocked(getOrganizerActor).mockResolvedValue(null)

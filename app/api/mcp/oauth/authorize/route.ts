@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import {
-  getOrganizerOAuth, issueOrganizerCode, oauthConnectionsPath, oauthNoStore, organizerReadRoles, parseOrganizerAuthorization,
+  getOrganizerOAuth, isAllowedOrganizer, issueOrganizerCode, oauthConnectionsPath, oauthNoStore, organizerReadRoles, parseOrganizerAuthorization,
 } from '@/lib/mcp/organizer-auth'
 
 const responseHeaders = {
@@ -40,6 +40,10 @@ const authorize = async (request: Request) => {
     const login = new URL('/login', config.issuer)
     login.searchParams.set('redirectTo', url.pathname + url.search)
     return new Response(null, { status: 303, headers: { ...responseHeaders, Location: login.href } })
+  }
+
+  if (!isAllowedOrganizer(user.id, config)) {
+    return new Response('Esta cuenta no está habilitada para el piloto de Padel FV.', { status: 403, headers: responseHeaders })
   }
 
   const { data: profile, error } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle()
