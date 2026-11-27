@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkRoutePermission, getRedirectPath } from "@/config/permissions"
 import { getLegacyTournamentRedirectPath } from '@/lib/seo/legacy-tournament-redirect'
+import { getMcpOAuthReturnPath } from '@/lib/auth/mcp-return-path'
 
 // Define user roles (ensure this matches config/permissions.ts and your user data)
 type Role = "PLAYER" | "CLUB" | "COACH" | "ADMIN" | "ORGANIZADOR"
@@ -237,6 +238,12 @@ export async function updateSession(request: NextRequest) {
 
     // Redirect authenticated users with a completed profile away from auth pages
     if (user && userRole && shouldRedirectAuthenticatedAuthPage) {
+      const oauthReturnPath = currentPath === "/login"
+        ? getMcpOAuthReturnPath(request.nextUrl.searchParams.get("redirectTo"))
+        : null
+      if (oauthReturnPath) {
+        return NextResponse.redirect(new URL(oauthReturnPath, request.url), { headers })
+      }
       const url = request.nextUrl.clone()
       url.pathname = DASHBOARD_PATH
       return NextResponse.redirect(url, { headers })

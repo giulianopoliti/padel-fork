@@ -3,12 +3,13 @@ import {
   getOrganizerOAuth, issueOrganizerCode, oauthConnectionsPath, oauthNoStore, organizerReadRoles, parseOrganizerAuthorization,
 } from '@/lib/mcp/organizer-auth'
 
-const responseHeaders = {
+const createResponseHeaders = (redirectUri?: string): Record<string, string> => ({
   ...oauthNoStore,
   // Preserve Origin on same-origin form POSTs; hide OAuth URLs from other sites.
   'Referrer-Policy': 'same-origin',
-  'Content-Security-Policy': "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
-}
+  // Chrome checks form-action against the destination of the POST's 303 redirect.
+  'Content-Security-Policy': `default-src 'none'; form-action 'self'${redirectUri ? ` ${redirectUri}` : ''}; frame-ancestors 'none'; base-uri 'none'`,
+})
 
 const consentHtml = `<!doctype html>
 <html lang="es-AR"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,6 +28,7 @@ const consentHtml = `<!doctype html>
 
 const authorize = async (request: Request) => {
   const config = getOrganizerOAuth()
+  const responseHeaders = createResponseHeaders(config?.redirectUri)
   if (!config) return new Response(null, { status: 404, headers: responseHeaders })
   const url = new URL(request.url)
   const authorization = parseOrganizerAuthorization(url.searchParams, config)

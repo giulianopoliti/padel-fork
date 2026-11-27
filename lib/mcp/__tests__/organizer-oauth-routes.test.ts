@@ -99,6 +99,20 @@ it('preserves the Origin of same-origin form submissions without leaking OAuth U
   }
 })
 
+it.each([
+  'https://chatgpt.com/connector_platform_oauth_redirect',
+  'https://chatgpt.com/connector/oauth/callback-id',
+])('allows the configured callback through the consent form CSP: %s', async redirectUri => {
+  jest.mocked(getOrganizerOAuth).mockReturnValue({ ...config, redirectUri })
+  const params = authorizationParams()
+  params.set('redirect_uri', redirectUri)
+  const response = await authorizeGet(new Request(`${config.issuer}/api/mcp/oauth/authorize?${params}`))
+  expect(response.status).toBe(200)
+  const formAction = response.headers.get('Content-Security-Policy')?.split(';')
+    .map(directive => directive.trim()).find(directive => directive.startsWith('form-action '))
+  expect(formAction?.split(/\s+/).slice(1)).toEqual(["'self'", redirectUri])
+})
+
 it.each(['null', 'https://attacker.example', undefined])('rejects consent and revocation with an untrusted Origin: %s', async origin => {
   const headers: HeadersInit = origin === undefined ? {} : { Origin: origin }
   const consent = await authorizePost(new Request(authorizeUrl(), {

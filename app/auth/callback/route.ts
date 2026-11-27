@@ -13,16 +13,9 @@ function sanitizeNext(next: string | null): string | null {
 
 function getStoredNext(request: NextRequest): string | null {
   const storedNext = request.cookies.get(GOOGLE_OAUTH_NEXT_COOKIE)?.value
-
-  if (!storedNext) {
-    return null
-  }
-
-  try {
-    return sanitizeNext(decodeURIComponent(storedNext))
-  } catch {
-    return sanitizeNext(storedNext)
-  }
+  // NextRequest already decodes cookie values. Decoding twice corrupts nested
+  // OAuth query parameters (notably state values containing encoded + or &).
+  return sanitizeNext(storedNext ?? null)
 }
 
 function redirectAndClearOAuthNext(url: string) {

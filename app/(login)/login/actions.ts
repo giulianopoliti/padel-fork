@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
+import { getMcpOAuthReturnPath } from "@/lib/auth/mcp-return-path"
 
 function sanitizeRedirectTo(redirectTo: string | null): string | null {
   if (!redirectTo || !redirectTo.startsWith("/") || redirectTo.startsWith("//")) {
@@ -84,7 +85,8 @@ export async function login(formData: FormData) {
       }
 
       const defaultRedirect = userData.role === "ADMIN" ? "/admin" : "/panel"
-      const finalRedirectUrl = userData.role === "PLAYER" ? contextualRedirect : defaultRedirect
+      const finalRedirectUrl = getMcpOAuthReturnPath(contextualRedirect) ??
+        (userData.role === "PLAYER" ? contextualRedirect : defaultRedirect)
 
       return {
         success: true,
