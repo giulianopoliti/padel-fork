@@ -17,6 +17,7 @@
     "start:fv": "node scripts/with-tenant-env.mjs padel-fv start",
     "start:elite": "node scripts/with-tenant-env.mjs padel-elite start",
     "lint": "next lint",
+    "styles:mcp": "tailwindcss --config tailwind.config.ts --content app/api/mcp/oauth/authorize/route.ts --output public/mcp-oauth.css --minify",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
