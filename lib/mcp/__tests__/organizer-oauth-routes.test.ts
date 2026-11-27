@@ -86,6 +86,34 @@ it('requires an organizer role and explicit consent before issuing a grant', asy
   expect(issueOrganizerCode).not.toHaveBeenCalled()
 })
 
+it('preserves the Origin of same-origin form submissions without leaking OAuth URLs to other sites', async () => {
+  const responses = [
+    await authorizeGet(new Request(authorizeUrl())),
+    await connectionsGet(new Request(`${config.issuer}/api/mcp/oauth/connections`)),
+  ]
+  for (const response of responses) {
+    expect(response.status).toBe(200)
+    // no-referrer makes browsers send Origin: null on HTML form POSTs.
+    expect(response.headers.get('Referrer-Policy')).toBe('same-origin')
+    expect(response.headers.get('Content-Security-Policy')).toContain("form-action 'self'")
+  }
+})
+
+it.each(['null', 'https://attacker.example', undefined])('rejects consent and revocation with an untrusted Origin: %s', async origin => {
+  const headers: HeadersInit = origin === undefined ? {} : { Origin: origin }
+  const consent = await authorizePost(new Request(authorizeUrl(), {
+    method: 'POST', headers, body: new URLSearchParams({ decision: 'approve' }),
+  }))
+  const revocation = await connectionsPost(new Request(`${config.issuer}/api/mcp/oauth/connections`, {
+    method: 'POST', headers, body: new URLSearchParams({ decision: 'revoke' }),
+  }))
+  expect(consent.status).toBe(403)
+  expect(revocation.status).toBe(403)
+  expect(createClient).not.toHaveBeenCalled()
+  expect(issueOrganizerCode).not.toHaveBeenCalled()
+  expect(revokeOrganizerAccess).not.toHaveBeenCalled()
+})
+
 it('rejects an external callback and cross-origin consent', async () => {
   const params = authorizationParams()
   params.set('redirect_uri', 'https://attacker.example/callback')

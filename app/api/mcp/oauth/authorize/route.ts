@@ -5,7 +5,8 @@ import {
 
 const responseHeaders = {
   ...oauthNoStore,
-  'Referrer-Policy': 'no-referrer',
+  // Preserve Origin on same-origin form POSTs; hide OAuth URLs from other sites.
+  'Referrer-Policy': 'same-origin',
   'Content-Security-Policy': "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
 }
 

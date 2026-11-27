@@ -6,7 +6,8 @@ import {
 const headers = {
   ...oauthNoStore,
   'Content-Type': 'text/html; charset=utf-8',
-  'Referrer-Policy': 'no-referrer',
+  // Preserve Origin on same-origin form POSTs; hide URLs from other sites.
+  'Referrer-Policy': 'same-origin',
   'Content-Security-Policy': "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
 }
 
