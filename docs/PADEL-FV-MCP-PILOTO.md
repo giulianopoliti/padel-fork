@@ -11,6 +11,12 @@ El organizador adjunta a ChatGPT su Excel de canchas y consulta las ligas desde 
 3. Desplegar la aplicación FV. Si el secreto o la callback no son válidos, `/api/mcp` responde **503** y no ofrece un acceso público alternativo. Los documentos OAuth responden 404 mientras la configuración no sea válida. Cambiar variables en Vercel requiere un nuevo deployment.
 4. Actualizar o recrear la conexión de ChatGPT con nombre **Padel FV — Organizadores** y autenticación **OAuth**. Actualizar el catálogo de herramientas e iniciar una conversación nueva para validar la conexión. El nombre de una conexión existente en ChatGPT se administra allí; el servidor no la renombra automáticamente.
 
+La configuración con secret de esta sección corresponde al cliente anterior.
+Para la conexión nueva sin credenciales manuales, consultar
+[CIMD de ChatGPT](PADEL-FV-MCP-CIMD.md), incluido el orden obligatorio de migración
+y despliegue. La migración de vinculación del cliente es necesaria antes de
+desplegar el nuevo código, incluso si CIMD queda apagado.
+
 | Campo | Valor |
 | --- | --- |
 | URL del servidor | `https://www.padelfv.com/api/mcp` |

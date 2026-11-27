@@ -4,6 +4,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getTenantBranding, getTenantCanonicalSiteUrl } from '@/config/tenant'
 import { createClientServiceRole } from '@/utils/supabase/server'
+import { isOrganizerCimdClient } from './organizer-cimd'
 
 export const organizerScope = 'padelfv.organizer.read'
 export const organizerClientId = 'padelfv-chatgpt'
@@ -22,17 +23,32 @@ const verifierPattern = /^[A-Za-z0-9_.~-]{43,128}$/
 export const oauthNoStore = { 'Cache-Control': 'no-store', Pragma: 'no-cache' }
 
 export const getOrganizerOAuth = () => {
-  const clientSecret = process.env.PADEL_FV_MCP_CLIENT_SECRET
-  if (getTenantBranding().key !== 'padel-fv' || !clientSecret || clientSecret.length < 32) return null
+  if (getTenantBranding().key !== 'padel-fv') return null
+  const rawSecret = process.env.PADEL_FV_MCP_CLIENT_SECRET ?? ''
+  const clientSecret = rawSecret.length >= 32 ? rawSecret : ''
+  const cimdEnabled = process.env.PADEL_FV_MCP_CIMD_ENABLED === 'true'
+  if (!clientSecret && !cimdEnabled) return null
   const issuer = getTenantCanonicalSiteUrl()
   const redirectUri = process.env.PADEL_FV_MCP_REDIRECT_URI || defaultCallback
   if (redirectUri !== defaultCallback && !/^https:\/\/chatgpt\.com\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(redirectUri)) {
     return null
   }
-  return { issuer, resource: `${issuer}/api/mcp`, redirectUri, clientSecret }
+  return { issuer, resource: `${issuer}/api/mcp`, redirectUri, clientSecret, cimdEnabled }
 }
 
 export type OrganizerOAuth = NonNullable<ReturnType<typeof getOrganizerOAuth>>
+export type OrganizerOAuthClient = { clientId: string; redirectUri: string }
+
+export const resolveOrganizerOAuthClient = async (
+  clientId: string | null, redirectUri: string | null, config: OrganizerOAuth,
+): Promise<OrganizerOAuthClient | null> => {
+  if (!clientId || !redirectUri) return null
+  if (clientId === organizerClientId) {
+    return config.clientSecret.length >= 32 && redirectUri === config.redirectUri ? { clientId, redirectUri } : null
+  }
+  if (!config.cimdEnabled || !await isOrganizerCimdClient(clientId, redirectUri)) return null
+  return { clientId, redirectUri }
+}
 
 export const getOrganizerRole = async (supabase: SupabaseClient, userId: string): Promise<string | null> => {
   const { data, error } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
@@ -47,13 +63,17 @@ const expiry = (seconds: number) => new Date(Date.now() + seconds * 1000).toISOS
 export const organizerAuthChallenge = (config: OrganizerOAuth) =>
   `Bearer resource_metadata="${config.issuer}${resourceMetadataPath}", scope="${organizerScope}", error="invalid_token", error_description="Inicia sesion con Padel FV para leer la organizacion del torneo"`
 
-export const parseOrganizerAuthorization = (params: URLSearchParams, config: OrganizerOAuth) => {
+export const parseOrganizerAuthorization = (
+  params: URLSearchParams, config: OrganizerOAuth,
+  client: OrganizerOAuthClient = { clientId: organizerClientId, redirectUri: config.redirectUri },
+) => {
   const state = params.get('state')
   const challenge = params.get('code_challenge')
   const scope = params.get('scope')
   if (
-    params.get('client_id') !== organizerClientId || params.get('response_type') !== 'code' ||
-    params.get('redirect_uri') !== config.redirectUri || params.get('resource') !== config.resource ||
+    params.get('client_id') !== client.clientId || params.get('response_type') !== 'code' ||
+    params.get('redirect_uri') !== client.redirectUri || params.get('resource') !== config.resource ||
+    new Set(params.keys()).size !== Array.from(params.keys()).length ||
     (scope !== null && scope !== organizerScope) ||
     !state || state.length > 1024 || !challenge || !opaqueTokenPattern.test(challenge) ||
     params.get('code_challenge_method') !== 'S256'
@@ -62,7 +82,10 @@ export const parseOrganizerAuthorization = (params: URLSearchParams, config: Org
   return { state, challenge }
 }
 
-export const issueOrganizerCode = async (actorId: string, challenge: string, config: OrganizerOAuth) => {
+export const issueOrganizerCode = async (
+  actorId: string, challenge: string, config: OrganizerOAuth,
+  client: OrganizerOAuthClient = { clientId: organizerClientId, redirectUri: config.redirectUri },
+) => {
   const supabase = await createClientServiceRole()
   if (!await getOrganizerRole(supabase, actorId)) throw new Error('Account has no organizer permissions')
   // An expired authorization code may still belong to a live eight-hour grant.
@@ -75,9 +98,10 @@ export const issueOrganizerCode = async (actorId: string, challenge: string, con
   const { error } = await supabase.from(organizerTable).insert({
     code_hash: hash(code),
     user_id: actorId,
+    client_id: client.clientId,
     code_challenge: challenge,
     resource: config.resource,
-    redirect_uri: config.redirectUri,
+    redirect_uri: client.redirectUri,
     code_expires_at: expiry(codeExpiresIn),
   })
   if (error) throw error
@@ -92,18 +116,23 @@ export const revokeOrganizerAccess = async (actorId: string, config: OrganizerOA
 }
 
 export const validOrganizerClientSecret = (submitted: string | null, config: OrganizerOAuth) =>
-  submitted !== null && timingSafeEqual(Buffer.from(hash(submitted), 'hex'), Buffer.from(hash(config.clientSecret), 'hex'))
+  config.clientSecret.length >= 32 && submitted !== null &&
+  timingSafeEqual(Buffer.from(hash(submitted), 'hex'), Buffer.from(hash(config.clientSecret), 'hex'))
 
-export const exchangeOrganizerCode = async (code: string, verifier: string, config: OrganizerOAuth) => {
+export const exchangeOrganizerCode = async (
+  code: string, verifier: string, config: OrganizerOAuth,
+  client: OrganizerOAuthClient = { clientId: organizerClientId, redirectUri: config.redirectUri },
+) => {
   if (!opaqueTokenPattern.test(code) || !verifierPattern.test(verifier)) return null
   const supabase = await createClientServiceRole()
   const accessToken = createSecret()
   const { data, error } = await supabase.from(organizerTable)
     .update({ access_hash: hash(accessToken), access_expires_at: expiry(expiresIn) })
     .eq('code_hash', hash(code))
+    .eq('client_id', client.clientId)
     .eq('code_challenge', createHash('sha256').update(verifier).digest('base64url'))
     .eq('resource', config.resource)
-    .eq('redirect_uri', config.redirectUri)
+    .eq('redirect_uri', client.redirectUri)
     .gt('code_expires_at', new Date().toISOString())
     .is('access_hash', null)
     .select('user_id')

@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import {
   getOrganizerOAuth, issueOrganizerCode, oauthConnectionsPath, oauthNoStore, organizerReadRoles, parseOrganizerAuthorization,
+  resolveOrganizerOAuthClient,
 } from '@/lib/mcp/organizer-auth'
 
 const createResponseHeaders = (redirectUri?: string): Record<string, string> => ({
@@ -71,14 +72,16 @@ const consentHtml = `<!doctype html>
 
 const authorize = async (request: Request) => {
   const config = getOrganizerOAuth()
-  const responseHeaders = createResponseHeaders(config?.redirectUri)
+  let responseHeaders = createResponseHeaders(config?.redirectUri)
   if (!config) return new Response(null, { status: 404, headers: responseHeaders })
   const url = new URL(request.url)
-  const authorization = parseOrganizerAuthorization(url.searchParams, config)
-  if (!authorization) return new Response('Solicitud de autorización inválida.', { status: 400, headers: responseHeaders })
   if (request.method === 'POST' && request.headers.get('origin') !== config.issuer) {
     return new Response('Origen inválido.', { status: 403, headers: responseHeaders })
   }
+  const client = await resolveOrganizerOAuthClient(url.searchParams.get('client_id'), url.searchParams.get('redirect_uri'), config)
+  const authorization = client && parseOrganizerAuthorization(url.searchParams, config, client)
+  if (!authorization || !client) return new Response('Solicitud de autorización inválida.', { status: 400, headers: responseHeaders })
+  responseHeaders = createResponseHeaders(client.redirectUri)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -101,14 +104,14 @@ const authorize = async (request: Request) => {
     return new Response('Elegí si querés autorizar el acceso.', { status: 400, headers: responseHeaders })
   }
 
-  const callback = new URL(config.redirectUri)
+  const callback = new URL(client.redirectUri)
   callback.searchParams.set('state', authorization.state)
   callback.searchParams.set('iss', config.issuer)
   if (decision === 'deny') {
     callback.searchParams.set('error', 'access_denied')
   } else {
     try {
-      callback.searchParams.set('code', await issueOrganizerCode(user.id, authorization.challenge, config))
+      callback.searchParams.set('code', await issueOrganizerCode(user.id, authorization.challenge, config, client))
     } catch (error) {
       console.error('[mcp/oauth] Code issuance failed', error)
       callback.searchParams.set('error', 'server_error')

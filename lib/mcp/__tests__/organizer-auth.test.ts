@@ -1,18 +1,23 @@
 import { createHash } from 'node:crypto'
-import { createClientServiceRole } from '@/utils/supabase/server'
+import { createClient, createClientServiceRole } from '@/utils/supabase/server'
+import { GET as authorizeGet, POST as authorizePost } from '@/app/api/mcp/oauth/authorize/route'
+import { POST as tokenPost } from '@/app/api/mcp/oauth/token/route'
+import { organizerCimdClientId } from '../organizer-cimd'
 import {
   exchangeOrganizerCode, getOrganizerActor, issueOrganizerCode, organizerClientId,
-  organizerScope, organizerTable, parseOrganizerAuthorization, revokeOrganizerAccess, type OrganizerOAuth,
+  organizerScope, organizerTable, parseOrganizerAuthorization, resolveOrganizerOAuthClient,
+  revokeOrganizerAccess, type OrganizerOAuth,
 } from '../organizer-auth'
 
 jest.mock('server-only', () => ({}))
-jest.mock('@/utils/supabase/server', () => ({ createClientServiceRole: jest.fn() }))
+jest.mock('@/utils/supabase/server', () => ({ createClient: jest.fn(), createClientServiceRole: jest.fn() }))
 
 const config: OrganizerOAuth = {
   issuer: 'https://www.padelfv.com',
   resource: 'https://www.padelfv.com/api/mcp',
   redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect',
   clientSecret: 'test-secret-only'.repeat(3),
+  cimdEnabled: false,
 }
 const userId = '11111111-1111-4111-8111-111111111111'
 const otherUserId = '22222222-2222-4222-8222-222222222222'
@@ -188,4 +193,143 @@ it('rechecks current roles on code exchange and every token use', async () => {
   expect(await getOrganizerActor(request, config)).toMatchObject({ userId })
   roles.set(userId, 'PLAYER')
   expect(await getOrganizerActor(request, config)).toBeNull()
+})
+
+it('binds new grants to their exact client and callback without consuming a mismatched exchange', async () => {
+  const rows = setupGrantStore()
+  const cimdClient = { clientId: organizerCimdClientId, redirectUri: config.redirectUri }
+  const legacyCode = await issueOrganizerCode(userId, challenge, config)
+  const cimdCode = await issueOrganizerCode(userId, challenge, config, cimdClient)
+  expect(rows.map(row => row.client_id)).toEqual([organizerClientId, organizerCimdClientId])
+  expect(await exchangeOrganizerCode(legacyCode, verifier, config, cimdClient)).toBeNull()
+  expect(await exchangeOrganizerCode(cimdCode, verifier, config)).toBeNull()
+  expect(await exchangeOrganizerCode(cimdCode, verifier, config, { ...cimdClient, redirectUri: 'https://attacker.example/callback' })).toBeNull()
+  expect(rows.every(row => row.access_hash === null)).toBe(true)
+  expect(await exchangeOrganizerCode(legacyCode, verifier, config)).not.toBeNull()
+  expect(await exchangeOrganizerCode(cimdCode, verifier, config, cimdClient)).not.toBeNull()
+})
+
+it('lets two connections for the same FV user coexist and consumes each code once under concurrent exchange', async () => {
+  setupGrantStore()
+  const client = { clientId: organizerCimdClientId, redirectUri: config.redirectUri }
+  const codeOne = await issueOrganizerCode(userId, challenge, config, client)
+  const codeTwo = await issueOrganizerCode(userId, challenge, config, client)
+  const attempts = await Promise.all([
+    exchangeOrganizerCode(codeOne, verifier, config, client),
+    exchangeOrganizerCode(codeOne, verifier, config, client),
+  ])
+  expect(attempts.filter(Boolean)).toHaveLength(1)
+  const tokenOne = attempts.find(Boolean)!
+  const tokenTwo = (await exchangeOrganizerCode(codeTwo, verifier, config, client))!
+  expect(tokenOne.access_token).not.toBe(tokenTwo.access_token)
+  for (const token of [tokenOne, tokenTwo]) {
+    const request = new Request(config.resource, { headers: { Authorization: `Bearer ${token.access_token}` } })
+    expect(await getOrganizerActor(request, config)).toMatchObject({ userId })
+  }
+})
+
+it('does not fetch CIMD metadata when disabled and rejects a legacy client without its configured secret', async () => {
+  const originalFetch = global.fetch
+  global.fetch = jest.fn()
+  try {
+    expect(await resolveOrganizerOAuthClient(organizerCimdClientId, config.redirectUri, config)).toBeNull()
+    expect(await resolveOrganizerOAuthClient(organizerClientId, config.redirectUri, { ...config, clientSecret: '', cimdEnabled: true })).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+it('completes real CIMD route handlers with FV login, explicit consent and a secret-free PKCE token exchange', async () => {
+  const keys = ['NEXT_PUBLIC_TENANT_KEY', 'PADEL_FV_MCP_CIMD_ENABLED', 'PADEL_FV_MCP_CLIENT_SECRET', 'PADEL_FV_MCP_REDIRECT_URI'] as const
+  const originalEnv = new Map(keys.map(key => [key, process.env[key]]))
+  const originalFetch = global.fetch
+  try {
+    process.env.NEXT_PUBLIC_TENANT_KEY = 'padel-fv'
+    process.env.PADEL_FV_MCP_CIMD_ENABLED = 'true'
+    // Keep a legacy secret configured to verify that the public-client flow
+    // cannot downgrade a confidential client or exchange its codes.
+    process.env.PADEL_FV_MCP_CLIENT_SECRET = config.clientSecret
+    process.env.PADEL_FV_MCP_REDIRECT_URI = 'https://chatgpt.com/connector/oauth/legacy-callback'
+    global.fetch = jest.fn().mockImplementation(async () => Response.json({
+      client_id: organizerCimdClientId, redirect_uris: [config.redirectUri],
+      token_endpoint_auth_method: 'private_key_jwt', token_endpoint_auth_methods_supported: ['none', 'private_key_jwt'],
+    }))
+    const rows = setupGrantStore()
+    const serviceClient = await createClientServiceRole()
+    let signedIn = false
+    jest.mocked(createClient).mockResolvedValue({
+      auth: { getUser: async () => ({ data: { user: signedIn ? { id: userId } : null } }) },
+      from: serviceClient.from,
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+    const params = new URLSearchParams({
+      response_type: 'code', client_id: organizerCimdClientId, redirect_uri: config.redirectUri,
+      resource: config.resource, scope: organizerScope, state: 'original+state',
+      code_challenge: challenge, code_challenge_method: 'S256',
+    })
+    const url = `${config.issuer}/api/mcp/oauth/authorize?${params}`
+    const login = await authorizeGet(new Request(url))
+    expect(login.status).toBe(303)
+    const destination = new URL(login.headers.get('Location')!)
+    expect(destination.pathname).toBe('/login')
+    expect(destination.searchParams.get('redirectTo')).toBe(new URL(url).pathname + new URL(url).search)
+    signedIn = true
+    const consent = await authorizeGet(new Request(url))
+    expect(consent.status).toBe(200)
+    expect(await consent.text()).toContain('Autorizar lectura')
+    expect(consent.headers.get('Content-Security-Policy')).toContain(`form-action 'self' ${config.redirectUri};`)
+    const approved = await authorizePost(new Request(url, {
+      method: 'POST', headers: { Origin: config.issuer }, body: new URLSearchParams({ decision: 'approve' }),
+    }))
+    const callback = new URL(approved.headers.get('Location')!)
+    expect(approved.status).toBe(303)
+    expect(callback.origin + callback.pathname).toBe(config.redirectUri)
+    expect(callback.searchParams.get('state')).toBe('original+state')
+    expect(callback.searchParams.get('iss')).toBe(config.issuer)
+    const code = callback.searchParams.get('code')!
+    expect(code).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(rows[0].client_id).toBe(organizerCimdClientId)
+    const exchangeParams = new URLSearchParams({
+      grant_type: 'authorization_code', client_id: organizerCimdClientId, code,
+      code_verifier: verifier, redirect_uri: config.redirectUri, resource: config.resource,
+    })
+    const exchange = (body: URLSearchParams, headers: HeadersInit = {}) => tokenPost(new Request(`${config.issuer}/api/mcp/oauth/token`, {
+      method: 'POST', body, headers,
+    }))
+    const legacy = new URLSearchParams(exchangeParams)
+    legacy.set('client_id', organizerClientId)
+    expect((await exchange(legacy)).status).toBe(401)
+    legacy.set('client_secret', config.clientSecret)
+    legacy.set('redirect_uri', process.env.PADEL_FV_MCP_REDIRECT_URI!)
+    expect(await (await exchange(legacy)).json()).toEqual({ error: 'invalid_grant' })
+    const suppliedSecret = new URLSearchParams(exchangeParams)
+    suppliedSecret.set('client_secret', config.clientSecret)
+    expect((await exchange(suppliedSecret)).status).toBe(401)
+    expect((await exchange(exchangeParams, { Authorization: `Basic ${Buffer.from(`${organizerCimdClientId}:secret`).toString('base64')}` })).status).toBe(401)
+    const badVerifier = new URLSearchParams(exchangeParams)
+    badVerifier.set('code_verifier', 'b'.repeat(43))
+    expect(await (await exchange(badVerifier)).json()).toEqual({ error: 'invalid_grant' })
+    const duplicated = new URLSearchParams(exchangeParams)
+    duplicated.append('client_id', organizerClientId)
+    expect(await (await exchange(duplicated)).json()).toEqual({ error: 'invalid_request' })
+    const response = await exchange(exchangeParams)
+    expect(response.status).toBe(200)
+    const token = await response.json()
+    expect(token).toMatchObject({ token_type: 'Bearer', expires_in: 28_800, scope: organizerScope })
+    expect(token).not.toHaveProperty('refresh_token')
+    expect(await (await exchange(exchangeParams)).json()).toEqual({ error: 'invalid_grant' })
+    expect(await getOrganizerActor(new Request(config.resource, { headers: { Authorization: `Bearer ${token.access_token}` } }), config)).toMatchObject({ userId })
+    const denied = await authorizePost(new Request(url, {
+      method: 'POST', headers: { Origin: config.issuer }, body: new URLSearchParams({ decision: 'deny' }),
+    }))
+    expect(new URL(denied.headers.get('Location')!).searchParams.get('error')).toBe('access_denied')
+    expect(rows).toHaveLength(1)
+  } finally {
+    global.fetch = originalFetch
+    for (const key of keys) {
+      const original = originalEnv.get(key)
+      if (original === undefined) delete process.env[key]
+      else process.env[key] = original
+    }
+  }
 })

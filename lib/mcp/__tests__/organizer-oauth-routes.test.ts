@@ -21,6 +21,7 @@ jest.mock('../organizer-auth', () => ({
 const config: OrganizerOAuth = {
   issuer: 'https://www.padelfv.com', resource: 'https://www.padelfv.com/api/mcp',
   redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect', clientSecret: 'x'.repeat(43),
+  cimdEnabled: false,
 }
 const userId = '11111111-1111-4111-8111-111111111111'
 const authorizationParams = () => new URLSearchParams({
@@ -146,7 +147,8 @@ it('issues a code for the signed-in user and returns the original state and issu
   expect(callback.searchParams.get('state')).toBe('original-state')
   expect(callback.searchParams.get('iss')).toBe(config.issuer)
   expect(callback.searchParams.get('code')).toBe('issued-code')
-  expect(issueOrganizerCode).toHaveBeenCalledWith(userId, authorizationParams().get('code_challenge'), config)
+  expect(issueOrganizerCode).toHaveBeenCalledWith(userId, authorizationParams().get('code_challenge'), config,
+    { clientId: organizerClientId, redirectUri: config.redirectUri })
 })
 
 it('returns access_denied without issuing a code when consent is declined', async () => {
@@ -171,7 +173,8 @@ it('accepts a confidential client using HTTP Basic and prevents refresh-token re
   request.headers.set('Authorization', `Basic ${Buffer.from(`${organizerClientId}:${config.clientSecret}`).toString('base64')}`)
   jest.mocked(exchangeOrganizerCode).mockResolvedValue({ access_token: 'token', token_type: 'Bearer', expires_in: 28_800, scope: organizerScope })
   expect(await (await tokenPost(request)).json()).toMatchObject({ expires_in: 28_800 })
-  expect(exchangeOrganizerCode).toHaveBeenCalledWith('c'.repeat(43), 'a'.repeat(43), config)
+  expect(exchangeOrganizerCode).toHaveBeenCalledWith('c'.repeat(43), 'a'.repeat(43), config,
+    { clientId: organizerClientId, redirectUri: config.redirectUri })
   params.set('client_secret', config.clientSecret)
   params.set('grant_type', 'refresh_token')
   expect(await (await tokenPost(formRequest(`${config.issuer}/api/mcp/oauth/token`, params))).json())
@@ -207,5 +210,6 @@ it.each(['ORGANIZADOR', 'ADMIN', 'CLUB'])('allows another authenticated %s using
   const body = new URLSearchParams({ decision: 'approve', user_id: userId })
   const response = await authorizePost(formRequest(authorizeUrl(), body))
   expect(response.status).toBe(303)
-  expect(issueOrganizerCode).toHaveBeenCalledWith(secondUserId, authorizationParams().get('code_challenge'), config)
+  expect(issueOrganizerCode).toHaveBeenCalledWith(secondUserId, authorizationParams().get('code_challenge'), config,
+    { clientId: organizerClientId, redirectUri: config.redirectUri })
 })
