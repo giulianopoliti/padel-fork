@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import { z } from 'zod'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { getTenantBranding, getTenantCanonicalSiteUrl } from '@/config/tenant'
 import { createClientServiceRole } from '@/utils/supabase/server'
 
@@ -23,20 +23,22 @@ export const oauthNoStore = { 'Cache-Control': 'no-store', Pragma: 'no-cache' }
 
 export const getOrganizerOAuth = () => {
   const clientSecret = process.env.PADEL_FV_MCP_CLIENT_SECRET
-  const allowedUser = z.string().uuid().safeParse(process.env.PADEL_FV_MCP_ALLOWED_USER_ID?.trim())
-  if (getTenantBranding().key !== 'padel-fv' || !clientSecret || clientSecret.length < 32 || !allowedUser.success) return null
+  if (getTenantBranding().key !== 'padel-fv' || !clientSecret || clientSecret.length < 32) return null
   const issuer = getTenantCanonicalSiteUrl()
   const redirectUri = process.env.PADEL_FV_MCP_REDIRECT_URI || defaultCallback
   if (redirectUri !== defaultCallback && !/^https:\/\/chatgpt\.com\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(redirectUri)) {
     return null
   }
-  return { issuer, resource: `${issuer}/api/mcp`, redirectUri, clientSecret, allowedUserId: allowedUser.data.toLowerCase() }
+  return { issuer, resource: `${issuer}/api/mcp`, redirectUri, clientSecret }
 }
 
 export type OrganizerOAuth = NonNullable<ReturnType<typeof getOrganizerOAuth>>
 
-export const isAllowedOrganizer = (userId: string, config: OrganizerOAuth): boolean =>
-  userId.toLowerCase() === config.allowedUserId
+export const getOrganizerRole = async (supabase: SupabaseClient, userId: string): Promise<string | null> => {
+  const { data, error } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
+  if (error) throw error
+  return data?.role && organizerReadRoles.includes(data.role) ? data.role : null
+}
 
 const hash = (secret: string) => createHash('sha256').update(secret).digest('hex')
 const createSecret = () => randomBytes(32).toString('base64url')
@@ -61,8 +63,8 @@ export const parseOrganizerAuthorization = (params: URLSearchParams, config: Org
 }
 
 export const issueOrganizerCode = async (actorId: string, challenge: string, config: OrganizerOAuth) => {
-  if (!isAllowedOrganizer(actorId, config)) throw new Error('Account is not enabled for the Padel FV MCP pilot')
   const supabase = await createClientServiceRole()
+  if (!await getOrganizerRole(supabase, actorId)) throw new Error('Account has no organizer permissions')
   // An expired authorization code may still belong to a live eight-hour grant.
   const now = new Date().toISOString()
   const { error: cleanupError } = await supabase.from(organizerTable).delete()
@@ -98,17 +100,17 @@ export const exchangeOrganizerCode = async (code: string, verifier: string, conf
   const accessToken = createSecret()
   const { data, error } = await supabase.from(organizerTable)
     .update({ access_hash: hash(accessToken), access_expires_at: expiry(expiresIn) })
-    .eq('user_id', config.allowedUserId)
     .eq('code_hash', hash(code))
     .eq('code_challenge', createHash('sha256').update(verifier).digest('base64url'))
     .eq('resource', config.resource)
     .eq('redirect_uri', config.redirectUri)
     .gt('code_expires_at', new Date().toISOString())
     .is('access_hash', null)
-    .select('code_hash')
+    .select('user_id')
     .maybeSingle()
   if (error) throw error
-  return data ? { access_token: accessToken, token_type: 'Bearer', expires_in: expiresIn, scope: organizerScope } : null
+  if (!data || !await getOrganizerRole(supabase, data.user_id)) return null
+  return { access_token: accessToken, token_type: 'Bearer', expires_in: expiresIn, scope: organizerScope }
 }
 
 export const getOrganizerActor = async (request: Request, config: OrganizerOAuth) => {
@@ -117,11 +119,11 @@ export const getOrganizerActor = async (request: Request, config: OrganizerOAuth
   const supabase = await createClientServiceRole()
   const { data, error } = await supabase.from(organizerTable)
     .select('user_id')
-    .eq('user_id', config.allowedUserId)
     .eq('access_hash', hash(token))
     .eq('resource', config.resource)
     .gt('access_expires_at', new Date().toISOString())
     .maybeSingle()
   if (error) throw error
-  return data ? { userId: data.user_id as string, supabase } : null
+  if (!data || !await getOrganizerRole(supabase, data.user_id)) return null
+  return { userId: data.user_id as string, supabase }
 }

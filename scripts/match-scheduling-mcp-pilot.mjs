@@ -1,4 +1,4 @@
-const serverInfo = { name: 'padel-fv-piloto-fixture', version: '0.1.0' }
+const serverInfo = { name: 'padel-fv-organizadores', title: 'Padel FV — Organizadores', version: '0.2.0' }
 const protocolVersions = ['2026-07-28', '2025-11-25', '2025-06-18', '2025-03-26']
 const capabilities = { tools: {} }
 

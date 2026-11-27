@@ -21,8 +21,8 @@ jest.mock('../organizer-auth', () => ({
 const config: OrganizerOAuth = {
   issuer: 'https://www.padelfv.com', resource: 'https://www.padelfv.com/api/mcp',
   redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect', clientSecret: 'x'.repeat(43),
-  allowedUserId: '11111111-1111-4111-8111-111111111111',
 }
+const userId = '11111111-1111-4111-8111-111111111111'
 const authorizationParams = () => new URLSearchParams({
   client_id: organizerClientId, response_type: 'code', redirect_uri: config.redirectUri,
   resource: config.resource, scope: organizerScope, state: 'original-state',
@@ -30,13 +30,13 @@ const authorizationParams = () => new URLSearchParams({
   code_challenge_method: 'S256',
 })
 const authorizeUrl = () => `${config.issuer}/api/mcp/oauth/authorize?${authorizationParams()}`
-const withSession = (role: string | null, userId: string | null = config.allowedUserId) => {
+const withSession = (role: string | null, sessionUserId: string | null = userId) => {
   const query = {
     select: () => query, eq: () => query,
     maybeSingle: async () => ({ data: role ? { role } : null, error: null }),
   }
   jest.mocked(createClient).mockResolvedValue({
-    auth: { getUser: async () => ({ data: { user: userId ? { id: userId } : null } }) },
+    auth: { getUser: async () => ({ data: { user: sessionUserId ? { id: sessionUserId } : null } }) },
     from: () => query,
   } as unknown as Awaited<ReturnType<typeof createClient>>)
 }
@@ -104,7 +104,7 @@ it('issues a code for the signed-in user and returns the original state and issu
   expect(callback.searchParams.get('state')).toBe('original-state')
   expect(callback.searchParams.get('iss')).toBe(config.issuer)
   expect(callback.searchParams.get('code')).toBe('issued-code')
-  expect(issueOrganizerCode).toHaveBeenCalledWith(config.allowedUserId, authorizationParams().get('code_challenge'), config)
+  expect(issueOrganizerCode).toHaveBeenCalledWith(userId, authorizationParams().get('code_challenge'), config)
 })
 
 it('returns access_denied without issuing a code when consent is declined', async () => {
@@ -154,13 +154,16 @@ it('requires the FV session and same-origin POST to revoke; ignores submitted us
   expect(revokeOrganizerAccess).not.toHaveBeenCalled()
   const response = await connectionsPost(formRequest(url, body))
   expect(response.status).toBe(200)
-  expect(revokeOrganizerAccess).toHaveBeenCalledWith(config.allowedUserId, config)
+  expect(revokeOrganizerAccess).toHaveBeenCalledWith(userId, config)
 })
 
-it.each(['ORGANIZADOR', 'ADMIN', 'CLUB'])('rejects another authenticated %s even when it submits the allowed UUID', async role => {
-  withSession(role, '22222222-2222-4222-8222-222222222222')
-  expect((await authorizeGet(new Request(authorizeUrl()))).status).toBe(403)
-  const body = new URLSearchParams({ decision: 'approve', user_id: config.allowedUserId })
-  expect((await authorizePost(formRequest(authorizeUrl(), body))).status).toBe(403)
-  expect(issueOrganizerCode).not.toHaveBeenCalled()
+it.each(['ORGANIZADOR', 'ADMIN', 'CLUB'])('allows another authenticated %s using its actual session identity', async role => {
+  const secondUserId = '22222222-2222-4222-8222-222222222222'
+  withSession(role, secondUserId)
+  expect((await authorizeGet(new Request(authorizeUrl()))).status).toBe(200)
+  jest.mocked(issueOrganizerCode).mockResolvedValue('second-code')
+  const body = new URLSearchParams({ decision: 'approve', user_id: userId })
+  const response = await authorizePost(formRequest(authorizeUrl(), body))
+  expect(response.status).toBe(303)
+  expect(issueOrganizerCode).toHaveBeenCalledWith(secondUserId, authorizationParams().get('code_challenge'), config)
 })

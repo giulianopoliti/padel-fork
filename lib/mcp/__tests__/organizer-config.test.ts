@@ -29,10 +29,10 @@ afterEach(() => {
   }
 })
 
-it('pins the configured UUID and the canonical FV resource without exposing account configuration in metadata', async () => {
+it('uses the canonical FV resource without exposing secrets or the obsolete pilot account in metadata', async () => {
   process.env.PADEL_FV_MCP_ALLOWED_USER_ID = ` ${allowedUserId.toUpperCase()} `
   expect(getOrganizerOAuth()).toMatchObject({
-    allowedUserId, issuer: 'https://www.padelfv.com', resource: 'https://www.padelfv.com/api/mcp',
+    issuer: 'https://www.padelfv.com', resource: 'https://www.padelfv.com/api/mcp',
   })
   for (const response of [metadataGet(), resourceGet()]) {
     const body = await response.json()
@@ -42,16 +42,12 @@ it('pins the configured UUID and the canonical FV resource without exposing acco
   }
 })
 
-it.each(['', 'not-a-uuid', 'eventosdeportivosfv@gmail.com'])('disables private OAuth for invalid allowed-user configuration: %s', value => {
-  process.env.PADEL_FV_MCP_ALLOWED_USER_ID = value
-  expect(getOrganizerOAuth()).toBeNull()
-  expect(metadataGet().status).toBe(404)
-})
-
-it('disables private OAuth when the allowed UUID is absent', () => {
-  delete process.env.PADEL_FV_MCP_ALLOWED_USER_ID
-  expect(getOrganizerOAuth()).toBeNull()
-  expect(resourceGet().status).toBe(404)
+it.each([undefined, '', 'not-a-uuid', 'eventosdeportivosfv@gmail.com'])('does not depend on the former pilot account configuration: %s', value => {
+  if (value === undefined) delete process.env.PADEL_FV_MCP_ALLOWED_USER_ID
+  else process.env.PADEL_FV_MCP_ALLOWED_USER_ID = value
+  expect(getOrganizerOAuth()).not.toBeNull()
+  expect(metadataGet().status).toBe(200)
+  expect(resourceGet().status).toBe(200)
 })
 
 it('requires a separate OAuth client secret', () => {

@@ -26,7 +26,7 @@ const historyInput = z.object({
 
 const tournamentInput = z.object({ tournamentId: z.string().uuid() }).strict()
 
-const organizerTool = <T extends { tournamentId: string }>(
+export const authenticatedOrganizerTool = <T>(
   name: string, description: string, properties: object, schema: z.ZodType<T, z.ZodTypeDef, unknown>,
   read: (supabase: SupabaseClient, input: T, actorId: string) => Promise<object>,
 ) => {
@@ -35,7 +35,7 @@ const organizerTool = <T extends { tournamentId: string }>(
     definition: {
       name,
       description,
-      inputSchema: { type: 'object', properties, required: ['tournamentId'], additionalProperties: false },
+      inputSchema: { type: 'object', properties, required: 'tournamentId' in properties ? ['tournamentId'] : [], additionalProperties: false },
       annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
       securitySchemes,
       _meta: { securitySchemes },
@@ -49,13 +49,20 @@ const organizerTool = <T extends { tournamentId: string }>(
       }
       const parsed = schema.safeParse(args)
       if (!parsed.success) return { error: 'Revisá el ID del torneo y los filtros de la consulta.' }
-      if (!await organizerCanReadLeague(actor.supabase, actor.userId, parsed.data.tournamentId)) {
-        return { error: 'Tu cuenta no tiene acceso de organización a esa liga.' }
-      }
       return read(actor.supabase, parsed.data, actor.userId)
     },
   }
 }
+
+export const organizerTool = <T extends { tournamentId: string }>(
+  name: string, description: string, properties: object, schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  read: (supabase: SupabaseClient, input: T, actorId: string) => Promise<object>,
+) => authenticatedOrganizerTool(name, description, properties, schema, async (supabase, input, actorId) => {
+  if (!await organizerCanReadLeague(supabase, actorId, input.tournamentId)) {
+    return { error: 'Tu cuenta no tiene acceso de organización a esa liga.' }
+  }
+  return read(supabase, input, actorId)
+})
 
 export const organizerTools = [
   organizerTool(

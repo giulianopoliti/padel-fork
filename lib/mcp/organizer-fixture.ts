@@ -50,7 +50,7 @@ const matchesStatuses = [...finishedStatuses, ...reservedStatuses]
 
 const one = <T>(value: T | T[] | null): T | null => Array.isArray(value) ? value[0] ?? null : value
 
-const readAll = async <T>(load: (from: number, to: number) => PromiseLike<{
+export const readAll = async <T>(load: (from: number, to: number) => PromiseLike<{
   data: unknown
   error: unknown
 }>): Promise<T[]> => {

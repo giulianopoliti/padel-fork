@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import {
-  getOrganizerOAuth, isAllowedOrganizer, issueOrganizerCode, oauthConnectionsPath, oauthNoStore, organizerReadRoles, parseOrganizerAuthorization,
+  getOrganizerOAuth, issueOrganizerCode, oauthConnectionsPath, oauthNoStore, organizerReadRoles, parseOrganizerAuthorization,
 } from '@/lib/mcp/organizer-auth'
 
 const responseHeaders = {
@@ -11,9 +11,9 @@ const responseHeaders = {
 
 const consentHtml = `<!doctype html>
 <html lang="es-AR"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Conectar Padel FV con ChatGPT</title>
+<title>Padel FV — Organizadores</title>
 <main>
-  <h1>Conectar Padel FV con ChatGPT</h1>
+  <h1>Conectar Padel FV — Organizadores con ChatGPT</h1>
   <p>Autorizá a ChatGPT a leer los horarios, las disponibilidades, las notas y el historial de las ligas que administrás.</p>
   <p>El acceso dura ocho horas y es de solo lectura.</p>
   <p>Después de ese plazo tendrás que volver a autorizar. Podés <a href="${oauthConnectionsPath}">revocar el acceso</a> antes.</p>
@@ -40,10 +40,6 @@ const authorize = async (request: Request) => {
     const login = new URL('/login', config.issuer)
     login.searchParams.set('redirectTo', url.pathname + url.search)
     return new Response(null, { status: 303, headers: { ...responseHeaders, Location: login.href } })
-  }
-
-  if (!isAllowedOrganizer(user.id, config)) {
-    return new Response('Esta cuenta no está habilitada para el piloto de Padel FV.', { status: 403, headers: responseHeaders })
   }
 
   const { data: profile, error } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle()

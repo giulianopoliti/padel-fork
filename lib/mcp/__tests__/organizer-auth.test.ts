@@ -13,15 +13,28 @@ const config: OrganizerOAuth = {
   resource: 'https://www.padelfv.com/api/mcp',
   redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect',
   clientSecret: 'test-secret-only'.repeat(3),
-  allowedUserId: '11111111-1111-4111-8111-111111111111',
 }
-const userId = config.allowedUserId
+const userId = '11111111-1111-4111-8111-111111111111'
+const otherUserId = '22222222-2222-4222-8222-222222222222'
+const roles = new Map<string, string>()
 const verifier = 'a'.repeat(43)
 const challenge = createHash('sha256').update(verifier).digest('base64url')
 
 const setupGrantStore = () => {
+  roles.clear()
+  roles.set(userId, 'ORGANIZADOR')
+  roles.set(otherUserId, 'CLUB')
   const rows: Record<string, string | null>[] = []
   const from = jest.fn((table: string) => {
+    if (table === 'users') {
+      let id = ''
+      const profileQuery = {
+        select: () => profileQuery,
+        eq: (_column: string, value: string) => { id = value; return profileQuery },
+        maybeSingle: async () => ({ data: roles.has(id) ? { role: roles.get(id) } : null, error: null }),
+      }
+      return profileQuery
+    }
     expect(table).toBe(organizerTable)
     const predicates: Array<(row: Record<string, string | null>) => boolean> = []
     let update: Record<string, string | null> | undefined
@@ -139,20 +152,40 @@ it('rejects expired authorization codes and limits new tokens to eight hours wit
   expect(token).not.toHaveProperty('refresh_token')
 })
 
-it('rejects code issuance for any other account before opening a service-role client', async () => {
+it('rejects code issuance for players and missing profiles', async () => {
   setupGrantStore()
-  jest.mocked(createClientServiceRole).mockClear()
-  await expect(issueOrganizerCode('22222222-2222-4222-8222-222222222222', challenge, config)).rejects.toThrow('not enabled')
-  expect(createClientServiceRole).not.toHaveBeenCalled()
+  roles.set(otherUserId, 'PLAYER')
+  await expect(issueOrganizerCode(otherUserId, challenge, config)).rejects.toThrow('no organizer permissions')
+  await expect(issueOrganizerCode('missing', challenge, config)).rejects.toThrow('no organizer permissions')
 })
 
-it('rejects pending codes and live tokens as soon as the configured pilot account changes', async () => {
+it('keeps two organizers tokens and revocations independent', async () => {
+  const rows = setupGrantStore()
+  const firstCode = await issueOrganizerCode(userId, challenge, config)
+  const secondCode = await issueOrganizerCode(otherUserId, challenge, config)
+  const firstToken = await exchangeOrganizerCode(firstCode, verifier, config)
+  const secondToken = await exchangeOrganizerCode(secondCode, verifier, config)
+  const firstRequest = new Request(config.resource, { headers: { Authorization: `Bearer ${firstToken!.access_token}` } })
+  const secondRequest = new Request(config.resource, { headers: { Authorization: `Bearer ${secondToken!.access_token}` } })
+  expect(await getOrganizerActor(firstRequest, config)).toMatchObject({ userId })
+  expect(await getOrganizerActor(secondRequest, config)).toMatchObject({ userId: otherUserId })
+  expect(rows[0].user_id).toBe(userId)
+  expect(rows[1].user_id).toBe(otherUserId)
+  await revokeOrganizerAccess(userId, config)
+  expect(await getOrganizerActor(firstRequest, config)).toBeNull()
+  expect(await getOrganizerActor(secondRequest, config)).toMatchObject({ userId: otherUserId })
+})
+
+it('rechecks current roles on code exchange and every token use', async () => {
   setupGrantStore()
-  const code = await issueOrganizerCode(userId, challenge, config)
-  const changedConfig = { ...config, allowedUserId: '22222222-2222-4222-8222-222222222222' }
-  expect(await exchangeOrganizerCode(code, verifier, changedConfig)).toBeNull()
-  const token = await exchangeOrganizerCode(code, verifier, config)
+  const firstCode = await issueOrganizerCode(userId, challenge, config)
+  roles.set(userId, 'PLAYER')
+  expect(await exchangeOrganizerCode(firstCode, verifier, config)).toBeNull()
+  roles.set(userId, 'ORGANIZADOR')
+  const secondCode = await issueOrganizerCode(userId, challenge, config)
+  const token = await exchangeOrganizerCode(secondCode, verifier, config)
   const request = new Request(config.resource, { headers: { Authorization: `Bearer ${token!.access_token}` } })
   expect(await getOrganizerActor(request, config)).toMatchObject({ userId })
-  expect(await getOrganizerActor(request, changedConfig)).toBeNull()
+  roles.set(userId, 'PLAYER')
+  expect(await getOrganizerActor(request, config)).toBeNull()
 })

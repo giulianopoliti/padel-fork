@@ -1,15 +1,22 @@
-import { getCategories, getClubsForFilter, getTournamentsOptimized } from '@/app/api/tournaments'
 import { getPublicLongResults, type PublicLongMatch } from '@/lib/services/public-long-results.service'
 import { POST } from '../route'
 import { getTenantBranding } from '@/config/tenant'
+import { getOrganizerActor, getOrganizerOAuth } from '@/lib/mcp/organizer-auth'
+import { organizerCanReadLeague } from '@/lib/mcp/organizer-fixture'
+import { searchOrganizerTournaments } from '@/lib/mcp/organizer-search'
 
 jest.mock('@/config/tenant', () => ({ getTenantBranding: jest.fn(() => ({ key: 'padel-fv' })) }))
-jest.mock('@/lib/mcp/organizer-auth', () => ({ getOrganizerOAuth: () => null }))
-jest.mock('@/lib/mcp/organizer-tools', () => ({ organizerTools: [] }))
-jest.mock('@/app/api/tournaments', () => ({
-  getClubsForFilter: jest.fn(),
-  getCategories: jest.fn(),
-  getTournamentsOptimized: jest.fn(),
+jest.mock('server-only', () => ({}))
+jest.mock('@/lib/mcp/organizer-auth', () => ({
+  getOrganizerOAuth: jest.fn(), getOrganizerActor: jest.fn(), organizerScope: 'padelfv.organizer.read',
+  organizerAuthChallenge: () => 'Bearer resource_metadata="https://www.padelfv.com/.well-known/oauth-protected-resource/api/mcp"',
+}))
+jest.mock('@/lib/mcp/organizer-fixture', () => ({
+  organizerCanReadLeague: jest.fn(), readOrganizerDates: jest.fn(),
+  readOrganizerFixtureDate: jest.fn(), readOrganizerHistory: jest.fn(),
+}))
+jest.mock('@/lib/mcp/organizer-search', () => ({
+  ...jest.requireActual('@/lib/mcp/organizer-search'), searchOrganizerTournaments: jest.fn(),
 }))
 jest.mock('@/lib/services/public-long-results.service', () => ({ getPublicLongResults: jest.fn() }))
 
@@ -24,9 +31,14 @@ const callMcp = async (method: string, params?: object) => {
   return response.json()
 }
 
-describe('Padel FV public MCP', () => {
+const database = {} as NonNullable<Awaited<ReturnType<typeof getOrganizerActor>>>['supabase']
+
+describe('Padel FV organizer MCP', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    jest.resetAllMocks()
+    jest.mocked(getOrganizerOAuth).mockReturnValue({} as NonNullable<ReturnType<typeof getOrganizerOAuth>>)
+    jest.mocked(getOrganizerActor).mockResolvedValue({ userId: 'manager', supabase: database })
+    jest.mocked(organizerCanReadLeague).mockResolvedValue(true)
     jest.mocked(getTenantBranding).mockReturnValue({ key: 'padel-fv' } as ReturnType<typeof getTenantBranding>)
   })
 
@@ -37,49 +49,63 @@ describe('Padel FV public MCP', () => {
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'buscar_torneos', arguments: {} } }),
     }))
     expect(response.status).toBe(404)
-    expect(getTournamentsOptimized).not.toHaveBeenCalled()
+    expect(searchOrganizerTournaments).not.toHaveBeenCalled()
     expect(getPublicLongResults).not.toHaveBeenCalled()
   })
 
-  it('advertises the public tools as read-only and accepts a real date number', async () => {
+  it('advertises all seven tools as OAuth-only and read-only', async () => {
     const { result } = await callMcp('tools/list')
     expect(result.tools.map((tool: { name: string }) => tool.name)).toEqual([
       'consultar_fecha', 'buscar_torneos', 'consultar_resultados',
+      'consultar_fechas', 'consultar_horarios_fecha', 'consultar_disponibilidad_fecha', 'consultar_historial_partidos',
     ])
     expect(result.tools.every((tool: { annotations: { readOnlyHint: boolean } }) => tool.annotations.readOnlyHint)).toBe(true)
     expect(result.tools[0].inputSchema.properties.fechaNumero.type).toBe('integer')
+    expect(result.tools.every((tool: { securitySchemes: object[]; _meta: { securitySchemes: object[] } }) =>
+      JSON.stringify(tool.securitySchemes) === JSON.stringify([{ type: 'oauth2', scopes: ['padelfv.organizer.read'] }]) &&
+      JSON.stringify(tool._meta.securitySchemes) === JSON.stringify(tool.securitySchemes))).toBe(true)
   })
 
-  it('resolves the public club and category and only returns public summary fields', async () => {
-    jest.mocked(getClubsForFilter).mockResolvedValue([{ id: 'club-1', name: 'Lasaigues Canning' }])
-    jest.mocked(getCategories).mockResolvedValue([{ name: '4ta', level: 4, initial_score: 0 }])
-    jest.mocked(getTournamentsOptimized).mockResolvedValue({
-      tournaments: [{
-        id: tournamentId,
-        seoSlug: 'clausura-c4',
-        name: 'Clausura C4',
-        category: '4ta',
-        club: { name: 'Lasaigues Canning' },
-        status: 'ZONE_PHASE',
-        startDate: '2026-11-21',
-        transferAlias: 'internal-value',
-      } as Awaited<ReturnType<typeof getTournamentsOptimized>>['tournaments'][number]],
-      totalCount: 1,
-      totalPages: 1,
-    })
-
-    const { result } = await callMcp('tools/call', {
-      name: 'buscar_torneos',
-      arguments: { nombre: 'Clausura C4', sede: 'Canning', categoria: '4TA', estado: 'active' },
-    })
-    expect(getTournamentsOptimized).toHaveBeenCalledWith(expect.objectContaining({
-      status: 'active',
-      filters: { type: 'LONG', clubId: 'club-1', visibleVenueOnly: true, categoryName: '4ta', search: 'Clausura C4' },
-    }))
-    expect(result.structuredContent.torneos).toEqual([{
+  it('searches using the verified actor instead of an anonymous web session', async () => {
+    const tournament = {
       tournamentId, nombre: 'Clausura C4', categoria: '4ta', sede: 'Lasaigues Canning',
-      estado: 'ZONE_PHASE', fechaInicio: '2026-11-21', url: 'https://www.padelfv.com/torneos/clausura-c4',
-    }])
+      estado: 'ZONE_PHASE', fechaInicio: '2026-11-21', borrador: false,
+      url: `https://www.padelfv.com/tournaments/${tournamentId}`,
+    }
+    jest.mocked(searchOrganizerTournaments).mockResolvedValue({ pagina: 1, hayMas: false, torneos: [tournament] })
+    const { result } = await callMcp('tools/call', {
+      name: 'buscar_torneos', arguments: { nombre: 'Clausura C4', sede: 'Canning', categoria: '4TA', estado: 'active' },
+    })
+    expect(searchOrganizerTournaments).toHaveBeenCalledWith(database, {
+      nombre: 'Clausura C4', sede: 'Canning', categoria: '4TA', estado: 'active', pagina: 1,
+    }, 'manager')
+    expect(result.structuredContent.torneos).toEqual([tournament])
+  })
+
+  it.each(['buscar_torneos', 'consultar_fecha', 'consultar_resultados', 'consultar_fechas', 'consultar_horarios_fecha', 'consultar_disponibilidad_fecha', 'consultar_historial_partidos'])('requires authentication before any data access through %s', async name => {
+    jest.mocked(getOrganizerActor).mockResolvedValue(null)
+    const { result } = await callMcp('tools/call', { name, arguments: { tournamentId, fechaNumero: 3 } })
+    expect(result.isError).toBe(true)
+    expect(result._meta['mcp/www_authenticate']).toHaveLength(1)
+    expect(searchOrganizerTournaments).not.toHaveBeenCalled()
+    expect(getPublicLongResults).not.toHaveBeenCalled()
+    expect(organizerCanReadLeague).not.toHaveBeenCalled()
+  })
+
+  it.each(['consultar_fecha', 'consultar_resultados'])('blocks unrelated tournaments before reading results through %s', async name => {
+    jest.mocked(organizerCanReadLeague).mockResolvedValue(false)
+    const { result } = await callMcp('tools/call', { name, arguments: { tournamentId, fechaNumero: 3 } })
+    expect(result.isError).toBe(true)
+    expect(getPublicLongResults).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when OAuth is not configured, without falling back to public tools', async () => {
+    jest.mocked(getOrganizerOAuth).mockReturnValue(null)
+    const response = await POST(new Request('https://www.padelfv.com/api/mcp', {
+      method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    }))
+    expect(response.status).toBe(503)
+    expect(getOrganizerActor).not.toHaveBeenCalled()
   })
 
   it('returns final scores only and uses the lineup that actually played', async () => {
@@ -158,12 +184,13 @@ describe('Padel FV public MCP', () => {
     expect(result.isError).toBe(true)
   })
 
-  it('still returns the original fictitious date for the demo IDs', async () => {
+  it('does not expose fictional demo data from the organizer endpoint', async () => {
     const { result } = await callMcp('tools/call', {
       name: 'consultar_fecha', arguments: { tournamentId: 'torneo-demo', fechaId: 'fecha-3' },
     })
-    expect(result.structuredContent.tournament.id).toBe('torneo-demo')
+    expect(result.isError).toBe(true)
     expect(getPublicLongResults).not.toHaveBeenCalled()
+    expect(organizerCanReadLeague).not.toHaveBeenCalled()
   })
 
   it('rejects a demo ID for real results without touching the database service', async () => {
